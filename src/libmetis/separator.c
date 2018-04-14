@@ -8,7 +8,7 @@
  * Started 8/1/97
  * George
  *
- * $Id: separator.c 9993 2011-05-27 20:08:19Z karypis $
+ * $Id: separator.c 10481 2011-07-05 18:01:23Z karypis $
  *
  */
 
@@ -52,8 +52,8 @@ void ConstructSeparator(ctrl_t *ctrl, graph_t *graph)
 
   ASSERT(CheckNodePartitionParams(graph));
 
-  FM_2WayNodeRefine1Sided(ctrl, graph, ctrl->niter); 
-  FM_2WayNodeRefine2Sided(ctrl, graph, ctrl->niter); 
+  FM_2WayNodeRefine2Sided(ctrl, graph, 1); 
+  FM_2WayNodeRefine1Sided(ctrl, graph, 4); 
 
   ASSERT(IsSeparable(graph));
 

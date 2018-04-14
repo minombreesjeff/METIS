@@ -4,13 +4,12 @@
 
 \date   Started 5/17/07
 \author George
-\version\verbatim $Id: gk_mkrandom.h 6385 2009-03-10 19:58:34Z karypis $ \endverbatim
+\version\verbatim $Id: gk_mkrandom.h 10461 2011-07-01 18:49:05Z karypis $ \endverbatim
 */
 
 
 #ifndef _GK_MKRANDOM_H
 #define _GK_MKRANDOM_H
-
 
 /*************************************************************************/\
 /*! The generator for the rand() related routines.  \
@@ -27,7 +26,7 @@
 /**************************************************************************/\
 void FPRFX ## srand(RNGT seed) \
 {\
-  srand((long) seed);\
+  gk_randinit((uint64_t) seed);\
 }\
 \
 \
@@ -36,11 +35,10 @@ void FPRFX ## srand(RNGT seed) \
 /**************************************************************************/\
 RNGT FPRFX ## rand() \
 {\
-  if (sizeof(RNGT) <= sizeof(int)) \
-    return (RNGT) rand(); \
-  else { \
-    return (RNGT)(((uint64_t) rand()) << 32 | ((uint64_t) rand())); \
-  }\
+  if (sizeof(RNGT) <= sizeof(int32_t)) \
+    return (RNGT)gk_randint32(); \
+  else \
+    return (RNGT)gk_randint64(); \
 }\
 \
 \
@@ -79,10 +77,14 @@ void FPRFX ## randArrayPermute(RNGT n, VALT *p, RNGT nshuffles, int flag)\
     for (i=0; i<nshuffles; i++) {\
       v = FPRFX ## randInRange(n-3);\
       u = FPRFX ## randInRange(n-3);\
-      gk_SWAP(p[v+0], p[u+0], tmp);\
-      gk_SWAP(p[v+1], p[u+1], tmp);\
-      gk_SWAP(p[v+2], p[u+2], tmp);\
-      gk_SWAP(p[v+3], p[u+3], tmp);\
+      /*gk_SWAP(p[v+0], p[u+0], tmp);*/\
+      /*gk_SWAP(p[v+1], p[u+1], tmp);*/\
+      /*gk_SWAP(p[v+2], p[u+2], tmp);*/\
+      /*gk_SWAP(p[v+3], p[u+3], tmp);*/\
+      gk_SWAP(p[v+0], p[u+2], tmp);\
+      gk_SWAP(p[v+1], p[u+3], tmp);\
+      gk_SWAP(p[v+2], p[u+0], tmp);\
+      gk_SWAP(p[v+3], p[u+1], tmp);\
     }\
   }\
 }\
@@ -109,13 +111,13 @@ void FPRFX ## randArrayPermuteFine(RNGT n, VALT *p, int flag)\
   }\
 }\
 
+
 #define GK_MKRANDOM_PROTO(FPRFX, RNGT, VALT)\
   void FPRFX ## srand(RNGT seed); \
   RNGT FPRFX ## rand(); \
   RNGT FPRFX ## randInRange(RNGT max); \
   void FPRFX ## randArrayPermute(RNGT n, VALT *p, RNGT nshuffles, int flag);\
   void FPRFX ## randArrayPermuteFine(RNGT n, VALT *p, int flag);\
-
 
 
 #endif

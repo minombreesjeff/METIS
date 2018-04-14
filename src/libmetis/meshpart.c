@@ -8,7 +8,7 @@
  * Started 9/29/97
  * George
  *
- * $Id: meshpart.c 10237 2011-06-14 15:22:13Z karypis $
+ * $Id: meshpart.c 10495 2011-07-06 16:04:45Z karypis $
  *
  */
 
@@ -23,17 +23,33 @@ int METIS_PartMeshNodal(idx_t *ne, idx_t *nn, idx_t *eptr, idx_t *eind,
           idx_t *vwgt, idx_t *vsize, idx_t *nparts, real_t *tpwgts, 
           idx_t *options, idx_t *objval, idx_t *epart, idx_t *npart)
 {
+  int sigrval=0, renumber=0;
   idx_t *xadj=NULL, *adjncy=NULL;
   idx_t ncon=1, pnumflag=0;
   int rstatus=METIS_OK;
 
-  if (options && options[METIS_OPTION_NUMBERING] == 1)
-    ChangeMesh2CNumbering(*ne, eptr, eind);
+  /* set up malloc cleaning code and signal catchers */
+  if (!gk_malloc_init()) 
+    return METIS_ERROR_MEMORY;
 
+  gk_sigtrap();
+
+  if ((sigrval = gk_sigcatch()) != 0) 
+    goto SIGTHROW;
+
+
+  /* renumber the mesh */
+  if (options && options[METIS_OPTION_NUMBERING] == 1) {
+    ChangeMesh2CNumbering(*ne, eptr, eind);
+    renumber = 1;
+  }
+
+  /* get the nodal graph */
   rstatus = METIS_MeshToNodal(ne, nn, eptr, eind, &pnumflag, &xadj, &adjncy);
   if (rstatus != METIS_OK)
-    goto DONE;
+    raise(SIGERR);
 
+  /* partition the graph */
   if (options == NULL || options[METIS_OPTION_PTYPE] == METIS_PTYPE_KWAY) 
     rstatus = METIS_PartGraphKway(nn, &ncon, xadj, adjncy, vwgt, vsize, NULL, 
                   nparts, tpwgts, NULL, options, objval, npart);
@@ -42,17 +58,23 @@ int METIS_PartMeshNodal(idx_t *ne, idx_t *nn, idx_t *eptr, idx_t *eind,
                   nparts, tpwgts, NULL, options, objval, npart);
 
   if (rstatus != METIS_OK)
-    goto DONE;
+    raise(SIGERR);
 
-  InduceRowPartFromColumnPart(*ne, eptr, eind, epart, npart, *nparts);
+  /* partition the other side of the mesh */
+  InduceRowPartFromColumnPart(*ne, eptr, eind, epart, npart, *nparts, tpwgts);
 
-DONE:
-  if (options && options[METIS_OPTION_NUMBERING] == 1)
+
+SIGTHROW:
+  if (renumber)
     ChangeMesh2FNumbering2(*ne, *nn, eptr, eind, epart, npart);
 
-  gk_free((void **)&xadj, &adjncy, LTERM);
+  METIS_Free(xadj);
+  METIS_Free(adjncy);
 
-  return rstatus;
+  gk_siguntrap();
+  gk_malloc_cleanup(0);
+
+  return metis_rcode(sigrval);
 }
 
 
@@ -66,18 +88,33 @@ int METIS_PartMeshDual(idx_t *ne, idx_t *nn, idx_t *eptr, idx_t *eind,
           real_t *tpwgts, idx_t *options, idx_t *objval, idx_t *epart, 
           idx_t *npart) 
 {
+  int sigrval=0, renumber=0;
   idx_t i, j;
   idx_t *xadj=NULL, *adjncy=NULL, *nptr=NULL, *nind=NULL;
   idx_t ncon=1, pnumflag=0;
   int rstatus = METIS_OK;
 
-  if (options && options[METIS_OPTION_NUMBERING] == 1)
-    ChangeMesh2CNumbering(*ne, eptr, eind);
+  /* set up malloc cleaning code and signal catchers */
+  if (!gk_malloc_init()) 
+    return METIS_ERROR_MEMORY;
 
+  gk_sigtrap();
+
+  if ((sigrval = gk_sigcatch()) != 0) 
+    goto SIGTHROW;
+
+  /* renumber the mesh */
+  if (options && options[METIS_OPTION_NUMBERING] == 1) {
+    ChangeMesh2CNumbering(*ne, eptr, eind);
+    renumber = 1;
+  }
+
+  /* get the dual graph */
   rstatus = METIS_MeshToDual(ne, nn, eptr, eind, ncommon, &pnumflag, &xadj, &adjncy);
   if (rstatus != METIS_OK)
-    goto DONE;
+    raise(SIGERR);
 
+  /* partition the graph */
   if (options == NULL || options[METIS_OPTION_PTYPE] == METIS_PTYPE_KWAY) 
     rstatus = METIS_PartGraphKway(ne, &ncon, xadj, adjncy, vwgt, vsize, NULL, 
                   nparts, tpwgts, NULL, options, objval, epart);
@@ -86,7 +123,8 @@ int METIS_PartMeshDual(idx_t *ne, idx_t *nn, idx_t *eptr, idx_t *eind,
                   nparts, tpwgts, NULL, options, objval, epart);
 
   if (rstatus != METIS_OK)
-    goto DONE;
+    raise(SIGERR);
+
 
   /* construct the node-element list */
   nptr = ismalloc(*nn+1, 0, "METIS_PartMeshDual: nptr");
@@ -104,15 +142,23 @@ int METIS_PartMeshDual(idx_t *ne, idx_t *nn, idx_t *eptr, idx_t *eind,
   }
   SHIFTCSR(i, *nn, nptr);
 
-  InduceRowPartFromColumnPart(*nn, nptr, nind, npart, epart, *nparts);
+  /* partition the other side of the mesh */
+  InduceRowPartFromColumnPart(*nn, nptr, nind, npart, epart, *nparts, tpwgts);
 
-DONE:
-  if (options && options[METIS_OPTION_NUMBERING] == 1)
+  gk_free((void **)&nptr, &nind, LTERM);
+
+
+SIGTHROW:
+  if (renumber)
     ChangeMesh2FNumbering2(*ne, *nn, eptr, eind, epart, npart);
 
-  gk_free((void **)&xadj, &adjncy, &nptr, &nind, LTERM);
+  METIS_Free(xadj);
+  METIS_Free(adjncy);
 
-  return rstatus;
+  gk_siguntrap();
+  gk_malloc_cleanup(0);
+
+  return metis_rcode(sigrval);
 }
 
 
@@ -122,10 +168,11 @@ DONE:
     columns. It is used by both the Nodal and Dual routines. */
 /*************************************************************************/
 void InduceRowPartFromColumnPart(idx_t nrows, idx_t *rowptr, idx_t *rowind,
-         idx_t *rpart, idx_t *cpart, idx_t nparts)
+         idx_t *rpart, idx_t *cpart, idx_t nparts, real_t *tpwgts)
 {
   idx_t i, j, k, me;
-  idx_t nnbrs, *pwgts, *nbrdom, *nbrwgt, *nbrmrk, maxpwgt;
+  idx_t nnbrs, *pwgts, *nbrdom, *nbrwgt, *nbrmrk;
+  idx_t *itpwgts;
 
   pwgts  = ismalloc(nparts, 0, "InduceRowPartFromColumnPart: pwgts");
   nbrdom = ismalloc(nparts, 0, "InduceRowPartFromColumnPart: nbrdom");
@@ -134,7 +181,17 @@ void InduceRowPartFromColumnPart(idx_t nrows, idx_t *rowptr, idx_t *rowind,
 
   iset(nrows, -1, rpart);
 
-  /* First assign the rows consisting only of columns that belong to 
+  /* setup the integer target partition weights */
+  itpwgts = imalloc(nparts, "InduceRowPartFromColumnPart: itpwgts");
+  if (tpwgts == NULL) {
+    iset(nparts, 1+nrows/nparts, itpwgts);
+  }
+  else {
+    for (i=0; i<nparts; i++)
+      itpwgts[i] = 1+nrows*tpwgts[i];
+  }
+
+  /* first assign the rows consisting only of columns that belong to 
      a single partition. Assign rows that are empty to -2 (un-assigned) */
   for (i=0; i<nrows; i++) {
     if (rowptr[i+1]-rowptr[i] == 0) {
@@ -154,8 +211,7 @@ void InduceRowPartFromColumnPart(idx_t nrows, idx_t *rowptr, idx_t *rowind,
   }
 
   /* next assign the rows consisting of columns belonging to multiple
-     partitions in a balanced way */
-  maxpwgt = 1.03*nrows/nparts;
+     partitions in a  balanced way */
   for (i=0; i<nrows; i++) {
     if (rpart[i] == -1) { 
       for (nnbrs=0, j=rowptr[i]; j<rowptr[i+1]; j++) {
@@ -175,9 +231,10 @@ void InduceRowPartFromColumnPart(idx_t nrows, idx_t *rowptr, idx_t *rowind,
       rpart[i] = nbrdom[iargmax(nnbrs, nbrwgt)];
 
       /* if overweight, assign it to the light domain */
-      if (pwgts[rpart[i]] > maxpwgt) {
+      if (pwgts[rpart[i]] > itpwgts[rpart[i]]) {
         for (j=0; j<nnbrs; j++) {
-          if (pwgts[nbrdom[j]] < maxpwgt) {
+          if (pwgts[nbrdom[j]] < itpwgts[nbrdom[j]] ||
+              pwgts[nbrdom[j]]-itpwgts[nbrdom[j]] < pwgts[rpart[i]]-itpwgts[rpart[i]]) {
             rpart[i] = nbrdom[j];
             break;
           }
@@ -191,6 +248,6 @@ void InduceRowPartFromColumnPart(idx_t nrows, idx_t *rowptr, idx_t *rowind,
     }
   }
 
-  gk_free((void **)&pwgts, &nbrdom, &nbrwgt, &nbrmrk, LTERM);
+  gk_free((void **)&pwgts, &nbrdom, &nbrwgt, &nbrmrk, &itpwgts, LTERM);
 
 }

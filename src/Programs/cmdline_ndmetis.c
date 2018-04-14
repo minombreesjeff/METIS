@@ -4,7 +4,7 @@
 
 \date 12/24/2008
 \author George
-\version\verbatim $Id: cmdline_ndmetis.c 10237 2011-06-14 15:22:13Z karypis $\endverbatim
+\version\verbatim $Id: cmdline_ndmetis.c 10481 2011-07-05 18:01:23Z karypis $\endverbatim
 */
 
 #include "metisbin.h"
@@ -44,8 +44,8 @@ static gk_StringMap_t iptype_options[] = {
 };
 
 static gk_StringMap_t rtype_options[] = {
- {"1sided",             METIS_RTYPE_SEP1SIDED},
  {"2sided",             METIS_RTYPE_SEP2SIDED},
+ {"1sided",             METIS_RTYPE_SEP1SIDED},
  {NULL,                 0}
 };
 
@@ -67,15 +67,15 @@ static char helpstr[][100] =
 "     Specifies the scheme to be used to match the vertices of the graph",
 "     during the coarsening.",
 "     The possible values are:",
-"        rm       - Random matching [default]",
-"        shem     - Sorted heavy-edge matching",
+"        rm       - Random matching",
+"        shem     - Sorted heavy-edge matching [default]",
 " ",
 "  -iptype=string [applies only when -ptype=rb]",
 "     Specifies the scheme to be used to compute the initial bisection",
 "     of the graph.",
 "     The possible values are:",
-"        edge     - Derive the separator from an edge cut [default]",
-"        node     - Grow a bisection using a greedy node-based strategy",
+"        edge     - Separator from an edge cut",
+"        node     - Separator from a greedy node-based strategy [default]",
 " ",
 "  -rtype=string",
 "     Specifies the scheme to be used for refinement.",
@@ -89,7 +89,7 @@ static char helpstr[][100] =
 "     measured as the ratio of the 2*max(left,right)/(left+right), where",
 "     left and right are the sizes of the respective partitions. ",
 "     A value of x indicates that the allowed load imbalance is 1+x/1000.",
-"     Default is 30, indicating a load imbalance of 1.03.",
+"     Default is 200, indicating a load imbalance of 1.20.",
 " ",
 "  -pfactor=int",
 "     Specifies the minimum degree of the vertices that will be ordered ",
@@ -153,8 +153,8 @@ params_t *parse_cmdline(int argc, char *argv[])
   memset((void *)params, 0, sizeof(params_t));
 
   /* initialize the params data structure */
-  params->ctype         = METIS_CTYPE_RM;
-  params->iptype        = METIS_IPTYPE_EDGE;
+  params->ctype         = METIS_CTYPE_SHEM;
+  params->iptype        = METIS_IPTYPE_NODE;
   params->rtype         = METIS_RTYPE_SEP1SIDED;
 
   params->ufactor       = OMETIS_DEFAULT_UFACTOR;

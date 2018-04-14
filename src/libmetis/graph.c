@@ -5,10 +5,11 @@
 \date   Started 7/25/1997
 \author George  
 \author Copyright 1997-2009, Regents of the University of Minnesota 
-\version\verbatim $Id: graph.c 10237 2011-06-14 15:22:13Z karypis $ \endverbatim
+\version\verbatim $Id: graph.c 10473 2011-07-03 20:04:28Z karypis $ \endverbatim
 */
 
 #include "metislib.h"
+
 
 /*************************************************************************/
 /*! This function sets up the graph from the user input */
@@ -19,11 +20,6 @@ graph_t *SetupGraph(ctrl_t *ctrl, idx_t nvtxs, idx_t ncon, idx_t *xadj,
   idx_t i, j, k, sum;
   real_t *nvwgt;
   graph_t *graph;
-
-  /* if required, change the numbering to 0 */
-  if (ctrl->numflag == 1)
-    Change2CNumbering(nvtxs, xadj, adjncy);
-
 
   /* allocate the graph and fill in the fields */
   graph = CreateGraph();
@@ -92,10 +88,7 @@ graph_t *SetupGraph(ctrl_t *ctrl, idx_t nvtxs, idx_t ncon, idx_t *xadj,
   if (ctrl->optype == METIS_OP_PMETIS || ctrl->optype == METIS_OP_OMETIS) 
     SetupGraph_label(graph);
 
-
-  graph->cmap = imalloc(nvtxs, "SetupGraph: cmap");
-
-  ASSERT(CheckGraph(graph, 0, 1));
+  ASSERT(CheckGraph(graph, ctrl->numflag, 1));
 
   return graph;
 }
@@ -167,7 +160,6 @@ graph_t *SetupSplitGraph(graph_t *graph, idx_t snvtxs, idx_t snedges)
 
   sgraph = CreateGraph();
 
-  sgraph->ncon   = graph->ncon;
   sgraph->nvtxs  = snvtxs;
   sgraph->nedges = snedges;
   sgraph->ncon   = graph->ncon;
@@ -176,7 +168,6 @@ graph_t *SetupSplitGraph(graph_t *graph, idx_t snvtxs, idx_t snedges)
   sgraph->xadj        = imalloc(snvtxs+1, "SetupSplitGraph: xadj");
   sgraph->vwgt        = imalloc(sgraph->ncon*snvtxs, "SetupSplitGraph: vwgt");
   sgraph->adjrsum     = imalloc(snvtxs,   "SetupSplitGraph: adjrsum");
-  sgraph->cmap        = imalloc(snvtxs,   "SetupSplitGraph: cmap");
   sgraph->adjncy      = imalloc(snedges,  "SetupSplitGraph: adjncy");
   sgraph->adjwgt      = imalloc(snedges,  "SetupSplitGraph: adjwgt");
   sgraph->label	      = imalloc(snvtxs,   "SetupSplitGraph: label");

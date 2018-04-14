@@ -1,12 +1,19 @@
+# Helper modules.
 include(CheckFunctionExists)
 include(CheckIncludeFile)
 
+# Setup options.
 option(GDB "enable use of GDB" OFF)
 option(ASSERT "turn asserts on" OFF)
 option(ASSERT2 "additional assertions" OFF)
 option(DEBUG "add debugging support" OFF)
+option(GPROF "add gprof support" OFF)
 option(OPENMP "enable OpenMP support" OFF)
+option(PCRE "enable PCRE support" OFF)
+option(GKREGEX "enable GKREGEX support" OFF)
+option(GKRAND "enable GKRAND support" OFF)
 
+# Add compiler flags.
 if(WIN32)
   set(GKlib_COPTS "/Ox")
   set(GKlib_COPTIONS "-DWIN32 -DMSC -D_CRT_SECURE_NO_DEPRECATE -DUSE_GKREGEX")
@@ -15,12 +22,16 @@ else()
   set(GKlib_COPTIONS "-DLINUX -D_FILE_OFFSET_BITS=64")
 endif(WIN32)
 if(CMAKE_COMPILER_IS_GNUCC)
+# GCC opts.
   set(GKlib_COPTIONS "${GKlib_COPTIONS} -std=c99 -fno-strict-aliasing -fPIC")
+# GCC warnings.
   set(GKlib_COPTIONS "${GKlib_COPTIONS} -Wall -pedantic -Wno-unused-variable -Wno-unknown-pragmas")
 elseif(${CMAKE_C_COMPILER_ID} MATCHES "Sun")
+# Sun insists on -xc99.
   set(GKlib_COPTIONS "${GKlib_COPTIONS} -xc99")
 endif(CMAKE_COMPILER_IS_GNUCC)
 
+# Find OpenMP if it is requested.
 if(OPENMP)
   include(FindOpenMP)
   if(OPENMP_FOUND)
@@ -30,6 +41,8 @@ if(OPENMP)
   endif(OPENMP_FOUND)
 endif(OPENMP)
 
+
+# Add various definitions.
 if(GDB)
   set(GKlib_COPTS "${GKlib_COPTS} -g")
 endif(GDB)
@@ -39,6 +52,10 @@ if(DEBUG)
   set(GKlib_COPTIONS "${GKlib_COPTIONS} -DDEBUG")
 endif(DEBUG)
 
+if(GPROF)
+  set(GKlib_COPTS "-pg")
+endif(GPROF)
+
 if(NOT ASSERT)
   set(GKlib_COPTIONS "${GKlib_COPTIONS} -DNDEBUG")
 endif(NOT ASSERT)
@@ -47,6 +64,22 @@ if(NOT ASSERT2)
   set(GKlib_COPTIONS "${GKlib_COPTIONS} -DNDEBUG2")
 endif(NOT ASSERT2)
 
+
+# Add various options
+if(PCRE)
+  set(GKlib_COPTIONS "${GKlib_COPTIONS} -D__WITHPCRE__")
+endif(PCRE)
+
+if(GKREGEX)
+  set(GKlib_COPTIONS "${GKlib_COPTIONS} -DUSE_GKREGEX")
+endif(GKREGEX)
+
+if(GKRAND)
+  set(GKlib_COPTIONS "${GKlib_COPTIONS} -DUSE_GKRAND")
+endif(GKRAND)
+
+
+# Check for features.
 check_include_file(execinfo.h HAVE_EXECINFO_H)
 if(HAVE_EXECINFO_H)
   set(GKlib_COPTIONS "${GKlib_COPTIONS} -DHAVE_EXECINFO_H")
@@ -57,23 +90,30 @@ if(HAVE_GETLINE)
   set(GKlib_COPTIONS "${GKlib_COPTIONS} -DHAVE_GETLINE")
 endif(HAVE_GETLINE)
 
+
+# Custom check for TLS.
 if(WIN32)
    set(GKlib_COPTIONS "${GKlib_COPTIONS} -D__thread=__declspec(thread)")
 else()
+  # This if checks if that value is cached or not.
   if("${HAVE_THREADLOCALSTORAGE}" MATCHES "^${HAVE_THREADLOCALSTORAGE}$")
     try_compile(HAVE_THREADLOCALSTORAGE
       ${CMAKE_BINARY_DIR}
       ${GKLIB_PATH}/conf/check_thread_storage.c)
+    if(HAVE_THREADLOCALSTORAGE)
+      message(STATUS "checking for thread-local storage - found")
+    else()
+      message(STATUS "checking for thread-local storage - not found")
+    endif()
   endif()
-  if(HAVE_THREADLOCALSTORAGE)
-    message(STATUS "checking for thread-local storage - found")
-  else()
-    message(STATUS "checking for thread-local storage - not found")
+  if(NOT HAVE_THREADLOCALSTORAGE)
     set(GKlib_COPTIONS "${GKlib_COPTIONS} -D__thread=")
   endif()
 endif()
 
+# Finally set the official C flags.
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${GKlib_COPTIONS} ${GKlib_COPTS}")
 
+# Find GKlib sources.
 file(GLOB GKlib_sources ${GKLIB_PATH}/*.c)
 file(GLOB GKlib_includes ${GKLIB_PATH}/*.h)

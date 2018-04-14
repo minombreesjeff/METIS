@@ -8,7 +8,7 @@
  * Started 10/2/97
  * George
  *
- * $Id: rename.h 10235 2011-06-14 13:44:03Z karypis $
+ * $Id: rename.h 10495 2011-07-06 16:04:45Z karypis $
  *
  */
 
@@ -26,14 +26,9 @@
 /* bucketsort.c */
 #define BucketSortKeysInc		libmetis__BucketSortKeysInc
 
-/* ccgraph.c */
-#define CreateCoarseGraph		libmetis__CreateCoarseGraph
-#define CreateCoarseGraphNoMask		libmetis__CreateCoarseGraphNoMask
-#define SetupCoarseGraph		libmetis__SetupCoarseGraph
-#define ReAdjustMemory			libmetis__ReAdjustMemory
-
 /* checkgraph.c */
 #define CheckGraph                      libmetis__CheckGraph
+#define CheckInputGraphWeights          libmetis__CheckInputGraphWeights
 #define FixGraph                        libmetis__FixGraph
 
 /* coarsen.c */
@@ -41,6 +36,11 @@
 #define Match_RM                        libmetis__Match_RM
 #define Match_SHEM                      libmetis__Match_SHEM
 #define PrintCGraphStats                libmetis__PrintCGraphStats
+#define CreateCoarseGraph		libmetis__CreateCoarseGraph
+#define CreateCoarseGraphNoMask		libmetis__CreateCoarseGraphNoMask
+#define CreateCoarseGraphPerm		libmetis__CreateCoarseGraphPerm
+#define SetupCoarseGraph		libmetis__SetupCoarseGraph
+#define ReAdjustMemory			libmetis__ReAdjustMemory
 
 /* compress.c */
 #define CompressGraph			libmetis__CompressGraph
@@ -50,7 +50,6 @@
 #define FindPartitionInducedComponents  libmetis__FindPartitionInducedComponents   
 #define IsConnected                     libmetis__IsConnected
 #define IsConnectedSubdomain            libmetis__IsConnectedSubdomain
-#define IsConnected2                    libmetis__IsConnected2
 #define FindSepInducedComponents        libmetis__FindSepInducedComponents
 #define EliminateComponents             libmetis__EliminateComponents
 #define MoveGroupContigForCut           libmetis__MoveGroupContigForCut
@@ -180,7 +179,8 @@
 #define MlevelNestedDissection		libmetis__MlevelNestedDissection
 #define MlevelNestedDissectionCC	libmetis__MlevelNestedDissectionCC
 #define MlevelNodeBisectionMultiple	libmetis__MlevelNodeBisectionMultiple
-#define MlevelNodeBisection		libmetis__MlevelNodeBisection
+#define MlevelNodeBisectionL2		libmetis__MlevelNodeBisectionL2
+#define MlevelNodeBisectionL1		libmetis__MlevelNodeBisectionL1
 #define SplitGraphOrder			libmetis__SplitGraphOrder
 #define SplitGraphOrderCC		libmetis__SplitGraphOrderCC
 #define MMDOrder			libmetis__MMDOrder
@@ -239,6 +239,7 @@
 #define iargmax2_nrm                    libmetis__iargmax2_nrm
 #define rargmax2                        libmetis__rargmax2
 #define InitRandom                      libmetis__InitRandom
+#define metis_rcode                     libmetis__metis_rcode
 
 /* wspace.c */
 #define AllocateWorkSpace               libmetis__AllocateWorkSpace                  
@@ -249,110 +250,11 @@
 #define wspacepop                       libmetis__wspacepop
 #define iwspacemalloc                   libmetis__iwspacemalloc
 #define rwspacemalloc                   libmetis__rwspacemalloc
+#define ikvwspacemalloc                 libmetis__ikvwspacemalloc
 #define cnbrpoolReset                   libmetis__cnbrpoolReset
 #define cnbrpoolGetNext                 libmetis__cnbrpoolGetNext
 #define vnbrpoolReset                   libmetis__vnbrpoolReset
 #define vnbrpoolGetNext                 libmetis__vnbrpoolGetNext
-
-/* gklib.c - generated from the .o files using the ./utils/listundescapedsumbols.csh */
-#define iAllocMatrix libmetis__iAllocMatrix
-#define iFreeMatrix libmetis__iFreeMatrix
-#define iSetMatrix libmetis__iSetMatrix
-#define iargmax libmetis__iargmax
-#define iargmax_n libmetis__iargmax_n
-#define iargmin libmetis__iargmin
-#define iarray2csr libmetis__iarray2csr
-#define iaxpy libmetis__iaxpy
-#define icopy libmetis__icopy
-#define idot libmetis__idot
-#define iincset libmetis__iincset
-#define ikvAllocMatrix libmetis__ikvAllocMatrix
-#define ikvFreeMatrix libmetis__ikvFreeMatrix
-#define ikvSetMatrix libmetis__ikvSetMatrix
-#define ikvcopy libmetis__ikvcopy
-#define ikvmalloc libmetis__ikvmalloc
-#define ikvrealloc libmetis__ikvrealloc
-#define ikvset libmetis__ikvset
-#define ikvsmalloc libmetis__ikvsmalloc
-#define ikvsortd libmetis__ikvsortd
-#define ikvsorti libmetis__ikvsorti
-#define ikvsortii libmetis__ikvsortii
-#define imalloc libmetis__imalloc
-#define imax libmetis__imax
-#define imin libmetis__imin
-#define inorm2 libmetis__inorm2
-#define ipqCheckHeap libmetis__ipqCheckHeap
-#define ipqCreate libmetis__ipqCreate
-#define ipqDelete libmetis__ipqDelete
-#define ipqDestroy libmetis__ipqDestroy
-#define ipqFree libmetis__ipqFree
-#define ipqGetTop libmetis__ipqGetTop
-#define ipqInit libmetis__ipqInit
-#define ipqInsert libmetis__ipqInsert
-#define ipqLength libmetis__ipqLength
-#define ipqReset libmetis__ipqReset
-#define ipqSeeKey libmetis__ipqSeeKey
-#define ipqSeeTopKey libmetis__ipqSeeTopKey
-#define ipqSeeTopVal libmetis__ipqSeeTopVal
-#define ipqUpdate libmetis__ipqUpdate
-#define irand libmetis__irand
-#define irandArrayPermute libmetis__irandArrayPermute
-#define irandArrayPermuteFine libmetis__irandArrayPermuteFine
-#define irandInRange libmetis__irandInRange
-#define irealloc libmetis__irealloc
-#define iscale libmetis__iscale
-#define iset libmetis__iset
-#define ismalloc libmetis__ismalloc
-#define isortd libmetis__isortd
-#define isorti libmetis__isorti
-#define isrand libmetis__isrand
-#define isum libmetis__isum
-#define rAllocMatrix libmetis__rAllocMatrix
-#define rFreeMatrix libmetis__rFreeMatrix
-#define rSetMatrix libmetis__rSetMatrix
-#define rargmax libmetis__rargmax
-#define rargmax_n libmetis__rargmax_n
-#define rargmin libmetis__rargmin
-#define raxpy libmetis__raxpy
-#define rcopy libmetis__rcopy
-#define rdot libmetis__rdot
-#define rincset libmetis__rincset
-#define rkvAllocMatrix libmetis__rkvAllocMatrix
-#define rkvFreeMatrix libmetis__rkvFreeMatrix
-#define rkvSetMatrix libmetis__rkvSetMatrix
-#define rkvcopy libmetis__rkvcopy
-#define rkvmalloc libmetis__rkvmalloc
-#define rkvrealloc libmetis__rkvrealloc
-#define rkvset libmetis__rkvset
-#define rkvsmalloc libmetis__rkvsmalloc
-#define rkvsortd libmetis__rkvsortd
-#define rkvsorti libmetis__rkvsorti
-#define rmalloc libmetis__rmalloc
-#define rmax libmetis__rmax
-#define rmin libmetis__rmin
-#define rnorm2 libmetis__rnorm2
-#define rpqCheckHeap libmetis__rpqCheckHeap
-#define rpqCreate libmetis__rpqCreate
-#define rpqDelete libmetis__rpqDelete
-#define rpqDestroy libmetis__rpqDestroy
-#define rpqFree libmetis__rpqFree
-#define rpqGetTop libmetis__rpqGetTop
-#define rpqInit libmetis__rpqInit
-#define rpqInsert libmetis__rpqInsert
-#define rpqLength libmetis__rpqLength
-#define rpqReset libmetis__rpqReset
-#define rpqSeeKey libmetis__rpqSeeKey
-#define rpqSeeTopKey libmetis__rpqSeeTopKey
-#define rpqSeeTopVal libmetis__rpqSeeTopVal
-#define rpqUpdate libmetis__rpqUpdate
-#define rrealloc libmetis__rrealloc
-#define rscale libmetis__rscale
-#define rset libmetis__rset
-#define rsmalloc libmetis__rsmalloc
-#define rsortd libmetis__rsortd
-#define rsorti libmetis__rsorti
-#define rsum libmetis__rsum
-#define uvwsorti libmetis__uvwsorti
 
 #endif
 

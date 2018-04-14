@@ -5,7 +5,7 @@
 \date Started 7/15/98
 \author George
 \author Copyright 1997-2009, Regents of the University of Minnesota 
-\version $Id: minconn.c 10227 2011-06-14 04:35:05Z karypis $
+\version $Id: minconn.c 10492 2011-07-06 09:28:42Z karypis $
 */
 
 #include "metislib.h"
@@ -92,7 +92,7 @@ void ComputeSubDomainGraph(ctrl_t *ctrl, graph_t *graph)
         break;
 
       default:
-        errexit("Unknown objtype: %d\n", ctrl->objtype);
+        gk_errexit(SIGERR, "Unknown objtype: %d\n", ctrl->objtype);
     }
 
     /* See if you have enough memory to store the adjacent info for that subdomain */
@@ -224,8 +224,8 @@ void EliminateSubDomainEdges(ctrl_t *ctrl, graph_t *graph)
   ind       = iwspacemalloc(ctrl, nvtxs);
   otherpmat = iset(nparts, 0, iwspacemalloc(ctrl, nparts));
 
-  cand  = (ikv_t *)wspacemalloc(ctrl, nparts*sizeof(ikv_t));
-  cand2 = (ikv_t *)wspacemalloc(ctrl, nparts*sizeof(ikv_t));
+  cand  = ikvwspacemalloc(ctrl, nparts);
+  cand2 = ikvwspacemalloc(ctrl, nparts);
 
   pptr = iwspacemalloc(ctrl, nparts+1);
   pind = iwspacemalloc(ctrl, nvtxs);
@@ -453,7 +453,7 @@ void EliminateSubDomainEdges(ctrl_t *ctrl, graph_t *graph)
                 pmarker, modind);
             break;
           default:
-            errexit("Unknown objtype of %d\n", ctrl->objtype);
+            gk_errexit(SIGERR, "Unknown objtype of %d\n", ctrl->objtype);
         }
 
         /* Update the csr representation of the partitioning vector */

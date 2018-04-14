@@ -1,4 +1,19 @@
 
+metis-5.0rc2
+------------------------------------------------------------------------
+r10496 | karypis | 2011-07-06 11:04:45 -0500 (Wed, 06 Jul 2011)
+
+- Various run-time and quality optimizations.
+- Option error-checking.
+- Signal-based heap cleanup on error. Metis API routines will not
+  return nicely and cleanup all memory that may have allocated.
+- Reduced memory requirements.
+- Fixed various bugs identified in rc1.
+- Added back Fortran support in the form of alternate API names
+  (see libmetis/frename.h).
+- Minor code changes to accommodate ParMetis 4.0.
+
+
 metis-5.0rc1
 ------------------------------------------------------------------------
 r10227 | karypis | 2011-06-13 23:35:05 -0500 (Mon, 13 Jun 2011)

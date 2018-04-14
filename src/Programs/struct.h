@@ -6,7 +6,7 @@
  * Started 8/9/02
  * George
  *
- * $Id: struct.h 10187 2011-06-13 13:46:57Z karypis $
+ * $Id: struct.h 10409 2011-06-25 16:58:34Z karypis $
  */
 
 #ifndef _STRUCTBIN_H_
@@ -60,6 +60,8 @@ typedef struct {
   real_t iotimer;
   real_t parttimer;
   real_t reporttimer;
+
+  size_t maxmemory;
 } params_t;
 
 

@@ -8,7 +8,7 @@
  * Started 9/26/95
  * George
  *
- * $Id: struct.h 10103 2011-06-07 18:28:27Z karypis $
+ * $Id: struct.h 10471 2011-07-02 22:36:41Z karypis $
  */
 
 #ifndef _LIBMETIS_STRUCT_H_
@@ -173,14 +173,14 @@ typedef struct ctrl_t {
   real_t *ubfactors;            /*!< The per-constraint ubfactors */
   
   real_t *tpwgts;               /*!< The target partition weights */
-  real_t *invtpwgts;            /*!< The 1.0/target partition weights */
   real_t *pijbm;                /*!< The nparts*ncon multiplies for the ith partition
                                      and jth constraint for obtaining the balance */
 
+  real_t cfactor;               /*!< The achieved compression factor */
+
   /* Various Timers */
   double TotalTmr, InitPartTmr, MatchTmr, ContractTmr, CoarsenTmr, UncoarsenTmr, 
-         SepTmr, RefTmr, ProjectTmr, SplitTmr;
-
+         RefTmr, ProjectTmr, SplitTmr;
 
   /* Workspace information */
   gk_mcore_t *mcore;    /*!< The persistent memory core for within function 

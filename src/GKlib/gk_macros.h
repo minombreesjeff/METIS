@@ -4,7 +4,7 @@
 
 \date   Started 3/27/2007
 \author George
-\version\verbatim $Id: gk_macros.h 9950 2011-05-19 12:29:32Z karypis $ \endverbatim
+\version\verbatim $Id: gk_macros.h 10494 2011-07-06 14:53:45Z karypis $ \endverbatim
 */
 
 #ifndef _GK_MACROS_H_
@@ -49,6 +49,7 @@
  * gracefull library exit macro
  *-------------------------------------------------------------*/
 #define GKSETJMP() (setjmp(gk_return_to_entry))
+#define gk_sigcatch() (setjmp(gk_jbufs[gk_cur_jbufs]))
  
 
 /*-------------------------------------------------------------

@@ -5,7 +5,7 @@
 \date   Started 7/28/1997
 \author George 
 \author  Copyright 1997-2009, Regents of the University of Minnesota 
-\version $Id: kwayrefine.c 10187 2011-06-13 13:46:57Z karypis $ 
+\version $Id: kwayrefine.c 10492 2011-07-06 09:28:42Z karypis $ 
 */
 
 #include "metislib.h"
@@ -137,7 +137,7 @@ void AllocateKWayPartitionMemory(ctrl_t *ctrl, graph_t *graph)
       break;
 
     default:
-      errexit("Unknown objtype of %d\n", ctrl->objtype);
+      gk_errexit(SIGERR, "Unknown objtype of %d\n", ctrl->objtype);
   }
 
 }
@@ -304,7 +304,7 @@ void ComputeKWayPartitionParams(ctrl_t *ctrl, graph_t *graph)
       ASSERT(graph->minvol == ComputeVolume(graph, graph->where));
       break;
     default:
-      errexit("Unknown objtype of %d\n", ctrl->objtype);
+      gk_errexit(SIGERR, "Unknown objtype of %d\n", ctrl->objtype);
   }
 
 }
@@ -487,7 +487,7 @@ void ProjectKWayPartition(ctrl_t *ctrl, graph_t *graph)
       break;
 
     default:
-      errexit("Unknown objtype of %d\n", ctrl->objtype);
+      gk_errexit(SIGERR, "Unknown objtype of %d\n", ctrl->objtype);
   }
 
   graph->mincut = cgraph->mincut;
@@ -548,7 +548,7 @@ void ComputeKWayBoundary(ctrl_t *ctrl, graph_t *graph, idx_t bndtype)
       break;
 
     default:
-      errexit("Unknown objtype of %d\n", ctrl->objtype);
+      gk_errexit(SIGERR, "Unknown objtype of %d\n", ctrl->objtype);
   }
 
   graph->nbnd = nbnd;

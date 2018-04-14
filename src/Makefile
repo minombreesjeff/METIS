@@ -3,6 +3,7 @@ gdb        = not-set
 assert     = not-set
 assert2    = not-set
 debug      = not-set
+gprof      = not-set
 openmp     = not-set
 prefix     = not-set
 gklib_path = not-set
@@ -35,6 +36,9 @@ endif
 ifneq ($(debug), not-set)
     CONFIG_FLAGS += -DDEBUG=$(debug)
 endif
+ifneq ($(gprof), not-set)
+    CONFIG_FLAGS += -DGPROF=$(gprof)
+endif
 ifneq ($(openmp), not-set)
     CONFIG_FLAGS += -DOPENMP=$(openmp)
 endif
@@ -48,7 +52,7 @@ ifneq ($(cc), not-set)
     CONFIG_FLAGS += -DCMAKE_C_COMPILER=$(cc)
 endif
 
-VERNUM=5.0
+VERNUM=5.0rc2
 PKGNAME=metis-$(VERNUM)
 
 define run-config
@@ -76,18 +80,6 @@ remake:
 	find . -name CMakeLists.txt -exec touch {} ';'
 
 dist:
-	rm -rf $(PKGNAME)
-	svn up
-	svn export http://dminers.dtc.umn.edu/svn/programs/karypis/metis/trunk $(PKGNAME)
-	mkdir $(PKGNAME)/manual
-	svn export http://dminers.dtc.umn.edu/svn/programs/karypis/metis/manual/r5.0/manual.pdf $(PKGNAME)/manual/manual.pdf
-	svn export http://dminers.dtc.umn.edu/svn/libs/GKlib/trunk $(PKGNAME)/GKlib
-	rm -rf $(PKGNAME)/TODO
-	rm -rf $(PKGNAME)/test
-	rm -rf $(PKGNAME)/utils
-	rm -rf $(PKGNAME)/doxygen
-	rm -rf $(PKGNAME)/CHANGES.v4
-	tar -czf $(PKGNAME).tar.gz $(PKGNAME)
-	rm -rf $(PKGNAME)
+	utils/mkdist.sh $(PKGNAME)
 
 .PHONY: config distclean all clean install uninstall remake dist

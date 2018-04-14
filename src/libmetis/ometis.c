@@ -9,7 +9,7 @@
  * Started 7/24/97
  * George
  *
- * $Id: ometis.c 10237 2011-06-14 15:22:13Z karypis $
+ * $Id: ometis.c 10495 2011-07-06 16:04:45Z karypis $
  *
  */
 
@@ -43,19 +43,35 @@
 int METIS_NodeND(idx_t *nvtxs, idx_t *xadj, idx_t *adjncy, idx_t *vwgt,
           idx_t *options, idx_t *perm, idx_t *iperm) 
 {
+  int sigrval=0, renumber=0;
   idx_t i, ii, j, l, nnvtxs=0;
   graph_t *graph=NULL;
   ctrl_t *ctrl;
   idx_t *cptr, *cind, *piperm;
+  int numflag = 0;
+
+  /* set up malloc cleaning code and signal catchers */
+  if (!gk_malloc_init()) 
+    return METIS_ERROR_MEMORY;
+
+  gk_sigtrap();
+
+  if ((sigrval = gk_sigcatch()) != 0) 
+    goto SIGTHROW;
+
 
   /* set up the run time parameters */
   ctrl = SetupCtrl(METIS_OP_OMETIS, options, 1, 3, NULL, NULL);
-  if (!ctrl) return METIS_ERROR_INPUT;
+  if (!ctrl) {
+    gk_siguntrap();
+    return METIS_ERROR_INPUT;
+  }
 
-  /* renumber indices if necessary */
-  if (ctrl->numflag == 1)
+  /* if required, change the numbering to 0 */
+  if (ctrl->numflag == 1) {
     Change2CNumbering(*nvtxs, xadj, adjncy);
-
+    renumber = 1;
+  }
 
   IFSET(ctrl->dbglvl, METIS_DBG_TIME, InitTimers(ctrl));
   IFSET(ctrl->dbglvl, METIS_DBG_TIME, gk_startcputimer(ctrl->TotalTmr));
@@ -90,6 +106,10 @@ int METIS_NodeND(idx_t *nvtxs, idx_t *xadj, idx_t *adjncy, idx_t *vwgt,
     }
     else {
       nnvtxs = graph->nvtxs;
+      ctrl->cfactor = 1.0*(*nvtxs)/nnvtxs;
+      if (ctrl->cfactor > 1.5 && ctrl->nseps == 1)
+        ctrl->nseps = 2;
+      //ctrl->nseps = (idx_t)(ctrl->cfactor*ctrl->nseps);
     }
   }
 
@@ -137,13 +157,18 @@ int METIS_NodeND(idx_t *nvtxs, idx_t *xadj, idx_t *adjncy, idx_t *vwgt,
   IFSET(ctrl->dbglvl, METIS_DBG_TIME, gk_stopcputimer(ctrl->TotalTmr));
   IFSET(ctrl->dbglvl, METIS_DBG_TIME, PrintTimers(ctrl));
 
-  if (ctrl->numflag == 1)
-    Change2FNumberingOrder(*nvtxs, xadj, adjncy, perm, iperm);
-
   /* clean up */
   FreeCtrl(&ctrl);
 
-  return METIS_OK;
+SIGTHROW:
+  /* if required, change the numbering back to 1 */
+  if (renumber)
+    Change2FNumberingOrder(*nvtxs, xadj, adjncy, perm, iperm);
+
+  gk_siguntrap();
+  gk_malloc_cleanup(0);
+
+  return metis_rcode(sigrval);
 }
 
 
@@ -274,74 +299,92 @@ void MlevelNestedDissectionCC(ctrl_t *ctrl, graph_t *graph, idx_t *order,
 /*************************************************************************/
 void MlevelNodeBisectionMultiple(ctrl_t *ctrl, graph_t *graph)
 {
-  idx_t i, nvtxs, cnvtxs, mincut;
-  graph_t *cgraph; 
+  idx_t i, mincut;
   idx_t *bestwhere;
 
-  nvtxs  = graph->nvtxs;
-  mincut = graph->tvwgt[0];
-
   /* if the graph is small, just find a single vertex separator */
-  if (ctrl->nseps == 1 || nvtxs < (ctrl->compress ? 1000 : 2000)) {
-    MlevelNodeBisection(ctrl, graph);
+  if (ctrl->nseps == 1 || graph->nvtxs < (ctrl->compress ? 1000 : 2000)) {
+    MlevelNodeBisectionL2(ctrl, graph, LARGENIPARTS);
     return;
   }
 
+  WCOREPUSH;
 
-  if (ctrl->compress) { /* Multiple separators at the original graph */
-    bestwhere = imalloc(nvtxs, "MlevelNodeBisectionMultiple: bestwhere");
+  bestwhere = iwspacemalloc(ctrl, graph->nvtxs);
 
-    for (i=ctrl->nseps; i>0; i--) {
-      MlevelNodeBisection(ctrl, graph);
+  mincut = graph->tvwgt[0];
+  for (i=0; i<ctrl->nseps; i++) {
+    MlevelNodeBisectionL2(ctrl, graph, LARGENIPARTS);
 
-      if (i==ctrl->nseps || graph->mincut < mincut) {
-        mincut = graph->mincut;
-        icopy(nvtxs, graph->where, bestwhere);
-      }
-
-      FreeRData(graph);
-    
-      if (mincut == 0)
-        break;
+    if (i == 0 || graph->mincut < mincut) {
+      mincut = graph->mincut;
+      if (i < ctrl->nseps-1)
+        icopy(graph->nvtxs, graph->where, bestwhere);
     }
 
-    Allocate2WayNodePartitionMemory(ctrl, graph);
-    icopy(nvtxs, bestwhere, graph->where);
-    gk_free((void **)&bestwhere, LTERM);
+    if (mincut == 0)
+      break;
 
+    if (i < ctrl->nseps-1) 
+      FreeRData(graph);
+  }
+
+  if (mincut != graph->mincut) {
+    icopy(graph->nvtxs, bestwhere, graph->where);
     Compute2WayNodePartitionParams(ctrl, graph);
   }
-  else { /* Coarsen it a bit */
-    ctrl->CoarsenTo = nvtxs-1;
 
-    cgraph = CoarsenGraph(ctrl, graph);
+  WCOREPOP;
+}
 
-    cnvtxs = cgraph->nvtxs;
 
-    bestwhere = imalloc(cnvtxs, "MlevelNodeBisectionMultiple: bestwhere");
+/*************************************************************************/
+/*! This function performs multilevel node bisection (i.e., tri-section).
+    It performs multiple bisections and selects the best. */
+/*************************************************************************/
+void MlevelNodeBisectionL2(ctrl_t *ctrl, graph_t *graph, idx_t niparts)
+{
+  idx_t i, mincut, nruns=5;
+  graph_t *cgraph; 
+  idx_t *bestwhere;
 
-    for (i=ctrl->nseps; i>0; i--) {
-      MlevelNodeBisection(ctrl, cgraph);
+  /* if the graph is small, just find a single vertex separator */
+  if (graph->nvtxs < 5000) {
+    MlevelNodeBisectionL1(ctrl, graph, niparts);
+    return;
+  }
 
-      if (i==ctrl->nseps || cgraph->mincut < mincut) {
-        mincut = cgraph->mincut;
-        icopy(cnvtxs, cgraph->where, bestwhere);
-      }
+  WCOREPUSH;
 
-      FreeRData(graph);
-    
-      if (mincut == 0)
-        break;
+  ctrl->CoarsenTo = gk_max(100, graph->nvtxs/30);
+
+  cgraph = CoarsenGraphNlevels(ctrl, graph, 4);
+
+  bestwhere = iwspacemalloc(ctrl, cgraph->nvtxs);
+
+  mincut = graph->tvwgt[0];
+  for (i=0; i<nruns; i++) {
+    MlevelNodeBisectionL1(ctrl, cgraph, 0.7*niparts);
+
+    if (i == 0 || cgraph->mincut < mincut) {
+      mincut = cgraph->mincut;
+      if (i < nruns-1)
+        icopy(cgraph->nvtxs, cgraph->where, bestwhere);
     }
 
-    Allocate2WayNodePartitionMemory(ctrl, cgraph);
-    icopy(cnvtxs, bestwhere, cgraph->where);
-    gk_free((void **)&bestwhere, LTERM);
+    if (mincut == 0)
+      break;
 
-    Compute2WayNodePartitionParams(ctrl, cgraph);
-
-    Refine2WayNode(ctrl, graph, cgraph);
+    if (i < nruns-1) 
+      FreeRData(cgraph);
   }
+
+  if (mincut != cgraph->mincut) 
+    icopy(cgraph->nvtxs, bestwhere, cgraph->where);
+
+  WCOREPOP;
+
+  Refine2WayNode(ctrl, graph, cgraph);
 
 }
 
@@ -349,7 +392,7 @@ void MlevelNodeBisectionMultiple(ctrl_t *ctrl, graph_t *graph)
 /*************************************************************************/
 /*! The top-level routine of the actual multilevel node bisection */
 /*************************************************************************/
-void MlevelNodeBisection(ctrl_t *ctrl, graph_t *graph)
+void MlevelNodeBisectionL1(ctrl_t *ctrl, graph_t *graph, idx_t niparts)
 {
   graph_t *cgraph;
 
@@ -361,7 +404,9 @@ void MlevelNodeBisection(ctrl_t *ctrl, graph_t *graph)
 
   cgraph = CoarsenGraph(ctrl, graph);
 
-  InitSeparator(ctrl, cgraph);
+  niparts = gk_max(1, (cgraph->nvtxs <= ctrl->CoarsenTo ? niparts/2: niparts));
+  /*niparts = (cgraph->nvtxs <= ctrl->CoarsenTo ? SMALLNIPARTS : LARGENIPARTS);*/
+  InitSeparator(ctrl, cgraph, niparts);
 
   Refine2WayNode(ctrl, graph, cgraph);
 }

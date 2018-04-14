@@ -6,31 +6,40 @@ This file contains functions dealing with error reporting and termination
 
 \author George
 \date 1/1/2007
-\version\verbatim $Id: error.c 10159 2011-06-10 19:24:44Z benjamin $ \endverbatim
+\version\verbatim $Id: error.c 10494 2011-07-06 14:53:45Z karypis $ \endverbatim
 */
 
 
-#define _GK_ERROR_C_  /* this is needed to properly declare the gk_return_to_entry
+#define _GK_ERROR_C_  /* this is needed to properly declare the gk_jub* variables
                          as an extern function in GKlib.h */
 
 #include <GKlib.h>
 
 
-/* This is the jmp_buf for the graceful exit in case of severy error */
-__thread jmp_buf gk_return_to_entry;
+/* These are the jmp_buf for the graceful exit in case of severe errors.
+   Multiple buffers are defined to allow for recursive invokation. */
+#define MAX_JBUFS 128
+__thread int gk_cur_jbufs=-1;
+__thread jmp_buf gk_jbufs[MAX_JBUFS];
+__thread jmp_buf gk_jbuf;
 
 /* These are the holders of the old singal handlers for the trapped signals */
-typedef void (*sighandler_t)(int);  /* this should be in signals.h, but is not there */
 static __thread sighandler_t old_SIGFPE_handler;
 static __thread sighandler_t old_SIGILL_handler;
 static __thread sighandler_t old_SIGSEGV_handler;
+static __thread sighandler_t old_SIGFPE_handlers[MAX_JBUFS];
+static __thread sighandler_t old_SIGILL_handlers[MAX_JBUFS];
+static __thread sighandler_t old_SIGSEGV_handlers[MAX_JBUFS];
 #ifndef WIN32
 static __thread sighandler_t old_SIGBUS_handler;
+static __thread sighandler_t old_SIGBUS_handlers[MAX_JBUFS];
 #endif
 static __thread sighandler_t old_SIGABRT_handler;
 static __thread sighandler_t old_SIGMEM_handler;  /* Custom signal */
 static __thread sighandler_t old_SIGERR_handler;  /* Custom signal */
-
+static __thread sighandler_t old_SIGABRT_handlers[MAX_JBUFS];
+static __thread sighandler_t old_SIGMEM_handlers[MAX_JBUFS];  /* Custom signal */
+static __thread sighandler_t old_SIGERR_handlers[MAX_JBUFS];  /* Custom signal */
 
 /* The following is used to control if the gk_errexit() will actually abort or not.
    There is always a single copy of this variable */
@@ -38,7 +47,8 @@ static int gk_exit_on_error = 1;
 
 
 /*************************************************************************/
-/*! This function sets the gk_exit_on_error variable */
+/*! This function sets the gk_exit_on_error variable 
+ */
 /*************************************************************************/
 void gk_set_exit_on_error(int value)
 {
@@ -47,9 +57,10 @@ void gk_set_exit_on_error(int value)
 
 
 
-/*************************************************************************
-* This function prints an error message and exits 
-**************************************************************************/
+/*************************************************************************/
+/*! This function prints an error message and exits  
+ */
+/*************************************************************************/
 void errexit(char *f_str,...)
 {
   va_list argp;
@@ -69,9 +80,10 @@ void errexit(char *f_str,...)
 }
 
 
-/*************************************************************************
-* This function prints an error message and raises a signum signal
-**************************************************************************/
+/*************************************************************************/
+/*! This function prints an error message and raises a signum signal
+ */
+/*************************************************************************/
 void gk_errexit(int signum, char *f_str,...)
 {
   va_list argp;
@@ -87,6 +99,79 @@ void gk_errexit(int signum, char *f_str,...)
     raise(signum);
 }
 
+
+/***************************************************************************/
+/*! This function sets a number of signal handlers and sets the return point 
+    of a longjmp
+*/
+/***************************************************************************/
+int gk_sigtrap() 
+{
+  if (gk_cur_jbufs+1 >= MAX_JBUFS)
+    return 0;
+
+  gk_cur_jbufs++;
+
+#ifdef FULLSIGNALS
+  old_SIGFPE_handlers[gk_cur_jbufs]    = signal(SIGFPE,  gk_sigthrow);
+  old_SIGILL_handlers[gk_cur_jbufs]    = signal(SIGILL,  gk_sigthrow);
+  old_SIGSEGV_handlers[gk_cur_jbufs]   = signal(SIGSEGV, gk_sigthrow);
+#ifndef WIN32
+  old_SIGBUS_handlers[gk_cur_jbufs]    = signal(SIGBUS,  gk_sigthrow);
+#endif
+#endif
+
+  old_SIGABRT_handlers[gk_cur_jbufs]   = signal(SIGABRT, gk_sigthrow);
+  if (SIGMEM != SIGABRT) 
+    old_SIGMEM_handlers[gk_cur_jbufs]  = signal(SIGMEM,  gk_sigthrow);
+  if (SIGERR != SIGABRT) 
+    old_SIGERR_handlers[gk_cur_jbufs]  = signal(SIGERR,  gk_sigthrow);
+
+  return 1;
+}
+  
+
+/***************************************************************************/
+/*! This function sets the handlers for the signals to their default handlers
+ */
+/***************************************************************************/
+int gk_siguntrap() 
+{
+  if (gk_cur_jbufs == -1)
+    return 0;
+
+#ifdef FULLSIGNALS
+  signal(SIGFPE,  old_SIGFPE_handlers[gk_cur_jbufs]);
+  signal(SIGILL,  old_SIGILL_handlers[gk_cur_jbufs]);
+  signal(SIGSEGV, old_SIGSEGV_handlers[gk_cur_jbufs]);
+#ifndef WIN32
+  signal(SIGBUS,  old_SIGBUS_handlers[gk_cur_jbufs]);
+#endif
+#endif
+
+  signal(SIGABRT, old_SIGABRT_handlers[gk_cur_jbufs]);
+  if (SIGMEM != SIGABRT) 
+    signal(SIGMEM,  old_SIGMEM_handlers[gk_cur_jbufs]);
+  if (SIGERR != SIGABRT) 
+    signal(SIGERR,  old_SIGERR_handlers[gk_cur_jbufs]);
+
+  gk_cur_jbufs--;
+
+  return 1;
+}
+  
+
+/*************************************************************************/
+/*! This function is the custome signal handler, which all it does is to
+    perform a longjump to the most recent saved environment 
+ */
+/*************************************************************************/
+sighandler_t gk_sigthrow(int signum)
+{
+  printf("Inside signal handler! %d\n", signum);
+  longjmp(gk_jbufs[gk_cur_jbufs], signum);
+}
+  
 
 /***************************************************************************
 * This function sets a number of signal handlers and sets the return point 
@@ -133,10 +218,10 @@ void gk_UnsetSignalHandlers()
 **************************************************************************/
 void gk_NonLocalExit_Handler(int signum)
 {
-  gk_malloc_cleanup();
+  gk_malloc_cleanup(0);
 
   //printf("Calling longjmp...\n");
-  longjmp(gk_return_to_entry, signum);
+  longjmp(gk_jbuf, signum);
 }
   
 
@@ -164,7 +249,7 @@ char *gk_strerror(int errnum)
 
 
 /*************************************************************************
-* This function prints a backtrace of callinf functions
+* This function prints a backtrace of calling functions
 **************************************************************************/
 void PrintBackTrace()
 {

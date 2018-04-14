@@ -8,7 +8,7 @@
  * Started 5/28/11
  * George
  *
- * $Id: m2gmetis.c 10046 2011-06-01 14:13:40Z karypis $
+ * $Id: m2gmetis.c 10498 2011-07-06 16:41:38Z karypis $
  *
  */
 
@@ -24,6 +24,7 @@ int main(int argc, char *argv[])
   mesh_t *mesh;
   graph_t *graph;
   params_t *params;
+  int status=0;
 
   params = parse_cmdline(argc, argv);
 
@@ -41,38 +42,54 @@ int main(int argc, char *argv[])
 
   graph = CreateGraph();
 
+  gk_malloc_init();
   gk_startcputimer(params->parttimer);
+
   switch (params->gtype) {
     case METIS_GTYPE_DUAL:
-      METIS_MeshToDual(&mesh->ne, &mesh->nn, mesh->eptr, mesh->eind, 
-            &params->ncommon, &params->numflag, &graph->xadj, &graph->adjncy);
+      status = METIS_MeshToDual(&mesh->ne, &mesh->nn, mesh->eptr, mesh->eind, 
+                   &params->ncommon, &params->numflag, &graph->xadj, &graph->adjncy);
 
-      graph->nvtxs  = mesh->ne;
-      graph->nedges = graph->xadj[graph->nvtxs]; 
-      graph->ncon   = 1;
+      if (status == METIS_OK) {
+        graph->nvtxs  = mesh->ne;
+        graph->nedges = graph->xadj[graph->nvtxs]; 
+        graph->ncon   = 1;
+      }
       break;
 
     case METIS_GTYPE_NODAL:
-      METIS_MeshToNodal(&mesh->ne, &mesh->nn, mesh->eptr, mesh->eind, 
-            &params->numflag, &graph->xadj, &graph->adjncy);
+      status = METIS_MeshToNodal(&mesh->ne, &mesh->nn, mesh->eptr, mesh->eind, 
+                   &params->numflag, &graph->xadj, &graph->adjncy);
 
-      graph->nvtxs  = mesh->nn;
-      graph->nedges = graph->xadj[graph->nvtxs]; 
-      graph->ncon   = 1;
+      if (status == METIS_OK) {
+        graph->nvtxs  = mesh->nn;
+        graph->nedges = graph->xadj[graph->nvtxs]; 
+        graph->ncon   = 1;
+      }
       break;
   }
+
   gk_stopcputimer(params->parttimer);
+  if (gk_GetCurMemoryUsed() != 0)
+        printf("***It seems that Metis did not free all of its memory! Report this.\n");
+  params->maxmemory = gk_GetMaxMemoryUsed();
+  gk_malloc_cleanup(0);
 
-  /* Write the graph */
-  gk_startcputimer(params->iotimer);
-  WriteGraph(graph, params->outfile);
-  gk_stopcputimer(params->iotimer);
+  if (status != METIS_OK) {
+    printf("\n***Metis returned with an error.\n");
+  }
+  else {
+    /* Write the graph */
+    gk_startcputimer(params->iotimer);
+    WriteGraph(graph, params->outfile);
+    gk_stopcputimer(params->iotimer);
 
-  M2GReportResults(params, mesh, graph);
+    M2GReportResults(params, mesh, graph);
+  }
 
   FreeGraph(&graph);
   FreeMesh(&mesh);
-  gk_free((void **)&params->filename, &params->outfile, LTERM);
+  gk_free((void **)&params->filename, &params->outfile, &params, LTERM);
 }
 
 
@@ -113,9 +130,11 @@ void M2GReportResults(params_t *params, mesh_t *mesh, graph_t *graph)
 
 
   printf("\nTiming Information ----------------------------------------------------------\n");
-  printf("  I/O:          \t\t %7.3"PRREAL"\n", gk_getcputimer(params->iotimer));
-  printf("  Partitioning: \t\t %7.3"PRREAL"   (METIS time)\n", gk_getcputimer(params->parttimer));
-  printf("  Reporting:    \t\t %7.3"PRREAL"\n", gk_getcputimer(params->reporttimer));
+  printf("  I/O:          \t\t %7.3"PRREAL" sec\n", gk_getcputimer(params->iotimer));
+  printf("  Partitioning: \t\t %7.3"PRREAL" sec   (METIS time)\n", gk_getcputimer(params->parttimer));
+  printf("  Reporting:    \t\t %7.3"PRREAL" sec\n", gk_getcputimer(params->reporttimer));
+  printf("\nMemory Information ----------------------------------------------------------\n");
+  printf("  Max memory used:\t\t %7.3"PRREAL" MB\n", (real_t)(params->maxmemory/(1024.0*1024.0)));
   printf("******************************************************************************\n");
 
 }

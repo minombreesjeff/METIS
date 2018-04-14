@@ -5,7 +5,7 @@
 \date Started 2/24/96
 \author George
 \author Copyright 1997-2009, Regents of the University of Minnesota 
-\version $Id: wspace.c 10187 2011-06-13 13:46:57Z karypis $
+\version $Id: wspace.c 10492 2011-07-06 09:28:42Z karypis $
 */
 
 #include "metislib.h"
@@ -20,17 +20,17 @@ void AllocateWorkSpace(ctrl_t *ctrl, graph_t *graph)
 
   switch (ctrl->optype) {
     case METIS_OP_PMETIS:
-      coresize = 4*(graph->nvtxs+1)*sizeof(idx_t) + 
+      coresize = 3*(graph->nvtxs+1)*sizeof(idx_t) + 
                  5*(ctrl->nparts+1)*graph->ncon*sizeof(idx_t) + 
                  5*(ctrl->nparts+1)*graph->ncon*sizeof(real_t);
       break;
     default:
-      coresize = 6*(graph->nvtxs+1)*sizeof(idx_t) + 
+      coresize = 4*(graph->nvtxs+1)*sizeof(idx_t) + 
                  5*(ctrl->nparts+1)*graph->ncon*sizeof(idx_t) + 
                  5*(ctrl->nparts+1)*graph->ncon*sizeof(real_t);
   }
+  /*coresize = 0;*/
   ctrl->mcore = gk_mcoreCreate(coresize);
-
 
   ctrl->nbrpoolsize = 0;
   ctrl->nbrpoolcpos = 0;
@@ -58,7 +58,7 @@ void AllocateRefinementWorkSpace(ctrl_t *ctrl, idx_t nbrpoolsize)
       break;
 
     default:
-      errexit("Unknown objtype of %d\n", ctrl->objtype);
+      gk_errexit(SIGERR, "Unknown objtype of %d\n", ctrl->objtype);
   }
 
 
@@ -145,6 +145,15 @@ idx_t *iwspacemalloc(ctrl_t *ctrl, idx_t n)
 real_t *rwspacemalloc(ctrl_t *ctrl, idx_t n)
 {
   return (real_t *)wspacemalloc(ctrl, n*sizeof(real_t));
+}
+
+
+/*************************************************************************/
+/*! This function allocate space from the core  */
+/*************************************************************************/
+ikv_t *ikvwspacemalloc(ctrl_t *ctrl, idx_t n)
+{
+  return (ikv_t *)wspacemalloc(ctrl, n*sizeof(ikv_t));
 }
 
 

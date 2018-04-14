@@ -97,10 +97,9 @@ graph_t *CompressGraph(ctrl_t *ctrl, idx_t nvtxs, idx_t *xadj, idx_t *adjncy,
 
     /* Allocate memory for the compressed graph */
     cxadj   = graph->xadj   = imalloc(cnvtxs+1, "CompressGraph: xadj");
-    cvwgt   = graph->vwgt   = imalloc(cnvtxs, "CompressGraph: vwgt");
+    cvwgt   = graph->vwgt   = ismalloc(cnvtxs, 0, "CompressGraph: vwgt");
     cadjncy = graph->adjncy = imalloc(cnedges, "CompressGraph: adjncy");
     graph->adjrsum          = imalloc(cnvtxs, "CompressGraph: adjrsum");
-    graph->cmap             = imalloc(cnvtxs, "CompressGraph: cmap");
     graph->adjwgt           = imalloc(cnedges, "CompressGraph: adjwgt");
 
     /* Now go and compress the graph */
@@ -192,7 +191,6 @@ graph_t *PruneGraph(ctrl_t *ctrl, idx_t nvtxs, idx_t *xadj, idx_t *adjncy,
     padjncy = graph->adjncy = imalloc(pnedges, "PruneGraph: adjncy");
     pvwgt   = graph->vwgt   = imalloc(pnvtxs, "PruneGraph: vwgt");
     graph->adjrsum          = imalloc(pnvtxs, "PruneGraph: adjrsum");
-    graph->cmap             = imalloc(pnvtxs, "PruneGraph: cmap");
     graph->adjwgt           = imalloc(pnedges, "PruneGraph: adjwgt");
 
     pxadj[0] = pnedges = l = 0;

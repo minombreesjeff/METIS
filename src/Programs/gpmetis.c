@@ -8,7 +8,7 @@
  * Started 8/28/94
  * George
  *
- * $Id: gpmetis.c 10237 2011-06-14 15:22:13Z karypis $
+ * $Id: gpmetis.c 10482 2011-07-05 20:10:55Z karypis $
  *
  */
 
@@ -28,6 +28,7 @@ int main(int argc, char *argv[])
   idx_t *part;
   idx_t objval;
   params_t *params;
+  int status;
 
   params = parse_cmdline(argc, argv);
 
@@ -57,6 +58,16 @@ int main(int argc, char *argv[])
     }
   }
 
+  /* Setup iptype */
+  if (params->iptype == -1) {
+    if (params->ptype == METIS_PTYPE_RB) {
+      if (graph->ncon == 1)
+        params->iptype = METIS_IPTYPE_GROW;
+      else
+        params->iptype = METIS_IPTYPE_RANDOM;
+    }
+  }
+
   GPPrintInfo(params, graph);
 
   part = imalloc(graph->nvtxs, "main: part");
@@ -74,31 +85,47 @@ int main(int argc, char *argv[])
   options[METIS_OPTION_UFACTOR] = params->ufactor;
   options[METIS_OPTION_DBGLVL]  = params->dbglvl;
 
+  gk_malloc_init();
   gk_startcputimer(params->parttimer);
+
   switch (params->ptype) {
     case METIS_PTYPE_RB:
-      METIS_PartGraphRecursive(&graph->nvtxs, &graph->ncon, graph->xadj, graph->adjncy, 
-          graph->vwgt, graph->vsize, graph->adjwgt, &params->nparts, params->tpwgts, 
-          params->ubvec, options, &objval, part);
+      status = METIS_PartGraphRecursive(&graph->nvtxs, &graph->ncon, graph->xadj, 
+                   graph->adjncy, graph->vwgt, graph->vsize, graph->adjwgt, 
+                   &params->nparts, params->tpwgts, params->ubvec, options, 
+                   &objval, part);
       break;
 
     case METIS_PTYPE_KWAY:
-      METIS_PartGraphKway(&graph->nvtxs, &graph->ncon, graph->xadj, graph->adjncy, 
-          graph->vwgt, graph->vsize, graph->adjwgt, &params->nparts, params->tpwgts, 
-          params->ubvec, options, &objval, part);
+      status = METIS_PartGraphKway(&graph->nvtxs, &graph->ncon, graph->xadj, 
+                   graph->adjncy, graph->vwgt, graph->vsize, graph->adjwgt, 
+                   &params->nparts, params->tpwgts, params->ubvec, options, 
+                   &objval, part);
       break;
 
   }
+
   gk_stopcputimer(params->parttimer);
 
-  if (!params->nooutput) {
-    /* Write the solution */
-    gk_startcputimer(params->iotimer);
-    WritePartition(params->filename, part, graph->nvtxs, params->nparts); 
-    gk_stopcputimer(params->iotimer);
-  }
+  if (gk_GetCurMemoryUsed() != 0)
+    printf("***It seems that Metis did not free all of its memory! Report this.\n");
+  params->maxmemory = gk_GetMaxMemoryUsed();
+  gk_malloc_cleanup(0);
 
-  GPReportResults(params, graph, part, objval);
+
+  if (status != METIS_OK) {
+    printf("\n***Metis returned with an error.\n");
+  }
+  else {
+    if (!params->nooutput) {
+      /* Write the solution */
+      gk_startcputimer(params->iotimer);
+      WritePartition(params->filename, part, graph->nvtxs, params->nparts); 
+      gk_stopcputimer(params->iotimer);
+    }
+
+    GPReportResults(params, graph, part, objval);
+  }
 
   FreeGraph(&graph);
   gk_free((void **)&part, LTERM);
@@ -201,9 +228,11 @@ void GPReportResults(params_t *params, graph_t *graph, idx_t *part, idx_t objval
   gk_stopcputimer(params->reporttimer);
 
   printf("\nTiming Information ----------------------------------------------------------\n");
-  printf("  I/O:          \t\t %7.3"PRREAL"\n", gk_getcputimer(params->iotimer));
-  printf("  Partitioning: \t\t %7.3"PRREAL"   (METIS time)\n", gk_getcputimer(params->parttimer));
-  printf("  Reporting:    \t\t %7.3"PRREAL"\n", gk_getcputimer(params->reporttimer));
+  printf("  I/O:          \t\t %7.3"PRREAL" sec\n", gk_getcputimer(params->iotimer));
+  printf("  Partitioning: \t\t %7.3"PRREAL" sec   (METIS time)\n", gk_getcputimer(params->parttimer));
+  printf("  Reporting:    \t\t %7.3"PRREAL" sec\n", gk_getcputimer(params->reporttimer));
+  printf("\nMemory Information ----------------------------------------------------------\n");
+  printf("  Max memory used:\t\t %7.3"PRREAL" MB\n", (real_t)(params->maxmemory/(1024.0*1024.0)));
   printf("******************************************************************************\n");
 
 }

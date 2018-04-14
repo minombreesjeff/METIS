@@ -4,12 +4,13 @@
 
 \date  Started 12/23/2008
 \author George
-\version\verbatim $Id: gklib_defs.h 10115 2011-06-08 14:49:07Z benjamin $ \endverbatim
+\version\verbatim $Id: gklib_defs.h 10395 2011-06-23 23:28:06Z karypis $ \endverbatim
 */
 
 #ifndef _LIBMETIS_GKLIB_H_
 #define _LIBMETIS_GKLIB_H_
 
+#include "gklib_rename.h"
 
 /*************************************************************************/
 /*! Stores a weighted edge */
@@ -48,6 +49,5 @@ void ikvsortd(size_t n, ikv_t *base);
 void rkvsorti(size_t n, rkv_t *base);
 void rkvsortd(size_t n, rkv_t *base);
 void uvwsorti(size_t n, uvw_t *base);
-
 
 #endif

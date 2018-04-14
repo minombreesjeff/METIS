@@ -5,7 +5,7 @@
 \date Started 7/28/97
 \author George
 \author Copyright 1997-2009, Regents of the University of Minnesota 
-\version $Id: kwayfm.c 10187 2011-06-13 13:46:57Z karypis $
+\version $Id: kwayfm.c 10492 2011-07-06 09:28:42Z karypis $
 */
 
 #include "metislib.h"
@@ -36,7 +36,7 @@ void Greedy_KWayOptimize(ctrl_t *ctrl, graph_t *graph, idx_t niter,
       break;
 
     default:
-      errexit("Unknown objtype of %d\n", ctrl->objtype);
+      gk_errexit(SIGERR, "Unknown objtype of %d\n", ctrl->objtype);
   }
 }
 

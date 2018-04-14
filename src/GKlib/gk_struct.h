@@ -4,7 +4,7 @@
 
 \date   Started 3/27/2007
 \author George
-\version\verbatim $Id: gk_struct.h 10145 2011-06-09 19:08:32Z karypis $ \endverbatim
+\version\verbatim $Id: gk_struct.h 10407 2011-06-25 15:32:03Z karypis $ \endverbatim
 */
 
 #ifndef _GK_STRUCT_H_
@@ -197,7 +197,7 @@ typedef struct gk_seq_t {
     a gk_malloc if not sufficient workspace memory is available. */
 /*************************************************************************/
 typedef struct gk_mop_t {
-  int flag;
+  int type;
   ssize_t nbytes;
   void *ptr;
 } gk_mop_t;

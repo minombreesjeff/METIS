@@ -31,7 +31,7 @@
  GCC does provides these definitions in stdint.h, but it may require some
  modifications on other architectures.
 --------------------------------------------------------------------------*/
-#define IDXTYPEWIDTH 64
+#define IDXTYPEWIDTH 32
 
 /*--------------------------------------------------------------------------
  Specifies the data type that will hold floating-point style information.
@@ -40,7 +40,7 @@
    32 : single precission floating point (float)
    64 : double precission floating point (double)
 --------------------------------------------------------------------------*/
-#define REALTYPEWIDTH 64
+#define REALTYPEWIDTH 32
 
 
 
@@ -61,21 +61,6 @@
 #if defined(__GNUC__)
   #define COMPILER_GCC
 #endif
-
-
-
-#if defined(COMPILER_MSC)
-  typedef __int32                 int32_t;
-  typedef __int64                 int64_t;
-  typedef unsigned __int32        uint32_t;
-  typedef unsigned __int64        uint64_t;
-#else
-  #include <stdint.h>
-  #include <inttypes.h>
-  #include <sys/types.h>
-  #include <float.h>
-#endif
-
 
 
 /*------------------------------------------------------------------------
@@ -213,15 +198,15 @@ METIS_API(int) METIS_SetDefaultOptions(idx_t *options);
 
 /* These functions are used by ParMETIS */
 
-METIS_API(void) METIS_NodeNDP(idx_t nvtxs, idx_t *xadj, idx_t *adjncy, idx_t *vwgt,
+METIS_API(int) METIS_NodeNDP(idx_t nvtxs, idx_t *xadj, idx_t *adjncy, idx_t *vwgt,
                    idx_t npes, idx_t *options, idx_t *perm, idx_t *iperm, 
                    idx_t *sizes);
 
-METIS_API(void) METIS_ComputeVertexSeparator(idx_t *nvtxs, idx_t *xadj, idx_t *adjncy, 
+METIS_API(int) METIS_ComputeVertexSeparator(idx_t *nvtxs, idx_t *xadj, idx_t *adjncy, 
                    idx_t *vwgt, idx_t *options, idx_t *sepsize, idx_t *part);
 
-METIS_API(void) METIS_NodeRefine(idx_t nvtxs, idx_t *xadj, idx_t *vwgt, idx_t *adjncy,
-                   idx_t *adjwgt, idx_t *where, idx_t *hmarker, real_t ubfactor);
+METIS_API(int) METIS_NodeRefine(idx_t nvtxs, idx_t *xadj, idx_t *vwgt, idx_t *adjncy,
+                   idx_t *where, idx_t *hmarker, real_t ubfactor);
 
 
 #ifdef __cplusplus
@@ -236,8 +221,9 @@ METIS_API(void) METIS_NodeRefine(idx_t nvtxs, idx_t *xadj, idx_t *vwgt, idx_t *a
 /*! Return codes */
 typedef enum {
   METIS_OK              = 1,    /*!< Returned normally */
-  METIS_ERROR_INPUT     = -1,   /*!< Returned due to erroneous inputs and/or options */
-  METIS_ERROR_MEMORY    = -2    /*!< Returned due to insufficient memory */
+  METIS_ERROR_INPUT     = -2,   /*!< Returned due to erroneous inputs and/or options */
+  METIS_ERROR_MEMORY    = -3,   /*!< Returned due to insufficient memory */
+  METIS_ERROR           = -4    /*!< Some other errors */
 } rstatus_et; 
 
 

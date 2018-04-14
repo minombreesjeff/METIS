@@ -8,7 +8,7 @@
  * Started 8/27/94
  * George
  *
- * $Id: metislib.h 10235 2011-06-14 13:44:03Z karypis $
+ * $Id: metislib.h 10260 2011-06-14 22:10:29Z karypis $
  */
 
 #ifndef _LIBMETIS_METISLIB_H_
@@ -23,7 +23,6 @@
 
 #include <metis.h>
 #include <rename.h>
-
 #include <gklib_defs.h>
 
 #include <defs.h>

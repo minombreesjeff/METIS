@@ -4,7 +4,7 @@
 
 \date   Started 3/27/2007
 \author George
-\version\verbatim $Id: gk_arch.h 10199 2011-06-13 18:24:14Z benjamin $ \endverbatim
+\version\verbatim $Id: gk_arch.h 10494 2011-07-06 14:53:45Z karypis $ \endverbatim
 */
 
 #ifndef _GK_ARCH_H_
@@ -21,9 +21,10 @@
 #define _XOPEN_SOURCE 600
 #endif
 #if !defined(__USE_XOPEN2K)
-#define __USE_XOPEN2K 
+#define __USE_XOPEN2K
 #endif
 #endif
+
 
 #ifdef HAVE_EXECINFO_H
 #include <execinfo.h>
@@ -43,7 +44,6 @@
   #include <sys/resource.h>
   #include <sys/time.h>
 #endif
-
 
 
 /*************************************************************************
@@ -67,5 +67,9 @@ typedef ptrdiff_t ssize_t;
 #define INFINITY FLT_MAX
 #endif
 #endif
+
+
+/* this should be in signals.h, but is not there */
+typedef void (*sighandler_t)(int);  
 
 #endif

@@ -10,6 +10,7 @@ else()
   set(METIS_INSTALL TRUE)
 endif()
 
+# Configure libmetis library.
 if(SHARED)
   set(METIS_LIBRARY_TYPE SHARED)
 else()
@@ -17,8 +18,10 @@ else()
 endif(SHARED)
 
 include(${GKLIB_PATH}/GKlibSystem.cmake)
+# Add include directories.
 include_directories(${GKLIB_PATH})
-include_directories(include libmetis)
+include_directories(include)
+# Recursively look for CMakeLists.txt in subdirs.
 add_subdirectory("include")
 add_subdirectory("libmetis")
 add_subdirectory("programs")
