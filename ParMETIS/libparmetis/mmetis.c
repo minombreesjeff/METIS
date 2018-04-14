@@ -8,7 +8,7 @@
  * Started 10/19/96
  * George
  *
- * $Id: mmetis.c 10535 2011-07-11 04:29:44Z karypis $
+ * $Id: mmetis.c 10573 2011-07-14 13:31:54Z karypis $
  *
  */
 
@@ -74,8 +74,8 @@ int ParMETIS_V3_PartMeshKway(idx_t *elmdist, idx_t *eptr, idx_t *eind, idx_t *el
   IFSET(ctrl->dbglvl, DBG_TIME, PrintTimer(ctrl, ctrl->MoveTmr,	 "   Mesh2Dual"));
   IFSET(ctrl->dbglvl, DBG_TIME, PrintTimer(ctrl, ctrl->TotalTmr, "    ParMETIS"));
 
-  gk_free((void **)&xadj, (void **)&adjncy, LTERM);
-
+  METIS_Free(xadj);
+  METIS_Free(adjncy);
 
   FreeCtrl(&ctrl);
   if (gk_GetCurMemoryUsed() - curmem > 0) {

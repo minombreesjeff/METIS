@@ -28,6 +28,8 @@ int main(int argc, char *argv[])
   idx_t mgcnum = -1, mgcnums[5] = {-1, 2, 3, 4, 2}, esizes[5] = {-1, 3, 4, 8, 4};
   real_t *tpwgts, ubvec[MAXNCON];
 
+  gk_malloc_init();
+
   MPI_Init(&argc, &argv);
   MPI_Comm_dup(MPI_COMM_WORLD, &comm);
   gkMPI_Comm_size(comm, &npes);
@@ -90,6 +92,8 @@ int main(int argc, char *argv[])
   gk_free((void **)&part, &tpwgts, &eptr, LTERM);
   MPI_Comm_free(&comm);
   MPI_Finalize();
+
+  gk_malloc_cleanup(0);
   return 0;
 }
 

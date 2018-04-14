@@ -1,4 +1,14 @@
 
+Changes in version 4.0a3 
+r10573; 2011-07-14 08:31:54 -0500 (Thu, 14 Jul 2011)
+
+- Fixed an old and well-hidden bug in the core sparse communication
+  routines.
+- Fixed the mesh partitioning routines, which were broken due to 
+  the fact that ParMetis now tracks all memory allocations and 
+  frees them at the end of the computations.
+
+
 Changes in version 4.0a2 
 r10566; 2011-07-13 11:15:54 -0500 (Wed, 13 Jul 2011) 
 

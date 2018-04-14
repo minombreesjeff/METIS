@@ -5,7 +5,7 @@
  *
  * This function provides various high level communication functions 
  *
- * $Id: comm.c 10543 2011-07-11 19:32:24Z karypis $
+ * $Id: comm.c 10572 2011-07-14 13:31:34Z karypis $
  */
 
 #include <parmetislib.h>
@@ -340,7 +340,7 @@ void CommChangedInterfaceData(ctrl_t *ctrl, graph_t *graph, idx_t nchanged,
   if (nchanged != 0) {
     WCOREPUSH;
 
-    psendptr = icopy(ctrl->npes, sendptr, iwspacemalloc(ctrl, ctrl->npes));
+    psendptr = icopy(nnbrs, sendptr, iwspacemalloc(ctrl, nnbrs));
 
     /* Copy the changed values into the sendvector */
     for (i=0; i<nchanged; i++) {
