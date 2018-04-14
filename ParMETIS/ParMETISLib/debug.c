@@ -89,7 +89,7 @@ void PrintPairs(CtrlType *ctrl, int n, KeyValueType *pairs, char *title)
 **************************************************************************/
 void PrintGraph(CtrlType *ctrl, GraphType *graph)
 {
-  int i, j, k, penum;
+  int i, j, penum;
   int firstvtx;
 
   MPI_Barrier(ctrl->comm);
@@ -121,7 +121,7 @@ void PrintGraph(CtrlType *ctrl, GraphType *graph)
 **************************************************************************/
 void PrintGraph2(CtrlType *ctrl, GraphType *graph)
 {
-  int i, j, k, penum;
+  int i, j, penum;
   int firstvtx;
 
   MPI_Barrier(ctrl->comm);
@@ -152,7 +152,7 @@ void PrintGraph2(CtrlType *ctrl, GraphType *graph)
 **************************************************************************/
 void PrintSetUpInfo(CtrlType *ctrl, GraphType *graph)
 {
-  int i, j, k, penum;
+  int i, j, penum;
 
   MPI_Barrier(ctrl->comm);
 
@@ -187,7 +187,7 @@ void PrintSetUpInfo(CtrlType *ctrl, GraphType *graph)
 void PrintTransferedGraphs(CtrlType *ctrl, int nnbrs, idxtype *peind, idxtype *slens, 
       idxtype *rlens, idxtype *sgraph, idxtype *rgraph)
 {
-  int i, j, k, ii, jj, ll, penum;
+  int i, ii, jj, ll, penum;
 
   MPI_Barrier(ctrl->comm);
   for (penum=0; penum<ctrl->npes; penum++) {

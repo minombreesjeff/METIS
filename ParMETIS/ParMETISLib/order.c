@@ -21,7 +21,7 @@
 **************************************************************************/
 void MultilevelOrder(CtrlType *ctrl, GraphType *graph, idxtype *order, idxtype *sizes, WorkSpaceType *wspace)
 {
-  int i, j, k, nparts, nvtxs, npes;
+  int i, nparts, nvtxs, npes;
   idxtype *perm, *lastnode, *morder, *porder;
   GraphType *mgraph;
 
@@ -52,10 +52,10 @@ void MultilevelOrder(CtrlType *ctrl, GraphType *graph, idxtype *order, idxtype *
 
     if (ctrl->CoarsenTo < 100*nparts) {
       ctrl->CoarsenTo = 1.5*ctrl->CoarsenTo;
-      graph->maxvwgt = 2*graph->maxvwgt/3;
     }
     ctrl->CoarsenTo = amin(ctrl->CoarsenTo, graph->gnvtxs-1);
   }
+
 
   /*-----------------------------------------------------------------
    / Move the graph so that each processor gets its partition 
@@ -64,7 +64,8 @@ void MultilevelOrder(CtrlType *ctrl, GraphType *graph, idxtype *order, idxtype *
   IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->MoveTmr));
 
   SetUp(ctrl, graph, wspace);
-  mgraph = MoveGraph(ctrl, graph, wspace);
+  graph->ncon = 1; /*needed for Moc_MoveGraph */
+  mgraph = Moc_MoveGraph(ctrl, graph, wspace);
 
   /* Fill in the sizes[] array for the local part. Just the vtxdist of the mgraph */
   for (i=0; i<npes; i++)
@@ -89,7 +90,7 @@ void MultilevelOrder(CtrlType *ctrl, GraphType *graph, idxtype *order, idxtype *
   }
 
   FreeGraph(mgraph);
-  GKfree(&perm, &lastnode, &porder, &morder, LTERM);
+  GKfree((void **)&perm, (void **)&lastnode, (void **)&porder, (void **)&morder, LTERM);
 
   /* PrintVector(ctrl, 2*npes-1, 0, sizes, "SIZES"); */
 }
@@ -102,7 +103,7 @@ void MultilevelOrder(CtrlType *ctrl, GraphType *graph, idxtype *order, idxtype *
 **************************************************************************/
 void LabelSeparators(CtrlType *ctrl, GraphType *graph, idxtype *lastnode, idxtype *perm, idxtype *order, idxtype *sizes, WorkSpaceType *wspace)
 {
-  int i, j, k, nvtxs, nparts, firstlabel, sid;
+  int i, nvtxs, nparts, sid;
   idxtype *where, *lpwgts, *gpwgts, *sizescan;
 
   nparts = ctrl->nparts;
@@ -165,6 +166,7 @@ void LabelSeparators(CtrlType *ctrl, GraphType *graph, idxtype *lastnode, idxtyp
   }
 
   free(sizescan);
+
 }
 
 
@@ -175,7 +177,7 @@ void LabelSeparators(CtrlType *ctrl, GraphType *graph, idxtype *lastnode, idxtyp
 **************************************************************************/
 void CompactGraph(CtrlType *ctrl, GraphType *graph, idxtype *perm, WorkSpaceType *wspace)
 {
-  int i, ii, j, k, l, nvtxs, cnvtxs, cfirstvtx, nparts, npes; 
+  int i, j, l, nvtxs, cnvtxs, cfirstvtx, nparts, npes; 
   idxtype *xadj, *ladjncy, *adjwgt, *vtxdist, *where;
   idxtype *cmap, *cvtxdist, *newwhere;
 
@@ -187,6 +189,9 @@ void CompactGraph(CtrlType *ctrl, GraphType *graph, idxtype *perm, WorkSpaceType
   ladjncy = graph->adjncy;
   adjwgt = graph->adjwgt;
   where = graph->where;
+
+  if (graph->cmap == NULL)
+    graph->cmap = idxmalloc(nvtxs+graph->nrecv, "CompactGraph: cmap");
   cmap = graph->cmap;
 
   vtxdist = graph->vtxdist;
@@ -212,8 +217,7 @@ void CompactGraph(CtrlType *ctrl, GraphType *graph, idxtype *perm, WorkSpaceType
   cfirstvtx = cvtxdist[ctrl->mype];
 
   /* Create the cmap of what you know so far locally */
-  cnvtxs = 0;
-  for (i=0; i<nvtxs; i++) {
+  for (cnvtxs=0, i=0; i<nvtxs; i++) {
     if (where[i] < nparts) {
       perm[cnvtxs] = perm[i];
       cmap[i] = cfirstvtx + cnvtxs++;
@@ -251,11 +255,11 @@ void CompactGraph(CtrlType *ctrl, GraphType *graph, idxtype *perm, WorkSpaceType
     xadj[i] = xadj[i-1];
   xadj[0] = 0;
 
-  GKfree(&graph->match, &graph->cmap, &graph->lperm, &graph->where, &graph->label, &graph->rinfo,
-         &graph->nrinfo, &graph->lpwgts, &graph->gpwgts, &graph->sepind, &graph->peind,
-         &graph->sendptr, &graph->sendind, &graph->recvptr, &graph->recvind, 
-         &graph->imap, &graph->rlens, &graph->slens, &graph->rcand, &graph->pexadj, 
-         &graph->peadjncy, &graph->peadjloc, LTERM);
+  GKfree((void **)&graph->match, (void **)&graph->cmap, (void **)&graph->lperm, (void **)&graph->where, (void **)&graph->label, (void **)&graph->rinfo,
+         (void **)&graph->nrinfo, (void **)&graph->lpwgts, (void **)&graph->gpwgts, (void **)&graph->sepind, (void **)&graph->peind,
+         (void **)&graph->sendptr, (void **)&graph->sendind, (void **)&graph->recvptr, (void **)&graph->recvind, 
+         (void **)&graph->imap, (void **)&graph->rlens, (void **)&graph->slens, (void **)&graph->rcand, (void **)&graph->pexadj, 
+         (void **)&graph->peadjncy, (void **)&graph->peadjloc, LTERM);
  
   graph->nvtxs = cnvtxs;
   graph->nedges = l;
@@ -272,7 +276,7 @@ void CompactGraph(CtrlType *ctrl, GraphType *graph, idxtype *perm, WorkSpaceType
 **************************************************************************/
 void LocalNDOrder(CtrlType *ctrl, GraphType *graph, idxtype *order, int firstnode, WorkSpaceType *wspace)
 {
-  int i, j, k, nvtxs, firstvtx, lastvtx, nofsub;
+  int i, j, nvtxs, firstvtx, lastvtx;
   idxtype *xadj, *adjncy;
   idxtype *perm, *iperm;
   int numflag=0, options[10];
@@ -306,3 +310,39 @@ void LocalNDOrder(CtrlType *ctrl, GraphType *graph, idxtype *order, int firstnod
   }
 
 }
+
+/*************************************************************************
+* This function is the driver for the partition refinement mode of ParMETIS
+**************************************************************************/
+void Order_Partition(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
+{
+
+  SetUp(ctrl, graph, wspace);
+  graph->ncon = 1;
+
+  IFSET(ctrl->dbglvl, DBG_PROGRESS, rprintf(ctrl, "[%6d %8d %5d %5d][%d][%d]\n",
+        graph->gnvtxs, GlobalSESum(ctrl, graph->nedges), GlobalSEMin(ctrl, graph->nvtxs),
+        GlobalSEMax(ctrl, graph->nvtxs), ctrl->CoarsenTo,
+        GlobalSEMax(ctrl, graph->vwgt[idxamax(graph->nvtxs, graph->vwgt)])));
+
+  if (graph->gnvtxs < 1.3*ctrl->CoarsenTo || (graph->finer != NULL && graph->gnvtxs > graph->finer->gnvtxs*COARSEN_FRACTION)) {
+    /* Compute the initial npart-way multisection */
+    InitMultisection(ctrl, graph, wspace);
+
+    if (graph->finer == NULL) { /* Do that only of no-coarsening took place */
+      ComputeNodePartitionParams(ctrl, graph, wspace);
+      KWayNodeRefine(ctrl, graph, wspace, 2*NGR_PASSES, ORDER_UNBALANCE_FRACTION);
+    }
+  }
+  else { /* Coarsen it and the partition it */
+    Mc_LocalMatch_HEM(ctrl, graph, wspace);
+
+    Order_Partition(ctrl, graph->coarser, wspace);
+
+    Moc_ProjectPartition(ctrl, graph, wspace);
+    ComputeNodePartitionParams(ctrl, graph, wspace);
+    KWayNodeRefine(ctrl, graph, wspace, 2*NGR_PASSES, ORDER_UNBALANCE_FRACTION);
+  }
+}
+
+

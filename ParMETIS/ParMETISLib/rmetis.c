@@ -3,106 +3,164 @@
  *
  * rmetis.c
  *
- * This is the entry point of PARMETIS_RefineGraphKway
+ * This is the entry point of the partitioning refinement routine
  *
  * Started 10/19/96
  * George
  *
- * $Id: rmetis.c,v 1.6 1998/09/21 20:18:47 karypis Exp $
+ * $Id: rmetis.c,v 1.9 1998/09/21 20:18:46 karypis Exp $
  *
  */
 
 #include <parmetis.h>
 
 
+
 /***********************************************************************************
-* This function is the entry point of the parallel k-way multilevel partitioning
-* refinement algorithm.  
+* This function is the entry point of the parallel multilevel local diffusion
+* algorithm. It uses parallel undirected diffusion followed by adaptive k-way 
+* refinement. This function utilizes local coarsening.
 ************************************************************************************/
-void ParMETIS_RefineKway(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy, 
-       idxtype *vwgt, idxtype *adjwgt, int *wgtflag, int *numflag, int *options,
-       int *edgecut, idxtype *part, MPI_Comm *comm)
+void ParMETIS_V3_RefineKway(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy,
+  idxtype *vwgt, idxtype *adjwgt, int *wgtflag, int *numflag, int *ncon, int *nparts,
+  float *tpwgts, float *ubvec, int *options, int *edgecut, idxtype *part, MPI_Comm *comm)
 {
-  int i, j, k, min, max, tvwgt;
+  int h, i;
   int npes, mype;
   CtrlType ctrl;
   WorkSpaceType wspace;
   GraphType *graph;
+  int tewgt, tvsize, nmoved, maxin, maxout;
+  float gtewgt, gtvsize, avg, maximb;
+  int ps_relation, seed, dbglvl = 0;
+  int iwgtflag, inumflag, incon, inparts, ioptions[10];
+  float *itpwgts, iubvec[MAXNCON];
 
   MPI_Comm_size(*comm, &npes);
   MPI_Comm_rank(*comm, &mype);
 
-  if (npes == 1) { /* Take care the npes = 1 case */
-    idxset(vtxdist[1], 0, part);
+  /********************************/
+  /* Try and take care bad inputs */
+  /********************************/
+  if (options != NULL && options[0] == 1)
+    dbglvl = options[PMV3_OPTION_DBGLVL];
+  CheckInputs(REFINE_PARTITION, npes, dbglvl, wgtflag, &iwgtflag, numflag, &inumflag,
+  ncon, &incon, nparts, &inparts, tpwgts, &itpwgts, ubvec, iubvec, NULL, NULL, NULL, NULL,
+  NULL, NULL, options, ioptions, part, comm);
+
+  /* ADD: take care of disconnected graph */
+  /* ADD: take care of highly unbalanced vtxdist */
+  /*********************************/
+  /* Take care the nparts = 1 case */
+  /*********************************/
+  if (inparts <= 1) {
+    idxset(vtxdist[mype+1]-vtxdist[mype], 0, part); 
     *edgecut = 0;
     return;
   }
 
-  if (*numflag == 1) 
+  /**************************/
+  /* Set up data structures */
+  /**************************/
+  if (inumflag == 1) 
     ChangeNumbering(vtxdist, xadj, adjncy, part, npes, mype, 1);
 
-  SetUpCtrl(&ctrl, npes, options, *comm);
-  ctrl.CoarsenTo = amin(vtxdist[npes]+1, 25*npes);
+  /*****************************/
+  /* Set up control structures */
+  /*****************************/
+  if (ioptions[0] == 1) {
+    dbglvl = ioptions[PMV3_OPTION_DBGLVL];
+    seed = ioptions[PMV3_OPTION_SEED];
+    ps_relation = (npes == inparts) ? ioptions[PMV3_OPTION_PSR] : DISCOUPLED;
+  }
+  else {
+    dbglvl = GLOBAL_DBGLVL;
+    seed = GLOBAL_SEED;
+    ps_relation = (npes == inparts) ? COUPLED : DISCOUPLED;
+  }
 
-  graph = SetUpGraph(&ctrl, vtxdist, xadj, vwgt, adjncy, adjwgt, *wgtflag);
+  SetUpCtrl(&ctrl, inparts, &dbglvl, *comm);
+  ctrl.CoarsenTo = amin(vtxdist[npes]+1, 50*incon*amax(npes, inparts));
+  ctrl.ipc_factor = 1000.0;
+  ctrl.redist_factor = 1.0;
+  ctrl.redist_base = 1.0;
+  ctrl.seed = (seed == 0) ? mype : seed*mype;
+  ctrl.sync = GlobalSEMax(&ctrl, seed);
+  ctrl.partType = REFINE_PARTITION;
+  ctrl.ps_relation = ps_relation;
+  ctrl.tpwgts = itpwgts;
+
+  graph = Moc_SetUpGraph(&ctrl, incon, vtxdist, xadj, vwgt, adjncy, adjwgt, &iwgtflag);
+  graph->vsize = idxsmalloc(graph->nvtxs, 1, "vsize");
+
+  graph->home = idxmalloc(graph->nvtxs, "home");
+  if (ctrl.ps_relation == COUPLED)
+    idxset(graph->nvtxs, mype, graph->home);
+  else
+    idxcopy(graph->nvtxs, part, graph->home);
+
+  tewgt = idxsum(graph->nedges, graph->adjwgt);
+  tvsize = idxsum(graph->nvtxs, graph->vsize);
+  gtewgt = (float) GlobalSESum(&ctrl, tewgt);
+  gtvsize = (float) GlobalSESum(&ctrl, tvsize);
+  ctrl.edge_size_ratio = gtewgt/gtvsize;
+  scopy(incon, iubvec, ctrl.ubvec);
 
   PreAllocateMemory(&ctrl, graph, &wspace);
 
+  /***********************/
+  /* Partition and Remap */
+  /***********************/
   IFSET(ctrl.dbglvl, DBG_TIME, InitTimers(&ctrl));
   IFSET(ctrl.dbglvl, DBG_TIME, MPI_Barrier(ctrl.gcomm));
   IFSET(ctrl.dbglvl, DBG_TIME, starttimer(ctrl.TotalTmr));
 
-  Refine_Partition(&ctrl, graph, &wspace);
+  Adaptive_Partition(&ctrl, graph, &wspace);
+  ParallelReMapGraph(&ctrl, graph, &wspace);
 
   IFSET(ctrl.dbglvl, DBG_TIME, MPI_Barrier(ctrl.gcomm));
   IFSET(ctrl.dbglvl, DBG_TIME, stoptimer(ctrl.TotalTmr));
 
   idxcopy(graph->nvtxs, graph->where, part);
-  *edgecut = graph->mincut;
+  if (edgecut != NULL)
+    *edgecut = graph->mincut;
 
+  /***********************/
+  /* Take care of output */
+  /***********************/
   IFSET(ctrl.dbglvl, DBG_TIME, PrintTimingInfo(&ctrl));
   IFSET(ctrl.dbglvl, DBG_TIME, MPI_Barrier(ctrl.gcomm));
-  IFSET(ctrl.dbglvl, DBG_INFO, tvwgt = GlobalSESum(&ctrl, idxsum(graph->nvtxs, graph->vwgt)));
-  IFSET(ctrl.dbglvl, DBG_INFO, rprintf(&ctrl, "Final Cut: %6d \tBalance: %6.3f [%d %d %d]\n", 
-          graph->mincut, 1.0*npes*graph->gpwgts[idxamax(npes, graph->gpwgts)]/(1.0*tvwgt), 
-          graph->gpwgts[idxamax(npes, graph->gpwgts)], tvwgt, graph->gnvtxs));
+  IFSET(ctrl.dbglvl, DBG_INFO,
+    Mc_ComputeMoveStatistics(&ctrl, graph, &nmoved, &maxin, &maxout));
+  IFSET(ctrl.dbglvl, DBG_INFO,
+  rprintf(&ctrl, "Final %3d-way Cut: %6d \tBalance: ", inparts, graph->mincut));
+  if (ctrl.dbglvl&DBG_INFO) {
+    avg = 0.0;
+    for (h=0; h<incon; h++) {
+      maximb = 0.0;
+      for (i=0; i<inparts; i++)
+        maximb = amax(maximb, graph->gnpwgts[i*incon+h]/itpwgts[i*incon+h]);
+      avg += maximb;
+      rprintf(&ctrl, "%.3f ", maximb);
+    }
+  }
+  IFSET(ctrl.dbglvl, DBG_INFO,
+  rprintf(&ctrl, "\nNMoved: %d %d %d %d\n", nmoved, maxin, maxout, maxin+maxout));
 
-  FreeInitialGraphAndRemap(graph, *wgtflag);
+  /*************************************/
+  /* Free memory, renumber, and return */
+  /*************************************/
+  GKfree((void **)&graph->lnpwgts, (void **)&graph->gnpwgts, (void **)&graph->nvwgt, (void **)(&graph->home), (void **)(&graph->vsize), LTERM);
+
+  GKfree((void **)&itpwgts, LTERM);
+  FreeInitialGraphAndRemap(graph, iwgtflag);
   FreeWSpace(&wspace);
   FreeCtrl(&ctrl);
 
-  if (*numflag == 1) 
+  if (inumflag == 1)
     ChangeNumbering(vtxdist, xadj, adjncy, part, npes, mype, 0);
 
-}
-
-
-
-
-
-/***********************************************************************************
-* This function is the entry point of the parallel k-way multilevel partitionioner. 
-* This function assumes nothing about the graph distribution.
-* It is the general case.
-************************************************************************************/
-void PARRMETIS(idxtype *vtxdist, idxtype *xadj, idxtype *vwgt, idxtype *adjncy, idxtype *adjwgt, 
-               idxtype *part, int *options, MPI_Comm comm)
-{
-  int wgtflag, numflag, edgecut, newoptions[5];
-
-  newoptions[0] = 1;
-  newoptions[OPTION_IPART] = options[2];
-  newoptions[OPTION_FOLDF] = options[1];
-  newoptions[OPTION_DBGLVL] = options[4];
-
-  numflag = options[3];
-  wgtflag = (vwgt == NULL ? 0 : 2) + (adjwgt == NULL ? 0 : 1);
-
-  ParMETIS_RefineKway(vtxdist, xadj, adjncy, vwgt, adjwgt, &wgtflag, &numflag, 
-     newoptions, &edgecut, part, &comm);
-
-  options[0] = edgecut;
-
+  return;
 }
 
 

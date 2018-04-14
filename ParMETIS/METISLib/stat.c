@@ -244,7 +244,7 @@ void ComputePartitionBalance(GraphType *graph, int nparts, idxtype *where, float
 
   kpwgts = idxsmalloc(nparts, 0, "ComputePartitionInfo: kpwgts");
 
-  if (vwgt == NULL) {
+  if (vwgt == NULL && ncon == 1) {
     for (i=0; i<nvtxs; i++)
       kpwgts[where[i]]++;
     ubvec[0] = 1.0*nparts*kpwgts[idxamax(nparts, kpwgts)]/(1.0*nvtxs);

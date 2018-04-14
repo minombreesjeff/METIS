@@ -18,7 +18,7 @@
 /*************************************************************************
 * Let the game begin
 **************************************************************************/
-main(int argc, char *argv[])
+int main(int argc, char *argv[])
 {
   int mype, npes;
   MPI_Comm comm;
@@ -36,11 +36,14 @@ main(int argc, char *argv[])
     exit(0);
   }
 
-  TestParMetis(argv[1], comm); 
+/*  TestParMetis(argv[1], comm); */ 
+  TestParMetis_V3(argv[1], comm); 
 
   MPI_Comm_free(&comm);
 
   MPI_Finalize();
+
+  return 0;
 }
 
 

@@ -8,7 +8,7 @@
  * Started 2/24/96
  * George
  *
- * $Id: memory.c,v 1.1 1998/09/16 14:30:42 karypis Exp $
+ * $Id: memory.c,v 1.2 1998/11/27 18:16:18 karypis Exp $
  *
  */
 
@@ -188,6 +188,7 @@ void InitGraph(GraphType *graph)
 
   graph->ncon = -1;
   graph->nvwgt = NULL;
+  graph->npwgts = NULL;
 
   graph->vsize = NULL;
 
@@ -201,7 +202,7 @@ void InitGraph(GraphType *graph)
 void FreeGraph(GraphType *graph) 
 {
 
-  GKfree(&graph->gdata, &graph->nvwgt, &graph->rdata, LTERM);
+  GKfree(&graph->gdata, &graph->nvwgt, &graph->rdata, &graph->npwgts, LTERM);
   free(graph);
 }
 

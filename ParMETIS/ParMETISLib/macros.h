@@ -33,6 +33,7 @@
                  do {(a) += (val); (b) -= (val);} while(0)
 
 
+#define icopy(n, a, b) memcpy((b), (a), sizeof(int)*(n))
 #define scopy(n, a, b) memcpy((b), (a), sizeof(float)*(n))
 #define idxcopy(n, a, b) memcpy((b), (a), sizeof(idxtype)*(n))
 
@@ -66,12 +67,15 @@
 #endif
 
 #ifdef DMALLOC
+#   define MALLOC_CHECK(ptr);
+/*
 #   define MALLOC_CHECK(ptr)                                          \
     if (malloc_verify((ptr)) == DMALLOC_VERIFY_ERROR) {  \
         printf("***MALLOC_CHECK failed on line %d of file %s: " #ptr "\n", \
               __LINE__, __FILE__);                               \
         abort();                                                \
     }
+*/
 #else
 #   define MALLOC_CHECK(ptr) ;
 #endif 
@@ -134,3 +138,21 @@
 #else
 #   define ASSERTSP(expr, msg) ;
 #endif 
+
+/*************************************************************************
+ * * These macros insert and remove nodes from the boundary list
+ * **************************************************************************/
+#define BNDInsert(nbnd, bndind, bndptr, vtx) \
+   do { \
+	        bndind[nbnd] = vtx; \
+			     bndptr[vtx] = nbnd++;\
+			        } while(0)
+
+#define BNDDelete(nbnd, bndind, bndptr, vtx) \
+   do { \
+	        bndind[bndptr[vtx]] = bndind[--nbnd]; \
+			     bndptr[bndind[nbnd]] = bndptr[vtx]; \
+			          bndptr[vtx] = -1; \
+				     } while(0)
+
+

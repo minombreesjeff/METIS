@@ -20,7 +20,7 @@
 void ParMETIS_SerialNodeND(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy, int *numflag,
                 int *options, idxtype *order, idxtype *sizes, MPI_Comm *comm)
 {
-  int i, j, k, npes, mype, seroptions[10];
+  int i, npes, mype, seroptions[10];
   CtrlType ctrl;
   GraphType *agraph;
   idxtype *perm=NULL, *iperm=NULL;
@@ -38,7 +38,7 @@ void ParMETIS_SerialNodeND(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy, int
   if (*numflag == 1) 
     ChangeNumbering(vtxdist, xadj, adjncy, order, npes, mype, 1);
 
-  SetUpCtrl(&ctrl, npes, options, *comm);
+  SetUpCtrl(&ctrl, npes, &options[OPTION_DBGLVL], *comm);
 
   IFSET(ctrl.dbglvl, DBG_TIME, InitTimers(&ctrl));
   IFSET(ctrl.dbglvl, DBG_TIME, MPI_Barrier(ctrl.gcomm));
@@ -95,7 +95,7 @@ void ParMETIS_SerialNodeND(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy, int
   IFSET(ctrl.dbglvl, DBG_TIME, PrintTimingInfo(&ctrl));
   IFSET(ctrl.dbglvl, DBG_TIME, MPI_Barrier(ctrl.gcomm));
 
-  GKfree(&agraph->xadj, &agraph->adjncy, &perm, &iperm, &sendcount, &displs, LTERM);
+  GKfree((void **)&agraph->xadj, (void **)&agraph->adjncy, (void **)&perm, (void **)&iperm, (void **)&sendcount, (void **)&displs, LTERM);
   free(agraph);
   FreeCtrl(&ctrl);
 
@@ -111,7 +111,7 @@ void ParMETIS_SerialNodeND(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy, int
 **************************************************************************/
 GraphType *AssembleEntireGraph(CtrlType *ctrl, idxtype *vtxdist, idxtype *xadj, idxtype *adjncy)
 {
-  int i, j, k, l, gnvtxs, nvtxs, gnedges, nedges;
+  int i, gnvtxs, nvtxs, gnedges, nedges;
   int npes = ctrl->npes, mype = ctrl->mype;
   idxtype *axadj, *aadjncy;
   int *recvcounts, *displs;

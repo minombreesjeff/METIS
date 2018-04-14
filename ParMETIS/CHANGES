@@ -1,4 +1,42 @@
 
+Changes in version 3.0
+
+- The names and calling sequence of all the routines have changed due to expanded
+  functionality that has been provided in this release. However, the 2.0 API calls 
+  have been mapped to the new routines. However, the expanded functionality provided 
+  with this release is only available by using the new calling sequences.
+
+- The four adaptive repartitioning routines: 
+    ParMETIS_RepartLDiffusion, 
+    ParMETIS_RepartGDiffusion,
+    ParMETIS_RepartRemap, and
+    ParMETIS_RepartMLRemap,
+  have been replaced by a single routine called ParMETIS_V3_AdpativeRepart that 
+  implements a unified repartitioning algorithm which combines the best features 
+  of the previous routines.
+
+- Multiple vertex weights/balance constraints are supported for most of the
+  routines. This allows ParMETIS to be used to partition graphs for multi-phase
+  and multi-physics simulations.
+
+- In order to optimize partitionings for specific heterogeneous computing 
+  architectures, it is now possible to specify the target sub-domain weights 
+  for each of the sub-domains and for each balance constraint. This feature, 
+  for example, allows the user to compute a partitioning in which one of the 
+  sub-domains is twice the size of all of the others.
+
+- The number of sub-domains has been de-coupled from the number of processors
+  in both the static and the adaptive partitioning schemes. Hence, it is now
+  possible to use the parallel partitioning and repartitioning algorithms
+  to compute a k-way partitioning independent of the number of processors
+  that are used. Note that Version 2.0 provided this functionality for the 
+  static partitioning schemes only.
+
+- Routines are provided for both directly partitioning a finite element mesh, 
+  and for constructing the dual graph of a mesh in parallel.
+
+
+
 Changes in version 2.0
 
 - Changed the names and calling sequences of all the routines to make it 

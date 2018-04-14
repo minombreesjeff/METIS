@@ -21,52 +21,57 @@
 * It computes a partition from scratch, it then moves the graph and changes some
 * of the vertex weights and then call the adaptive code.
 ************************************************************************************/
-void TestParMetis(char *filename, MPI_Comm comm)
+void TestParMetis_V3(char *filename, MPI_Comm comm)
 {
-  int i, j, k, l, nparts, npes, mype, realcut;
-  int opt1, opt2;
+  int ncon, nparts, npes, mype, opt2, realcut;
   GraphType graph, mgraph;
-  idxtype *part, *mpart, *order, *sizes;
-  int numflag=0, wgtflag=0, options[5], edgecut, ndims;
-  float *xyz;
-
+  idxtype *part, *mpart, *savepart, *order, *sizes;
+  int numflag=0, wgtflag=0, options[10], edgecut, ndims;
+  float ipc2redist, *xyz, *tpwgts = NULL, ubvec[MAXNCON];
 
   MPI_Comm_size(comm, &npes);
   MPI_Comm_rank(comm, &mype);
 
   ndims = 2;
 
-  ReadTestGraph(&graph, filename, comm);
+  ParallelReadGraph(&graph, filename, comm);
   xyz = ReadTestCoordinates(&graph, filename, 2, comm);
+  MPI_Barrier(comm);
 
-  part = idxmalloc(graph.nvtxs, "TestParMetis: part");
-
+  part = idxmalloc(graph.nvtxs, "TestParMetis_V3: part");
+  tpwgts = fmalloc(MAXNCON*npes*2, "TestParMetis_V3: tpwgts");
+  sset(MAXNCON, 1.05, ubvec);
+  graph.vwgt = idxsmalloc(graph.nvtxs*5, 1, "TestParMetis_V3: vwgt");
 
   /*======================================================================
-  / ParMETIS_PartKway
+  / ParMETIS_V3_PartKway
   /=======================================================================*/
   options[0] = 1;
-  options[3] = 3;
-  wgtflag = 0;
+  options[1] = 3;
+  options[2] = 1;
+  wgtflag = 2;
   numflag = 0;
-  for (nparts=2*npes; nparts>=npes/2; nparts = nparts/2) {
-    for (opt1=1; opt1<=2; opt1++) {
-      for (opt2=0; opt2<=300; opt2+=100) {
-        options[1] = opt1;
+  edgecut = 0;
+  for (nparts=2*npes; nparts>=npes/2 && nparts > 0; nparts = nparts/2) {
+    for (ncon=1; ncon<=5; ncon+=2) {
+
+      if (ncon > 1 && nparts > 1)
+        Mc_AdaptGraph(&graph, part, ncon, nparts, comm);
+      else
+        idxset(graph.nvtxs, 1, graph.vwgt);
+
+      for (opt2=1; opt2<=2; opt2++) {
         options[2] = opt2;
 
+        sset(nparts*ncon, 1.0/(float)nparts, tpwgts);
         if (mype == 0)
-          printf("\nTesting ParMETIS_PartKway with options[1-3] = {%2d %2d %2d}, Nparts: %d\n", options[1], options[2], options[3], nparts);
+          printf("\nTesting ParMETIS_V3_PartKway with options[1-2] = {%d %d}, Ncon: %d, Nparts: %d\n", options[1], options[2], ncon, nparts);
 
-        ParMETIS_PartKway(graph.vtxdist, graph.xadj, graph.adjncy, NULL, NULL, &wgtflag,
-                 &numflag, &nparts, options, &edgecut, part, &comm);
+        ParMETIS_V3_PartKway(graph.vtxdist, graph.xadj, graph.adjncy, graph.vwgt, NULL, &wgtflag,
+        &numflag, &ncon, &nparts, tpwgts, ubvec, options, &edgecut, part, &comm);
 
-        realcut = ComputeRealCut(graph.vtxdist, part, filename, comm);
         if (mype == 0) {
-          if (realcut == edgecut)
-            printf("ParMETIS_PartKway reported a cut of %d which is correct!\n", edgecut);
-          else
-            printf("ParMETIS_PartKway reported a cut of %d which is incorrect (realcut = %d)!\n", edgecut, realcut);
+          printf("ParMETIS_V3_PartKway reported a cut of %d\n", edgecut);
         }
       }
     }
@@ -74,30 +79,32 @@ void TestParMetis(char *filename, MPI_Comm comm)
 
 
   /*======================================================================
-  / ParMETIS_PartGeomKway 
+  / ParMETIS_V3_PartGeomKway 
   /=======================================================================*/
   options[0] = 1;
-  options[3] = 3;
-  wgtflag = 0;
+  options[1] = 3;
+  wgtflag = 2;
   numflag = 0;
-  for (nparts=2*npes; nparts>=npes/2; nparts = nparts/2) {
-    for (opt1=1; opt1<=2; opt1++) {
-      for (opt2=0; opt2<=300; opt2+=100) {
-        options[1] = opt1;
+  for (nparts=2*npes; nparts>=npes/2 && nparts > 0; nparts = nparts/2) {
+    for (ncon=1; ncon<=5; ncon+=2) {
+
+      if (ncon > 1)
+        Mc_AdaptGraph(&graph, part, ncon, nparts, comm);
+      else
+        idxset(graph.nvtxs, 1, graph.vwgt);
+
+      for (opt2=1; opt2<=2; opt2++) {
         options[2] = opt2;
 
+        sset(nparts*ncon, 1.0/(float)nparts, tpwgts);
         if (mype == 0)
-          printf("\nTesting ParMETIS_PartGeomKway with options[1-3] = {%2d %2d %2d}, Nparts: %d\n", options[1], options[2], options[3], nparts);
+          printf("\nTesting ParMETIS_V3_PartGeomKway with options[1-2] = {%d %d}, Ncon: %d, Nparts: %d\n", options[1], options[2], ncon, nparts);
 
-        ParMETIS_PartGeomKway(graph.vtxdist, graph.xadj, graph.adjncy, NULL, NULL, &wgtflag,
-                 &numflag, &ndims, xyz, &nparts, options, &edgecut, part, &comm);
+        ParMETIS_V3_PartGeomKway(graph.vtxdist, graph.xadj, graph.adjncy, graph.vwgt, NULL, &wgtflag,
+          &numflag, &ndims, xyz, &ncon, &nparts, tpwgts, ubvec, options, &edgecut, part, &comm);
 
-        realcut = ComputeRealCut(graph.vtxdist, part, filename, comm);
         if (mype == 0) {
-          if (realcut == edgecut)
-            printf("ParMETIS_PartGeomKway reported a cut of %d which is correct!\n", edgecut);
-          else
-            printf("ParMETIS_PartGeomKway reported a cut of %d which is incorrect (realcut = %d)!\n", edgecut, realcut);
+          printf("ParMETIS_V3_PartGeomKway reported a cut of %d\n", edgecut);
         }
       }
     }
@@ -106,168 +113,177 @@ void TestParMetis(char *filename, MPI_Comm comm)
 
 
   /*======================================================================
-  / ParMETIS_PartGeom 
+  / ParMETIS_V3_PartGeom 
   /=======================================================================*/
   wgtflag = 0;
   numflag = 0;
   if (mype == 0)
-    printf("\nTesting ParMETIS_PartGeom\n");
+    printf("\nTesting ParMETIS_V3_PartGeom\n");
 
-  ParMETIS_PartGeom(graph.vtxdist, &ndims, xyz, part, &comm);
+/*  ParMETIS_V3_PartGeom(graph.vtxdist, &ndims, xyz, part, &comm); */
 
+  if (mype == 0) 
+    printf("ParMETIS_V3_PartGeom partition complete\n");
+/*
   realcut = ComputeRealCut(graph.vtxdist, part, filename, comm);
   if (mype == 0) 
-    printf("ParMETIS_PartGeom reported a cut of %d\n", realcut);
-
+    printf("ParMETIS_V3_PartGeom reported a cut of %d\n", realcut);
+*/
 
   /*======================================================================
-  / ParMETIS_RefineKway 
+  / ParMETIS_V3_RefineKway 
   /=======================================================================*/
   options[0] = 1;
-  options[3] = 3;
+  options[1] = 3;
+  options[2] = 1;
+  options[3] = COUPLED;
+  nparts = npes;
   wgtflag = 0;
   numflag = 0;
+  ncon = 1;
+  sset(nparts*ncon, 1.0/(float)nparts, tpwgts);
+
   if (mype == 0)
-    printf("\nTesting ParMETIS_RefineKway with default options\n");
+    printf("\nTesting ParMETIS_V3_RefineKway with default options (before move)\n");
 
-  ParMETIS_RefineKway(graph.vtxdist, graph.xadj, graph.adjncy, NULL, NULL, &wgtflag,
-           &numflag, options, &edgecut, part, &comm);
+  ParMETIS_V3_RefineKway(graph.vtxdist, graph.xadj, graph.adjncy, NULL, NULL, &wgtflag,
+    &numflag, &ncon, &nparts, tpwgts, ubvec, options, &edgecut, part, &comm);
 
-  realcut = ComputeRealCut(graph.vtxdist, part, filename, comm);
+  MALLOC_CHECK(NULL);
+
   if (mype == 0) {
-    if (realcut == edgecut)
-      printf("ParMETIS_RefineKway reported a cut of %d which is correct!\n", edgecut);
-    else
-      printf("ParMETIS_RefineKway reported a cut of %d which is incorrect (realcut = %d)!\n", edgecut, realcut);
+    printf("ParMETIS_V3_RefineKway reported a cut of %d\n", edgecut);
   }
+
 
   MALLOC_CHECK(NULL);
 
   /* Compute a good partition and move the graph. Do so quietly! */
   options[0] = 0;
-  ParMETIS_PartKway(graph.vtxdist, graph.xadj, graph.adjncy, NULL, NULL, &wgtflag,
-           &numflag, &npes, options, &edgecut, part, &comm);
+  nparts = npes;
+  wgtflag = 0;
+  numflag = 0;
+  ncon = 1;
+  sset(nparts*ncon, 1.0/(float)nparts, tpwgts);
+  ParMETIS_V3_PartKway(graph.vtxdist, graph.xadj, graph.adjncy, NULL, NULL, &wgtflag,
+    &numflag, &ncon, &npes, tpwgts, ubvec, options, &edgecut, part, &comm);
   TestMoveGraph(&graph, &mgraph, part, comm);
-  mpart = idxmalloc(mgraph.nvtxs, "TestParMetis: mpart");
+  GKfree((void *)&(graph.vwgt), LTERM);
+  mpart = idxsmalloc(mgraph.nvtxs, mype, "TestParMetis_V3: mpart");
+  savepart = idxmalloc(mgraph.nvtxs, "TestParMetis_V3: savepart");
 
   MALLOC_CHECK(NULL);
 
-  /* Test #2 */
+  /*======================================================================
+  / ParMETIS_V3_RefineKway 
+  /=======================================================================*/
   options[0] = 1;
-  options[3] = 3;
+  options[1] = 3;
+  options[3] = COUPLED;
+  nparts = npes;
+  wgtflag = 0;
+  numflag = 0;
 
-  if (mype == 0)
-    printf("\nTesting ParMETIS_RefineKway with defualt options (after move)\n");
+  for (ncon=1; ncon<=5; ncon+=2) {
+    for (opt2=1; opt2<=2; opt2++) {
+      options[2] = opt2;
 
-  ParMETIS_RefineKway(mgraph.vtxdist, mgraph.xadj, mgraph.adjncy, NULL, NULL, &wgtflag,
-           &numflag, options, &edgecut, mpart, &comm);
+      sset(nparts*ncon, 1.0/(float)nparts, tpwgts);
+      if (mype == 0)
+        printf("\nTesting ParMETIS_V3_RefineKway with options[1-3] = {%d %d %d}, Ncon: %d, Nparts: %d\n", options[1], options[2], options[3], ncon, nparts);
+      ParMETIS_V3_RefineKway(mgraph.vtxdist, mgraph.xadj, mgraph.adjncy, NULL, NULL, &wgtflag,
+        &numflag, &ncon, &nparts, tpwgts, ubvec, options, &edgecut, mpart, &comm);
 
-  MALLOC_CHECK(NULL);
-
-  realcut = ComputeRealCut2(graph.vtxdist, mgraph.vtxdist, part, mpart, filename, comm);
-  if (mype == 0) {
-    if (realcut == edgecut)
-      printf("ParMETIS_RefineKway reported a cut of %d which is correct!\n", edgecut);
-    else
-      printf("ParMETIS_RefineKway reported a cut of %d which is incorrect (realcut = %d)!\n", edgecut, realcut);
+      if (mype == 0) {
+        printf("ParMETIS_V3_RefineKway reported a cut of %d\n", edgecut);
+      }
+    }
   }
 
 
   /*======================================================================
-  / Adaptive Routines
+  / ParMETIS_V3_AdaptiveRepart
   /=======================================================================*/
-  mgraph.vwgt = idxsmalloc(mgraph.nvtxs, 1, "TestParKMetis: mgraph.vwgt");
+  mgraph.vwgt = idxsmalloc(mgraph.nvtxs*5, 1, "TestParMetis_V3: mgraph.vwgt");
+  mgraph.vsize = idxsmalloc(mgraph.nvtxs, 1, "TestParMetis_V3: mgraph.vsize");
   AdaptGraph(&mgraph, 4, comm); 
-
   options[0] = 1;
-  options[3] = 3;
+  options[1] = 7;
+  options[3] = COUPLED;
   wgtflag = 2;
   numflag = 0;
 
-  if (mype == 0)
-    printf("\nTesting ParMETIS_RepartLDiffusion with defualt options\n");
+  for (nparts=2*npes; nparts>=npes/2; nparts = nparts/2) {
 
-  ParMETIS_RepartLDiffusion(mgraph.vtxdist, mgraph.xadj, mgraph.adjncy, mgraph.vwgt, NULL, 
-           &wgtflag, &numflag, options, &edgecut, mpart, &comm);
+    ncon = 1;
+    wgtflag = 0;
+    options[0] = 0;
+    sset(nparts*ncon, 1.0/(float)nparts, tpwgts);
+    ParMETIS_V3_PartKway(mgraph.vtxdist, mgraph.xadj, mgraph.adjncy, NULL, NULL,
+    &wgtflag, &numflag, &ncon, &nparts, tpwgts, ubvec, options, &edgecut, savepart, &comm);
+    options[0] = 1;
+    wgtflag = 2;
 
-  realcut = ComputeRealCut2(graph.vtxdist, mgraph.vtxdist, part, mpart, filename, comm);
-  if (mype == 0) {
-    if (realcut == edgecut)
-      printf("ParMETIS_RepartLDiffusion reported a cut of %d which is correct!\n", edgecut);
-    else
-      printf("ParMETIS_RepartLDiffusion reported a cut of %d which is incorrect (realcut = %d)!\n", edgecut, realcut);
+    for (ncon=1; ncon<=3; ncon+=2) {
+      sset(nparts*ncon, 1.0/(float)nparts, tpwgts);
+
+      if (ncon > 1)
+        Mc_AdaptGraph(&mgraph, savepart, ncon, nparts, comm);
+      else
+        AdaptGraph(&mgraph, 4, comm); 
+/*        idxset(mgraph.nvtxs, 1, mgraph.vwgt); */
+
+      for (ipc2redist=1000.0; ipc2redist>=0.001; ipc2redist/=1000.0) {
+        for (opt2=1; opt2<=2; opt2++) {
+          idxcopy(mgraph.nvtxs, savepart, mpart);
+          options[2] = opt2;
+
+          if (mype == 0)
+            printf("\nTesting ParMETIS_V3_AdaptiveRepart with options[1-3] = {%d %d %d}, ipc2redist: %.3f, Ncon: %d, Nparts: %d\n", options[1], options[2], options[3], ipc2redist, ncon, nparts);
+
+          ParMETIS_V3_AdaptiveRepart(mgraph.vtxdist, mgraph.xadj, mgraph.adjncy, mgraph.vwgt,
+            mgraph.vsize, NULL, &wgtflag, &numflag, &ncon, &nparts, tpwgts, ubvec, &ipc2redist,
+            options, &edgecut, mpart, &comm);
+
+          if (mype == 0) {
+            printf("ParMETIS_V3_AdaptiveRepart reported a cut of %d\n", edgecut);
+          }
+        }
+      }
+    }
   }
 
-  if (mype == 0)
-    printf("\nTesting ParMETIS_RepartGDiffusion with defualt options\n");
-
-  ParMETIS_RepartGDiffusion(mgraph.vtxdist, mgraph.xadj, mgraph.adjncy, mgraph.vwgt, NULL, 
-           &wgtflag, &numflag, options, &edgecut, mpart, &comm);
-
-  realcut = ComputeRealCut2(graph.vtxdist, mgraph.vtxdist, part, mpart, filename, comm);
-  if (mype == 0) {
-    if (realcut == edgecut)
-      printf("ParMETIS_RepartGDiffusion reported a cut of %d which is correct!\n", edgecut);
-    else
-      printf("ParMETIS_RepartGDiffusion reported a cut of %d which is incorrect (realcut = %d)!\n", edgecut, realcut);
-  }
-
-  if (mype == 0)
-    printf("\nTesting ParMETIS_RepartRemap with defualt options\n");
-
-  ParMETIS_RepartRemap(mgraph.vtxdist, mgraph.xadj, mgraph.adjncy, mgraph.vwgt, NULL, 
-           &wgtflag, &numflag, options, &edgecut, mpart, &comm);
-
-  realcut = ComputeRealCut2(graph.vtxdist, mgraph.vtxdist, part, mpart, filename, comm);
-  if (mype == 0) {
-    if (realcut == edgecut)
-      printf("ParMETIS_RepartRemap reported a cut of %d which is correct!\n", edgecut);
-    else
-      printf("ParMETIS_RepartRemap reported a cut of %d which is incorrect (realcut = %d)!\n", edgecut, realcut);
-  }
-
-  if (mype == 0)
-    printf("\nTesting ParMETIS_RepartMLRemap with defualt options\n");
-
-  ParMETIS_RepartMLRemap(mgraph.vtxdist, mgraph.xadj, mgraph.adjncy, mgraph.vwgt, NULL, 
-           &wgtflag, &numflag, options, &edgecut, mpart, &comm);
-
-  realcut = ComputeRealCut2(graph.vtxdist, mgraph.vtxdist, part, mpart, filename, comm);
-  if (mype == 0) {
-    if (realcut == edgecut)
-      printf("ParMETIS_RepartMLRemap reported a cut of %d which is correct!\n", edgecut);
-    else
-      printf("ParMETIS_RepartMLRemap reported a cut of %d which is incorrect (realcut = %d)!\n", edgecut, realcut);
-  }
-
-
+  free(mgraph.vwgt);
+  free(mgraph.vsize);
 
 
 
   /*======================================================================
-  / ParMETIS_NodeND 
+  / ParMETIS_V3_NodeND 
   /=======================================================================*/
-  sizes = idxmalloc(2*npes, "TestParMetis: sizes");
-  order = idxmalloc(graph.nvtxs, "TestParMetis: sizes");
+  sizes = idxmalloc(2*npes, "TestParMetis_V3: sizes");
+  order = idxmalloc(graph.nvtxs, "TestParMetis_V3: sizes");
 
   options[0] = 1;
-  options[3] = 3;
+  options[PMV3_OPTION_DBGLVL] = 3;
+  options[PMV3_OPTION_SEED] = 1;
   numflag = 0;
 
   for (opt2=1; opt2<=2; opt2++) {
-    options[1] = opt2;
+    options[PMV3_OPTION_IPART] = opt2;
 
     if (mype == 0)
-      printf("\nTesting ParMETIS_NodeND with options[1,3] = {%d %d}\n", options[1], options[3]);
+      printf("\nTesting ParMETIS_V3_NodeND with options[1-3] = {%d %d %d}\n", options[1], options[2], options[3]);
 
-    ParMETIS_NodeND(graph.vtxdist, graph.xadj, graph.adjncy, &numflag, options,
-             order, sizes, &comm);
+    ParMETIS_V3_NodeND(graph.vtxdist, graph.xadj, graph.adjncy, &numflag, options,
+      order, sizes, &comm);
   }
 
 
-  GKfree(&part, &mpart, &order, &sizes, LTERM);
+  GKfree(&tpwgts, &part, &mpart, &savepart, &order, &sizes, LTERM);
 
 }
+
 
 
 /******************************************************************************
@@ -276,8 +292,8 @@ void TestParMetis(char *filename, MPI_Comm comm)
 *******************************************************************************/
 int ComputeRealCut(idxtype *vtxdist, idxtype *part, char *filename, MPI_Comm comm)
 {
-  int i, j, k, nvtxs, nedges, mype, npes, cut;
-  idxtype *xadj, *adjncy, *gpart, scratch;
+  int i, j, nvtxs, mype, npes, cut;
+  idxtype *xadj, *adjncy, *gpart;
   MPI_Status status;
 
   MPI_Comm_size(comm, &npes);
@@ -308,6 +324,7 @@ int ComputeRealCut(idxtype *vtxdist, idxtype *part, char *filename, MPI_Comm com
 
     return cut;
   }
+  return 0;
 }
 
 
@@ -317,8 +334,8 @@ int ComputeRealCut(idxtype *vtxdist, idxtype *part, char *filename, MPI_Comm com
 *******************************************************************************/
 int ComputeRealCut2(idxtype *vtxdist, idxtype *mvtxdist, idxtype *part, idxtype *mpart, char *filename, MPI_Comm comm)
 {
-  int i, j, k, nvtxs, nedges, mype, npes, cut;
-  idxtype *xadj, *adjncy, *gpart, *gmpart, *perm, *sizes, scratch;
+  int i, j, nvtxs, mype, npes, cut;
+  idxtype *xadj, *adjncy, *gpart, *gmpart, *perm, *sizes;
   MPI_Status status;
 
 
@@ -366,6 +383,8 @@ int ComputeRealCut2(idxtype *vtxdist, idxtype *mvtxdist, idxtype *part, idxtype 
 
     return cut;
   }
+
+  return 0;
 }
 
 
@@ -376,7 +395,6 @@ int ComputeRealCut2(idxtype *vtxdist, idxtype *mvtxdist, idxtype *part, idxtype 
 *******************************************************************************/
 void TestMoveGraph(GraphType *ograph, GraphType *omgraph, idxtype *part, MPI_Comm comm)
 {
-  int i, j, k;
   int npes, mype;
   CtrlType ctrl;
   WorkSpaceType wspace;
@@ -393,7 +411,8 @@ void TestMoveGraph(GraphType *ograph, GraphType *omgraph, idxtype *part, MPI_Com
 
   SetUp(&ctrl, graph, &wspace);
   graph->where = part;
-  mgraph = MoveGraph(&ctrl, graph, &wspace);
+  graph->ncon = 1;
+  mgraph = Moc_MoveGraph(&ctrl, graph, &wspace);
 
   omgraph->gnvtxs = mgraph->gnvtxs;
   omgraph->nvtxs = mgraph->nvtxs;
@@ -410,5 +429,17 @@ void TestMoveGraph(GraphType *ograph, GraphType *omgraph, idxtype *part, MPI_Com
   FreeInitialGraphAndRemap(graph, 0);
   FreeWSpace(&wspace);
 }  
+
+/*****************************************************************************
+*  This function sets up a graph data structure for partitioning
+*****************************************************************************/
+GraphType *SetUpGraph(CtrlType *ctrl, idxtype *vtxdist, idxtype *xadj,
+   idxtype *vwgt, idxtype *adjncy, idxtype *adjwgt, int wgtflag)
+{
+  int mywgtflag;
+
+  mywgtflag = wgtflag;
+  return Moc_SetUpGraph(ctrl, 1, vtxdist, xadj, vwgt, adjncy, adjwgt, &mywgtflag);
+}
 
 

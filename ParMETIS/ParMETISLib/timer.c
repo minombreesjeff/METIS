@@ -61,13 +61,11 @@ void PrintTimingInfo(CtrlType *ctrl)
   PrintTimer(ctrl, ctrl->MoveTmr,     "       Move");
   PrintTimer(ctrl, ctrl->RemapTmr,    "      Remap");
   PrintTimer(ctrl, ctrl->TotalTmr,    "      Total");
-/*
   PrintTimer(ctrl, ctrl->AuxTmr1,     "       Aux1");
   PrintTimer(ctrl, ctrl->AuxTmr2,     "       Aux2");
   PrintTimer(ctrl, ctrl->AuxTmr3,     "       Aux3");
   PrintTimer(ctrl, ctrl->AuxTmr4,     "       Aux4");
   PrintTimer(ctrl, ctrl->AuxTmr5,     "       Aux5");
-*/
   PrintTimer(ctrl, ctrl->AuxTmr6,     "       Aux6");
 }
 
@@ -86,7 +84,7 @@ void PrintTimer(CtrlType *ctrl, timer tmr, char *msg)
   MPI_Reduce((void *)&tsec, (void *)&max, 1, MPI_DOUBLE, MPI_MAX, 0, ctrl->comm);
 
   if (ctrl->mype == 0 && sum != 0.0)
-    printf("%s: Max: %7.3lf, Sum: %7.3lf, Balance: %7.3lf\n", 
-            msg, max, sum, max*ctrl->npes/sum);
+    printf("%s: Max: %7.3f, Sum: %7.3f, Balance: %7.3f\n", 
+            msg, (float)max, (float)sum, (float)(max*ctrl->npes/sum));
 }
 

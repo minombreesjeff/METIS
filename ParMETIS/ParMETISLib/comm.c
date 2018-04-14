@@ -18,7 +18,7 @@
 void CommInterfaceData(CtrlType *ctrl, GraphType *graph, idxtype *data, 
                        idxtype *sendvector, idxtype *recvvector)
 {
-  int i, j, k, nnbrs, firstvtx;
+  int i, k, nnbrs, firstvtx;
   idxtype *peind, *sendptr, *sendind, *recvptr, *recvind;
 
   firstvtx = graph->vtxdist[ctrl->mype];
@@ -168,6 +168,45 @@ int GlobalSESum(CtrlType *ctrl, int value)
   int sum;
 
   MPI_Allreduce((void *)&value, (void *)&sum, 1, MPI_INT, MPI_SUM, ctrl->comm);
+
+  return sum;
+}
+
+
+/*************************************************************************
+* This function computes the max of a single element
+**************************************************************************/
+float GlobalSEMaxFloat(CtrlType *ctrl, float value)
+{
+  float max;
+
+  MPI_Allreduce((void *)&value, (void *)&max, 1, MPI_FLOAT, MPI_MAX, ctrl->comm);
+
+  return max;
+}
+
+
+
+/*************************************************************************
+* This function computes the max of a single element
+**************************************************************************/
+float GlobalSEMinFloat(CtrlType *ctrl, float value)
+{
+  float min;
+
+  MPI_Allreduce((void *)&value, (void *)&min, 1, MPI_FLOAT, MPI_MIN, ctrl->comm);
+
+  return min;
+}
+
+/*************************************************************************
+* This function computes the max of a single element
+**************************************************************************/
+float GlobalSESumFloat(CtrlType *ctrl, float value)
+{
+  float sum;
+
+  MPI_Allreduce((void *)&value, (void *)&sum, 1, MPI_FLOAT, MPI_SUM, ctrl->comm);
 
   return sum;
 }

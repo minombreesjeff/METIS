@@ -1,5 +1,5 @@
 /*
- * remap.c
+ * premap.c
  *
  * This file contains code that computes the assignment of processors to
  * partition numbers so that it will minimize the redistribution cost
@@ -7,7 +7,7 @@
  * Started 4/16/98
  * George
  *
- * $Id: remap.c,v 1.4 1998/07/06 12:38:21 karypis Exp $
+ * $Id: premap.c,v 1.4 1998/07/06 12:38:21 karypis Exp $
  *
  */
 
@@ -17,34 +17,31 @@
 * This function remaps that graph so that it will minimize the 
 * redistribution cost
 **************************************************************************/
-void ReMapGraph(CtrlType *ctrl, GraphType *graph, int rtype, WorkSpaceType *wspace)
+void ParallelReMapGraph(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
 {
-  int i, j, nvtxs;
+  int i, nvtxs, nparts;
   idxtype *where, *vsize, *map, *lpwgts;
-
-  if (ctrl->npes != ctrl->nparts)
-    return;
 
   IFSET(ctrl->dbglvl, DBG_TIME, MPI_Barrier(ctrl->comm));
   IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->RemapTmr));
 
+  if (ctrl->npes != ctrl->nparts) {
+    IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->RemapTmr));
+    return;
+  }
+
   nvtxs = graph->nvtxs;
   where = graph->where;
   vsize = graph->vsize;
+  nparts = ctrl->nparts;
 
   map = wspace->pv1;
-  lpwgts = idxset(ctrl->npes, 0, wspace->pv2);
+  lpwgts = idxset(nparts, 0, wspace->pv2);
 
-  if (vsize == NULL) {
-    for (i=0; i<nvtxs; i++)
-      lpwgts[where[i]]++;
-  }
-  else {
-    for (i=0; i<nvtxs; i++)
-      lpwgts[where[i]] += vsize[i];
-  }
+  for (i=0; i<nvtxs; i++)
+    lpwgts[where[i]] += (vsize == NULL) ? 1 : vsize[i];
 
-  ComputeTotalVReMap1(ctrl, lpwgts, map, wspace);
+  ParallelTotalVReMap(ctrl, lpwgts, map, wspace, NREMAP_PASSES, graph->ncon);
 
   for (i=0; i<nvtxs; i++)
     where[i] = map[where[i]];
@@ -58,182 +55,127 @@ void ReMapGraph(CtrlType *ctrl, GraphType *graph, int rtype, WorkSpaceType *wspa
 * This function computes the assignment using the the objective the 
 * minimization of the total volume of data that needs to move
 **************************************************************************/
-void ComputeTotalVReMap(CtrlType *ctrl, idxtype *lpwgts, idxtype *map, WorkSpaceType *wspace)
+void ParallelTotalVReMap(CtrlType *ctrl, idxtype *lpwgts, idxtype *map,
+     WorkSpaceType *wspace, int npasses, int ncon)
 {
-  int i, j, k, npes, mype, nkeys, nmapped, nsaved;
-  idxtype *mvmat, *rowmap;
-  KeyValueType *order;
+  int i, ii, j, k, nparts, mype;
+  int pass, maxipwgt, nmapped, oldwgt, newwgt, done;
+  idxtype *rowmap, *mylpwgts;
+  KeyValueType *recv, send;
+  int nsaved, gnsaved;
 
   mype = ctrl->mype;
-  npes = ctrl->npes;
+  nparts = ctrl->nparts;
+  recv = (KeyValueType *)GKmalloc(sizeof(KeyValueType)*nparts, "remap: recv");
+  mylpwgts = idxmalloc(nparts, "mylpwgts");
 
-  /* Root processor allocates memory for all the lpwgts */
-  if (mype == 0)
-    mvmat = idxmalloc(npes*npes, "ComputeTotalVReMap: mvmat");
+  done = nmapped = 0;
+  idxset(nparts, -1, map);
+  rowmap = idxset(nparts, -1, wspace->pv3);
+  idxcopy(nparts, lpwgts, mylpwgts);
+  for (pass=0; pass<npasses; pass++) {
+    maxipwgt = idxamax(nparts, mylpwgts);
 
-  /* Gather the lpwgts at the root processor */
-  MPI_Gather(lpwgts, npes, IDX_DATATYPE, mvmat, npes, IDX_DATATYPE, 0, ctrl->comm);
-
-  if (mype == 0) {
-    order = (KeyValueType *)GKmalloc(sizeof(KeyValueType)*npes*npes, "ComputeTotalVReMap: order");
-
-    for (nkeys=i=0; i<npes; i++) {
-      for (j=0; j<npes; j++) {
-        if (mvmat[i*npes+j] > 0) {
-          order[nkeys].key = -mvmat[i*npes+j];  
-          order[nkeys++].val = i*npes+j;
-        }
-      }
+    if (mylpwgts[maxipwgt] > 0 && !done) {
+      send.key = -mylpwgts[maxipwgt];
+      send.val = mype*nparts+maxipwgt;
+    }
+    else {
+      send.key = 0;
+      send.val = -1;
     }
 
-    /* Sort them in decreasing order wrt to their absolute values */
-    ikeysort(nkeys, order);
+    /* each processor sends its selection */
+    MPI_Allgather((void *)&send, 2, IDX_DATATYPE, (void *)recv, 2, IDX_DATATYPE, ctrl->comm); 
 
-    rowmap = idxset(npes, -1, wspace->pv3);
-    idxset(npes, -1, map);
+    ikeysort(nparts, recv);
+    if (recv[0].key == 0)
+      break;
 
-    nsaved = 0;
-    for (nmapped=k=0; k<nkeys && nmapped<npes; k++) {
-      i = order[k].val/npes;
-      j = order[k].val%npes;
-      if (map[j] == -1 && rowmap[i] == -1) {
-        map[j] = i;
-        rowmap[i] = j;
+    /* now make as many assignments as possible */
+    for (ii=0; ii<nparts; ii++) {
+      i = recv[ii].val;
+
+      if (i == -1)
+        continue;
+
+      j = i % nparts;
+      k = i / nparts;
+      if (map[j] == -1 && rowmap[k] == -1 && SimilarTpwgts(ctrl->tpwgts, ncon, j, k)) {
+        map[j] = k;
+        rowmap[k] = j;
         nmapped++;
-        nsaved += (-order[k].key - mvmat[i*npes+i]);
+        mylpwgts[j] = 0;
+        if (mype == k)
+          done = 1;
       }
+
+      if (nmapped == nparts)
+        break;
     }
-    
-    /* Map unmapped partitions */
-    if (nmapped < npes) {
-      for (i=j=0; j<npes && nmapped<npes; j++) {
-        if (map[j] == -1) {
-          for (; i<npes; i++) {
-            if (rowmap[i] == -1) {
-              map[j] = i;
-              rowmap[i] = j;
-              nmapped++;
-              nsaved += - mvmat[i*npes+i];
-              break;
-            }
+
+    if (nmapped == nparts)
+      break;
+  }
+
+  /* Map unmapped partitions */
+  if (nmapped < nparts) {
+    for (i=j=0; j<nparts && nmapped<nparts; j++) {
+      if (map[j] == -1) {
+        for (; i<nparts; i++) {
+          if (rowmap[i] == -1 && SimilarTpwgts(ctrl->tpwgts, ncon, i, j)) {
+            map[j] = i;
+            rowmap[i] = j;
+            nmapped++;
+            break;
           }
         }
       }
     }
-
-    ASSERT(ctrl, nmapped == npes);
-
-    if (nsaved <= 0) {
-      for (i=0; i<npes; i++)
-        map[i] = i;
-    }
-
-    GKfree(&mvmat, &order, LTERM);
   }
 
-  IFSET(ctrl->dbglvl, DBG_INFO, rprintf(ctrl, "Savings from remapping: %d\n", nsaved)); 
+  /* check to see if remapping fails (due to dis-similar tpwgts) */
+  /* if remapping fails, revert to original mapping */
+  if (nmapped < nparts) {
+    for (i=0; i<nparts; i++)
+      map[i] = i; 
+    IFSET(ctrl->dbglvl, DBG_REMAP, rprintf(ctrl, "Savings from parallel remapping: %0\n")); 
+  }
+  else {
+    /* check for a savings */
+    oldwgt = lpwgts[mype];
+    newwgt = lpwgts[rowmap[mype]];
+    nsaved = newwgt - oldwgt;
+    gnsaved = GlobalSESum(ctrl, nsaved);
 
-  /* Tell everybody about the map array */
-  MPI_Bcast(map, npes, IDX_DATATYPE, 0, ctrl->comm);
- 
+    /* undo everything if we don't see a savings */
+    if (gnsaved <= 0) {
+      for (i=0; i<nparts; i++)
+        map[i] = i;
+    }
+    IFSET(ctrl->dbglvl, DBG_REMAP, rprintf(ctrl, "Savings from parallel remapping: %d\n", amax(0,gnsaved))); 
+  }
+
+  GKfree((void **)&recv, (void **)&mylpwgts, LTERM);
+
 }
-
 
 
 /*************************************************************************
-* This function computes the assignment using the the objective the 
+* This function computes the assignment using the the objective the
 * minimization of the total volume of data that needs to move
 **************************************************************************/
-void ComputeTotalVReMap1(CtrlType *ctrl, idxtype *lpwgts, idxtype *map, WorkSpaceType *wspace)
+int SimilarTpwgts(float *tpwgts, int ncon, int s1, int s2)
 {
-  int i, j, k, npes, mype, nkeys, nmapped, nsaved;
-  idxtype mywgt, *rowmap, *orgwgt;
-  KeyValueType *order;
-  MPI_Status status;
+  int i;
 
-  mype = ctrl->mype;
-  npes = ctrl->npes;
+  for (i=0; i<ncon; i++)
+    if (fabs(tpwgts[s1*ncon+i]-tpwgts[s2*ncon+i]) > SMALLFLOAT)
+      break;
 
-  /* Root processor allocates memory for all the lpwgts */
-  if (mype == 0) {
-    order = (KeyValueType *)GKmalloc(sizeof(KeyValueType)*npes*npes, "ComputeTotalVReMap: order");
-    orgwgt = idxmalloc(npes, "ComputeTotalVReMap1: orgwgt");
-  }
-  else
-    order = (KeyValueType *)GKmalloc(sizeof(KeyValueType)*npes, "ComputeTotalVReMap: order");
+  if (i == ncon)
+    return 1;
 
-  for (nkeys=0, i=0; i<npes; i++) {
-    if (lpwgts[i] > 0) {
-      order[nkeys].key = -lpwgts[i];
-      order[nkeys++].val = mype*npes+i;
-    }
-  }
-
-  /* Gather the weight of the initial assignment */
-  mywgt = lpwgts[mype];
-  MPI_Gather(&mywgt, 1, IDX_DATATYPE, orgwgt, 1, IDX_DATATYPE, 0, ctrl->comm);
-
-  /* Get into a loop receiving the items in order array */
-  if (mype != 0) {
-    MPI_Send((void *)order, 2*nkeys, IDX_DATATYPE, 0, 1, ctrl->comm);
-  }
-  else {
-    for (i=1; i<npes; i++) {
-      MPI_Recv((void *)(order+nkeys), 2*npes, IDX_DATATYPE, i, 1, ctrl->comm, &status);
-      MPI_Get_count(&status, IDX_DATATYPE, &k);
-      nkeys += k/2;
-    }
-
-    /* Sort them in decreasing order wrt to their absolute values */
-    ikeysort(nkeys, order);
-
-    rowmap = idxset(npes, -1, wspace->pv3);
-    idxset(npes, -1, map);
-
-    nsaved = 0;
-    for (nmapped=k=0; k<nkeys && nmapped<npes; k++) {
-      i = order[k].val/npes;
-      j = order[k].val%npes;
-      if (map[j] == -1 && rowmap[i] == -1) {
-        map[j] = i;
-        rowmap[i] = j;
-        nmapped++;
-        nsaved += (-order[k].key - orgwgt[i]);
-      }
-    }
-    
-    /* Map unmapped partitions */
-    if (nmapped < npes) {
-      for (i=j=0; j<npes && nmapped<npes; j++) {
-        if (map[j] == -1) {
-          for (; i<npes; i++) {
-            if (rowmap[i] == -1) {
-              map[j] = i;
-              rowmap[i] = j;
-              nmapped++;
-              nsaved += - orgwgt[i];
-              break;
-            }
-          }
-        }
-      }
-    }
-
-    ASSERT(ctrl, nmapped == npes);
-
-    if (nsaved <= 0) {
-      for (i=0; i<npes; i++)
-        map[i] = i;
-    }
-
-    free(orgwgt);
-  }
-
-  GKfree(&order, LTERM);
-
-  IFSET(ctrl->dbglvl, DBG_INFO, rprintf(ctrl, "Savings from remapping: %d\n", nsaved)); 
-
-  /* Tell everybody about the map array */
-  MPI_Bcast(map, npes, IDX_DATATYPE, 0, ctrl->comm);
- 
+  return 0;
 }
+

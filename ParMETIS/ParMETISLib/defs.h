@@ -12,6 +12,38 @@
  *
  */
 
+
+#define GLOBAL_DBGLVL			0
+#define GLOBAL_SEED			15
+
+#define MC_FLOW_BALANCE_THRESHOLD       0.2
+#define MOC_GD_GRANULARITY_FACTOR       1.0
+#define RIP_SPLIT_FACTOR                8
+#define MAX_NPARTS_MULTIPLIER		20
+
+#define STATIC_PARTITION        1
+#define ADAPTIVE_PARTITION      2
+#define REFINE_PARTITION        3
+#define MESH_PARTITION		4
+
+#define REDIST_WGT              2.0
+#define MAXNVWGT_FACTOR         2.0
+
+#define MAXNCON                 12
+#define MAXNOBJ                 12
+#define N_MOC_REDO_PASSES       10
+#define N_MOC_GR_PASSES         8
+#define NREMAP_PASSES           8
+#define N_MOC_GD_PASSES         6
+#define N_MOC_BAL_PASSES        4
+#define NMATCH_PASSES           4
+
+#define COUPLED			1
+#define DISCOUPLED		2
+
+#define MAX_NCON_FOR_DIFFUSION  2
+#define SMALLGRAPH              10000
+
 #define LTERM                   (void **) 0     /* List terminator for GKfree() */
 
 #define NGD_PASSES		20
@@ -20,12 +52,13 @@
 #define OPTION_FOLDF		2
 #define OPTION_DBGLVL		3
 
+#define PMV3_OPTION_DBGLVL	1
+#define PMV3_OPTION_SEED	2
+#define PMV3_OPTION_IPART	3
+#define PMV3_OPTION_PSR		3
+
 #define XYZ_XCOORD		1
 #define XYZ_SPFILL		2
-
-/* Type of initial partitioning algorithms */
-#define IPART_SER		1
-#define IPART_RB		2
 
 /* Type of initial vertex separator algorithms */
 #define ISEP_EDGE		1
@@ -35,8 +68,6 @@
 #define MAYBE_MATCHED		-2
 #define TOO_HEAVY		-3
 
-#define MAX_PES			8192
-#define MAX_INT			(1<<30)
 
 #define HTABLE_EMPTY    	-1
 
@@ -44,9 +75,12 @@
 #define NIPARTS			8	/* Number of random initial partitions */
 #define NLGR_PASSES		5	/* Number of GR refinement during IPartition */
 
-#define IGNORE_FRACTION		0.9	/* What fraction of vertices will not be colored */
+#define SMALLFLOAT		0.00001
+/* #define KEEP_BIT        (idxtype)536870912    */    /* 1<<29 */
+#define KEEP_BIT        ((idxtype)(1<<((sizeof(idxtype)*8)-2)))
 
-#define KEEP_BIT        (idxtype)536870912        /* 1<<29 */
+#define MAX_PES			8192
+#define MAX_NPARTS		67108864
 
 #define COARSEN_FRACTION	0.75	/* Node reduction between succesive coarsening levels */
 #define COARSEN_FRACTION2	0.55	/* Node reduction between succesive coarsening levels */
@@ -57,9 +91,6 @@
 
 #define MATCH_LOCAL		1
 #define MATCH_GLOBAL		2
-
-#define EDGE_WEIGHT		1
-#define NOEDGE_WEIGHT		2
 
 /* Debug Levels */
 #define DBG_TIME	1		/* Perform timing analysis */

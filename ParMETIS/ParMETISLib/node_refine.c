@@ -24,7 +24,7 @@
 **************************************************************************/
 void ComputeNodePartitionParams(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
 {
-  int i, j, k, l, nparts, nvtxs, nsep, firstvtx, lastvtx;
+  int i, j, nparts, nvtxs, nsep, firstvtx, lastvtx;
   idxtype *xadj, *ladjncy, *adjwgt, *vtxdist, *vwgt, *lpwgts, *gpwgts, *sepind;
   idxtype *where, *swhere, *rwhere;
   NRInfoType *rinfo, *myrinfo;
@@ -113,7 +113,7 @@ void ComputeNodePartitionParams(CtrlType *ctrl, GraphType *graph, WorkSpaceType 
 **************************************************************************/
 void KWayNodeRefine(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace, int npasses, float ubfraction)
 {
-  int i, ii, j, k, l, pass, nvtxs, firstvtx, lastvtx, otherlastvtx, c, nmoves, 
+  int i, ii, j, k, pass, nvtxs, firstvtx, lastvtx, otherlastvtx, c, nmoves, 
       nlupd, nsupd, nnbrs, nchanged, nsep;
   int npes = ctrl->npes, mype = ctrl->mype, nparts = ctrl->nparts;
   idxtype *xadj, *ladjncy, *adjwgt, *vtxdist, *vwgt;
@@ -352,7 +352,7 @@ void KWayNodeRefine(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace, int
   for (i=0; i<nvtxs+graph->nrecv; i++)
     where[i] = SelectWhere(where[i]);
 
-  GKfree(&update, &nupds_pe, &htable, &changed, LTERM);
+  GKfree((void **)&update, (void **)&nupds_pe, (void **)&htable, (void **)&changed, LTERM);
 
   IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->KWayTmr));
 }
@@ -366,7 +366,7 @@ void KWayNodeRefine(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace, int
 **************************************************************************/
 void PrintNodeBalanceInfo(CtrlType *ctrl, int nparts, idxtype *gpwgts, idxtype *badminpwgt, idxtype *badmaxpwgt, int title)
 {
-  int i, j;
+  int i;
 
   if (ctrl->mype == 0) {
     if (title)

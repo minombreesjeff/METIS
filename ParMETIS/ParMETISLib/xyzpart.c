@@ -60,7 +60,10 @@ void Coordinate_Partition(CtrlType *ctrl, GraphType *graph, int ndims, float *xy
   for (k=0; k<ndims; k++) {
     /* rprintf(ctrl, "Dim#%d: %e %e, span: %e\n", k, gmin[k], gmax[k], gmax[k]-gmin[k]); */
     shift[k] = -gmin[k];
-    scale[k] = 1.0/(gmax[k]-gmin[k]);
+    if (gmax[k] != gmin[k])
+      scale[k] = 1.0/(gmax[k]-gmin[k]);
+    else
+      scale[k] = 1.0;
   }
 
   switch (ctrl->xyztype) {
@@ -121,8 +124,10 @@ void PartSort(CtrlType *ctrl, GraphType *graph, KeyValueType *elmnts, WorkSpaceT
   ikeysort(nvtxs, elmnts);
 
   /* Select the local npes-1 equally spaced elements */
-  for (i=1; i<npes; i++) 
-    mypicks[i-1] = elmnts[i*(nvtxs/npes)];
+  for (i=1; i<npes; i++) { 
+    mypicks[i-1].key = elmnts[i*(nvtxs/npes)].key;
+    mypicks[i-1].val = elmnts[i*(nvtxs/npes)].val;
+  }
 
   /* PrintPairs(ctrl, npes-1, mypicks, "Mypicks"); */
 
@@ -132,14 +137,14 @@ void PartSort(CtrlType *ctrl, GraphType *graph, KeyValueType *elmnts, WorkSpaceT
   /* PrintPairs(ctrl, npes*(npes-1), allpicks, "Allpicks"); */
 
   /* Sort all the picks */
-  ikeysort(npes*(npes-1), allpicks);
+  ikeyvalsort(npes*(npes-1), allpicks);
 
   /* PrintPairs(ctrl, npes*(npes-1), allpicks, "Allpicks"); */
 
   /* Select the final splitters. Set the boundaries to simplify coding */
   for (i=1; i<npes; i++)
     mypicks[i] = allpicks[i*(npes-1)];
-  mypicks[0].key = -MAX_INT;
+  mypicks[0].key = MIN_INT;
   mypicks[npes].key = MAX_INT;
 
   /* PrintPairs(ctrl, npes+1, mypicks, "Mypicks"); */
@@ -154,10 +159,10 @@ void PartSort(CtrlType *ctrl, GraphType *graph, KeyValueType *elmnts, WorkSpaceT
   }
   MPI_Alltoall(scounts, 1, IDX_DATATYPE, rcounts, 1, IDX_DATATYPE, ctrl->comm);
 
-  /*
+/*
   PrintVector(ctrl, npes, 0, scounts, "Scounts");
   PrintVector(ctrl, npes, 0, rcounts, "Rcounts");
-  */
+*/
 
   /* Allocate memory for sorted elements and receive them */
   MAKECSR(i, npes, scounts);
@@ -181,7 +186,7 @@ void PartSort(CtrlType *ctrl, GraphType *graph, KeyValueType *elmnts, WorkSpaceT
 
 
   /* OK, now do the local sort of the relmnts. Use perm to keep track original order */
-  perm = wspace->indices;
+  perm = idxmalloc(nrecv, "ParSort: perm");
   for (i=0; i<nrecv; i++) {
     perm[i] = relmnts[i].val;
     relmnts[i].val = i;
@@ -220,7 +225,6 @@ void PartSort(CtrlType *ctrl, GraphType *graph, KeyValueType *elmnts, WorkSpaceT
     relmnts[i].val = perm[i];
   }
 
-
   /* OK, now sent it back */
   /* Issue the receives first */
   for (i=0; i<npes; i++) 
@@ -244,9 +248,10 @@ void PartSort(CtrlType *ctrl, GraphType *graph, KeyValueType *elmnts, WorkSpaceT
   }
 
 
-  GKfree(&mypicks, &allpicks, LTERM);
+  GKfree((void **)&mypicks, (void **)&allpicks, (void **)&perm, LTERM);
   if (wspace->nlarge >= nrecv)
     free(relmnts);
+
 
 }
 

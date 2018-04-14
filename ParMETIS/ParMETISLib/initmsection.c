@@ -25,8 +25,8 @@
 **************************************************************************/
 void InitMultisection(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
 {
-  int i, j, lpecut[2], gpecut[2], mypart, moptions[10];
-  idxtype *vtxdist, *gwhere, *part, *label;
+  int i, lpecut[2], gpecut[2], mypart, moptions[10];
+  idxtype *vtxdist, *gwhere = NULL, *part, *label;
   GraphType *agraph;
   int *sendcounts, *displs;
   MPI_Comm newcomm, labelcomm;
@@ -43,7 +43,8 @@ void InitMultisection(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
   MPI_Comm_split(ctrl->comm, mypart, 0, &newcomm);
 
   /* Each processor keeps the graphs that it only needs and bisects it */
-  KeepPart(ctrl, agraph, wspace, part, mypart);
+  agraph->ncon = 1; /* needed for Moc_KeepPart */
+  Moc_KeepPart(agraph, wspace, part, mypart);
   label = agraph->label;  /* Save this because ipart may need it */
   agraph->label = NULL;
 
@@ -59,8 +60,8 @@ void InitMultisection(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
 
       agraph->where = idxmalloc(agraph->nvtxs, "InitMultisection: agraph->where");
 
-      METIS_EdgeComputeSeparator(&agraph->nvtxs, agraph->xadj, agraph->adjncy, agraph->vwgt, 
-            agraph->adjwgt, moptions, &agraph->mincut, agraph->where);
+      METIS_EdgeComputeSeparator(&agraph->nvtxs, agraph->xadj, agraph->adjncy,
+        agraph->vwgt, agraph->adjwgt, moptions, &agraph->mincut, agraph->where);
       break;
     case ISEP_NODE:
       moptions[0] = 1;
@@ -135,7 +136,7 @@ void InitMultisection(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
   MPI_Scatterv((void *)agraph->where, sendcounts, displs, IDX_DATATYPE, 
                (void *)graph->where, graph->nvtxs, IDX_DATATYPE, 0, ctrl->comm);
 
-  GKfree(&sendcounts, &displs, &label, LTERM);
+  GKfree((void **)&sendcounts, (void **)&displs, (void **)&label, LTERM);
 
   FreeGraph(agraph);
 
@@ -154,8 +155,8 @@ void InitMultisection(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
 **************************************************************************/
 GraphType *AssembleMultisectedGraph(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
 {
-  int i, j, k, l, gnvtxs, nvtxs, gnedges, nedges, firstvtx, gsize;
-  idxtype *xadj, *vwgt, *where, *adjncy, *adjwgt, *vtxdist, *edgedist, *imap;
+  int i, j, k, l, gnvtxs, nvtxs, gnedges, nedges, gsize;
+  idxtype *xadj, *vwgt, *where, *adjncy, *adjwgt, *vtxdist, *imap;
   idxtype *axadj, *aadjncy, *aadjwgt, *avwgt, *awhere, *alabel;
   idxtype *mygraph, *ggraph;
   int *recvcounts, *displs, mysize;
@@ -200,12 +201,11 @@ GraphType *AssembleMultisectedGraph(CtrlType *ctrl, GraphType *graph, WorkSpaceT
   ggraph = (gsize <= wspace->maxcore-mysize ? wspace->core+mysize : idxmalloc(gsize, "AssembleGraph: ggraph"));
   MPI_Allgatherv((void *)mygraph, mysize, IDX_DATATYPE, (void *)ggraph, recvcounts, displs, IDX_DATATYPE, ctrl->comm);
 
-  GKfree(&recvcounts, &displs, LTERM);
+  GKfree((void **)&recvcounts, (void **)&displs, LTERM);
   if (mysize > wspace->maxcore)
     free(mygraph);
 
   agraph = CreateGraph();
-  agraph->maxvwgt = graph->maxvwgt;
   agraph->nvtxs = gnvtxs;
   agraph->nedges = gnedges = (gsize-3*gnvtxs)/2;
 

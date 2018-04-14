@@ -4,10 +4,10 @@ CC = mpicc
 
 
 # What optimization level to use
-OPTFLAGS = -O3
+OPTFLAGS = -O3 
 
 # Include directories for the compiler
-INCDIR =
+INCDIR = 
 
 # What options to be used by the compiler
 COPTIONS = 

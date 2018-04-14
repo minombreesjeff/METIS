@@ -11,17 +11,15 @@
  * $Id: parmetis.h,v 1.1 1998/05/25 17:55:05 karypis Exp $
  */
 
+#define PARMETIS_MAJOR_VERSION        3
+#define PARMETIS_MINOR_VERSION        0 
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <malloc.h>
-#include <strings.h>
-#include <string.h>
-#include <ctype.h>
-#include <math.h>
-#include <stdarg.h>
-#include <time.h>
-#include <mpi.h>
+/*
+#define DEBUG			1
+#define DMALLOC			1
+*/
+
+#include <stdheaders.h>
 
 #ifdef DMALLOC
 #include <dmalloc.h>
@@ -30,7 +28,6 @@
 #include <rename.h>
 #include <defs.h>
 #include <struct.h>
-#include <defs.h>
 #include <macros.h>
 #include <proto.h>
 

@@ -350,14 +350,14 @@ void Random_KWayVolRefineMConn(CtrlType *ctrl, GraphType *graph, int nparts, flo
             if (pmat[me*nparts+to] == 0) {
               ndoms[me]++;
               if (ndoms[me] > maxndoms) {
-                printf("You just increased the maxndoms: %d %d\n", ndoms[me], maxndoms);
+                IFSET(ctrl->dbglvl, DBG_REFINE, printf("You just increased the maxndoms: %d %d\n", ndoms[me], maxndoms));
                 maxndoms = ndoms[me];
               }
             }
             if (pmat[to*nparts+me] == 0) {
               ndoms[to]++;
               if (ndoms[to] > maxndoms) {
-                printf("You just increased the maxndoms: %d %d\n", ndoms[to], maxndoms);
+                IFSET(ctrl->dbglvl, DBG_REFINE, printf("You just increased the maxndoms: %d %d\n", ndoms[to], maxndoms));
                 maxndoms = ndoms[to];
               }
             }
@@ -750,14 +750,14 @@ void Greedy_KWayVolBalanceMConn(CtrlType *ctrl, GraphType *graph, int nparts, fl
           if (pmat[me*nparts+to] == 0) {
             ndoms[me]++;
             if (ndoms[me] > maxndoms) {
-              printf("You just increased the maxndoms: %d %d\n", ndoms[me], maxndoms);
+              IFSET(ctrl->dbglvl, DBG_REFINE, printf("You just increased the maxndoms: %d %d\n", ndoms[me], maxndoms));
               maxndoms = ndoms[me];
             }
           }
           if (pmat[to*nparts+me] == 0) {
             ndoms[to]++;
             if (ndoms[to] > maxndoms) {
-              printf("You just increased the maxndoms: %d %d\n", ndoms[to], maxndoms);
+              IFSET(ctrl->dbglvl, DBG_REFINE, printf("You just increased the maxndoms: %d %d\n", ndoms[to], maxndoms));
               maxndoms = ndoms[to];
             }
           }

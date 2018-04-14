@@ -14,102 +14,182 @@
 
 #include <parmetis.h>
 
+
 /*************************************************************************
-*  This function computes the edge-cut of a serial graph.
+*  This function computes the load for each subdomain
 **************************************************************************/
-int ComputeSerialEdgeCut(GraphType *graph)
+void SetUpConnectGraph(GraphType *graph, MatrixType *matrix, idxtype *workspace)
 {
-  int i, j;
-  int cut = 0;
+  int i, ii, j, jj, k, l;
+  int nvtxs, nrows;
+  idxtype *xadj, *adjncy, *where;
+  idxtype *rowptr, *colind;
+  idxtype *pcounts, *perm, *marker;
+  float *values;
 
-  for (i=0; i<graph->nvtxs; i++) {
-    for (j=graph->xadj[i]; j<graph->xadj[i+1]; j++)
-      if (graph->where[i] != graph->where[graph->adjncy[j]])
-        cut += graph->adjwgt[j];
+  nvtxs = graph->nvtxs;
+  xadj = graph->xadj;
+  adjncy = graph->adjncy;
+  where = graph->where;
+
+  nrows = matrix->nrows;
+  rowptr = matrix->rowptr;
+  colind = matrix->colind;
+  values = matrix->values;
+
+  perm = workspace;
+  marker = idxset(nrows, -1, workspace+nvtxs);
+  pcounts = idxset(nrows+1, 0, workspace+nvtxs+nrows);
+
+  for (i=0; i<nvtxs; i++)
+    pcounts[where[i]]++;
+  MAKECSR(i, nrows, pcounts);
+
+  for (i=0; i<nvtxs; i++)
+    perm[pcounts[where[i]]++] = i;
+
+  for (i=nrows; i>0; i--)
+    pcounts[i] = pcounts[i-1];
+  pcounts[0] = 0;
+
+  /************************/
+  /* Construct the matrix */
+  /************************/
+  rowptr[0] = k = 0;
+  for (ii=0; ii<nrows; ii++) {
+    colind[k++] = ii;
+    marker[ii] = ii;
+
+    for (jj=pcounts[ii]; jj<pcounts[ii+1]; jj++) {
+      i = perm[jj];
+      for (j=xadj[i]; j<xadj[i+1]; j++) {
+        l = where[adjncy[j]];
+        if (marker[l] != ii) {
+          colind[k] = l;
+          values[k++] = -1.0;
+          marker[l] = ii;
+        }
+      }
+    }
+    values[rowptr[ii]] = (float)(k-rowptr[ii]-1);
+    rowptr[ii+1] = k;
   }
-  graph->mincut = cut/2;
+  matrix->nnzs = rowptr[nrows];
 
-  return graph->mincut;
+  return;
+}
+
+
+/*************************************************************************
+* This function computes movement statistics for adaptive refinement
+* schemes
+**************************************************************************/
+void Mc_ComputeMoveStatistics(CtrlType *ctrl, GraphType *graph, int *nmoved, int *maxin, int *maxout)
+{
+  int i, nvtxs, nparts, myhome;
+  idxtype *vwgt, *where;
+  idxtype *lend, *gend, *lleft, *gleft, *lstart, *gstart;
+
+  nvtxs = graph->nvtxs;
+  vwgt = graph->vwgt;
+  where = graph->where;
+  nparts = ctrl->nparts;
+
+  lstart = idxsmalloc(nparts, 0, "ComputeMoveStatistics: lstart");
+  gstart = idxsmalloc(nparts, 0, "ComputeMoveStatistics: gstart");
+  lleft = idxsmalloc(nparts, 0, "ComputeMoveStatistics: lleft");
+  gleft = idxsmalloc(nparts, 0, "ComputeMoveStatistics: gleft");
+  lend = idxsmalloc(nparts, 0, "ComputeMoveStatistics: lend");
+  gend = idxsmalloc(nparts, 0, "ComputeMoveStatistics: gend");
+
+  for (i=0; i<nvtxs; i++) {
+    myhome = (ctrl->ps_relation == COUPLED) ? ctrl->mype : graph->home[i];
+    lstart[myhome] += (graph->vsize == NULL) ? 1 : graph->vsize[i];
+    lend[where[i]] += (graph->vsize == NULL) ? 1 : graph->vsize[i];
+    if (where[i] != myhome)
+      lleft[myhome] += (graph->vsize == NULL) ? 1 : graph->vsize[i];
+  }
+
+  /* PrintVector(ctrl, ctrl->npes, 0, lend, "Lend: "); */
+
+  MPI_Allreduce((void *)lstart, (void *)gstart, nparts, IDX_DATATYPE, MPI_SUM, ctrl->comm);
+  MPI_Allreduce((void *)lleft, (void *)gleft, nparts, IDX_DATATYPE, MPI_SUM, ctrl->comm);
+  MPI_Allreduce((void *)lend, (void *)gend, nparts, IDX_DATATYPE, MPI_SUM, ctrl->comm);
+
+  *nmoved = idxsum(nparts, gleft);
+  *maxout = gleft[idxamax(nparts, gleft)];
+  for (i=0; i<nparts; i++)
+    lstart[i] = gend[i]+gleft[i]-gstart[i];
+  *maxin = lstart[idxamax(nparts, lstart)];
+
+  GKfree((void **)&lstart, (void **)&gstart, (void **)&lleft, (void **)&gleft, (void **)&lend, (void **)&gend, LTERM);
 }
 
 /*************************************************************************
 *  This function computes the TotalV of a serial graph.
 **************************************************************************/
-int ComputeSerialTotalV(GraphType *graph, idxtype *home)
+int Mc_ComputeSerialTotalV(GraphType *graph, idxtype *home)
 {
   int i;
   int totalv = 0;
 
-  for (i=0; i<graph->nvtxs; i++) 
+  for (i=0; i<graph->nvtxs; i++) {
     if (graph->where[i] != home[i])
-      totalv += graph->vwgt[i];
+      totalv += (graph->vsize == NULL) ? graph->vwgt[i*graph->ncon] : graph->vsize[i];
+  }
 
   return totalv;
 }
 
+
+
 /*************************************************************************
-*  This function computes the TotalV of a distributed graph.
+*  This function computes the load for each subdomain
 **************************************************************************/
-int ComputeParallelTotalV(CtrlType *ctrl, GraphType *graph, idxtype *home)
+void ComputeLoad(GraphType *graph, int nparts, float *load, float *tpwgts, int index)
 {
   int i;
-  int totalv = 0;
+  int nvtxs, ncon;
+  idxtype *where;
+  float *nvwgt;
 
-  for (i=0; i<graph->nvtxs; i++)
-    if (graph->where[i] != home[i])
-      totalv += graph->vwgt[i];
+  nvtxs = graph->nvtxs;
+  ncon = graph->ncon;
+  where = graph->where;
+  nvwgt = graph->nvwgt;
 
-  return GlobalSESum(ctrl, totalv);
+  sset(nparts, 0.0, load);
+
+  for (i=0; i<nvtxs; i++)
+    load[where[i]] += nvwgt[i*ncon+index];
+
+  ASSERTS(fabs(ssum(nparts, load)-1.0) < 0.001);
+
+  for (i=0; i<nparts; i++) {
+    load[i] -= tpwgts[i*ncon+index];
+  }
+
+  return;
 }
-
-
-/*************************************************************************
-*  This function computes the balance of a distributed graph.
-**************************************************************************/
-float ComputeParallelBalance(CtrlType *ctrl, GraphType *graph)
-{
-  return 1.0*ctrl->nparts*graph->gpwgts[idxamax(ctrl->nparts, graph->gpwgts)]/
-	(1.0*idxsum(ctrl->nparts, graph->gpwgts));
-}
-
-
-/*************************************************************************
-*  This function compares the values of two referenced integers.
-**************************************************************************/
-int GreaterThan(const void *first, const void *second)
-{
-  if ((*(int*)(first)) > (*(int*)(second)))
-    return 1;
-  
-  if ((*(int*)(first)) < (*(int*)(second)))
-    return -1;
-
-  return 0;
-}
-
 
 
 /*************************************************************************
 * This function implements the CG solver used during the directed diffusion
 **************************************************************************/
-void ConjGrad(int n, idxtype *rowptr, idxtype *colind, float *values, float *b, float *x, float tol, float *workspace)
+void ConjGrad2(MatrixType *A, float *b, float *x, float tol, float *workspace)
 {
-  int i, j, k;
-  float *p, *r, *q, *z, *M; 
-  float alpha, beta, rho, rho_1, error, bnrm2;
+  int i, k, n;
+  float *p, *r, *q, *z, *M;
+  float alpha, beta, rho, rho_1 = -1.0, error, bnrm2, tmp;
+  idxtype *rowptr, *colind;
+  float *values;
 
-/*
-  printf("%d %d %d %d %d | %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d\n", rowptr[0], rowptr[1],
-     rowptr[2], rowptr[3], rowptr[4], colind[0], colind[1], colind[2], colind[3],
-     colind[4], colind[5], colind[6], colind[7], colind[8], colind[9], colind[10],
-     colind[11], colind[12], colind[13], colind[14], colind[15]);
-  printf("%2.1f %2.1f %2.1f %2.1f %2.1f %2.1f %2.1f %2.1f %2.1f %2.1f %2.1f %2.1f %2.1f %2.1f %2.1f %2.1f\n", 
-     values[0], values[1], values[2], values[3], values[4], values[5], values[6], 
-     values[7], values[8], values[9], values[10], values[11], values[12], values[13], 
-     values[14], values[15]);
-*/
+  n = A->nrows;
+  rowptr = A->rowptr;
+  colind = A->colind;
+  values = A->values;
 
-  /* Initial Setup */   
+  /* Initial Setup */
   p = workspace;
   r = workspace + n;
   q = workspace + 2*n;
@@ -125,7 +205,7 @@ void ConjGrad(int n, idxtype *rowptr, idxtype *colind, float *values, float *b, 
   }
 
   /* r = b - Ax */
-  mvMult(n, rowptr, colind, values, x, r);
+  mvMult2(A, x, r);
   for (i=0; i<n; i++)
     r[i] = b[i]-r[i];
 
@@ -133,7 +213,7 @@ void ConjGrad(int n, idxtype *rowptr, idxtype *colind, float *values, float *b, 
   if (bnrm2 > 0.0) {
     error = snorm2(n, r) / bnrm2;
 
-    if (error > tol) { 
+    if (error > tol) {
       /* Begin Iterations */
       for (k=0; k<n; k++) {
         for (i=0; i<n; i++)
@@ -144,14 +224,21 @@ void ConjGrad(int n, idxtype *rowptr, idxtype *colind, float *values, float *b, 
         if (k == 0)
           scopy(n, z, p);
         else {
-          beta = rho/rho_1;
+          if (rho_1 != 0.0)
+            beta = rho/rho_1;
+          else
+            beta = 0.0;
           for (i=0; i<n; i++)
-            p[i] = z[i] + beta*p[i]; 
+            p[i] = z[i] + beta*p[i];
         }
 
-        mvMult(n, rowptr, colind, values, p, q); /* q = A*p */
+        mvMult2(A, p, q); /* q = A*p */
 
-        alpha = rho/sdot(n, p, q);
+        tmp = sdot(n, p, q);
+        if (tmp != 0.0)
+          alpha = rho/tmp;
+        else
+          alpha = 0.0;
         saxpy(n, alpha, p, x);    /* x = x + alpha*p */
         saxpy(n, -alpha, q, r);   /* r = r - alpha*q */
         error = snorm2(n, r) / bnrm2;
@@ -162,23 +249,50 @@ void ConjGrad(int n, idxtype *rowptr, idxtype *colind, float *values, float *b, 
       }
     }
   }
-
-  /*
-  printf("%f %f %f %f => %f %f %f %f\n", b[0], b[1], b[2], b[3], x[0], x[1], x[2], x[3]);
-  */
 }
 
 
 /*************************************************************************
-* This function implements a sparse matrix-vector multiplication
+* This function performs Matrix-Vector multiplication
 **************************************************************************/
-void mvMult(int nvtxs, idxtype *rowptr, idxtype *colind, float *values, float *x, float *y)
+void mvMult2(MatrixType *A, float *v, float *w)
 {
   int i, j;
 
-  for (i=0; i<nvtxs; i++) {
-    y[i] = 0.0;
-    for (j=rowptr[i]; j<rowptr[i+1]; j++) 
-      y[i] += values[j]*x[colind[j]];
+  for (i = 0; i < A->nrows; i++)
+    w[i] = 0.0;
+
+  for (i = 0; i < A->nrows; i++)
+    for (j = A->rowptr[i]; j < A->rowptr[i+1]; j++)
+      w[i] += A->values[j] * v[A->colind[j]];
+
+  return;
+  }
+
+
+/*************************************************************************
+* This function sets up the transfer vectors
+**************************************************************************/
+void ComputeTransferVector(int ncon, MatrixType *matrix, float *solution,
+  float *transfer, int index)
+{
+  int j, k;
+  int nrows;
+  idxtype *rowptr, *colind;
+
+  nrows = matrix->nrows;
+  rowptr = matrix->rowptr;
+  colind = matrix->colind;
+
+  for (j=0; j<nrows; j++) {
+    for (k=rowptr[j]+1; k<rowptr[j+1]; k++) {
+      if (solution[j] > solution[colind[k]]) {
+        transfer[k*ncon+index] = solution[j] - solution[colind[k]];
+      }
+      else {
+        transfer[k*ncon+index] = 0.0;
+      }
+    }
   }
 }
+

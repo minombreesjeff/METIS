@@ -18,9 +18,13 @@
 #ifdef IDXTYPE_INT
 typedef int idxtype;
 #define IDX_DATATYPE	MPI_INT
+#define MAX_INT		INT_MAX
+#define MIN_INT		INT_MIN
 #else
 typedef short idxtype;
 #define IDX_DATATYPE	MPI_SHORT
+#define MAX_INT		SHRT_MAX
+#define MIN_INT		SHRT_MIN
 #endif
 
 
@@ -34,6 +38,36 @@ struct KeyValueType {
 
 typedef struct KeyValueType KeyValueType;
 
+/*************************************************************************
+* The following data structure stores key-value pair
+**************************************************************************/
+struct KVType {
+  int key;
+  float val;
+};
+
+typedef struct KVType KVType;
+
+
+/*************************************************************************
+* The following data structure stores key-value pair
+**************************************************************************/
+struct FKeyValueType {
+  float key;
+  idxtype val;
+};
+
+typedef struct FKeyValueType FKeyValueType;
+
+/*************************************************************************
+* The following data structure stores key-key-value triplets
+**************************************************************************/
+struct KeyKeyValueType {
+  idxtype key1, key2;
+  idxtype val;
+};
+
+typedef struct KeyKeyValueType KeyKeyValueType;
 
 /*************************************************************************
 * The following data structure is used to store the buckets for the 
@@ -49,6 +83,22 @@ struct PQueueType {
 
 typedef struct PQueueType PQueueType;
 
+
+/*************************************************************************
+* The following data structure is used to store the buckets for the
+* refinment algorithms
+**************************************************************************/
+struct FPQueueType {
+  int type;                     /* The type of the representation used */
+  int nnodes;
+  int maxnodes;
+
+  /* Heap version of the data structure */
+  FKeyValueType *heap;
+  idxtype *locator;
+};
+
+typedef struct FPQueueType FPQueueType;
 
 /*************************************************************************
 * The following data structure stores an edge
@@ -107,12 +157,28 @@ typedef struct nrinfodef NRInfoType;
 
 
 /*************************************************************************
+* The following data structure stores a sparse matrix in CSR format
+* The diagonal entry is in the first position of each row.
+**************************************************************************/
+struct matrixdef {
+  int nrows, nnzs;		/* Number of rows and nonzeros in the matrix */
+  idxtype *rowptr;
+  idxtype *colind;
+  float *values;
+  float *transfer;
+};
+
+typedef struct matrixdef MatrixType;
+
+
+/*************************************************************************
 * This data structure holds the input graph
 **************************************************************************/
 struct graphdef {
-  int gnvtxs, nvtxs, nedges, maxvwgt;
+  int gnvtxs, nvtxs, nedges, ncon, nobj;
   idxtype *xadj;		/* Pointers to the locally stored vertices */
   idxtype *vwgt;		/* Vertex weights */
+  float *nvwgt;		/* Vertex weights */
   idxtype *vsize;		/* Vertex size */
   idxtype *adjncy;		/* Array that stores the adjacency lists of nvtxs */
   idxtype *adjwgt;		/* Array that stores the weights of the adjacency lists */
@@ -143,8 +209,9 @@ struct graphdef {
 
 
   /* Partition parameters */
-  idxtype *where;
+  idxtype *where, *home;
   idxtype *lpwgts, *gpwgts;
+  float *lnpwgts, *gnpwgts;
   RInfoType *rinfo;
 
   /* Node refinement information */
@@ -181,6 +248,17 @@ struct controldef {
   int foldf;			/* What is the folding factor */
   int ipart;			/* The type of initial partitioning */
   int xyztype;			/* The type of coordinate indexing */
+  int seed;			/* Random number seed */
+  int sync;			/* Random number seed */
+  float *tpwgts;		/* Target subdomain weights */
+  int tvwgts[MAXNCON];
+  float ubvec[MAXNCON];
+  int partType;
+  int ps_relation;
+
+  float redist_factor, redist_base, ipc_factor;
+  float edge_size_ratio;
+  MatrixType *matrix;
 
   MPI_Comm gcomm;
   MPI_Comm comm;		/* MPI Communicator */
@@ -198,18 +276,20 @@ struct controldef {
 typedef struct controldef CtrlType;
 
 
+
 /*************************************************************************
-* The following data structure stores a sparse matrix in CSR format
-* The diagonal entry is in the first position of each row.
+* The following data structure stores a mesh.
 **************************************************************************/
-struct matrixdef {
-  int nrows;		/* Number of rows in the matrix */
-  idxtype *rowptr;
-  idxtype *colind;
-  float *values;
-  idxtype *transfer;
+struct meshdef {
+  int etype;
+  int gnelms, gnns;
+  int nelms, nns;
+  int ncon;
+  int esize, gminnode;
+  idxtype *elmdist;
+  idxtype *elements;
+  idxtype *elmwgt;
 };
 
-typedef struct matrixdef MatrixType;
-
+typedef struct meshdef MeshType;
 

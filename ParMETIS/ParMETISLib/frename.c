@@ -51,21 +51,21 @@ void parmetis_refinekway__(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy, idx
 }
 
 
-void PARMETIS_PARTGEOMKWAY(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy, idxtype *vwgt, idxtype *adjwgt, int *wgtflag, int *numflag, int *ndims, float *xyz, int *options, int *edgecut, idxtype *part, MPI_Comm *comm)
+void PARMETIS_PARTGEOMKWAY(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy, idxtype *vwgt, idxtype *adjwgt, int *wgtflag, int *numflag, int *ndims, float *xyz, int *nparts, int *options, int *edgecut, idxtype *part, MPI_Comm *comm)
 {
-  ParMETIS_PartGeomKway(vtxdist, xadj, adjncy, vwgt, adjwgt, wgtflag, numflag, ndims, xyz, options, edgecut, part, comm);
+  ParMETIS_PartGeomKway(vtxdist, xadj, adjncy, vwgt, adjwgt, wgtflag, numflag, ndims, xyz, nparts, options, edgecut, part, comm);
 }
-void parmetis_partgeomkway(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy, idxtype *vwgt, idxtype *adjwgt, int *wgtflag, int *numflag, int *ndims, float *xyz, int *options, int *edgecut, idxtype *part, MPI_Comm *comm)
+void parmetis_partgeomkway(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy, idxtype *vwgt, idxtype *adjwgt, int *wgtflag, int *numflag, int *ndims, float *xyz, int *nparts, int *options, int *edgecut, idxtype *part, MPI_Comm *comm)
 {
-  ParMETIS_PartGeomKway(vtxdist, xadj, adjncy, vwgt, adjwgt, wgtflag, numflag, ndims, xyz, options, edgecut, part, comm);
+  ParMETIS_PartGeomKway(vtxdist, xadj, adjncy, vwgt, adjwgt, wgtflag, numflag, ndims, xyz, nparts, options, edgecut, part, comm);
 }
-void parmetis_partgeomkway_(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy, idxtype *vwgt, idxtype *adjwgt, int *wgtflag, int *numflag, int *ndims, float *xyz, int *options, int *edgecut, idxtype *part, MPI_Comm *comm)
+void parmetis_partgeomkway_(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy, idxtype *vwgt, idxtype *adjwgt, int *wgtflag, int *numflag, int *ndims, float *xyz, int *nparts, int *options, int *edgecut, idxtype *part, MPI_Comm *comm)
 {
-  ParMETIS_PartGeomKway(vtxdist, xadj, adjncy, vwgt, adjwgt, wgtflag, numflag, ndims, xyz, options, edgecut, part, comm);
+  ParMETIS_PartGeomKway(vtxdist, xadj, adjncy, vwgt, adjwgt, wgtflag, numflag, ndims, xyz, nparts, options, edgecut, part, comm);
 }
-void parmetis_partgeomkway__(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy, idxtype *vwgt, idxtype *adjwgt, int *wgtflag, int *numflag, int *ndims, float *xyz, int *options, int *edgecut, idxtype *part, MPI_Comm *comm)
+void parmetis_partgeomkway__(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy, idxtype *vwgt, idxtype *adjwgt, int *wgtflag, int *numflag, int *ndims, float *xyz, int *nparts, int *options, int *edgecut, idxtype *part, MPI_Comm *comm)
 {
-  ParMETIS_PartGeomKway(vtxdist, xadj, adjncy, vwgt, adjwgt, wgtflag, numflag, ndims, xyz, options, edgecut, part, comm);
+  ParMETIS_PartGeomKway(vtxdist, xadj, adjncy, vwgt, adjwgt, wgtflag, numflag, ndims, xyz, nparts, options, edgecut, part, comm);
 }
 
 
@@ -87,21 +87,21 @@ void parmetis_partgeomrefine__(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy,
 }
 
 
-void PARMETIS_PARTGEOM(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy, int *numflag, int *ndims, float *xyz, int *options, int *edgecut, idxtype *part, MPI_Comm *comm)
+void PARMETIS_PARTGEOM(idxtype *vtxdist, int *ndims, float *xyz, idxtype *part, MPI_Comm *comm)
 {
-  ParMETIS_PartGeom(vtxdist, xadj, adjncy, numflag, ndims, xyz, options, edgecut, part, comm);
+  ParMETIS_PartGeom(vtxdist, ndims, xyz, part, comm);
 }
-void parmetis_partgeom(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy, int *numflag, int *ndims, float *xyz, int *options, int *edgecut, idxtype *part, MPI_Comm *comm)
+void parmetis_partgeom(idxtype *vtxdist, int *ndims, float *xyz, idxtype *part, MPI_Comm *comm)
 {
-  ParMETIS_PartGeom(vtxdist, xadj, adjncy, numflag, ndims, xyz, options, edgecut, part, comm);
+  ParMETIS_PartGeom(vtxdist, ndims, xyz, part, comm);
 }
-void parmetis_partgeom_(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy, int *numflag, int *ndims, float *xyz, int *options, int *edgecut, idxtype *part, MPI_Comm *comm)
+void parmetis_partgeom_(idxtype *vtxdist, int *ndims, float *xyz, idxtype *part, MPI_Comm *comm)
 {
-  ParMETIS_PartGeom(vtxdist, xadj, adjncy, numflag, ndims, xyz, options, edgecut, part, comm);
+  ParMETIS_PartGeom(vtxdist, ndims, xyz, part, comm);
 }
-void parmetis_partgeom__(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy, int *numflag, int *ndims, float *xyz, int *options, int *edgecut, idxtype *part, MPI_Comm *comm)
+void parmetis_partgeom__(idxtype *vtxdist, int *ndims, float *xyz, idxtype *part, MPI_Comm *comm)
 {
-  ParMETIS_PartGeom(vtxdist, xadj, adjncy, numflag, ndims, xyz, options, edgecut, part, comm);
+  ParMETIS_PartGeom(vtxdist, ndims, xyz, part, comm);
 }
 
 

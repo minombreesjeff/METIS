@@ -8,7 +8,7 @@
  * Started 7/24/97
  * George
  *
- * $Id: mrefine.c,v 1.4 1998/09/17 14:29:57 karypis Exp $
+ * $Id: mrefine.c,v 1.2 1998/11/27 18:25:09 karypis Exp $
  */
 
 #include <metis.h>
@@ -74,13 +74,14 @@ void MocAllocate2WayPartitionMemory(CtrlType *ctrl, GraphType *graph)
   nvtxs = graph->nvtxs;
   ncon = graph->ncon;
 
-  graph->rdata = idxmalloc(5*nvtxs+2*ncon, "Allocate2WayPartitionMemory: rdata");
+  graph->rdata = idxmalloc(5*nvtxs, "Allocate2WayPartitionMemory: rdata");
   graph->where		= graph->rdata;
   graph->id		= graph->rdata + nvtxs;
   graph->ed		= graph->rdata + 2*nvtxs;
   graph->bndptr		= graph->rdata + 3*nvtxs;
   graph->bndind		= graph->rdata + 4*nvtxs;
-  graph->npwgts 	= (float *)(graph->rdata + 5*nvtxs);
+
+  graph->npwgts 	= fmalloc(2*ncon, "npwgts");
 }
 
 

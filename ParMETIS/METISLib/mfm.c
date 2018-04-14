@@ -60,7 +60,6 @@ void MocFM_2WayEdgeRefine(CtrlType *ctrl, GraphType *graph, float *tpwgts, int n
   rtpwgts[0] = origbal*tpwgts[0];
   rtpwgts[1] = origbal*tpwgts[1];
 
-
   if (ctrl->dbglvl&DBG_REFINE) {
     printf("Parts: [");
     for (l=0; l<ncon; l++)
@@ -256,7 +255,7 @@ void SelectQueue(int ncon, float *npwgts, float *tpwgts, int *from, int *cnum, P
 
   /* printf("Selected %d(%d) -> %d\n", *from, *cnum, PQueueGetSize(&queues[*cnum][*from])); */
 
-  if (PQueueGetSize(&queues[*cnum][*from]) == 0) {
+  if (*from != -1 && PQueueGetSize(&queues[*cnum][*from]) == 0) {
     /* The desired queue is empty, select a node from that side anyway */
     for (i=0; i<ncon; i++) {
       if (PQueueGetSize(&queues[i][*from]) > 0) {
@@ -275,7 +274,7 @@ void SelectQueue(int ncon, float *npwgts, float *tpwgts, int *from, int *cnum, P
   }
 
   /* Check to see if you can focus on the cut */
-  if (maxdiff <= 0.0) {
+  if (maxdiff <= 0.0 || *from == -1) {
     maxgain = -100000;
 
     for (part=0; part<2; part++) {

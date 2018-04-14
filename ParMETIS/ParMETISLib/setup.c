@@ -24,7 +24,7 @@
 **************************************************************************/
 void SetUp(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
 {
-  int i, j, k, l, islocal, penum, gnvtxs, nvtxs, nlocal, firstvtx, lastvtx, nsend, nrecv, nnbrs, nadj;
+  int i, j, k, islocal, penum, gnvtxs, nvtxs, nlocal, firstvtx, lastvtx, nsend, nrecv, nnbrs, nadj;
   int npes=ctrl->npes, mype=ctrl->mype;
   idxtype *vtxdist, *xadj, *adjncy;
   idxtype *peind, *recvptr, *recvind, *sendptr, *sendind;

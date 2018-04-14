@@ -11,19 +11,12 @@
  * $Id: metis.h,v 1.1 1998/09/16 14:30:43 karypis Exp $
  */
 
+/*
+#define	DEBUG		1
+#define	DMALLOC		1
+*/
 
-#include <stdio.h>
-#ifdef __STDC__
-#include <stdlib.h>
-#else
-#include <malloc.h>
-#endif
-#include <strings.h>
-#include <string.h>
-#include <ctype.h>
-#include <math.h>
-#include <stdarg.h>
-#include <time.h>
+#include <stdheaders.h>
 
 #ifdef DMALLOC
 #include <dmalloc.h>
@@ -33,5 +26,7 @@
 #include <struct.h>
 #include <macros.h>
 #include <rename.h>
+#include <NEW_rename.h>
 #include <proto.h>
+#include <NEW_proto.h>
 

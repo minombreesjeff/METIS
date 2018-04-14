@@ -73,12 +73,15 @@
 #endif
 
 #ifdef DMALLOC
+#   define MALLOC_CHECK(ptr);
+/*
 #   define MALLOC_CHECK(ptr)                                          \
     if (malloc_verify((ptr)) == DMALLOC_VERIFY_ERROR) {  \
         printf("***MALLOC_CHECK failed on line %d of file %s: " #ptr "\n", \
               __LINE__, __FILE__);                               \
         abort();                                                \
     }
+*/
 #else
 #   define MALLOC_CHECK(ptr) ;
 #endif 
