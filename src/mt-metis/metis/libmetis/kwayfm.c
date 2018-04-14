@@ -5,7 +5,7 @@
 \date Started 7/28/97
 \author George
 \author Copyright 1997-2009, Regents of the University of Minnesota 
-\version $Id: kwayfm.c 12542 2012-08-23 04:49:01Z dominique $
+\version $Id: kwayfm.c 17622 2014-09-09 03:27:49Z dominique $
 */
 
 #include "metislib.h"
@@ -61,14 +61,15 @@ void Greedy_KWayCutOptimize(ctrl_t *ctrl, graph_t *graph, idx_t niter,
          real_t ffactor, idx_t omode)
 {
   /* Common variables to all types of kway-refinement/balancing routines */
-  idx_t i, ii, iii, j, k, l, pass, nvtxs, nparts, gain; 
+  idx_t i, ii, iii, j, k, pass, nvtxs, nparts; 
   idx_t from, me, to, oldcut, vwgt;
   idx_t *xadj, *adjncy, *adjwgt;
-  idx_t *where, *pwgts, *perm, *bndptr, *bndind, *minwgt, *maxwgt, *itpwgts;
+  idx_t *where, *pwgts, *perm, *bndptr, *bndind, *minpwgts, *maxpwgts;
   idx_t nmoved, nupd, *vstatus, *updptr, *updind;
-  idx_t maxndoms, *safetos=NULL, *nads=NULL, *doms=NULL, **adids=NULL, **adwgts=NULL;
+  idx_t maxndoms, *safetos=NULL, *nads=NULL, *doms=NULL, **adids=NULL;
   idx_t *bfslvl=NULL, *bfsind=NULL, *bfsmrk=NULL;
   idx_t bndtype = (omode == OMODE_REFINE ? BNDTYPE_REFINE : BNDTYPE_BALANCE);
+  real_t *tpwgts, ubfactor;
 
   /* Edgecut-specific/different variables */
   idx_t nbnd, oldnnbrs;
@@ -92,17 +93,23 @@ void Greedy_KWayCutOptimize(ctrl_t *ctrl, graph_t *graph, idx_t niter,
   pwgts = graph->pwgts;
   
   nparts = ctrl->nparts;
+  tpwgts = ctrl->tpwgts;
 
   /* Setup the weight intervals of the various subdomains */
-  minwgt  = iwspacemalloc(ctrl, nparts);
-  maxwgt  = iwspacemalloc(ctrl, nparts);
-  itpwgts = iwspacemalloc(ctrl, nparts);
+  minpwgts = iwspacemalloc(ctrl, nparts+2);
+  maxpwgts = iwspacemalloc(ctrl, nparts+2);
+
+  if (omode == OMODE_BALANCE)
+    ubfactor = ctrl->ubfactors[0];
+  else
+    ubfactor = gk_max(ctrl->ubfactors[0], ComputeLoadImbalance(graph, nparts, ctrl->pijbm));
 
   for (i=0; i<nparts; i++) {
-    itpwgts[i] = ctrl->tpwgts[i]*graph->tvwgt[0];
-    maxwgt[i]  = ctrl->tpwgts[i]*graph->tvwgt[0]*ctrl->ubfactors[0];
-    minwgt[i]  = ctrl->tpwgts[i]*graph->tvwgt[0]*(1.0/ctrl->ubfactors[0]);
+    maxpwgts[i] = tpwgts[i]*graph->tvwgt[0]*ubfactor;
+    minpwgts[i] = tpwgts[i]*graph->tvwgt[0]*(1.0/ubfactor);
   }
+  maxpwgts[nparts] = maxpwgts[nparts+1] = 0;
+  minpwgts[nparts] = minpwgts[nparts+1] = 0;
 
   perm = iwspacemalloc(ctrl, nvtxs);
 
@@ -111,14 +118,14 @@ void Greedy_KWayCutOptimize(ctrl_t *ctrl, graph_t *graph, idx_t niter,
      control the subdomains to which moves are allowed to be made. 
      When ctrl->minconn is false, the default values of 2 allow all moves to
      go through and it does not interfere with the zero-gain move selection. */
-  safetos = iset(nparts, 2, iwspacemalloc(ctrl, nparts));
+  safetos = iset(nparts+2, 2, iwspacemalloc(ctrl, nparts+2));
+  safetos[nparts] = safetos[nparts+1] = 0;
 
   if (ctrl->minconn) {
     ComputeSubDomainGraph(ctrl, graph);
 
     nads    = ctrl->nads;
     adids   = ctrl->adids;
-    adwgts  = ctrl->adwgts;
     doms    = iset(nparts, 0, ctrl->pvec1);
   }
 
@@ -140,11 +147,11 @@ void Greedy_KWayCutOptimize(ctrl_t *ctrl, graph_t *graph, idx_t niter,
      printf("%s: [%6"PRIDX" %6"PRIDX"]-[%6"PRIDX" %6"PRIDX"], Bal: %5.3"PRREAL"," 
             " Nv-Nb[%6"PRIDX" %6"PRIDX"], Cut: %6"PRIDX,
             (omode == OMODE_REFINE ? "GRC" : "GBC"),
-            pwgts[iargmin(nparts, pwgts)], imax(nparts, pwgts), minwgt[0], maxwgt[0], 
+            pwgts[iargmin(nparts, pwgts,1)], imax(nparts, pwgts,1), minpwgts[0], maxpwgts[0], 
             ComputeLoadImbalance(graph, nparts, ctrl->pijbm), 
             graph->nvtxs, graph->nbnd, graph->mincut);
      if (ctrl->minconn) 
-       printf(", Doms: [%3"PRIDX" %4"PRIDX"]", imax(nparts, nads), isum(nparts, nads,1));
+       printf(", Doms: [%3"PRIDX" %4"PRIDX"]", imax(nparts, nads,1), isum(nparts, nads,1));
      printf("\n");
   }
 
@@ -158,11 +165,11 @@ void Greedy_KWayCutOptimize(ctrl_t *ctrl, graph_t *graph, idx_t niter,
 
     if (omode == OMODE_BALANCE) {
       /* Check to see if things are out of balance, given the tolerance */
-      for (i=0; i<nparts; i++) {
-        if (pwgts[i] > maxwgt[i])
+      for (i=0; i<nparts+2; i++) {
+        if (pwgts[i] > maxpwgts[i] || pwgts[i] < minpwgts[i])
           break;
       }
-      if (i == nparts) /* Things are balanced. Return right away */
+      if (i == nparts+2) /* Things are balanced. Return right away */
         break;
     }
 
@@ -171,10 +178,10 @@ void Greedy_KWayCutOptimize(ctrl_t *ctrl, graph_t *graph, idx_t niter,
     nupd   = 0;
 
     if (ctrl->minconn)
-      maxndoms = imax(nparts, nads);
+      maxndoms = imax(nparts, nads,1);
 
     /* Insert the boundary vertices in the priority queue */
-    my_irandArrayPermute_r(nbnd, perm, nbnd/4, 1, &ctrl->curseed);
+    irandArrayPermute(nbnd, perm, nbnd/4, 1);
     for (ii=0; ii<nbnd; ii++) {
       i = bndind[perm[ii]];
       rgain = (graph->ckrinfo[i].nnbrs > 0 ? 
@@ -197,15 +204,17 @@ void Greedy_KWayCutOptimize(ctrl_t *ctrl, graph_t *graph, idx_t niter,
       from = where[i];
       vwgt = graph->vwgt[i];
 
+#ifdef XXX
       /* Prevent moves that make 'from' domain underbalanced */
       if (omode == OMODE_REFINE) {
-        if (myrinfo->id > 0 && pwgts[from]-vwgt < minwgt[from]) 
+        if (myrinfo->id > 0 && pwgts[from]-vwgt < minpwgts[from]) 
           continue;   
       }
       else { /* OMODE_BALANCE */
-        if (pwgts[from]-vwgt < minwgt[from]) 
+        if (pwgts[from]-vwgt < minpwgts[from]) 
           continue;   
       }
+#endif
 
       if (ctrl->contig && IsArticulationNode(i, xadj, adjncy, where, bfslvl, bfsind, bfsmrk))
         continue;
@@ -218,8 +227,15 @@ void Greedy_KWayCutOptimize(ctrl_t *ctrl, graph_t *graph, idx_t niter,
         for (k=myrinfo->nnbrs-1; k>=0; k--) {
           if (!safetos[to=mynbrs[k].pid])
             continue;
-          gain = mynbrs[k].ed-myrinfo->id; 
-          if (gain >= 0 && pwgts[to]+vwgt <= maxwgt[to]+ffactor*gain)  
+          if (((mynbrs[k].ed > myrinfo->id) && 
+               ((pwgts[from]-vwgt >= minpwgts[from]) ||
+                (tpwgts[from]*pwgts[to] < tpwgts[to]*(pwgts[from]-vwgt))) &&
+               ((pwgts[to]+vwgt <= maxpwgts[to]) || 
+                (tpwgts[from]*pwgts[to] < tpwgts[to]*(pwgts[from]-vwgt)))
+              ) ||
+              ((mynbrs[k].ed == myrinfo->id) && 
+               (tpwgts[from]*pwgts[to] < tpwgts[to]*(pwgts[from]-vwgt)))
+             )
             break;
         }
         if (k < 0)
@@ -228,34 +244,28 @@ void Greedy_KWayCutOptimize(ctrl_t *ctrl, graph_t *graph, idx_t niter,
         for (j=k-1; j>=0; j--) {
           if (!safetos[to=mynbrs[j].pid])
             continue;
-          gain = mynbrs[j].ed-myrinfo->id; 
-          if ((mynbrs[j].ed > mynbrs[k].ed && pwgts[to]+vwgt <= maxwgt[to]+ffactor*gain) 
-              ||
-              (mynbrs[j].ed == mynbrs[k].ed && 
-               itpwgts[mynbrs[k].pid]*pwgts[to] < itpwgts[to]*pwgts[mynbrs[k].pid]))
+          if (((mynbrs[j].ed > mynbrs[k].ed) && 
+              ((pwgts[from]-vwgt >= minpwgts[from]) ||
+               (tpwgts[from]*pwgts[to] < tpwgts[to]*(pwgts[from]-vwgt))) &&
+              ((pwgts[to]+vwgt <= maxpwgts[to]) ||
+               (tpwgts[from]*pwgts[to] < tpwgts[to]*(pwgts[from]-vwgt))) 
+              ) ||
+              ((mynbrs[j].ed == mynbrs[k].ed) && 
+               (tpwgts[mynbrs[k].pid]*pwgts[to] < tpwgts[to]*pwgts[mynbrs[k].pid]))
+             )
             k = j;
         }
 
         to = mynbrs[k].pid;
 
-        gain = mynbrs[k].ed-myrinfo->id;
-        if (!(gain > 0 
-              || (gain == 0  
-                  && (pwgts[from] >= maxwgt[from] 
-                      || itpwgts[to]*pwgts[from] > itpwgts[from]*(pwgts[to]+vwgt) 
-                      || (iii%2 == 0 && safetos[to] == 2)
-                     )
-                 )
-             )
-           )
-          continue;
       }
       else {  /* OMODE_BALANCE */
         for (k=myrinfo->nnbrs-1; k>=0; k--) {
           if (!safetos[to=mynbrs[k].pid])
             continue;
-          if (pwgts[to]+vwgt <= maxwgt[to] || 
-              itpwgts[from]*(pwgts[to]+vwgt) <= itpwgts[to]*pwgts[from]) 
+          /* the correctness of the following test follows from the correctness
+             of the similar test in the subsequent loop */
+          if (from >= nparts || tpwgts[from]*pwgts[to] < tpwgts[to]*(pwgts[from]-vwgt))
             break;
         }
         if (k < 0)
@@ -264,17 +274,16 @@ void Greedy_KWayCutOptimize(ctrl_t *ctrl, graph_t *graph, idx_t niter,
         for (j=k-1; j>=0; j--) {
           if (!safetos[to=mynbrs[j].pid])
             continue;
-          if (itpwgts[mynbrs[k].pid]*pwgts[to] < itpwgts[to]*pwgts[mynbrs[k].pid]) 
+          if (tpwgts[mynbrs[k].pid]*pwgts[to] < tpwgts[to]*pwgts[mynbrs[k].pid]) 
             k = j;
         }
 
         to = mynbrs[k].pid;
 
-        if (pwgts[from] < maxwgt[from] && pwgts[to] > minwgt[to] && 
-            mynbrs[k].ed-myrinfo->id < 0) 
-          continue;
+        //if (pwgts[from] < maxpwgts[from] && pwgts[to] > minpwgts[to] && 
+        //    mynbrs[k].ed-myrinfo->id < 0) 
+        //  continue;
       }
-
 
 
       /*=====================================================================
@@ -284,8 +293,8 @@ void Greedy_KWayCutOptimize(ctrl_t *ctrl, graph_t *graph, idx_t niter,
       nmoved++;
 
       IFSET(ctrl->dbglvl, METIS_DBG_MOVEINFO, 
-          printf("\t\tMoving %6"PRIDX" to %3"PRIDX". Gain: %4"PRIDX". Cut: %6"PRIDX"\n", 
-              i, to, mynbrs[k].ed-myrinfo->id, graph->mincut));
+          printf("\t\tMoving %6"PRIDX" from %3"PRIDX"/%"PRIDX" to %3"PRIDX"/%"PRIDX" [%6"PRIDX" %6"PRIDX"]. Gain: %4"PRIDX". Cut: %6"PRIDX"\n", 
+              i, from, safetos[from], to, safetos[to], pwgts[from], pwgts[to], mynbrs[k].ed-myrinfo->id, graph->mincut));
 
       /* Update the subdomain connectivity information */
       if (ctrl->minconn) {
@@ -323,6 +332,7 @@ void Greedy_KWayCutOptimize(ctrl_t *ctrl, graph_t *graph, idx_t niter,
 
         ASSERT(myrinfo->nnbrs <= xadj[ii+1]-xadj[ii]);
       }
+
     }
 
     graph->nbnd = nbnd;
@@ -338,11 +348,11 @@ void Greedy_KWayCutOptimize(ctrl_t *ctrl, graph_t *graph, idx_t niter,
     if (ctrl->dbglvl&METIS_DBG_REFINE) {
        printf("\t[%6"PRIDX" %6"PRIDX"], Bal: %5.3"PRREAL", Nb: %6"PRIDX"."
               " Nmoves: %5"PRIDX", Cut: %6"PRIDX", Vol: %6"PRIDX,
-              pwgts[iargmin(nparts, pwgts)], imax(nparts, pwgts),
+              pwgts[iargmin(nparts, pwgts,1)], imax(nparts, pwgts,1),
               ComputeLoadImbalance(graph, nparts, ctrl->pijbm), 
               graph->nbnd, nmoved, graph->mincut, ComputeVolume(graph, where));
        if (ctrl->minconn) 
-         printf(", Doms: [%3"PRIDX" %4"PRIDX"]", imax(nparts, nads), isum(nparts, nads,1));
+         printf(", Doms: [%3"PRIDX" %4"PRIDX"]", imax(nparts, nads,1), isum(nparts, nads,1));
        printf("\n");
     }
 
@@ -371,14 +381,15 @@ void Greedy_KWayVolOptimize(ctrl_t *ctrl, graph_t *graph, idx_t niter,
          real_t ffactor, idx_t omode)
 {
   /* Common variables to all types of kway-refinement/balancing routines */
-  idx_t i, ii, iii, j, k, l, pass, nvtxs, nparts, gain; 
+  idx_t i, ii, iii, j, k, pass, nvtxs, nparts, gain; 
   idx_t from, me, to, oldcut, vwgt;
   idx_t *xadj, *adjncy;
-  idx_t *where, *pwgts, *perm, *bndptr, *bndind, *minwgt, *maxwgt, *itpwgts;
+  idx_t *where, *pwgts, *perm, *bndind, *minpwgts, *maxpwgts;
   idx_t nmoved, nupd, *vstatus, *updptr, *updind;
-  idx_t maxndoms, *safetos=NULL, *nads=NULL, *doms=NULL, **adids=NULL, **adwgts=NULL;
+  idx_t maxndoms, *safetos=NULL, *nads=NULL, *doms=NULL, **adids=NULL;
   idx_t *bfslvl=NULL, *bfsind=NULL, *bfsmrk=NULL;
   idx_t bndtype = (omode == OMODE_REFINE ? BNDTYPE_REFINE : BNDTYPE_BALANCE);
+  real_t *tpwgts;
 
   /* Volume-specific/different variables */
   ipq_t *queue;
@@ -393,22 +404,20 @@ void Greedy_KWayVolOptimize(ctrl_t *ctrl, graph_t *graph, idx_t niter,
   nvtxs  = graph->nvtxs;
   xadj   = graph->xadj;
   adjncy = graph->adjncy;
-  bndptr = graph->bndptr;
   bndind = graph->bndind;
   where  = graph->where;
   pwgts  = graph->pwgts;
   
   nparts = ctrl->nparts;
+  tpwgts = ctrl->tpwgts;
 
   /* Setup the weight intervals of the various subdomains */
-  minwgt  = iwspacemalloc(ctrl, nparts);
-  maxwgt  = iwspacemalloc(ctrl, nparts);
-  itpwgts = iwspacemalloc(ctrl, nparts);
+  minpwgts  = iwspacemalloc(ctrl, nparts);
+  maxpwgts  = iwspacemalloc(ctrl, nparts);
 
   for (i=0; i<nparts; i++) {
-    itpwgts[i] = ctrl->tpwgts[i]*graph->tvwgt[0];
-    maxwgt[i]  = ctrl->tpwgts[i]*graph->tvwgt[0]*ctrl->ubfactors[0];
-    minwgt[i]  = ctrl->tpwgts[i]*graph->tvwgt[0]*(1.0/ctrl->ubfactors[0]);
+    maxpwgts[i]  = ctrl->tpwgts[i]*graph->tvwgt[0]*ctrl->ubfactors[0];
+    minpwgts[i]  = ctrl->tpwgts[i]*graph->tvwgt[0]*(1.0/ctrl->ubfactors[0]);
   }
 
   perm = iwspacemalloc(ctrl, nvtxs);
@@ -425,7 +434,6 @@ void Greedy_KWayVolOptimize(ctrl_t *ctrl, graph_t *graph, idx_t niter,
 
     nads    = ctrl->nads;
     adids   = ctrl->adids;
-    adwgts  = ctrl->adwgts;
     doms    = iset(nparts, 0, ctrl->pvec1);
   }
 
@@ -452,11 +460,11 @@ void Greedy_KWayVolOptimize(ctrl_t *ctrl, graph_t *graph, idx_t niter,
      printf("%s: [%6"PRIDX" %6"PRIDX"]-[%6"PRIDX" %6"PRIDX"], Bal: %5.3"PRREAL
          ", Nv-Nb[%6"PRIDX" %6"PRIDX"], Cut: %5"PRIDX", Vol: %5"PRIDX,
          (omode == OMODE_REFINE ? "GRV" : "GBV"),
-         pwgts[iargmin(nparts, pwgts)], imax(nparts, pwgts), minwgt[0], maxwgt[0], 
+         pwgts[iargmin(nparts, pwgts,1)], imax(nparts, pwgts,1), minpwgts[0], maxpwgts[0], 
          ComputeLoadImbalance(graph, nparts, ctrl->pijbm), 
          graph->nvtxs, graph->nbnd, graph->mincut, graph->minvol);
      if (ctrl->minconn) 
-       printf(", Doms: [%3"PRIDX" %4"PRIDX"]", imax(nparts, nads), isum(nparts, nads,1));
+       printf(", Doms: [%3"PRIDX" %4"PRIDX"]", imax(nparts, nads,1), isum(nparts, nads,1));
      printf("\n");
   }
 
@@ -472,7 +480,7 @@ void Greedy_KWayVolOptimize(ctrl_t *ctrl, graph_t *graph, idx_t niter,
     if (omode == OMODE_BALANCE) {
       /* Check to see if things are out of balance, given the tolerance */
       for (i=0; i<nparts; i++) {
-        if (pwgts[i] > maxwgt[i])
+        if (pwgts[i] > maxpwgts[i])
           break;
       }
       if (i == nparts) /* Things are balanced. Return right away */
@@ -484,7 +492,7 @@ void Greedy_KWayVolOptimize(ctrl_t *ctrl, graph_t *graph, idx_t niter,
     nupd   = 0;
 
     if (ctrl->minconn)
-      maxndoms = imax(nparts, nads);
+      maxndoms = imax(nparts, nads,1);
 
     /* Insert the boundary vertices in the priority queue */
     my_irandArrayPermute_r(graph->nbnd, perm, graph->nbnd/4, 1, &ctrl->curseed);
@@ -509,11 +517,11 @@ void Greedy_KWayVolOptimize(ctrl_t *ctrl, graph_t *graph, idx_t niter,
 
       /* Prevent moves that make 'from' domain underbalanced */
       if (omode == OMODE_REFINE) {
-        if (myrinfo->nid > 0 && pwgts[from]-vwgt < minwgt[from]) 
+        if (myrinfo->nid > 0 && pwgts[from]-vwgt < minpwgts[from]) 
           continue;
       }
       else { /* OMODE_BALANCE */
-        if (pwgts[from]-vwgt < minwgt[from]) 
+        if (pwgts[from]-vwgt < minpwgts[from]) 
           continue;
       }
 
@@ -531,7 +539,7 @@ void Greedy_KWayVolOptimize(ctrl_t *ctrl, graph_t *graph, idx_t niter,
           if (!safetos[to=mynbrs[k].pid])
             continue;
           gain = mynbrs[k].gv + xgain;
-          if (gain >= 0 && pwgts[to]+vwgt <= maxwgt[to]+ffactor*gain)  
+          if (gain >= 0 && pwgts[to]+vwgt <= maxpwgts[to]+ffactor*gain)  
             break;
         }
         if (k < 0)
@@ -542,15 +550,15 @@ void Greedy_KWayVolOptimize(ctrl_t *ctrl, graph_t *graph, idx_t niter,
             continue;
           gain = mynbrs[j].gv + xgain;
           if ((mynbrs[j].gv > mynbrs[k].gv && 
-               pwgts[to]+vwgt <= maxwgt[to]+ffactor*gain) 
+               pwgts[to]+vwgt <= maxpwgts[to]+ffactor*gain) 
               ||
               (mynbrs[j].gv == mynbrs[k].gv && 
                mynbrs[j].ned > mynbrs[k].ned &&
-               pwgts[to]+vwgt <= maxwgt[to]) 
+               pwgts[to]+vwgt <= maxpwgts[to]) 
               ||
               (mynbrs[j].gv == mynbrs[k].gv && 
                mynbrs[j].ned == mynbrs[k].ned &&
-               itpwgts[mynbrs[k].pid]*pwgts[to] < itpwgts[to]*pwgts[mynbrs[k].pid])
+               tpwgts[mynbrs[k].pid]*pwgts[to] < tpwgts[to]*pwgts[mynbrs[k].pid])
              )
             k = j;
         }
@@ -563,8 +571,8 @@ void Greedy_KWayVolOptimize(ctrl_t *ctrl, graph_t *graph, idx_t niter,
           j = 1;
         else if (mynbrs[k].ned-myrinfo->nid == 0) {
           if ((iii%2 == 0 && safetos[to] == 2) || 
-              pwgts[from] >= maxwgt[from] || 
-              itpwgts[from]*(pwgts[to]+vwgt) < itpwgts[to]*pwgts[from])
+              pwgts[from] >= maxpwgts[from] || 
+              tpwgts[from]*(pwgts[to]+vwgt) < tpwgts[to]*pwgts[from])
             j = 1;
         }
         if (j == 0)
@@ -574,8 +582,8 @@ void Greedy_KWayVolOptimize(ctrl_t *ctrl, graph_t *graph, idx_t niter,
         for (k=myrinfo->nnbrs-1; k>=0; k--) {
           if (!safetos[to=mynbrs[k].pid])
             continue;
-          if (pwgts[to]+vwgt <= maxwgt[to] || 
-              itpwgts[from]*(pwgts[to]+vwgt) <= itpwgts[to]*pwgts[from])  
+          if (pwgts[to]+vwgt <= maxpwgts[to] || 
+              tpwgts[from]*(pwgts[to]+vwgt) <= tpwgts[to]*pwgts[from])  
             break;
         }
         if (k < 0)
@@ -584,12 +592,12 @@ void Greedy_KWayVolOptimize(ctrl_t *ctrl, graph_t *graph, idx_t niter,
         for (j=k-1; j>=0; j--) {
           if (!safetos[to=mynbrs[j].pid])
             continue;
-          if (itpwgts[mynbrs[k].pid]*pwgts[to] < itpwgts[to]*pwgts[mynbrs[k].pid])
+          if (tpwgts[mynbrs[k].pid]*pwgts[to] < tpwgts[to]*pwgts[mynbrs[k].pid])
             k = j;
         }
         to = mynbrs[k].pid;
 
-        if (pwgts[from] < maxwgt[from] && pwgts[to] > minwgt[to] && 
+        if (pwgts[from] < maxpwgts[from] && pwgts[to] > minpwgts[to] && 
             (xgain+mynbrs[k].gv < 0 || 
              (xgain+mynbrs[k].gv == 0 &&  mynbrs[k].ned-myrinfo->nid < 0))
            )
@@ -646,11 +654,11 @@ void Greedy_KWayVolOptimize(ctrl_t *ctrl, graph_t *graph, idx_t niter,
     if (ctrl->dbglvl&METIS_DBG_REFINE) {
        printf("\t[%6"PRIDX" %6"PRIDX"], Bal: %5.3"PRREAL", Nb: %6"PRIDX"."
               " Nmoves: %5"PRIDX", Cut: %6"PRIDX", Vol: %6"PRIDX,
-              pwgts[iargmin(nparts, pwgts)], imax(nparts, pwgts),
+              pwgts[iargmin(nparts, pwgts,1)], imax(nparts, pwgts,1),
               ComputeLoadImbalance(graph, nparts, ctrl->pijbm), 
               graph->nbnd, nmoved, graph->mincut, graph->minvol);
        if (ctrl->minconn) 
-         printf(", Doms: [%3"PRIDX" %4"PRIDX"]", imax(nparts, nads), isum(nparts, nads,1));
+         printf(", Doms: [%3"PRIDX" %4"PRIDX"]", imax(nparts, nads,1), isum(nparts, nads,1));
        printf("\n");
     }
 
@@ -685,12 +693,12 @@ void Greedy_McKWayCutOptimize(ctrl_t *ctrl, graph_t *graph, idx_t niter,
          real_t ffactor, idx_t omode)
 {
   /* Common variables to all types of kway-refinement/balancing routines */
-  idx_t i, ii, iii, j, k, l, pass, nvtxs, ncon, nparts, gain; 
+  idx_t i, ii, iii, j, k, pass, nvtxs, ncon, nparts, gain; 
   idx_t from, me, to, cto, oldcut;
   idx_t *xadj, *vwgt, *adjncy, *adjwgt;
-  idx_t *where, *pwgts, *perm, *bndptr, *bndind, *minwgt, *maxwgt;
+  idx_t *where, *pwgts, *perm, *bndptr, *bndind, *minpwgts, *maxpwgts;
   idx_t nmoved, nupd, *vstatus, *updptr, *updind;
-  idx_t maxndoms, *safetos=NULL, *nads=NULL, *doms=NULL, **adids=NULL, **adwgts=NULL;
+  idx_t maxndoms, *safetos=NULL, *nads=NULL, *doms=NULL, **adids=NULL;
   idx_t *bfslvl=NULL, *bfsind=NULL, *bfsmrk=NULL;
   idx_t bndtype = (omode == OMODE_REFINE ? BNDTYPE_REFINE : BNDTYPE_BALANCE);
   real_t *ubfactors, *pijbm;
@@ -740,14 +748,14 @@ void Greedy_McKWayCutOptimize(ctrl_t *ctrl, graph_t *graph, idx_t niter,
 
 
   /* Setup the weight intervals of the various subdomains */
-  minwgt  = iwspacemalloc(ctrl, nparts*ncon);
-  maxwgt  = iwspacemalloc(ctrl, nparts*ncon);
+  minpwgts  = iwspacemalloc(ctrl, nparts*ncon);
+  maxpwgts  = iwspacemalloc(ctrl, nparts*ncon);
 
   for (i=0; i<nparts; i++) {
     for (j=0; j<ncon; j++) {
-      maxwgt[i*ncon+j]  = ctrl->tpwgts[i*ncon+j]*graph->tvwgt[j]*ubfactors[j];
-      /*minwgt[i*ncon+j]  = ctrl->tpwgts[i*ncon+j]*graph->tvwgt[j]*(.9/ubfactors[j]);*/
-      minwgt[i*ncon+j]  = ctrl->tpwgts[i*ncon+j]*graph->tvwgt[j]*.2;
+      maxpwgts[i*ncon+j]  = ctrl->tpwgts[i*ncon+j]*graph->tvwgt[j]*ubfactors[j];
+      /*minpwgts[i*ncon+j]  = ctrl->tpwgts[i*ncon+j]*graph->tvwgt[j]*(.9/ubfactors[j]);*/
+      minpwgts[i*ncon+j]  = ctrl->tpwgts[i*ncon+j]*graph->tvwgt[j]*.2;
     }
   }
 
@@ -765,7 +773,6 @@ void Greedy_McKWayCutOptimize(ctrl_t *ctrl, graph_t *graph, idx_t niter,
 
     nads    = ctrl->nads;
     adids   = ctrl->adids;
-    adwgts  = ctrl->adwgts;
     doms    = iset(nparts, 0, ctrl->pvec1);
   }
 
@@ -787,11 +794,11 @@ void Greedy_McKWayCutOptimize(ctrl_t *ctrl, graph_t *graph, idx_t niter,
      printf("%s: [%6"PRIDX" %6"PRIDX" %6"PRIDX"], Bal: %5.3"PRREAL"(%.3"PRREAL")," 
             " Nv-Nb[%6"PRIDX" %6"PRIDX"], Cut: %6"PRIDX", (%"PRIDX")",
             (omode == OMODE_REFINE ? "GRC" : "GBC"),
-            imin(nparts*ncon, pwgts), imax(nparts*ncon, pwgts), imax(nparts*ncon, maxwgt),
+            imin(nparts*ncon, pwgts,1), imax(nparts*ncon, pwgts,1), imax(nparts*ncon, maxpwgts,1),
             ComputeLoadImbalance(graph, nparts, pijbm), origbal,
             graph->nvtxs, graph->nbnd, graph->mincut, niter);
      if (ctrl->minconn) 
-       printf(", Doms: [%3"PRIDX" %4"PRIDX"]", imax(nparts, nads), isum(nparts, nads,1));
+       printf(", Doms: [%3"PRIDX" %4"PRIDX"]", imax(nparts, nads,1), isum(nparts, nads,1));
      printf("\n");
   }
 
@@ -813,7 +820,7 @@ void Greedy_McKWayCutOptimize(ctrl_t *ctrl, graph_t *graph, idx_t niter,
     nupd   = 0;
 
     if (ctrl->minconn)
-      maxndoms = imax(nparts, nads);
+      maxndoms = imax(nparts, nads,1);
 
     /* Insert the boundary vertices in the priority queue */
     my_irandArrayPermute_r(nbnd, perm, nbnd/4, 1, &ctrl->curseed);
@@ -841,11 +848,11 @@ void Greedy_McKWayCutOptimize(ctrl_t *ctrl, graph_t *graph, idx_t niter,
       /* Prevent moves that make 'from' domain underbalanced */
       if (omode == OMODE_REFINE) {
         if (myrinfo->id > 0 && 
-            !ivecaxpygez(ncon, -1, vwgt+i*ncon, pwgts+from*ncon, minwgt+from*ncon))
+            !ivecaxpygez(ncon, -1, vwgt+i*ncon, pwgts+from*ncon, minpwgts+from*ncon))
           continue;   
       }
       else { /* OMODE_BALANCE */
-        if (!ivecaxpygez(ncon, -1, vwgt+i*ncon, pwgts+from*ncon, minwgt+from*ncon)) 
+        if (!ivecaxpygez(ncon, -1, vwgt+i*ncon, pwgts+from*ncon, minpwgts+from*ncon)) 
           continue;   
       }
 
@@ -861,7 +868,7 @@ void Greedy_McKWayCutOptimize(ctrl_t *ctrl, graph_t *graph, idx_t niter,
           if (!safetos[to=mynbrs[k].pid])
             continue;
           gain = mynbrs[k].ed-myrinfo->id; 
-          if (gain >= 0 && ivecaxpylez(ncon, 1, vwgt+i*ncon, pwgts+to*ncon, maxwgt+to*ncon))
+          if (gain >= 0 && ivecaxpylez(ncon, 1, vwgt+i*ncon, pwgts+to*ncon, maxpwgts+to*ncon))
             break;
         }
         if (k < 0)
@@ -872,7 +879,7 @@ void Greedy_McKWayCutOptimize(ctrl_t *ctrl, graph_t *graph, idx_t niter,
           if (!safetos[to=mynbrs[j].pid])
             continue;
           if ((mynbrs[j].ed > mynbrs[k].ed && 
-               ivecaxpylez(ncon, 1, vwgt+i*ncon, pwgts+to*ncon, maxwgt+to*ncon))
+               ivecaxpylez(ncon, 1, vwgt+i*ncon, pwgts+to*ncon, maxpwgts+to*ncon))
               ||
               (mynbrs[j].ed == mynbrs[k].ed && 
                BetterBalanceKWay(ncon, vwgt+i*ncon, ubfactors, 
@@ -901,7 +908,7 @@ void Greedy_McKWayCutOptimize(ctrl_t *ctrl, graph_t *graph, idx_t niter,
         for (k=myrinfo->nnbrs-1; k>=0; k--) {
           if (!safetos[to=mynbrs[k].pid])
             continue;
-          if (ivecaxpylez(ncon, 1, vwgt+i*ncon, pwgts+to*ncon, maxwgt+to*ncon) || 
+          if (ivecaxpylez(ncon, 1, vwgt+i*ncon, pwgts+to*ncon, maxpwgts+to*ncon) || 
               BetterBalanceKWay(ncon, vwgt+i*ncon, ubfactors,
                   -1, pwgts+from*ncon, pijbm+from*ncon,
                   +1, pwgts+to*ncon, pijbm+to*ncon))
@@ -994,11 +1001,11 @@ void Greedy_McKWayCutOptimize(ctrl_t *ctrl, graph_t *graph, idx_t niter,
     if (ctrl->dbglvl&METIS_DBG_REFINE) {
        printf("\t[%6"PRIDX" %6"PRIDX"], Bal: %5.3"PRREAL", Nb: %6"PRIDX"."
               " Nmoves: %5"PRIDX", Cut: %6"PRIDX", Vol: %6"PRIDX,
-              imin(nparts*ncon, pwgts), imax(nparts*ncon, pwgts), 
+              imin(nparts*ncon, pwgts,1), imax(nparts*ncon, pwgts,1), 
               ComputeLoadImbalance(graph, nparts, pijbm), 
               graph->nbnd, nmoved, graph->mincut, ComputeVolume(graph, where));
        if (ctrl->minconn) 
-         printf(", Doms: [%3"PRIDX" %4"PRIDX"]", imax(nparts, nads), isum(nparts, nads,1));
+         printf(", Doms: [%3"PRIDX" %4"PRIDX"]", imax(nparts, nads,1), isum(nparts, nads,1));
        printf("\n");
     }
 
@@ -1027,12 +1034,12 @@ void Greedy_McKWayVolOptimize(ctrl_t *ctrl, graph_t *graph, idx_t niter,
          real_t ffactor, idx_t omode)
 {
   /* Common variables to all types of kway-refinement/balancing routines */
-  idx_t i, ii, iii, j, k, l, pass, nvtxs, ncon, nparts, gain; 
+  idx_t i, ii, iii, j, k, pass, nvtxs, ncon, nparts, gain; 
   idx_t from, me, to, cto, oldcut;
   idx_t *xadj, *vwgt, *adjncy;
-  idx_t *where, *pwgts, *perm, *bndptr, *bndind, *minwgt, *maxwgt;
+  idx_t *where, *pwgts, *perm, *bndind, *minpwgts, *maxpwgts;
   idx_t nmoved, nupd, *vstatus, *updptr, *updind;
-  idx_t maxndoms, *safetos=NULL, *nads=NULL, *doms=NULL, **adids=NULL, **adwgts=NULL;
+  idx_t maxndoms, *safetos=NULL, *nads=NULL, *doms=NULL, **adids=NULL;
   idx_t *bfslvl=NULL, *bfsind=NULL, *bfsmrk=NULL;
   idx_t bndtype = (omode == OMODE_REFINE ? BNDTYPE_REFINE : BNDTYPE_BALANCE);
   real_t *ubfactors, *pijbm;
@@ -1053,7 +1060,6 @@ void Greedy_McKWayVolOptimize(ctrl_t *ctrl, graph_t *graph, idx_t niter,
   xadj   = graph->xadj;
   vwgt   = graph->vwgt;
   adjncy = graph->adjncy;
-  bndptr = graph->bndptr;
   bndind = graph->bndind;
   where  = graph->where;
   pwgts  = graph->pwgts;
@@ -1079,14 +1085,14 @@ void Greedy_McKWayVolOptimize(ctrl_t *ctrl, graph_t *graph, idx_t niter,
 
 
   /* Setup the weight intervals of the various subdomains */
-  minwgt  = iwspacemalloc(ctrl, nparts*ncon);
-  maxwgt  = iwspacemalloc(ctrl, nparts*ncon);
+  minpwgts  = iwspacemalloc(ctrl, nparts*ncon);
+  maxpwgts  = iwspacemalloc(ctrl, nparts*ncon);
 
   for (i=0; i<nparts; i++) {
     for (j=0; j<ncon; j++) {
-      maxwgt[i*ncon+j]  = ctrl->tpwgts[i*ncon+j]*graph->tvwgt[j]*ubfactors[j];
-      /*minwgt[i*ncon+j]  = ctrl->tpwgts[i*ncon+j]*graph->tvwgt[j]*(.9/ubfactors[j]); */
-      minwgt[i*ncon+j]  = ctrl->tpwgts[i*ncon+j]*graph->tvwgt[j]*.2;
+      maxpwgts[i*ncon+j]  = ctrl->tpwgts[i*ncon+j]*graph->tvwgt[j]*ubfactors[j];
+      /*minpwgts[i*ncon+j]  = ctrl->tpwgts[i*ncon+j]*graph->tvwgt[j]*(.9/ubfactors[j]); */
+      minpwgts[i*ncon+j]  = ctrl->tpwgts[i*ncon+j]*graph->tvwgt[j]*.2;
     }
   }
 
@@ -1104,7 +1110,6 @@ void Greedy_McKWayVolOptimize(ctrl_t *ctrl, graph_t *graph, idx_t niter,
 
     nads    = ctrl->nads;
     adids   = ctrl->adids;
-    adwgts  = ctrl->adwgts;
     doms    = iset(nparts, 0, ctrl->pvec1);
   }
 
@@ -1131,11 +1136,11 @@ void Greedy_McKWayVolOptimize(ctrl_t *ctrl, graph_t *graph, idx_t niter,
      printf("%s: [%6"PRIDX" %6"PRIDX" %6"PRIDX"], Bal: %5.3"PRREAL"(%.3"PRREAL"),"
          ", Nv-Nb[%6"PRIDX" %6"PRIDX"], Cut: %5"PRIDX", Vol: %5"PRIDX", (%"PRIDX")",
          (omode == OMODE_REFINE ? "GRV" : "GBV"),
-         imin(nparts*ncon, pwgts), imax(nparts*ncon, pwgts), imax(nparts*ncon, maxwgt),
+         imin(nparts*ncon, pwgts,1), imax(nparts*ncon, pwgts,1), imax(nparts*ncon, maxpwgts,1),
          ComputeLoadImbalance(graph, nparts, pijbm), origbal,
          graph->nvtxs, graph->nbnd, graph->mincut, graph->minvol, niter);
      if (ctrl->minconn) 
-       printf(", Doms: [%3"PRIDX" %4"PRIDX"]", imax(nparts, nads), isum(nparts, nads,1));
+       printf(", Doms: [%3"PRIDX" %4"PRIDX"]", imax(nparts, nads,1), isum(nparts, nads,1));
      printf("\n");
   }
 
@@ -1157,7 +1162,7 @@ void Greedy_McKWayVolOptimize(ctrl_t *ctrl, graph_t *graph, idx_t niter,
     nupd   = 0;
 
     if (ctrl->minconn)
-      maxndoms = imax(nparts, nads);
+      maxndoms = imax(nparts, nads,1);
 
     /* Insert the boundary vertices in the priority queue */
     my_irandArrayPermute_r(graph->nbnd, perm, graph->nbnd/4, 1, &ctrl->curseed);
@@ -1182,11 +1187,11 @@ void Greedy_McKWayVolOptimize(ctrl_t *ctrl, graph_t *graph, idx_t niter,
       /* Prevent moves that make 'from' domain underbalanced */
       if (omode == OMODE_REFINE) {
         if (myrinfo->nid > 0 &&
-            !ivecaxpygez(ncon, -1, vwgt+i*ncon, pwgts+from*ncon, minwgt+from*ncon))
+            !ivecaxpygez(ncon, -1, vwgt+i*ncon, pwgts+from*ncon, minpwgts+from*ncon))
           continue;
       }
       else { /* OMODE_BALANCE */
-        if (!ivecaxpygez(ncon, -1, vwgt+i*ncon, pwgts+from*ncon, minwgt+from*ncon))
+        if (!ivecaxpygez(ncon, -1, vwgt+i*ncon, pwgts+from*ncon, minpwgts+from*ncon))
           continue;
       }
 
@@ -1204,7 +1209,7 @@ void Greedy_McKWayVolOptimize(ctrl_t *ctrl, graph_t *graph, idx_t niter,
           if (!safetos[to=mynbrs[k].pid])
             continue;
           gain = mynbrs[k].gv + xgain;
-          if (gain >= 0 && ivecaxpylez(ncon, 1, vwgt+i*ncon, pwgts+to*ncon, maxwgt+to*ncon))
+          if (gain >= 0 && ivecaxpylez(ncon, 1, vwgt+i*ncon, pwgts+to*ncon, maxpwgts+to*ncon))
             break;
         }
         if (k < 0)
@@ -1216,11 +1221,11 @@ void Greedy_McKWayVolOptimize(ctrl_t *ctrl, graph_t *graph, idx_t niter,
             continue;
           gain = mynbrs[j].gv + xgain;
           if ((mynbrs[j].gv > mynbrs[k].gv && 
-               ivecaxpylez(ncon, 1, vwgt+i*ncon, pwgts+to*ncon, maxwgt+to*ncon))
+               ivecaxpylez(ncon, 1, vwgt+i*ncon, pwgts+to*ncon, maxpwgts+to*ncon))
               ||
               (mynbrs[j].gv == mynbrs[k].gv && 
                mynbrs[j].ned > mynbrs[k].ned &&
-               ivecaxpylez(ncon, 1, vwgt+i*ncon, pwgts+to*ncon, maxwgt+to*ncon))
+               ivecaxpylez(ncon, 1, vwgt+i*ncon, pwgts+to*ncon, maxpwgts+to*ncon))
               ||
               (mynbrs[j].gv == mynbrs[k].gv && 
                mynbrs[j].ned == mynbrs[k].ned &&
@@ -1250,7 +1255,7 @@ void Greedy_McKWayVolOptimize(ctrl_t *ctrl, graph_t *graph, idx_t niter,
         for (k=myrinfo->nnbrs-1; k>=0; k--) {
           if (!safetos[to=mynbrs[k].pid])
             continue;
-          if (ivecaxpylez(ncon, 1, vwgt+i*ncon, pwgts+to*ncon, maxwgt+to*ncon) ||
+          if (ivecaxpylez(ncon, 1, vwgt+i*ncon, pwgts+to*ncon, maxpwgts+to*ncon) ||
               BetterBalanceKWay(ncon, vwgt+i*ncon, ubfactors,
                   -1, pwgts+from*ncon, pijbm+from*ncon,
                   +1, pwgts+to*ncon, pijbm+to*ncon))
@@ -1334,11 +1339,11 @@ void Greedy_McKWayVolOptimize(ctrl_t *ctrl, graph_t *graph, idx_t niter,
     if (ctrl->dbglvl&METIS_DBG_REFINE) {
        printf("\t[%6"PRIDX" %6"PRIDX"], Bal: %5.3"PRREAL", Nb: %6"PRIDX"."
               " Nmoves: %5"PRIDX", Cut: %6"PRIDX", Vol: %6"PRIDX,
-              imin(nparts*ncon, pwgts), imax(nparts*ncon, pwgts), 
+              imin(nparts*ncon, pwgts,1), imax(nparts*ncon, pwgts,1), 
               ComputeLoadImbalance(graph, nparts, pijbm), 
               graph->nbnd, nmoved, graph->mincut, graph->minvol);
        if (ctrl->minconn) 
-         printf(", Doms: [%3"PRIDX" %4"PRIDX"]", imax(nparts, nads), isum(nparts, nads,1));
+         printf(", Doms: [%3"PRIDX" %4"PRIDX"]", imax(nparts, nads,1), isum(nparts, nads,1));
        printf("\n");
     }
 
@@ -1462,7 +1467,7 @@ void KWayVolUpdate(ctrl_t *ctrl, graph_t *graph, idx_t v, idx_t from,
          idx_t *updind, idx_t bndtype, idx_t *vmarker, idx_t *pmarker, 
          idx_t *modind)
 {
-  idx_t i, ii, iii, j, jj, k, kk, l, u, nmod, other, me, myidx; 
+  idx_t i, ii, iii, j, jj, k, kk, u, nmod, other, me, myidx; 
   idx_t *xadj, *vsize, *adjncy, *where;
   vkrinfo_t *myrinfo, *orinfo;
   vnbr_t *mynbrs, *onbrs;
@@ -1848,5 +1853,347 @@ void KWayVolUpdate(ctrl_t *ctrl, graph_t *graph, idx_t v, idx_t from,
   
     vmarker[i] = 0;
   }
+}
+
+
+/*************************************************************************/
+/*! K-way partitioning optimization in which the vertices are visited in 
+    decreasing ed/sqrt(nnbrs)-id order. Note this is just an 
+    approximation, as the ed is often split across different subdomains 
+    and the sqrt(nnbrs) is just a crude approximation.
+
+  \param graph is the graph that is being refined.
+  \param niter is the number of refinement iterations.
+  \param ffactor is the \em fudge-factor for allowing positive gain moves 
+         to violate the max-pwgt constraint.
+  \param omode is the type of optimization that will performed among
+         OMODE_REFINE and OMODE_BALANCE 
+         
+
+*/
+/**************************************************************************/
+void Greedy_KWayEdgeStats(ctrl_t *ctrl, graph_t *graph)
+{
+  /* Common variables to all types of kway-refinement/balancing routines */
+  idx_t i, ii, j, k, nparts, gain, u, v, uw, vw; 
+  idx_t *xadj, *adjncy, *adjwgt, *vwgt;
+  idx_t *where, *pwgts, *bndind, *minpwgts, *maxpwgts;
+  idx_t nbnd;
+  ckrinfo_t *urinfo, *vrinfo;
+  cnbr_t *unbrs, *vnbrs;
+  real_t *tpwgts, ubfactor;
+
+  WCOREPUSH;
+
+  /* Link the graph fields */
+  xadj   = graph->xadj;
+  adjncy = graph->adjncy;
+  vwgt   = graph->vwgt;
+  adjwgt = graph->adjwgt;
+
+  bndind = graph->bndind;
+
+  where = graph->where;
+  pwgts = graph->pwgts;
+  
+  nparts = ctrl->nparts;
+  tpwgts = ctrl->tpwgts;
+
+  /* Setup the weight intervals of the various subdomains */
+  minpwgts  = iwspacemalloc(ctrl, nparts+2);
+  maxpwgts  = iwspacemalloc(ctrl, nparts+2);
+
+  ubfactor = ctrl->ubfactors[0];
+  for (i=0; i<nparts; i++) {
+    maxpwgts[i]  = tpwgts[i]*graph->tvwgt[0]*ubfactor;
+    minpwgts[i]  = tpwgts[i]*graph->tvwgt[0]*(0.95/ubfactor);
+  }
+  maxpwgts[nparts] = maxpwgts[nparts+1] = 0;
+  minpwgts[nparts] = minpwgts[nparts+1] = 0;
+
+  /* go and determine the positive gain valid swaps */
+  nbnd   = graph->nbnd;
+
+  for (ii=0; ii<nbnd; ii++) {
+    u  = bndind[ii];
+    uw = where[u];
+
+    urinfo = graph->ckrinfo+u;
+    unbrs  = ctrl->cnbrpool + urinfo->inbr;
+
+    for (j=xadj[u]; j<xadj[u+1]; j++) {
+      v  = adjncy[j];
+      vw = where[v];
+
+      vrinfo = graph->ckrinfo+v;
+      vnbrs  = ctrl->cnbrpool + vrinfo->inbr;
+
+      if (uw == vw)
+        continue;
+      if (pwgts[uw] - vwgt[u] + vwgt[v] > maxpwgts[uw] || 
+          pwgts[vw] - vwgt[v] + vwgt[u] > maxpwgts[vw])
+        continue;
+
+      for (k=urinfo->nnbrs-1; k>=0; k--) {
+        if (unbrs[k].pid == vw) 
+          break;
+      }
+      if (k < 0)
+        printf("Something went wrong!\n");
+      gain = unbrs[k].ed-urinfo->id; 
+
+      for (k=vrinfo->nnbrs-1; k>=0; k--) {
+        if (vnbrs[k].pid == uw) 
+          break;
+      }
+      if (k < 0)
+        printf("Something went wrong!\n");
+      gain += vnbrs[k].ed-vrinfo->id; 
+
+      gain -= 2*adjwgt[j];
+
+      if (gain > 0)
+        printf("  Gain: %"PRIDX" for moving (%"PRIDX", %"PRIDX") between (%"PRIDX", %"PRIDX")\n",
+            gain, u, v, uw, vw);
+    }
+  }
+
+  WCOREPOP;
+}
+
+
+/*************************************************************************/
+/*! K-way partitioning optimization in which the vertices are visited in 
+    random order and the best edge is selected to swap its incident vertices 
+
+  \param graph is the graph that is being refined.
+  \param niter is the number of refinement iterations.
+         
+*/
+/**************************************************************************/
+void Greedy_KWayEdgeCutOptimize(ctrl_t *ctrl, graph_t *graph, idx_t niter)
+{
+  /* Common variables to all types of kway-refinement/balancing routines */
+  idx_t ii, j, k, pass, nvtxs, nparts, u, v, uw, vw, gain, bestgain, jbest; 
+  idx_t from, me, to, oldcut, nmoved;
+  idx_t *xadj, *adjncy, *adjwgt, *vwgt;
+  idx_t *where, *pwgts, *perm, *bndptr, *bndind, *minpwgts, *maxpwgts;
+  idx_t bndtype = BNDTYPE_REFINE;
+  real_t *tpwgts, ubfactor;
+
+  /* Edgecut-specific/different variables */
+  idx_t nbnd;
+  ckrinfo_t *myrinfo, *urinfo, *vrinfo;
+  cnbr_t *unbrs, *vnbrs;
+
+  WCOREPUSH;
+
+  /* Link the graph fields */
+  nvtxs  = graph->nvtxs;
+  xadj   = graph->xadj;
+  adjncy = graph->adjncy;
+  adjwgt = graph->adjwgt;
+  vwgt   = graph->vwgt;
+
+  bndind = graph->bndind;
+  bndptr = graph->bndptr;
+
+  where = graph->where;
+  pwgts = graph->pwgts;
+  
+  nparts = ctrl->nparts;
+  tpwgts = ctrl->tpwgts;
+
+  /* Setup the weight intervals of the various subdomains */
+  minpwgts  = iwspacemalloc(ctrl, nparts+2);
+  maxpwgts  = iwspacemalloc(ctrl, nparts+2);
+
+  ubfactor = gk_max(ctrl->ubfactors[0], ComputeLoadImbalance(graph, nparts, ctrl->pijbm));
+  for (k=0; k<nparts; k++) {
+    maxpwgts[k] = tpwgts[k]*graph->tvwgt[0]*ubfactor;
+    minpwgts[k] = tpwgts[k]*graph->tvwgt[0]*(1.0/ubfactor);
+  }
+  maxpwgts[nparts] = maxpwgts[nparts+1] = 0;
+  minpwgts[nparts] = minpwgts[nparts+1] = 0;
+
+  perm = iwspacemalloc(ctrl, nvtxs);
+
+
+  if (ctrl->dbglvl&METIS_DBG_REFINE) {
+     printf("GRE: [%6"PRIDX" %6"PRIDX"]-[%6"PRIDX" %6"PRIDX"], Bal: %5.3"PRREAL"," 
+            " Nv-Nb[%6"PRIDX" %6"PRIDX"], Cut: %6"PRIDX"\n",
+            pwgts[iargmin(nparts, pwgts,1)], imax(nparts, pwgts,1), minpwgts[0], maxpwgts[0], 
+            ComputeLoadImbalance(graph, nparts, ctrl->pijbm), 
+            graph->nvtxs, graph->nbnd, graph->mincut);
+  }
+
+
+  /*=====================================================================
+  * The top-level refinement loop 
+  *======================================================================*/
+  for (pass=0; pass<niter; pass++) {
+    GKASSERT(ComputeCut(graph, where) == graph->mincut);
+
+    oldcut = graph->mincut;
+    nbnd   = graph->nbnd;
+    nmoved = 0;
+
+    /* Insert the boundary vertices in the priority queue */
+    /* Visit the vertices in random order and see if you can swap them */
+    irandArrayPermute(nvtxs, perm, nbnd, 1);
+    for (ii=0; ii<nvtxs; ii++) {
+      if (bndptr[u=perm[ii]] == -1)
+        continue;
+
+      uw = where[u];
+
+      urinfo = graph->ckrinfo+u;
+      unbrs  = ctrl->cnbrpool + urinfo->inbr;
+
+      bestgain = 0;
+      jbest    = -1;
+      for (j=xadj[u]; j<xadj[u+1]; j++) {
+        v  = adjncy[j];
+        vw = where[v];
+
+        if (uw == vw)
+          continue;
+        if (pwgts[uw] - vwgt[u] + vwgt[v] > maxpwgts[uw] || 
+            pwgts[vw] - vwgt[v] + vwgt[u] > maxpwgts[vw])
+          continue;
+        if (pwgts[uw] - vwgt[u] + vwgt[v] < minpwgts[uw] || 
+            pwgts[vw] - vwgt[v] + vwgt[u] < minpwgts[vw])
+          continue;
+
+        vrinfo = graph->ckrinfo+v;
+        vnbrs  = ctrl->cnbrpool + vrinfo->inbr;
+
+        gain = -2*adjwgt[j];
+
+        for (k=urinfo->nnbrs-1; k>=0; k--) {
+          if (unbrs[k].pid == vw) 
+            break;
+        }
+        GKASSERT(k>=0);
+        gain += unbrs[k].ed-urinfo->id; 
+
+        for (k=vrinfo->nnbrs-1; k>=0; k--) {
+          if (vnbrs[k].pid == uw) 
+            break;
+        }
+        GKASSERT(k>=0);
+        gain += vnbrs[k].ed-vrinfo->id; 
+
+        if (gain > bestgain && vnbrs[k].ed > adjwgt[j]) {
+          bestgain = gain;
+          jbest    = j;
+        }
+      }
+
+      if (jbest == -1)
+        continue;  /* no valid positive swap */
+
+
+      /*=====================================================================
+      * If we got here, we can now swap the vertices 
+      *======================================================================*/
+      v  = adjncy[jbest];
+      vw = where[v];
+
+      vrinfo = graph->ckrinfo+v;
+      vnbrs  = ctrl->cnbrpool + vrinfo->inbr;
+
+      /* move u to v's partition */
+      for (k=urinfo->nnbrs-1; k>=0; k--) {
+        if (unbrs[k].pid == vw) 
+          break;
+      }
+      GKASSERT(k>=0);
+
+      from = uw;
+      to   = vw;
+
+      graph->mincut -= unbrs[k].ed-urinfo->id;
+      nmoved++;
+
+      IFSET(ctrl->dbglvl, METIS_DBG_MOVEINFO, 
+          printf("\t\tMoving %6"PRIDX" from %3"PRIDX" to %3"PRIDX" [%6"PRIDX" %6"PRIDX"]. Gain: %4"PRIDX". Cut: %6"PRIDX"\n", 
+              u, from, to, pwgts[from], pwgts[to], unbrs[k].ed-urinfo->id, graph->mincut));
+
+      /* Update ID/ED and BND related information for the moved vertex */
+      INC_DEC(pwgts[to], pwgts[from], vwgt[u]);
+      UpdateMovedVertexInfoAndBND(u, from, k, to, urinfo, unbrs, where, nbnd, 
+          bndptr, bndind, bndtype);
+      
+      /* Update the degrees of adjacent vertices */
+      for (j=xadj[u]; j<xadj[u+1]; j++) {
+        ii = adjncy[j];
+        me = where[ii];
+        myrinfo = graph->ckrinfo+ii;
+
+        UpdateAdjacentVertexInfoAndBND(ctrl, ii, xadj[ii+1]-xadj[ii], me, 
+            from, to, myrinfo, adjwgt[j], nbnd, bndptr, bndind, bndtype);
+
+        ASSERT(myrinfo->nnbrs <= xadj[ii+1]-xadj[ii]);
+      }
+
+      /* move v to u's partition */
+      for (k=vrinfo->nnbrs-1; k>=0; k--) {
+        if (vnbrs[k].pid == uw) 
+          break;
+      }
+      GKASSERT(k>=0);
+#ifdef XXX
+      if (k < 0) { /* that was removed, go and re-insert it */
+        k = vrinfo->nnbrs++;
+        vnbrs[k].pid = uw;
+        vnbrs[k].ed  = 0;
+      }
+#endif
+
+      from = vw;
+      to   = uw;
+
+      graph->mincut -= vnbrs[k].ed-vrinfo->id;
+      nmoved++;
+
+      IFSET(ctrl->dbglvl, METIS_DBG_MOVEINFO, 
+          printf("\t\tMoving %6"PRIDX" from %3"PRIDX" to %3"PRIDX" [%6"PRIDX" %6"PRIDX"]. Gain: %4"PRIDX". Cut: %6"PRIDX"\n", 
+              v, from, to, pwgts[from], pwgts[to], vnbrs[k].ed-vrinfo->id, graph->mincut));
+
+      /* Update ID/ED and BND related information for the moved vertex */
+      INC_DEC(pwgts[to], pwgts[from], vwgt[v]);
+      UpdateMovedVertexInfoAndBND(v, from, k, to, vrinfo, vnbrs, where, nbnd, 
+          bndptr, bndind, bndtype);
+      
+      /* Update the degrees of adjacent vertices */
+      for (j=xadj[v]; j<xadj[v+1]; j++) {
+        ii = adjncy[j];
+        me = where[ii];
+        myrinfo = graph->ckrinfo+ii;
+
+
+        UpdateAdjacentVertexInfoAndBND(ctrl, ii, xadj[ii+1]-xadj[ii], me, 
+            from, to, myrinfo, adjwgt[j], nbnd, bndptr, bndind, bndtype);
+
+        ASSERT(myrinfo->nnbrs <= xadj[ii+1]-xadj[ii]);
+      }
+    }
+
+    graph->nbnd = nbnd;
+
+    if (ctrl->dbglvl&METIS_DBG_REFINE) {
+       printf("\t[%6"PRIDX" %6"PRIDX"], Bal: %5.3"PRREAL", Nb: %6"PRIDX"."
+              " Nmoves: %5"PRIDX", Cut: %6"PRIDX", Vol: %6"PRIDX"\n",
+              pwgts[iargmin(nparts, pwgts,1)], imax(nparts, pwgts,1),
+              ComputeLoadImbalance(graph, nparts, ctrl->pijbm), 
+              graph->nbnd, nmoved, graph->mincut, ComputeVolume(graph, where));
+    }
+
+    if (nmoved == 0 || graph->mincut == oldcut)
+      break;
+  }
+
+  WCOREPOP;
 }
 

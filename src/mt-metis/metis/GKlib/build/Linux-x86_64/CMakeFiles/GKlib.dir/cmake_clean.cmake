@@ -13,7 +13,7 @@ FILE(REMOVE_RECURSE
   "CMakeFiles/GKlib.dir/fs.c.o"
   "CMakeFiles/GKlib.dir/itemsets.c.o"
   "CMakeFiles/GKlib.dir/seq.c.o"
-  "CMakeFiles/GKlib.dir/util.c.o"
+  "CMakeFiles/GKlib.dir/gk_util.c.o"
   "CMakeFiles/GKlib.dir/evaluate.c.o"
   "CMakeFiles/GKlib.dir/b64.c.o"
   "CMakeFiles/GKlib.dir/htable.c.o"

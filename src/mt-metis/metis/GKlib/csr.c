@@ -4,7 +4,7 @@
  * \brief Various routines with dealing with CSR matrices
  *
  * \author George Karypis
- * \version\verbatim $Id: csr.c 15599 2013-10-19 18:17:33Z karypis $ \endverbatim
+ * \version\verbatim $Id: csr.c 16297 2014-02-24 20:36:56Z karypis $ \endverbatim
  */
 
 #include <GKlib.h>
@@ -288,7 +288,7 @@ gk_csr_t **gk_csr_Split(gk_csr_t *mat, int *color)
   rowind = mat->rowind;
   rowval = mat->rowval;
 
-  ncolors = gk_imax(rowptr[nrows], color)+1;
+  ncolors = gk_imax(rowptr[nrows], color, 1)+1;
 
   smats = (gk_csr_t **)gk_malloc(sizeof(gk_csr_t *)*ncolors, "gk_csr_Split: smats");
   for (i=0; i<ncolors; i++) {
@@ -2471,7 +2471,7 @@ gk_csr_t *gk_csr_MakeSymmetric(gk_csr_t *mat, int op)
     colval = gk_fmalloc(rowptr[nrows], "colval");
 
   for (i=0; i<nrows; i++) {
-    for (j=rowptr[i]; j<rowptr[i+1]; j++)
+    for (j=rowptr[i]; j<rowptr[i+1]; j++) 
       colptr[rowind[j]]++;
   }
   MAKECSR(i, nrows, colptr);
@@ -2493,9 +2493,9 @@ gk_csr_t *gk_csr_MakeSymmetric(gk_csr_t *mat, int op)
   nmat->ncols = mat->ncols;
 
   nrowptr = nmat->rowptr = gk_zmalloc(nrows+1, "gk_csr_MakeSymmetric: nrowptr");
-  nrowind = nmat->rowind = gk_imalloc(rowptr[nrows], "gk_csr_MakeSymmetric: nrowind");
+  nrowind = nmat->rowind = gk_imalloc(2*rowptr[nrows], "gk_csr_MakeSymmetric: nrowind");
   if (hasvals)
-    nrowval = nmat->rowval = gk_fmalloc(rowptr[nrows], "gk_csr_MakeSymmetric: nrowval");
+    nrowval = nmat->rowval = gk_fmalloc(2*rowptr[nrows], "gk_csr_MakeSymmetric: nrowval");
 
   marker = gk_ismalloc(nrows, -1, "marker");
   ids    = gk_imalloc(nrows, "ids");

@@ -4,7 +4,7 @@
 
 \date   Started 4/09/07
 \author George
-\version\verbatim $Id: gk_mkpqueue.h 13005 2012-10-23 22:34:36Z karypis $ \endverbatim
+\version\verbatim $Id: gk_mkpqueue.h 16221 2014-02-15 20:33:26Z karypis $ \endverbatim
 */
 
 
@@ -45,11 +45,11 @@ void FPRFX ## Init(PQT *queue, size_t maxnodes)\
 /**************************************************************************/\
 void FPRFX ## Reset(PQT *queue)\
 {\
-  gk_idx_t i;\
-  gk_idx_t *locator=queue->locator;\
+  ssize_t i;\
+  ssize_t *locator=queue->locator;\
   KVT *heap=queue->heap;\
 \
-  for (i=queue->nnodes-1; i>=0; i--)\
+  for (i=((ssize_t)queue->nnodes)-1; i>=0; i--)\
     locator[heap[i].val] = -1;\
   queue->nnodes = 0;\
 }\
@@ -92,8 +92,8 @@ size_t FPRFX ## Length(PQT *queue)\
 /**************************************************************************/\
 int FPRFX ## Insert(PQT *queue, VT node, KT key)\
 {\
-  gk_idx_t i, j;\
-  gk_idx_t *locator=queue->locator;\
+  ssize_t i, j;\
+  ssize_t *locator=queue->locator;\
   KVT *heap=queue->heap;\
 \
   ASSERT2(FPRFX ## CheckHeap(queue));\
@@ -127,9 +127,10 @@ int FPRFX ## Insert(PQT *queue, VT node, KT key)\
 /**************************************************************************/\
 int FPRFX ## Delete(PQT *queue, VT node)\
 {\
-  gk_idx_t i, j, nnodes;\
+  ssize_t i, j;\
+  ssize_t nnodes;\
   KT newkey, oldkey;\
-  gk_idx_t *locator=queue->locator;\
+  ssize_t *locator=queue->locator;\
   KVT *heap=queue->heap;\
 \
   ASSERT(locator[node] != -1);\
@@ -194,9 +195,10 @@ int FPRFX ## Delete(PQT *queue, VT node)\
 /**************************************************************************/\
 void FPRFX ## Update(PQT *queue, VT node, KT newkey)\
 {\
-  gk_idx_t i, j, nnodes;\
+  ssize_t i, j;\
+  ssize_t nnodes;\
   KT oldkey;\
-  gk_idx_t *locator=queue->locator;\
+  ssize_t *locator=queue->locator;\
   KVT *heap=queue->heap;\
 \
   oldkey = heap[locator[node]].key;\
@@ -256,8 +258,8 @@ void FPRFX ## Update(PQT *queue, VT node, KT newkey)\
 /**************************************************************************/\
 VT FPRFX ## GetTop(PQT *queue)\
 {\
-  gk_idx_t i, j;\
-  gk_idx_t *locator;\
+  ssize_t i, j;\
+  ssize_t *locator;\
   KVT *heap;\
   VT vtx, node;\
   KT key;\
@@ -279,15 +281,15 @@ VT FPRFX ## GetTop(PQT *queue)\
     key  = heap[i].key;\
     node = heap[i].val;\
     i = 0;\
-    while ((j=2*i+1) < queue->nnodes) {\
+    while ((j=2*i+1) < (ssize_t)queue->nnodes) {\
       if (KEY_LT(heap[j].key, key)) {\
-        if (j+1 < queue->nnodes && KEY_LT(heap[j+1].key, heap[j].key))\
+        if (j+1 < (ssize_t)queue->nnodes && KEY_LT(heap[j+1].key, heap[j].key))\
           j = j+1;\
         heap[i] = heap[j];\
         locator[heap[i].val] = i;\
         i = j;\
       }\
-      else if (j+1 < queue->nnodes && KEY_LT(heap[j+1].key, key)) {\
+      else if (j+1 < (ssize_t)queue->nnodes && KEY_LT(heap[j+1].key, key)) {\
         j = j+1;\
         heap[i] = heap[j];\
         locator[heap[i].val] = i;\
@@ -332,7 +334,7 @@ KT FPRFX ## SeeTopKey(PQT *queue)\
 /**************************************************************************/\
 KT FPRFX ## SeeKey(PQT *queue, VT node)\
 {\
-  gk_idx_t *locator;\
+  ssize_t *locator;\
   KVT *heap;\
 \
   heap    = queue->heap;\
@@ -350,7 +352,7 @@ KT FPRFX ## SeeKey(PQT *queue, VT node)\
 /*\
 VT FPRFX ## SeeConstraintTop(PQT *queue, KT maxwgt, KT *wgts)\
 {\
-  gk_idx_t i;\
+  ssize_t i;\
 \
   if (queue->nnodes == 0)\
     return -1;\
@@ -380,9 +382,9 @@ VT FPRFX ## SeeConstraintTop(PQT *queue, KT maxwgt, KT *wgts)\
 /**************************************************************************/\
 int FPRFX ## CheckHeap(PQT *queue)\
 {\
-  gk_idx_t i, j;\
-  size_t nnodes;\
-  gk_idx_t *locator;\
+  ssize_t i, j;\
+  ssize_t nnodes;\
+  ssize_t *locator;\
   KVT *heap;\
 \
   heap    = queue->heap;\
@@ -392,19 +394,35 @@ int FPRFX ## CheckHeap(PQT *queue)\
   if (nnodes == 0)\
     return 1;\
 \
-  ASSERT(locator[heap[0].val] == 0);\
+  if (locator[heap[0].val] != 0) {\
+    printf("locator[heap[0].val] != 0\n");\
+    return 0;\
+  }\
   for (i=1; i<nnodes; i++) {\
-    ASSERT(locator[heap[i].val] == i);\
-    ASSERT(!KEY_LT(heap[i].key, heap[(i-1)/2].key));\
+    if (locator[heap[i].val] != i) {\
+      printf("locator[heap[i].val] != i\n");\
+      return 0;\
+    }\
+    if (KEY_LT(heap[i].key,heap[(i-1)/2].key)) {\
+      printf("KEY_LOT(heap[i].key,heap[(i-1)/2].key)\n");\
+      return 0;\
+    }\
   }\
-  for (i=1; i<nnodes; i++)\
-    ASSERT(!KEY_LT(heap[i].key, heap[0].key));\
+  for (i=1; i<nnodes; i++) {\
+    if (KEY_LT(heap[i].key,heap[0].key)){\
+      printf("KEY_LT(heap[i].key,heap[0].key)\n");\
+      return 0;\
+    }\
+  }\
 \
-  for (j=i=0; i<queue->maxnodes; i++) {\
-    if (locator[i] != -1)\
+  for (j=i=0; i<(ssize_t)queue->maxnodes; i++) {\
+    if (locator[i] != -1){\
       j++;\
+    }\
   }\
-  ASSERTP(j == nnodes, ("%jd %jd\n", (intmax_t)j, (intmax_t)nnodes));\
+  if (j != nnodes) {\
+    printf("j != nnodes: %zd %zd\n",j,nnodes);\
+  }\
 \
   return 1;\
 }\

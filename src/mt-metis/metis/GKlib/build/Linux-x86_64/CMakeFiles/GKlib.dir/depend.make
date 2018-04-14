@@ -177,6 +177,28 @@ CMakeFiles/GKlib.dir/getopt.c.o: ../.././ms_stat.h
 CMakeFiles/GKlib.dir/getopt.c.o: ../.././ms_stdint.h
 CMakeFiles/GKlib.dir/getopt.c.o: ../../getopt.c
 
+CMakeFiles/GKlib.dir/gk_util.c.o: ../.././GKlib.h
+CMakeFiles/GKlib.dir/gk_util.c.o: ../.././gk_arch.h
+CMakeFiles/GKlib.dir/gk_util.c.o: ../.././gk_defs.h
+CMakeFiles/GKlib.dir/gk_util.c.o: ../.././gk_externs.h
+CMakeFiles/GKlib.dir/gk_util.c.o: ../.././gk_getopt.h
+CMakeFiles/GKlib.dir/gk_util.c.o: ../.././gk_macros.h
+CMakeFiles/GKlib.dir/gk_util.c.o: ../.././gk_mkblas.h
+CMakeFiles/GKlib.dir/gk_util.c.o: ../.././gk_mkmemory.h
+CMakeFiles/GKlib.dir/gk_util.c.o: ../.././gk_mkpqueue.h
+CMakeFiles/GKlib.dir/gk_util.c.o: ../.././gk_mkpqueue2.h
+CMakeFiles/GKlib.dir/gk_util.c.o: ../.././gk_mkrandom.h
+CMakeFiles/GKlib.dir/gk_util.c.o: ../.././gk_mksort.h
+CMakeFiles/GKlib.dir/gk_util.c.o: ../.././gk_mkutils.h
+CMakeFiles/GKlib.dir/gk_util.c.o: ../.././gk_proto.h
+CMakeFiles/GKlib.dir/gk_util.c.o: ../.././gk_struct.h
+CMakeFiles/GKlib.dir/gk_util.c.o: ../.././gk_types.h
+CMakeFiles/GKlib.dir/gk_util.c.o: ../.././gkregex.h
+CMakeFiles/GKlib.dir/gk_util.c.o: ../.././ms_inttypes.h
+CMakeFiles/GKlib.dir/gk_util.c.o: ../.././ms_stat.h
+CMakeFiles/GKlib.dir/gk_util.c.o: ../.././ms_stdint.h
+CMakeFiles/GKlib.dir/gk_util.c.o: ../../gk_util.c
+
 CMakeFiles/GKlib.dir/gkregex.c.o: ../.././gk_defs.h
 CMakeFiles/GKlib.dir/gkregex.c.o: ../.././gk_externs.h
 CMakeFiles/GKlib.dir/gkregex.c.o: ../.././gk_getopt.h
@@ -528,26 +550,4 @@ CMakeFiles/GKlib.dir/tokenizer.c.o: ../.././ms_inttypes.h
 CMakeFiles/GKlib.dir/tokenizer.c.o: ../.././ms_stat.h
 CMakeFiles/GKlib.dir/tokenizer.c.o: ../.././ms_stdint.h
 CMakeFiles/GKlib.dir/tokenizer.c.o: ../../tokenizer.c
-
-CMakeFiles/GKlib.dir/util.c.o: ../.././GKlib.h
-CMakeFiles/GKlib.dir/util.c.o: ../.././gk_arch.h
-CMakeFiles/GKlib.dir/util.c.o: ../.././gk_defs.h
-CMakeFiles/GKlib.dir/util.c.o: ../.././gk_externs.h
-CMakeFiles/GKlib.dir/util.c.o: ../.././gk_getopt.h
-CMakeFiles/GKlib.dir/util.c.o: ../.././gk_macros.h
-CMakeFiles/GKlib.dir/util.c.o: ../.././gk_mkblas.h
-CMakeFiles/GKlib.dir/util.c.o: ../.././gk_mkmemory.h
-CMakeFiles/GKlib.dir/util.c.o: ../.././gk_mkpqueue.h
-CMakeFiles/GKlib.dir/util.c.o: ../.././gk_mkpqueue2.h
-CMakeFiles/GKlib.dir/util.c.o: ../.././gk_mkrandom.h
-CMakeFiles/GKlib.dir/util.c.o: ../.././gk_mksort.h
-CMakeFiles/GKlib.dir/util.c.o: ../.././gk_mkutils.h
-CMakeFiles/GKlib.dir/util.c.o: ../.././gk_proto.h
-CMakeFiles/GKlib.dir/util.c.o: ../.././gk_struct.h
-CMakeFiles/GKlib.dir/util.c.o: ../.././gk_types.h
-CMakeFiles/GKlib.dir/util.c.o: ../.././gkregex.h
-CMakeFiles/GKlib.dir/util.c.o: ../.././ms_inttypes.h
-CMakeFiles/GKlib.dir/util.c.o: ../.././ms_stat.h
-CMakeFiles/GKlib.dir/util.c.o: ../.././ms_stdint.h
-CMakeFiles/GKlib.dir/util.c.o: ../../util.c
 

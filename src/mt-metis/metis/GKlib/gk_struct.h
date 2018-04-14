@@ -4,7 +4,7 @@
 
 \date   Started 3/27/2007
 \author George
-\version\verbatim $Id: gk_struct.h 14330 2013-05-18 12:15:15Z karypis $ \endverbatim
+\version\verbatim $Id: gk_struct.h 16286 2014-02-24 16:49:32Z karypis $ \endverbatim
 */
 
 #ifndef _GK_STRUCT_H_
@@ -39,12 +39,12 @@ GK_MKKEYVALUE_T(gk_idxkv_t, gk_idx_t, gk_idx_t)
 /********************************************************************/
 #define GK_MKPQUEUE_T(NAME, KVTYPE)\
 typedef struct {\
-  gk_idx_t nnodes;\
-  gk_idx_t maxnodes;\
+  size_t nnodes;\
+  size_t maxnodes;\
 \
   /* Heap version of the data structure */ \
   KVTYPE   *heap;\
-  gk_idx_t *locator;\
+  ssize_t *locator;\
 } NAME;\
 
 GK_MKPQUEUE_T(gk_ipq_t,    gk_ikv_t)
@@ -142,6 +142,7 @@ typedef struct gk_Tokens_t {
   char *strbuf;     /* The memory that stores all the entries */
   char **list;      /* Pointers to the strbuf for each element */
 } gk_Tokens_t;
+
 
 /*------------------------------------------------------------
  * This structure implements storage for an atom in a pdb file

@@ -51,7 +51,6 @@ SET(CMAKE_MAKEFILE_DEPENDS
   "CMakeFiles/CMakeCCompiler.cmake"
   "CMakeFiles/CMakeCXXCompiler.cmake"
   "CMakeFiles/CMakeSystem.cmake"
-  "../../conf/check_thread_storage.c"
   "../../test/CMakeLists.txt"
   )
 

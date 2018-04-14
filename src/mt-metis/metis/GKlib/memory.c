@@ -9,7 +9,7 @@ can be used to define other memory allocation routines.
 
 \date   Started 4/3/2007
 \author George
-\version\verbatim $Id: memory.c 14866 2013-08-03 16:40:04Z karypis $ \endverbatim
+\version\verbatim $Id: memory.c 16648 2014-04-06 20:16:50Z karypis $ \endverbatim
 */
 
 
@@ -98,7 +98,7 @@ void gk_FreeMatrix(void ***r_matrix, size_t ndim1, size_t ndim2)
 /*! This function initializes tracking of heap allocations. 
 */
 /*************************************************************************/
-int gk_malloc_init()
+int gk_malloc_init(void)
 {
   if (gkmcore == NULL)
     gkmcore = gk_gkmcoreCreate();
@@ -147,7 +147,6 @@ void *gk_malloc(size_t nbytes, char *msg)
     nbytes++;  /* Force mallocs to actually allocate some memory */
 
   ptr = (void *)malloc(nbytes);
-  //ptr = (void *)calloc(nbytes, 1);
 
   if (ptr == NULL) {
     fprintf(stderr, "   Current memory used:  %10zu bytes\n", gk_GetCurMemoryUsed());
@@ -159,11 +158,6 @@ void *gk_malloc(size_t nbytes, char *msg)
 
   /* add this memory allocation */
   if (gkmcore != NULL) gk_gkmcoreAdd(gkmcore, GK_MOPT_HEAP, nbytes, ptr);
-
-  /* zero-out the allocated space */
-#ifndef NDEBUG
-  //memset(ptr, 0, nbytes);
-#endif
 
   return ptr;
 }
@@ -233,7 +227,7 @@ void gk_free(void **ptr1,...)
 * This function returns the current ammount of dynamically allocated
 * memory that is used by the system
 **************************************************************************/
-size_t gk_GetCurMemoryUsed()
+size_t gk_GetCurMemoryUsed(void)
 {
   if (gkmcore == NULL)
     return 0;
@@ -246,7 +240,7 @@ size_t gk_GetCurMemoryUsed()
 * This function returns the maximum ammount of dynamically allocated 
 * memory that was used by the system
 **************************************************************************/
-size_t gk_GetMaxMemoryUsed()
+size_t gk_GetMaxMemoryUsed(void)
 {
   if (gkmcore == NULL)
     return 0;

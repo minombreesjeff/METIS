@@ -1,0 +1,1 @@
+/home/grad03/lasalle/bin/gcc   -fopenmp -Wall -Wextra -Wmissing-prototypes -Wmissing-declarations -Wstrict-aliasing -Wno-unused-parameter -Wno-unused-function -Werror -pedantic -fstrict-aliasing -std=c99 -O3 -DNDEBUG    CMakeFiles/bowstring_bin.dir/bowstring_bin.c.o  -o ../bin/bowstring -rdynamic ../lib/libbowstring.a -lz -lm 

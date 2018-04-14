@@ -8,7 +8,7 @@
  * Started 10/2/97
  * George
  *
- * $Id: rename.h 12542 2012-08-23 04:49:01Z dominique $
+ * $Id: rename.h 17622 2014-09-09 03:27:49Z dominique $
  *
  */
 
@@ -35,6 +35,9 @@
 #define CoarsenGraph			libmetis__CoarsenGraph
 #define Match_RM                        libmetis__Match_RM
 #define Match_SHEM                      libmetis__Match_SHEM
+#define Match_2Hop                      libmetis__Match_2Hop
+#define Match_2HopAny                   libmetis__Match_2HopAny
+#define Match_2HopAll                   libmetis__Match_2HopAll
 #define PrintCGraphStats                libmetis__PrintCGraphStats
 #define CreateCoarseGraph		libmetis__CreateCoarseGraph
 #define CreateCoarseGraphNoMask		libmetis__CreateCoarseGraphNoMask
@@ -93,6 +96,8 @@
 #define InitGraph                       libmetis__InitGraph
 #define FreeRData                       libmetis__FreeRData
 #define FreeGraph                       libmetis__FreeGraph
+#define graph_WriteToDisk               libmetis__graph_WriteToDisk
+#define graph_ReadFromDisk              libmetis__graph_ReadFromDisk
 
 /* initpart.c */
 #define Init2WayPartition		libmetis__Init2WayPartition
@@ -106,6 +111,8 @@
 /* kmetis.c */
 #define MlevelKWayPartitioning		libmetis__MlevelKWayPartitioning
 #define InitKWayPartitioning            libmetis__InitKWayPartitioning
+#define InitKWayPartitioningRB          libmetis__InitKWayPartitioningRB
+#define InitKWayPartitioningGrow        libmetis__InitKWayPartitioningGrow
 
 /* kwayfm.c */
 #define Greedy_KWayOptimize		libmetis__Greedy_KWayOptimize
@@ -144,8 +151,9 @@
 
 /* mesh.c */
 #define CreateGraphDual                 libmetis__CreateGraphDual
-#define CreateGraphNodal                libmetis__CreateGraphNodal
 #define FindCommonElements              libmetis__FindCommonElements
+#define CreateGraphNodal                libmetis__CreateGraphNodal
+#define FindCommonNodes                 libmetis__FindCommonNodes
 #define CreateMesh                      libmetis__CreateMesh
 #define InitMesh                        libmetis__InitMesh
 #define FreeMesh                        libmetis__FreeMesh

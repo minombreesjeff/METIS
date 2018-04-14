@@ -47,8 +47,13 @@ int CheckGraph(graph_t *graph, int numflag, int verbose)
 
   htable = ismalloc(nvtxs, 0, "htable");
 
-  minedge = maxedge = adjncy[0];
-  minewgt = maxewgt = adjwgt[0];
+  if (graph->nedges > 0) {
+    minedge = maxedge = adjncy[0];
+    minewgt = maxewgt = adjwgt[0];
+  } else {
+    minedge = maxedge = 0;
+    minewgt = maxewgt = 0;
+  }
 
   for (i=0; i<nvtxs; i++) {
     for (j=xadj[i]; j<xadj[i+1]; j++) {
@@ -175,7 +180,7 @@ int CheckInputGraphWeights(idx_t nvtxs, idx_t ncon, idx_t *xadj, idx_t *adjncy,
 /*************************************************************************/
 graph_t *FixGraph(graph_t *graph)
 {
-  idx_t i, j, k, l, nvtxs, nedges;
+  idx_t i, j, k, nvtxs, nedges;
   idx_t *xadj, *adjncy, *adjwgt;
   idx_t *nxadj, *nadjncy, *nadjwgt;
   graph_t *ngraph;

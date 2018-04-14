@@ -2,30 +2,250 @@
 * @file graph.c
 * @brief routine for handling dgraphs
 * @author Dominique LaSalle <lasalle@cs.umn.edu>
-* @copyright 2013, Regents of the University of Minnesota
+* @copyright 2014, Regents of the University of Minnesota
 * @version 1
 * @date 2012-06-12
 */
 
-#include "includes.h"
+
+
+
+#ifndef MTMETIS_GRAPH_C
+#define MTMETIS_GRAPH_C
+
+
+
+
+#include <bowstring.h>
+#include "graph.h"
+#include "check.h"
+
+
+
+
+/******************************************************************************
+* PRIVATE FUNCTIONS ***********************************************************
+******************************************************************************/
+
 
 /**
-* @brief Create a graph
-*
-* @param nthreads Number of threads to use
-*
-* @return The created graph strucutre
-*/
-dgraph_t *SerCreateGraph(void)
+ * @brief Free the part of the graph that thread 'myid' owns.
+ *
+ * @param graph The graph.
+ * @param myid The thread id.
+ */
+static void __graph_free_part(
+    graph_t * const graph,
+    tid_t const myid)
 {
-  dgraph_t *graph;
+  /* free graph structure */
+  if (graph->free_xadj) {
+    dl_free(graph->xadj[myid]);
+  }
+  if (graph->free_vwgt) { 
+    dl_free(graph->vwgt[myid]);
+  }
+  if (graph->free_adjncy) {
+    dl_free(graph->adjncy[myid]);
+  }
+  if (graph->free_adjwgt) {
+    dl_free(graph->adjwgt[myid]);
+  }
 
-  graph = (dgraph_t *)gk_malloc(sizeof(dgraph_t), "CreateGraph: graph");
-
-  SerInitGraph(graph);
-
-  return graph; 
+  /* free auxillery things */
+  if (graph->cmap) {
+    dl_free(graph->cmap[myid]);
+  }
+  if (graph->label) {
+    dl_free(graph->label[myid]);
+  }
 }
+
+
+/**
+ * @brief Configure the distribution structure.
+ *
+ * @param maxnvtxs The maximum number of vertices owned by a thread.
+ * @param nthreads The number of threads.
+ * @param dist The distribution structure to configure.
+ */
+static void __graph_dist(
+    vtx_t const maxnvtxs, 
+    tid_t const nthreads,
+    graphdist_t * const dist) 
+{
+  dist->nthreads = nthreads;
+  dist->offset = vtx_uppow2(maxnvtxs+1);
+  dist->mask = dist->offset - 1;
+  dist->shift = vtx_downlog2(dist->offset);
+
+  DL_ASSERT(maxnvtxs < (vtx_t)(1<<dist->shift),"Shift of %d for %"PF_VTX_T
+      " vertices\n",dist->shift,maxnvtxs);
+  DL_ASSERT_EQUALS(dist->offset,(vtx_t)(1<<dist->shift),"%"PF_VTX_T);
+}
+
+
+/**
+ * @brief Distribute the vertices of a graph in continigous blocks. 
+ *
+ * @param nvtxs The number of vertices.
+ * @param xadj The adjacecny list pointer.
+ * @param nthreads The number of threads to distribute the vertices over.
+ * @param mynvtxs The number of vertices owned by each thread.
+ * @param mynedges The number of edges owned by each thread.
+ * @param lvtx The local vertex numbers.
+ * @param owner The array assigning vertices to threads.
+ */
+static void __distribute_block(
+    vtx_t const nvtxs,
+    adj_t const * const xadj,
+    tid_t const nthreads,
+    vtx_t * const mynvtxs,
+    adj_t * const mynedges,
+    vtx_t * const lvtx,
+    tid_t * const owner)
+{
+  vtx_t v;
+  tid_t myid;
+  adj_t j, nedgesleft;
+
+  adj_t const nedges = xadj[nvtxs];
+  adj_t const avgnedges = nedges / nthreads;
+
+  /* distribute vertices based on edge count */
+  nedgesleft = nedges;
+  myid = 0;
+  for (v =0;v<nvtxs;++v) {
+    if ((nthreads-myid-1)*avgnedges > nedgesleft) {
+      ++myid;
+    }
+    owner[v] = myid;
+    j = xadj[v+1] - xadj[v]; 
+    mynedges[myid] += j;
+    nedgesleft -= j;
+  }
+  for (v =0;v<nvtxs;++v) {
+    myid = owner[v];
+    lvtx[v] = mynvtxs[myid]++;
+  }
+}
+
+
+/**
+ * @brief Distribute the vertices of a graph cyclicly. 
+ *
+ * @param nvtxs The number of vertices.
+ * @param xadj The adjacecny list pointer.
+ * @param nthreads The number of threads to distribute the vertices over.
+ * @param mynvtxs The number of vertices owned by each thread.
+ * @param mynedges The number of edges owned by each thread.
+ * @param lvtx The local vertex numbers.
+ * @param owner The array assigning vertices to threads.
+ */
+static void __distribute_cyclic(
+    vtx_t const nvtxs,
+    adj_t const * const xadj,
+    tid_t const nthreads,
+    vtx_t * const mynvtxs,
+    adj_t * const mynedges,
+    vtx_t * const lvtx,
+    tid_t * const owner)
+{
+  vtx_t i, v;
+  tid_t myid;
+  adj_t j, nedgesleft;
+  vtx_t * perm;
+
+  adj_t const nedges = xadj[nvtxs];
+  adj_t const avgnedges = nedges / nthreads;
+
+  perm = vtx_alloc(nvtxs);
+
+  vtx_cyclicperm(perm,nthreads,nvtxs);
+
+  /* distribute vertices based on edge count */
+  nedgesleft = nedges;
+  myid = 0;
+  for (i =0;i<nvtxs;++i) {
+    if ((nthreads-myid-1)*avgnedges > nedgesleft) {
+      ++myid;
+    }
+    v = perm[i];
+    owner[v] = myid;
+    j = xadj[v+1] - xadj[v]; 
+    mynedges[myid] += j;
+    nedgesleft -= j;
+  }
+  for (i =0;i<nvtxs;++i) {
+    myid = owner[i];
+    lvtx[i] = mynvtxs[myid]++;
+  }
+
+  dl_free(perm);
+}
+
+
+/**
+ * @brief Distribute the vertices of a graph block-cyclicly. 
+ *
+ * @param nvtxs The number of vertices.
+ * @param xadj The adjacecny list pointer.
+ * @param nthreads The number of threads to distribute the vertices over.
+ * @param mynvtxs The number of vertices owned by each thread.
+ * @param mynedges The number of edges owned by each thread.
+ * @param lvtx The local vertex numbers.
+ * @param owner The array assigning vertices to threads.
+ * @param block This size of a block.
+ */
+static void __distribute_blockcyclic(
+    vtx_t const nvtxs,
+    adj_t const * const xadj,
+    tid_t const nthreads,
+    vtx_t * const mynvtxs,
+    adj_t * const mynedges,
+    vtx_t * const lvtx,
+    tid_t * const owner,
+    vtx_t block)
+{
+  vtx_t i, v;
+  tid_t myid;
+  adj_t j, nedgesleft;
+  vtx_t * perm;
+
+  adj_t const nedges = xadj[nvtxs];
+  adj_t const avgnedges = nedges / nthreads;
+
+  perm = vtx_alloc(nvtxs);
+
+  /* create cyclic permutation */
+  if (nthreads * block > nvtxs) {
+    /* adjust the block if it will be imbalanced */
+    block = dl_max(1,nvtxs/nthreads);
+  }
+  vtx_blockcyclicperm(perm,nthreads,block,nvtxs);
+
+  /* distribute vertices based on edge count */
+  nedgesleft = nedges;
+  myid = 0;
+  for (i =0;i<nvtxs;++i) {
+    if ((nthreads-myid-1)*avgnedges > nedgesleft) {
+      ++myid;
+    }
+    v = perm[i];
+    owner[v] = myid;
+    j = xadj[v+1] - xadj[v]; 
+    mynedges[myid] += j;
+    nedgesleft -= j;
+  }
+  for (i =0;i<nvtxs;++i) {
+    myid = owner[i];
+    lvtx[i] = mynvtxs[myid]++;
+  }
+
+  dl_free(perm);
+}
+
+
 
 /**
 * @brief Initializes the graph
@@ -33,946 +253,728 @@ dgraph_t *SerCreateGraph(void)
 * @param graph The graph to initialize
 * @param nthreads The number of threads to use
 */
-void SerInitGraph(dgraph_t *graph) 
+static void __graph_init(
+    graph_t * const graph,
+    tid_t const nthreads) 
 {
-  memset((void *)graph, 0, sizeof(dgraph_t));
+  DL_ASSERT(nthreads > 0,"__graph_init() called with 0 threads");
+  #pragma omp master
+  {
+    graph->level = 0;
 
-  /* graph size constants */
-  graph->nvtxs     = -1;
-  graph->nedges    = -1;
-  graph->mincut    = -1;
-  graph->minvol    = -1;
-  graph->nbnd      = -1;
-  graph->maxdeg    = -1;
-  graph->ndist     = 0;
+    /* graph size constants */
+    graph->nvtxs = 0;
+    graph->nedges = 0;
+    graph->mincut = 0;
+    graph->minvol = 0;
+    graph->dist.nthreads = nthreads;
 
-  /* memory for the graph structure */
-  graph->xadj      = NULL;
-  graph->vwgt      = NULL;
-  graph->adjncy    = NULL;
-  graph->adjwgt    = NULL;
-  graph->label     = NULL;
-  graph->cmap      = NULL;
-  graph->tvwgt     = NULL;
-  graph->invtvwgt  = NULL;
+    /* memory for the graph structure */
+    graph->mynvtxs = vtx_alloc(nthreads);
+    graph->mynedges = adj_alloc(nthreads);
+    graph->xadj = r_adj_alloc(nthreads);
+    graph->vwgt = r_wgt_alloc(nthreads);
+    graph->adjncy = r_vtx_alloc(nthreads);
+    graph->adjwgt = r_wgt_alloc(nthreads);
+    graph->label = NULL;
+    graph->cmap = NULL;
+    graph->where = NULL;
+    graph->pwgts = NULL;
+    graph->tvwgt = 0;
+    graph->invtvwgt = 0;
 
-  /* by default these are set to true, but the can be explicitly changed afterwards */
-  graph->free_xadj   = 1;
-  graph->free_vwgt   = 1;
-  graph->free_adjncy = 1;
-  graph->free_adjwgt = 1;
+    /* by default these are set to true, but the can be explicitly changed 
+     * afterwards */
+    graph->free_xadj = 1;
+    graph->free_vwgt = 1;
+    graph->free_adjncy = 1;
+    graph->free_adjwgt = 1;
 
-  /* memory for the partition/refinement structure */
-  graph->where     = NULL;
-  graph->pwgts     = NULL;
-  graph->id        = NULL;
-  graph->ed        = NULL;
-  graph->bndptr    = NULL;
-  graph->bndind    = NULL;
-  graph->ckrinfo   = NULL;
-
-  /* linked-list structure */
-  graph->coarser   = NULL;
-  graph->finer     = NULL;
+    /* linked-list structure */
+    graph->coarser = NULL;
+    graph->finer = NULL;
+  }
+  #pragma omp barrier
 }
 
-/**
-* @brief Create a dgraph based on inputs
-*
-* @param dctrl The ctrl_t wrapper
-* @param nvtxs Number of vertices
-* @param xadj Adjacency list pointers
-* @param adjncy Adjacency list
-* @param vwgt Vertex weights 
-* @param adjwgt Edge weights
-* @param nthreads Number of threads to run with
-*
-* @return The Dgraph
-*/
-dgraph_t *ParSetupGraph(dgraph_t ** r_graph, idx_t * buffer, const idx_t nvtxs, 
-    const idx_t * const oxadj, const idx_t * const oadjncy, 
-    const idx_t * const oadjwgt, const idx_t * const ovwgt) 
+
+
+
+/******************************************************************************
+* PUBLIC SERIAL FUNCTIONS *****************************************************
+******************************************************************************/
+
+
+static graph_t * __gc_graph;
+graph_t * graph_create(
+    tid_t const nthreads)
 {
-  INIT_PARALLEL();
-
-  dgraph_t * graph;
-
-  #pragma omp master
-  {
-    /* allocate the graph and fill in the fields */
-    *r_graph = graph = SerCreateGraph();
-
-    graph->xadj = pimalloc(nthreads,"X");
-    graph->vwgt = pimalloc(nthreads,"X");
-    graph->adjncy = pimalloc(nthreads,"X");
-    graph->adjwgt = pimalloc(nthreads,"X");
-
-    graph->mynvtxs = imalloc(nthreads,"X"); 
-    graph->mymaxdeg = imalloc(nthreads,"X");
-
-    graph->gnvtxs = graph->nvtxs = nvtxs;
-    graph->ndist = nthreads;
-    if (nthreads > 1) {
-      graph->dshift = (sizeof(idx_t)*8)-__builtin_clz(nthreads-1);
-      graph->dsize = (1 << graph->dshift);
-      graph->dmask = graph->dsize -1;
-    } else {
-      graph->dshift = 0;
-      graph->dsize = 1;
-      graph->dmask = 0x0;
+  if (omp_in_parallel()) {
+    #pragma omp master
+    {
+      __gc_graph = (graph_t*)calloc(1,sizeof(graph_t));
     }
-    *r_graph = graph;
-  }
-  #pragma omp barrier
-  graph = *r_graph;
-
-  idx_t ** const gxadj = graph->xadj;
-  idx_t ** const gvwgt = graph->vwgt;
-  idx_t ** const gadjncy = graph->adjncy;
-  idx_t ** const gadjwgt = graph->adjwgt;
-
-  idx_t i,j,jj,v, maxdeg, adjsize, cycle,cyclestart,cycleend;
-  maxdeg = adjsize = 0;
-
-  const idx_t cyclesize = nthreads*BLOCKSIZE;
-  const idx_t ncycles = (nvtxs / cyclesize) +1;
-  const idx_t lastblocksize = gk_min(
-      gk_max((nvtxs%cyclesize) - (myid*BLOCKSIZE),0), BLOCKSIZE);
-  const idx_t mynvtxs = graph->mynvtxs[myid] = 
-    (nvtxs /cyclesize)*BLOCKSIZE + lastblocksize;
-
-  /* we'll have an xadj of {0} if we don't own any vertices */
-  idx_t * const xadj = gxadj[myid] = imalloc(mynvtxs+1,"X");
-  if (mynvtxs > 0) {
-    idx_t * const vwgt = gvwgt[myid] = imalloc(mynvtxs,"X");
-    xadj[0] = j = 0;
-    /* do xadj and vwgt */
-    for (i=0;i<mynvtxs;++i) {
-      /* v = LVTX_2_GVTX(i,myid,graph->dshift); */
-      v = (i&BLOCKMASK)+(((LVTX_2_LBID(i)*nthreads)+myid)<<BLOCKSHIFT); 
-      xadj[i+1] = (j += (oxadj[v+1]-oxadj[v])); 
-      vwgt[i] = ovwgt[v];
-      if (xadj[i+1] - xadj[i] > maxdeg) {
-        maxdeg = xadj[i+1]-xadj[i];
-      }
-    }
-    /* finish allocations */
-    idx_t * const adjncy = gadjncy[myid] = imalloc(xadj[mynvtxs],"X"); 
-    idx_t * const adjwgt = gadjwgt[myid] = imalloc(xadj[mynvtxs],"X"); 
-    /* do adjncy and adjwgt */
-    for (i=0;i<mynvtxs;++i) {
-      v = (i&BLOCKMASK)+((LVTX_2_LBID(i)*nthreads+myid)<<BLOCKSHIFT); 
-      jj = xadj[i];
-      for (j=oxadj[v];j<oxadj[v+1];++j) {
-        adjncy[jj] = oadjncy[j] + 
-          ((oadjncy[j]/(nthreads*BLOCKSIZE))*(graph->dsize-nthreads)*BLOCKSIZE);  
-        adjwgt[jj++] = oadjwgt[j]; 
-      }
-      ASSERT(jj == xadj[i+1]);
-    }
+    #pragma omp barrier
   } else {
-    xadj[0] = 0;
-    gvwgt[myid] = NULL;
-    gadjncy[myid] = NULL;
-    gadjwgt[myid] = NULL;
+    __gc_graph = (graph_t*)calloc(1,sizeof(graph_t));
   }
-  graph->mymaxdeg[myid] = maxdeg;
-  dl_omp_maxreduce(myid,maxdeg,buffer,nthreads);
+  __graph_init(__gc_graph,nthreads);
 
-  #pragma omp master
-  {
-    graph->maxdeg = maxdeg;
-    graph->nedges = oxadj[nvtxs];
+  return __gc_graph; 
+}
 
-    graph->tvwgt    = imalloc(1, "SetupGraph: tvwgts");
-    graph->invtvwgt = rmalloc(1, "SetupGraph: invtvwgts");
 
-    graph->tvwgt[0]    = isum(nvtxs, (idx_t*)ovwgt, 1);
-    graph->invtvwgt[0] = 1.0/(graph->tvwgt[0] > 0 ? graph->tvwgt[0] : 1);
+static wgt_t * __gs_vwgt;
+graph_t * graph_setup(
+    vtx_t const nvtxs, 
+    adj_t * const xadj, 
+    vtx_t * const adjncy, 
+    wgt_t * const adjwgt, 
+    wgt_t * const vwgt) 
+{
+  graph_t * graph;
 
+  tid_t const nthreads = omp_get_num_threads(); 
+  tid_t const myid = omp_get_thread_num();
+
+  graph = graph_create(nthreads);
+
+  graph->mynvtxs[myid] = nvtxs;
+  graph->mynedges[myid] = xadj[nvtxs];
+  graph->xadj[myid] = xadj;
+  graph->adjncy[myid] = adjncy;
+  if (adjwgt) {
+    graph->adjwgt[myid] = adjwgt;
+  } else {
+    graph->adjwgt[myid] = wgt_init_alloc(1,xadj[nvtxs]);
+    graph->free_adjwgt = 1;
+  }
+  if (vwgt) {
+    graph->vwgt[myid] = vwgt;
+  } else {
+    graph->vwgt[myid] = wgt_init_alloc(1,nvtxs);
+    graph->free_vwgt = 1;
   }
 
   #pragma omp barrier
-  ASSERT(checkGraph(graph) == 1);
+  #pragma omp master
+  {
+    graph->nvtxs = vtx_sum(graph->mynvtxs,nthreads);
+    graph->nedges = adj_sum(graph->mynedges,nthreads);
+    __graph_dist(vtx_max_value(graph->mynvtxs,nthreads),nthreads, \
+        &(graph->dist));
+    __gs_vwgt = wgt_alloc(nthreads);
+  }
+  #pragma omp barrier
+
+  if (vwgt) {
+    __gs_vwgt[myid] = wgt_sum(vwgt,nvtxs);
+  }
+
+  graph_setup_twgts(graph);
+
+  DL_ASSERT(check_graph(graph),"Bad graph");
 
   return graph;
 }
 
 
-/**
-* @brief Sets up the structure of a coarse graph
-*
-* @param graph The graph that has been matched
-* @param cnvtxs The number of coarse vertices
-* @param dovsize Do vertex size
-* @param nthreads The number of threads to use
-*
-* @return The coarse graph structure
-*/
-dgraph_t * ParSetupCoarseGraph(idx_t * buffer, dgraph_t ** r_graph, 
-    dgraph_t * const graph, const idx_t cnvtxs)
+graph_t * graph_distribute(
+    int distribution,
+    vtx_t const nvtxs, 
+    adj_t const * const xadj, 
+    vtx_t const * const adjncy, 
+    wgt_t const * const adjwgt, 
+    wgt_t const * const vwgt,
+    tid_t const nthreads)
 {
-  INIT_PARALLEL();
+  vtx_t i,k,v,deg,mynvtxs;
+  adj_t j,l;
+  tid_t myid;
+  vtx_t * dmynvtxs;
+  adj_t * dmynedges;
+  adj_t ** dxadj;
+  vtx_t ** dadjncy, ** dlabel;
+  wgt_t ** dadjwgt = NULL, ** dvwgt = NULL;
+  graphdist_t dist;
+  graph_t * graph;
+
+  DL_ASSERT(nvtxs>0, "setup_graph() called with nvtxs = %"PF_VTX_T"\n",nvtxs);
+
+  vtx_t * lvtx = vtx_alloc(nvtxs);
+  tid_t * owner = tid_alloc(nvtxs);
+
+  graph = graph_create(nthreads);
+
+  /* set arrays from graph*/
+  dmynvtxs = graph->mynvtxs;
+  dmynedges = graph->mynedges;
+  dxadj = graph->xadj;
+  dadjncy = graph->adjncy;
+  dadjwgt = graph->adjwgt;
+  dvwgt = graph->vwgt;
+
+  /* labels must be explicityl allocated */
+  dlabel = graph->label = r_vtx_alloc(nthreads);
+
+  /* zero out vertices and edges */
+  vtx_set(dmynvtxs,0,nthreads);
+  adj_set(dmynedges,0,nthreads);
+
+  switch(distribution) {
+    case MTMETIS_DISTRIBUTION_BLOCK:
+      __distribute_block(nvtxs,xadj,nthreads,dmynvtxs,dmynedges, \
+          lvtx,owner);
+      break;
+    case MTMETIS_DISTRIBUTION_CYCLIC:
+      __distribute_cyclic(nvtxs,xadj,nthreads,dmynvtxs,dmynedges, \
+          lvtx,owner);
+      break;
+    case MTMETIS_DISTRIBUTION_BLOCKCYCLIC:
+      __distribute_blockcyclic(nvtxs,xadj,nthreads,dmynvtxs, \
+          dmynedges,lvtx,owner,4096);
+      break;
+    default:
+      dl_error("Unknown distribution '%d'\n",distribution);
+  }
+
+  __graph_dist(vtx_max_value(dmynvtxs,nthreads),nthreads,&dist);
+
+  /* allocate arrays */
+  for (myid =0;myid<nthreads;++myid) {
+    mynvtxs = dmynvtxs[myid];
+    dxadj[myid] = adj_alloc(mynvtxs+1);
+    dxadj[myid][0] = 0;
+    dlabel[myid] = vtx_alloc(mynvtxs);
+    dadjncy[myid] = vtx_alloc(dmynedges[myid]);
+    dvwgt[myid] = wgt_alloc(mynvtxs);
+    dadjwgt[myid] = wgt_alloc(dmynedges[myid]);
+    /* zero counts for insertion later */
+    dmynvtxs[myid] = 0;
+    dmynedges[myid] = 0;
+  }
+
+  /* set xadj and iadjwgt */
+  for (v =0;v<nvtxs;++v) { 
+    myid = owner[v];
+    i = dmynvtxs[myid]++; 
+    dlabel[myid][i] = v;
+    DL_ASSERT_EQUALS(i,lvtx[v],"%"PF_VTX_T);
+    deg = xadj[v+1] - xadj[v];
+    dxadj[myid][i+1] = dxadj[myid][i] + deg;
+    l = dmynedges[myid];
+    if (adjwgt) {
+      for (j =xadj[v];j<xadj[v+1];++j) {
+        k = adjncy[j];
+        if (owner[k] == myid) {
+          dadjncy[myid][l] = lvtx[k];
+        } else {
+          dadjncy[myid][l] = lvtx_to_gvtx(lvtx[k],owner[k],dist);
+        }
+        dadjwgt[myid][l++] = adjwgt[j]; 
+      }
+    } else {
+      for (j =xadj[v];j<xadj[v+1];++j) {
+        k = adjncy[j];
+        if (owner[k] == myid) {
+          dadjncy[myid][l] = lvtx[k];
+        } else {
+          dadjncy[myid][l] = lvtx_to_gvtx(lvtx[k],owner[k],dist);
+        }
+        dadjwgt[myid][l++] = 1;
+      }
+    }
+    DL_ASSERT_EQUALS(dxadj[myid][i+1],l,"%"PF_ADJ_T);
+    dmynedges[myid] = l;
+    if (vwgt) {
+      dvwgt[myid][i] = vwgt[v];
+    } else {
+      dvwgt[myid][i] = 1;
+    }
+  }
+
+  dl_free(owner);
+  dl_free(lvtx);
+
+  /* setup the graph */
+  graph->gnvtxs = lvtx_to_gvtx(vtx_max_value(dmynvtxs,nthreads),nthreads-1, \
+      dist);
+  graph->nvtxs = nvtxs;
+  graph->nedges = xadj[nvtxs];
+  graph->dist = dist;
+
+  /* setup tvwgt */
+  graph->tvwgt = 0;
+  for (myid=0;myid<nthreads;++myid) {
+    graph->tvwgt += wgt_sum(graph->vwgt[myid],graph->mynvtxs[myid]);
+  }
+  graph->invtvwgt = 1.0/(graph->tvwgt > 0 ? graph->tvwgt : 1);
+
+  /* setup tadjwgt */
+  graph->tadjwgt = 0;
+  for (myid=0;myid<nthreads;++myid) {
+    graph->tadjwgt += wgt_sum(graph->adjwgt[myid],dmynedges[myid]);
+  }
+
+  /* set free configuration */
+  graph->free_xadj = 1;
+  graph->free_adjncy = 1;
+  graph->free_adjwgt = 1;
+  graph->free_vwgt = 1;
+
+  DL_ASSERT(check_graph(graph),"Bad graph");
+
+  return graph;
+}
+
+
+static adj_t * __gg_xadj;
+static vtx_t * __gg_adjncy;
+static wgt_t * __gg_vwgt;
+static wgt_t * __gg_adjwgt;
+static vtx_t * __gg_prefix;
+static adj_t * __gg_nedges;
+void graph_gather(
+  graph_t const * const graph,
+  adj_t ** const r_xadj,
+  vtx_t ** const r_adjncy,
+  wgt_t ** const r_vwgt,
+  wgt_t ** const r_adjwgt,
+  vtx_t * const r_voff)
+{
+  vtx_t i, k, voff, v;
+  adj_t j, eoff;
+  tid_t t;
+  adj_t * gxadj;
+  vtx_t * gadjncy;
+  wgt_t * gvwgt, * gadjwgt;
+
+  tid_t const myid = omp_get_thread_num();
+  tid_t const nthreads = omp_get_num_threads();
+
+  vtx_t const mynvtxs = graph->mynvtxs[myid];
+  adj_t const mynedges = graph->mynedges[myid];
+  adj_t const * const xadj = graph->xadj[myid];
+  vtx_t const * const adjncy = graph->adjncy[myid];
+  wgt_t const * const vwgt = graph->vwgt[myid];
+  wgt_t const * const adjwgt = graph->adjwgt[myid];
+
+  DL_ASSERT_EQUALS(mynedges,xadj[mynvtxs],"%"PF_ADJ_T);
+  DL_ASSERT_EQUALS(adj_sum(graph->mynedges,nthreads),graph->nedges, \
+      "%"PF_ADJ_T);
 
   #pragma omp master
   {
-    *r_graph = SerCreateGraph(); 
-
-    (*r_graph)->finer = graph;
-    graph->coarser = *r_graph;
-
-    ASSERT(nthreads == graph->ndist);
-    (*r_graph)->ndist = graph->ndist;
-    (*r_graph)->dsize = graph->dsize;
-    (*r_graph)->dshift = graph->dshift;
-    (*r_graph)->dmask = graph->dmask;
-
-    (*r_graph)->mymaxdeg = imalloc(nthreads,"X");
-    (*r_graph)->mynvtxs = imalloc(nthreads,"X");
-
-    (*r_graph)->xadj = pimalloc(nthreads,"X");
-    (*r_graph)->vwgt = pimalloc(nthreads,"X");
-    (*r_graph)->adjncy = pimalloc(nthreads,"X");
-    (*r_graph)->adjwgt = pimalloc(nthreads,"X");
-
+    __gg_xadj = adj_alloc(graph->nvtxs+1);
+    __gg_adjncy = vtx_alloc(graph->nedges);
+    __gg_vwgt = wgt_alloc(graph->nvtxs);
+    __gg_adjwgt = wgt_alloc(graph->nedges);
+    __gg_prefix = vtx_alloc(nthreads+1);
+    __gg_nedges = adj_alloc(nthreads+1);
+    /* create a prefix sum for placing vertices */
+    __gg_prefix[0] = 0;
+    for (t=0;t<nthreads;++t) {
+      __gg_prefix[t+1] = __gg_prefix[t] + graph->mynvtxs[t];
+    }
+    /* create a prefix sum for placing edges */
+    __gg_nedges[0] = 0;
+    for (t=0;t<nthreads;++t) {
+      __gg_nedges[t+1] = __gg_nedges[t] + graph->mynedges[t];
+    }
+    /* cap the xadj array */
+    __gg_xadj[graph->nvtxs] = graph->nedges;
   }
   #pragma omp barrier
-  dgraph_t * const cgraph = *r_graph;
+  voff = __gg_prefix[myid];
+  eoff = __gg_nedges[myid];
+  gxadj = __gg_xadj + voff;
+  gadjncy = __gg_adjncy + eoff;
+  gvwgt = __gg_vwgt + voff;
+  gadjwgt = __gg_adjwgt + eoff;
+
+  /* vertex ids are purely based on thread offsets */
+  eoff = gxadj[0] = __gg_nedges[myid];
+  for (i=1;i<mynvtxs;++i) {
+    gxadj[i] = xadj[i] + eoff; 
+  }
+
+  /* insert edges into graph */
+  for (i=0;i<mynvtxs;++i) {
+    for (j=xadj[i];j<xadj[i+1];++j) {
+      k = adjncy[j];
+      if (k < mynvtxs) {
+        t = myid;
+        v = k;
+      } else {
+        t = gvtx_to_tid(k,graph->dist);
+        v = gvtx_to_lvtx(k,graph->dist);
+      }
+      gadjncy[j] = v + __gg_prefix[t];
+    }
+  }
+  wgt_copy(gadjwgt,adjwgt,mynedges);
+
+  /* copy vwgt */
+  wgt_copy(gvwgt,vwgt,mynvtxs);
+
+  #pragma omp barrier
+  #pragma omp master
+  {
+    dl_free(__gg_nedges);
+    dl_free(__gg_prefix);
+  }
+
+  /* assign pointers */
+  *r_xadj = __gg_xadj;
+  *r_adjncy = __gg_adjncy;
+  *r_vwgt = __gg_vwgt;
+  *r_adjwgt = __gg_adjwgt;
+  *r_voff = voff;
+
+  DL_ASSERT(bowstring_check_graph(graph->nvtxs,__gg_xadj,__gg_adjncy, \
+        (bowstring_wgt_t*)__gg_adjwgt),"Bad graph gathered");
+}
+
+
+graph_t * graph_setup_coarse(
+    graph_t * const graph, 
+    vtx_t const cnvtxs)
+{
+  vtx_t mynvtxs;
+  graph_t * cgraph;
+
+  tid_t const myid = omp_get_thread_num();
+  tid_t const nthreads = omp_get_num_threads();
+
+  cgraph = graph_create(nthreads);
+
+  #pragma omp master
+  {
+    graph->coarser = cgraph;
+    cgraph->finer = graph;
+
+    cgraph->level = graph->level + 1;
+
+    DL_ASSERT_EQUALS(nthreads,graph->dist.nthreads,"%"PF_TID_T);
+
+    cgraph->dist = graph->dist;
+
+    cgraph->tvwgt = graph->tvwgt;
+    cgraph->invtvwgt = graph->invtvwgt;
+  }
+  #pragma omp barrier
+
+  cgraph = graph->coarser;
+
+  DL_ASSERT(cgraph != NULL,"cgraph is NULL");
+
   cgraph->mynvtxs[myid] = cnvtxs;
 
-  idx_t ** const gxadj = cgraph->xadj;   
-  idx_t ** const gvwgt = cgraph->vwgt;
-  idx_t ** const gadjncy = cgraph->adjncy;
-  idx_t ** const gadjwgt = cgraph->adjwgt;
-
   /* Allocate memory for the coarser graph */
-  idx_t mynvtxs = cnvtxs;
+  mynvtxs = cnvtxs;
 
-  idx_t i,j,k,v,maxid;
-
-  cgraph->xadj[myid]     = imalloc(mynvtxs+1,"X");
+  cgraph->xadj[myid] = adj_alloc(mynvtxs+1);
   if (mynvtxs > 0) {
-    cgraph->vwgt[myid]     = imalloc(mynvtxs, "X");
+    cgraph->vwgt[myid] = wgt_alloc(mynvtxs);
   } else {
     cgraph->xadj[myid][0] = 0;
     cgraph->vwgt[myid] = NULL;
   }
 
-  cgraph->adjncy[myid]   = NULL;
-  cgraph->adjwgt[myid]   = NULL;
-  maxid = LVTX_2_GVTX(mynvtxs-1,myid,graph->dshift)+1;
+  cgraph->adjncy[myid] = NULL;
+  cgraph->adjwgt[myid] = NULL;
 
-  dl_omp_maxreduce(myid,maxid,buffer,nthreads);
-  dl_omp_sumreduce(myid,mynvtxs,buffer,nthreads);
+  mynvtxs = vtx_omp_sumreduce(mynvtxs);
+
   #pragma omp master
   {
-    cgraph->gnvtxs = maxid;
+    cgraph->gnvtxs = graph->gnvtxs;
     cgraph->nvtxs = mynvtxs;
-    cgraph->tvwgt = imalloc(1, "X");
-    cgraph->invtvwgt = rmalloc(1, "X");
-    ASSERT(cgraph->gnvtxs >= cgraph->nvtxs);
+    DL_ASSERT(cgraph->gnvtxs >= cgraph->nvtxs,"Bad gnvtxs");
   }
-
-
   #pragma omp barrier
 
   return cgraph;
 }
 
 
-/**
-* @brief Setup derived tvwgt
-*
-* @param graph The graph to setup
-* @param nthreads The number of threads to use
-*/
-void ParSetupGraph_tvwgt(idx_t * buffer, dgraph_t *const graph)
+void graph_setup_twgts(
+    graph_t * const graph)
 {
-  INIT_PARALLEL();
-  idx_t sum = 0;
+  vtx_t vsum,asum;
 
-  ASSERT(nthreads == graph->ndist);
-  sum = isum(graph->mynvtxs[myid],graph->vwgt[myid],1);
-  dl_omp_sumreduce(myid,sum,buffer,nthreads);
+  tid_t const myid = omp_get_thread_num();
+
+  vsum = wgt_sum(graph->vwgt[myid],graph->mynvtxs[myid]);
+  asum = wgt_sum(graph->adjwgt[myid],graph->mynedges[myid]);
+  vsum = wgt_omp_sumreduce(vsum);
+  asum = wgt_omp_sumreduce(asum);
 
   #pragma omp master 
   {
-    graph->tvwgt    = imalloc(1, "SetupGraph: tvwgts");
-    graph->invtvwgt = rmalloc(1, "SetupGraph: invtvwgts");
-
-    graph->tvwgt[0]    = sum;
-    graph->invtvwgt[0] = 1.0/(graph->tvwgt[0] > 0 ? graph->tvwgt[0] : 1);
+    graph->tvwgt = vsum;
+    graph->tadjwgt = asum;
+    graph->invtvwgt = 1.0/(graph->tvwgt > 0 ? graph->tvwgt : 1);
   }
-}
-
-/**
-* @brief Sets up the graphs label info
-*
-* @param graph The graph to setup the label for
-* @param nthreads The number of threads to use
-*/
-void ParSetupGraph_label(dgraph_t * const graph)
-{
-  idx_t i;
-
-  #pragma omp master
-  {
-    if (graph->label == NULL) {
-      graph->label = imalloc(graph->nvtxs, "SetupGraph_label: label");
-    }
-  }
-  iincset(graph->nvtxs,0,graph->label);
   #pragma omp barrier
 }
 
-/**
-* @brief Free a graph strucutre 
-*
-* @param r_graph The graph to free
-* @param nthreads The number of threads to use
-*/
-void ParFreeGraph(dgraph_t ** r_graph) 
-{
-  INIT_PARALLEL();
-  ASSERT(nthreads == (*r_graph)->ndist);
 
-  idx_t i;
-  dgraph_t * const graph = *r_graph;
-  
-  /* free graph structure */
-  if (graph->free_xadj) {
-    gk_free((void **)&graph->xadj[myid], LTERM);
+void graph_alloc_partmemory(
+    ctrl_t * const ctrl,
+    graph_t * const graph)
+{
+  tid_t const nthreads = graph->dist.nthreads;
+  tid_t const myid = omp_get_thread_num();
+
+  DL_ASSERT_EQUALS((tid_t)omp_get_num_threads(),graph->dist.nthreads, \
+      "%"PF_TID_T);
+
+  #pragma omp master
+  {
+    /* memory for the partition/refinement structure */
+    graph->where = r_pid_alloc(nthreads);
+    graph->pwgts = wgt_alloc(ctrl->nparts);
   }
-  if (graph->cmap != NULL) {
-    gk_free((void**)&graph->cmap[myid],LTERM);
-  }
-  if (graph->free_vwgt) { 
-    gk_free((void **)&graph->vwgt[myid], LTERM);
-  }
-  if (graph->free_adjncy) {
-    gk_free((void **)&graph->adjncy[myid], LTERM);
-  }
-  if (graph->free_adjwgt) {
-    gk_free((void **)&graph->adjwgt[myid], LTERM);
+  #pragma omp barrier
+  graph->where[myid] = pid_alloc(graph->mynvtxs[myid]);
+}
+
+
+void graph_free(
+    graph_t * graph)
+{
+  tid_t myid;
+
+  if (omp_in_parallel()) {
+    myid = omp_get_thread_num();
+    __graph_free_part(graph,myid);
+  } else {
+    for (myid=0;myid<graph->dist.nthreads;++myid) {
+      __graph_free_part(graph,myid);
+    }
   }
 
   /* free partition/refinement structure */
-  ParFreeRData(graph);
+  graph_free_rdata(graph);
 
   #pragma omp barrier
   #pragma omp master
   {
-    gk_free((void **)&graph->xadj,&graph->vwgt,&graph->adjncy,&graph->adjwgt,
-        &graph->tvwgt, &graph->invtvwgt, &graph->label,&graph->mynvtxs,
-        &graph->mymaxdeg, &graph->cmap,r_graph, LTERM);
+    dl_free(graph->xadj);
+    dl_free(graph->adjncy);
+    dl_free(graph->vwgt);
+    dl_free(graph->adjwgt);
+    dl_free(graph->mynvtxs);
+    dl_free(graph->mynedges);
+
+    if (graph->cmap) {
+      dl_free(graph->cmap);
+    }
+    if (graph->label) {
+      dl_free(graph->label);
+    }
+
+    dl_free(graph);
   }
 }
 
-/**
-* @brief Free refinement/partition arrays
-*
-* @param graph Structure containing arrays to be freed
-* @param nthreads Number of threads to use
-*/
-void ParFreeRData(dgraph_t *graph) 
+void graph_free_rdata(
+    graph_t * graph)
 {
-  INIT_PARALLEL();
-  ASSERT(graph->ndist == nthreads);
-
-
-  if (graph->where != NULL) {
-    gk_free((void**)&graph->where[myid],LTERM);
-  }
-  if (graph->ckrinfo != NULL) {
-    gk_free((void**)&graph->ckrinfo[myid],LTERM);
-  }
-  if (graph->id != NULL) {
-    gk_free((void**)&graph->id[myid],LTERM);
-  }
-  if (graph->ed != NULL) {
-    gk_free((void**)&graph->ed[myid],LTERM);
-  }
-  if (graph->bndind != NULL) {
-    gk_free((void**)&graph->bndind[myid],LTERM);
-  }
-  if (graph->bndptr != NULL) {
-    gk_free((void**)&graph->bndptr[myid],LTERM);
-  }
-  if (graph->ckrinfo != NULL) {
-    gk_free((void**)&graph->ckrinfo[myid],LTERM);
-  }
-  if (graph->rename != NULL) {
-    gk_free((void**)&graph->rename[myid],LTERM);
+  tid_t myid;
+  
+  if (omp_in_parallel()) {
+    myid = omp_get_thread_num();
+    if (graph->where) {
+      dl_free(graph->where[myid]);
+    }
+    if (graph->rename) {
+      dl_free(graph->rename[myid]);
+    }
+  } else {
+    for (myid=0;myid<graph->dist.nthreads;++myid) {
+      if (graph->where) {
+        dl_free(graph->where[myid]);
+      }
+      if (graph->rename) {
+        dl_free(graph->rename[myid]);
+      }
+    }
   }
 
   #pragma omp barrier
   #pragma omp master
   {
     /* free partition/refinement structure */
-    gk_free((void **)&graph->where, &graph->pwgts, &graph->id, &graph->ed, 
-        &graph->bndptr, &graph->bndind, &graph->mynbnd,&graph->ckrinfo,
-        &graph->where,&graph->rename,LTERM);
+    if (graph->pwgts) {
+      dl_free(graph->pwgts);
+      graph->pwgts = NULL;
+    }
+    if (graph->where) {
+      dl_free(graph->where);
+      graph->where = NULL;
+    }
+    if (graph->rename) {
+      dl_free(graph->rename);
+      graph->rename = NULL;
+    }
   }
 }
 
 
-real_t ParComputeLoadImbalance(dctrl_t * dctrl, const dgraph_t *graph, 
-    const idx_t nparts, const real_t *pijbm)
+double graph_imbalance(
+    graph_t const * const graph,
+    pid_t const nparts,
+    real_t const * const pijbm)
 {
-  INIT_PARALLEL();
+  vtx_t k;
+  double max, cur;
 
-  idx_t i, *pwgts;
-  real_t max, cur;
+  DL_ASSERT_EQUALS(wgt_sum(graph->pwgts,nparts),graph->tvwgt,"%"PF_WGT_T);
 
-  max = 1.0;
-  #pragma omp master
-  {
-    pwgts = graph->pwgts;
+  max = 0;
 
-    for (i=0;i<nparts;++i) {
-         cur = pwgts[i]*pijbm[i];
+  if (nparts > 256) {
+    #pragma omp for schedule(static,128)
+    for (k =0;k<nparts;++k) {
+      cur = graph->pwgts[k]*pijbm[k];
+      if (cur > max) {
+        max = cur;
+      }
+    }
+    max = double_omp_maxreduce_value(max);
+  } else {
+    for (k =0;k<nparts;++k) {
+      cur = graph->pwgts[k]*pijbm[k];
       if (cur > max) {
         max = cur;
       }
     }
   }
-  dl_omp_maxreduce(myid,max,dctrl->buffer3,nthreads);
 
   return max;
 }
 
-real_t SerComputeLoadImbalance(dctrl_t * dctrl, const dgraph_t *graph, 
-    const idx_t nparts, const real_t *pijbm)
+
+double graph_imbalance_diff(
+    graph_t const * const graph,
+    pid_t const nparts,
+    real_t const * const pijbm,
+    real_t const ubfactor)
 {
-  idx_t i, *pwgts;
-  real_t max, cur;
+  vtx_t k;
+  double max, cur;
 
-  max = 1.0;
-  pwgts = graph->pwgts;
+  DL_ASSERT_EQUALS(wgt_sum(graph->pwgts,nparts),graph->tvwgt,"%"PF_WGT_T);
 
-  for (i=0;i<nparts;++i) {
-       cur = pwgts[i]*pijbm[i];
-    if (cur > max) {
-      max = cur;
+  max = 0;
+
+  if (nparts > 256) {
+    #pragma omp for schedule(static,128)
+    for (k =0;k<nparts;++k) {
+      cur = graph->pwgts[k]*pijbm[k]-ubfactor;
+      if (cur > max) {
+        max = cur;
+      }
     }
-  }
-
-  return max;
-}
-
-real_t ParComputeLoadImbalanceDiff(dctrl_t * dctrl, const dgraph_t *graph, 
-    const idx_t nparts, const real_t *pijbm, const real_t *ubvec)
-{
-  INIT_PARALLEL();
-
-  idx_t i, j, k, *pwgts;
-  real_t max, cur;
-  
-  max = -1.0;
-
-  #pragma omp master
-  {
-    pwgts = graph->pwgts;
-    for (k=0;k<nparts;++k) {
-      cur = pwgts[k]*pijbm[k] - ubvec[0];
+    max = double_omp_maxreduce_value(max);
+  } else {
+    for (k =0;k<nparts;++k) {
+      cur = graph->pwgts[k]*pijbm[k]-ubfactor;
       if (cur > max) {
         max = cur;
       }
     }
   }
-  dl_omp_maxreduce(myid,max,dctrl->buffer3,nthreads);
 
   return max;
 }
 
-real_t SerComputeLoadImbalanceDiff(dctrl_t * dctrl, const dgraph_t *graph, 
-    const idx_t nparts, const real_t *pijbm, const real_t *ubvec)
+
+wgt_t graph_cut(
+    ctrl_t const * const ctrl,
+    graph_t const * const graph,
+    pid_t const * const * const where)
 {
-  idx_t i, j, k,  *pwgts;
-  real_t max, cur;
-  
-  max = -1.0;
+  vtx_t i, k, lvtx, nbrid;
+  adj_t j;
+  wgt_t cut;
 
-  pwgts = graph->pwgts;
-  for (k=0;k<nparts;++k) {
-    cur = pwgts[k]*pijbm[k] - ubvec[0];
-    if (cur > max) {
-      max = cur;
-    }
-  }
+  tid_t const myid = omp_get_thread_num();
 
-  return max;
-}
+  vtx_t const mynvtxs = graph->mynvtxs[myid];
+  adj_t const * const xadj = graph->xadj[myid];
+  vtx_t const * const adjncy = graph->adjncy[myid];
+  wgt_t const * const adjwgt = graph->adjwgt[myid];
+  pid_t const * const mywhere = where[myid];
 
-/**
-* @brief Compute the edge cut of a graph
-*
-* @param graph The graph to compute the edge cut of
-* @param where The vector containing partition informatino for each vertex
-* @param nthreads The number of threads to use 
-*
-* @return The total weight of the cut egdes 
-*/
-idx_t ParComputeCut(dctrl_t * dctrl,const dgraph_t *const graph, 
-    const idx_t * const * const where)
-{
-  INIT_PARALLEL();
+  DL_ASSERT_EQUALS((int)graph->dist.nthreads,omp_get_num_threads(),"%d");
 
-  idx_t cut = 0;
-  ASSERT(graph->ndist == nthreads);
-
-  idx_t i,j,gvtx, lvtx, nbrid;
-
-  const idx_t mynvtxs = graph->mynvtxs[myid];
-  const idx_t * const xadj = graph->xadj[myid];
-  const idx_t * const adjncy = graph->adjncy[myid];
-  const idx_t * const mywhere = where[myid];
+  cut = 0;
 
   if (graph->adjwgt == NULL) {
-    for (i=0; i<mynvtxs; ++i) {
-      for (j=xadj[i]; j<xadj[i+1]; ++j) {
-        nbrid = GVTX_2_THRID(adjncy[j],graph->dmask);
-        lvtx = GVTX_2_LVTX(adjncy[j],graph->dshift);
+    for (i =0; i<mynvtxs; ++i) {
+      for (j =xadj[i]; j<xadj[i+1]; ++j) {
+        k = adjncy[j]; 
+        if (k < mynvtxs) {
+          lvtx = k;
+          nbrid = myid;
+        } else {
+          nbrid = gvtx_to_tid(adjncy[j],graph->dist);
+          lvtx = gvtx_to_lvtx(adjncy[j],graph->dist);
+        }
         if (mywhere[i] != where[nbrid][lvtx]) {
-          cut++;
+          ++cut;
         }
       }
     }
   } else {
-    const idx_t * const adjwgt = graph->adjwgt[myid];
-    for (i=0; i<mynvtxs; ++i) {
-      for (j=xadj[i]; j<xadj[i+1]; ++j) {
-        nbrid = GVTX_2_THRID(adjncy[j],graph->dmask);
-        lvtx = GVTX_2_LVTX(adjncy[j],graph->dshift);
+    for (i =0; i<mynvtxs; ++i) {
+      for (j =xadj[i]; j<xadj[i+1]; ++j) {
+        k = adjncy[j];
+        if (k < mynvtxs) {
+          lvtx = k;
+          nbrid = myid;
+        } else {
+          nbrid = gvtx_to_tid(adjncy[j],graph->dist);
+          lvtx = gvtx_to_lvtx(adjncy[j],graph->dist);
+        }
         if (mywhere[i] != where[nbrid][lvtx]) {
-          cut+=adjwgt[j];
+          cut += adjwgt[j];
         }
       }
     }
   }
-  dl_omp_sumreduce(myid,cut,dctrl->buffer1,nthreads);
+  cut = wgt_omp_sumreduce(cut);
 
   return cut/2;
 }
 
-idx_t SerComputeCut(const dgraph_t * const graph,
-    const idx_t * const * const where)
+int graph_isbalanced(
+    ctrl_t const * const ctrl, 
+    graph_t const * const graph, 
+    real_t const ffactor)
 {
-  idx_t cut = 0;
-  idx_t myid;
-  const idx_t rnthreads = graph->ndist;
-  for (myid=0;myid<graph->ndist;++myid) {
-    idx_t i,j,gvtx, lvtx, nbrid;
-
-    const idx_t mynvtxs = graph->mynvtxs[myid];
-    const idx_t * const xadj = graph->xadj[myid];
-    const idx_t * const adjncy = graph->adjncy[myid];
-    const idx_t * const mywhere = where[myid];
-
-    if (graph->adjwgt == NULL) {
-      for (i=0; i<mynvtxs; ++i) {
-        for (j=xadj[i]; j<xadj[i+1]; ++j) {
-          nbrid = GVTX_2_THRID(adjncy[j],graph->dmask);
-          lvtx = GVTX_2_LVTX(adjncy[j],graph->dshift);
-          if (mywhere[i] != where[nbrid][lvtx]) {
-            cut++;
-          }
-        }
-      }
-    } else {
-      const idx_t * const adjwgt = graph->adjwgt[myid];
-      for (i=0; i<mynvtxs; ++i) {
-        for (j=xadj[i]; j<xadj[i+1]; ++j) {
-          nbrid = GVTX_2_THRID(adjncy[j],graph->dmask);
-          lvtx = GVTX_2_LVTX(adjncy[j],graph->dshift);
-          if (mywhere[i] != where[nbrid][lvtx]) {
-            cut+=adjwgt[j];
-          }
-        }
-      }
-    }
-  }
-  return cut/2;
+  return (graph_imbalance_diff(graph,ctrl->nparts,ctrl->pijbm, \
+      ctrl->ubfactor) <= ffactor);
 }
 
 
-/**
-* @brief Computes the communication volume of a graph
-*
-* @param graph The graph to compute the comv of
-* @param where The vector containing the partition informatin for each vertex
-* @param nthreads The number of threads to use
-*
-* @return 
-*/
-idx_t ParComputeVolume(const dgraph_t *graph, const idx_t *const * const where)
+void graph_readjust_memory(
+    graph_t * const graph,
+    adj_t adjsize)
 {
-  /* so helpful */
-  return 0;
-}
+  int const myid = omp_get_thread_num();
+  adj_t const nedges = graph->xadj[myid][graph->mynvtxs[myid]];
 
-idx_t SerComputeVolume(const dgraph_t *graph, const idx_t *const * const where)
-{
-  /* so helpful */
-  return 0;
-}
-
-/**
-* @brief Check if the graph is within the balance constraints + ffactor
-*
-* @param ctrl Control structure
-* @param graph The graph
-* @param ffactor The fudge-factor
-* @param nthreads The number of threads to use
-*
-* @return 0 if unbalanced, 1 if balanced
-*/
-idx_t ParIsBalanced(dctrl_t *dctrl, const dgraph_t *graph, const real_t ffactor)
-{
-  ctrl_t * ctrl = dctrl->ctrl;
-  return (ParComputeLoadImbalanceDiff(dctrl,graph, ctrl->nparts, ctrl->pijbm, 
-    ctrl->ubfactors) <= ffactor);
-}
-
-graph_t * ParConvertDGraph(dctrl_t * dctrl, dgraph_t * const ograph,
-    graph_t ** r_graph)
-{
-  INIT_PARALLEL();
-  
-  ASSERT(checkGraph(ograph) == 1);
-  const idx_t nvtxs = ograph->nvtxs;
-  const idx_t gnvtxs = ograph->gnvtxs;
-  const idx_t nedges = ograph->nedges;
-  const idx_t ndist = ograph->ndist;
-
-  #pragma omp master
-  {
-    void * ptr[4];
-    ptr[0] = imalloc(nvtxs+1,"X");
-    ptr[1] = imalloc(nvtxs,"X");
-    ptr[2] = imalloc(nedges,"X");
-    ptr[3] = imalloc(nedges,"X");
-    dctrl->tptr_void[0] = ptr;
-    ograph->rename = pimalloc(ndist,"X");
-  }
-  #pragma omp barrier
-  void ** ptr = dctrl->tptr_void[0];
-  idx_t * const xadj = (idx_t*)ptr[0];
-  idx_t * const vwgt = (idx_t*)ptr[1];
-  idx_t * const adjncy = (idx_t*)ptr[2];
-  idx_t * const adjwgt = (idx_t*)ptr[3];
-
-  idx_t ** const rename = ograph->rename;
-
-  /* if this isn't called with the exact number of threads, do it serially */
-  idx_t i,j,v,nbrid,u;
-
-  const idx_t mynvtxs = ograph->mynvtxs[myid];
-
-  const idx_t * const oxadj = ograph->xadj[myid];
-  const idx_t * const ovwgt = ograph->vwgt[myid];
-  const idx_t * const oadjncy = ograph->adjncy[myid];
-  const idx_t * const oadjwgt = ograph->adjwgt[myid];
-
-  rename[myid] = imalloc(mynvtxs,"X");
-
-  v = mynvtxs;
-  j = oxadj[mynvtxs];
-
-  /* prefix sum for numbering */
-  dl_omp_prefixsum(myid,v,dctrl->buffer1,nthreads);
-  dl_omp_prefixsum(myid,j,dctrl->buffer2,nthreads);
-  ASSERT(j<=nedges);
-  ASSERT(v<=nvtxs);
-
-  /* copy xadj and vwgt */
-  if (mynvtxs >0) {
-    icopy(mynvtxs,(idx_t*)ovwgt,vwgt+v);
-    icopy(oxadj[mynvtxs],(idx_t*)oadjncy,adjncy+j);
-    icopy(oxadj[mynvtxs],(idx_t*)oadjwgt,adjwgt+j);
-    for (i=0;i<mynvtxs;++i) {
-      xadj[v] = oxadj[i]+j; 
-      rename[myid][i] = v++;
-    }
-    xadj[v] = oxadj[i]+j;
-    ASSERT(v<=nvtxs);
-  }
-  #pragma omp barrier
-  if (mynvtxs > 0) {
-    for (i=j;i<xadj[v];++i) {
-      u = GVTX_2_LVTX(adjncy[i],ograph->dshift);
-      nbrid = GVTX_2_THRID(adjncy[i],ograph->dmask);
-      adjncy[i] = rename[nbrid][u];
-    }
-  }
-
-  #pragma omp barrier
-  #pragma omp master
-  {
-    *r_graph = SetupGraph(dctrl->ctrl,nvtxs,1,xadj,adjncy,vwgt,
-      NULL,adjwgt);
-    (*r_graph)->free_adjncy = (*r_graph)->free_adjwgt = 1;
-    (*r_graph)->free_xadj = (*r_graph)->free_vwgt =1;
-    ASSERT((*r_graph)->nedges == ograph->nedges);
-    ASSERT(ograph->nedges == (*r_graph)->xadj[(*r_graph)->nvtxs]);
-    ASSERT((*r_graph)->nvtxs == ograph->nvtxs);
-    (*r_graph)->label = imalloc(nvtxs,"X");
-
-    if (!ograph->label) {
-      iincset(nvtxs,0,(*r_graph)->label);
-    } else {
-      icopy(ograph->nvtxs,ograph->label,(*r_graph)->label);
-    }
-    ASSERT(CheckGraph((*r_graph),0,1) == 1);
-  }
-  #pragma omp barrier
-
-  return *r_graph;
-}
-
-idx_t computeEEW(dgraph_t * const graph) 
-{
-  idx_t sum = 0;
-
-  idx_t myid;
-  for (myid=0;myid<graph->ndist;++myid) {
-    idx_t i,j;
-
-    for (i=0;i<graph->mynvtxs[myid];++i) {
-      for (j=graph->xadj[myid][i];j<graph->xadj[myid][i+1];++j) {
-        sum += graph->adjwgt[myid][j];
-      }
-    }
-  }
-
-  return sum;
-}
-
-void nParReAdjustMemory(const idx_t myid, dctrl_t *const dctrl, 
-    dgraph_t * const graph, const idx_t adjsize) 
-{
-  const idx_t nedges = graph->xadj[myid][graph->mynvtxs[myid]];
   if (adjsize > 4096 && adjsize * 0.75 > nedges) {
-    #ifndef NDEBUG
-    printf("[%"PRIDX"] Shrinkng adjncy and adjwgt from %"PRIDX" to %"PRIDX"\n",myid,adjsize,
-        nedges);
-    #endif
-    graph->adjncy[myid] = irealloc(graph->adjncy[myid],nedges,"X");
-    graph->adjwgt[myid] = irealloc(graph->adjwgt[myid],nedges,"X");
+    graph->adjncy[myid] = adj_realloc(graph->adjncy[myid],nedges);
+    graph->adjwgt[myid] = wgt_realloc(graph->adjwgt[myid],nedges);
   }
 }
 
-#ifdef XXX
-void ParExtractGraphParts(dctrl_t * dctrl, dgraph_t * graph, 
-    dgraph_t ** sgraphs, const idx_t nparts, const idx_t nthreads) 
-{
-  const idx_t nvtxs = graph->nvtxs;
-  const idx_t nedges = graph->nedges;
-  const idx_t * const where = graph->where;
-  const xadj_t * const xadj = graph->xadj;
-  const idx_t * const vwgt = graph->vwgt;
-  const idx_t * const label = graph->label;
-  const idx_t * const adjncy = graph->adjncy;
-  const idx_t * const adjwgt = graph->adjwgt;
-
-  idx_t gnvtxs[nparts], gnedges[nparts];
-  idx_t psnvtxs[nparts][nthreads], psnedges[nparts][nthreads];
-  idx_t * rename = imalloc(nvtxs,"X");
-
-  #pragma omp parallel \
-    shared(graph,sgraphs,dctrl,gnvtxs,gnedges,psnvtxs,psnedges,rename) \
-    default(none) num_threads(nthreads)
-  {
-    INIT_PARALLEL(nvtxs);
-
-    idx_t i,j, k,l,mypart,istart,iend;
-    idx_t * myrename, * svwgt[nparts], * slabel[nparts], *sadjncy[nparts],
-          *sadjwgt[nparts];
-    const idx_t * mywhere;
-    idx_t sadjsize[nparts], snvtxs[nparts], snedges[nparts];
-    const xadj_t * myxadj;
-    xadj_t * sxadj[nparts];
-    xadj_t lxadj;
-
-    /* zero out my counts */
-    iset(nparts,0,snvtxs);
-    iset(nparts,0,snedges);
-
-    mywhere = where + mystart;
-    myxadj = xadj + mystart;
-    myrename = rename + mystart;
-
-    /* determine the size of the parts of each graph we own */
-    for (i=0;i<mysize;++i) {
-      k = mywhere[i];
-      ASSERT(k >= 0 && k < nparts);
-      myrename[i] = snvtxs[k]++;
-      snedges[k] += myxadj[i].end - myxadj[i].start;
-    }
-    icopy(nparts,snedges,sadjsize);
-
-    /* let everyone know the totals */
-    /* prefix sum my vertices -- assumes nparts >= nthreads */
-    for (i=0;i<nparts;++i) {
-      psnvtxs[i][myid] = snvtxs[i];
-      psnedges[i][myid] = snedges[i];
-    }
-    #pragma omp barrier
-    #pragma omp for
-    for (i=0;i<nparts;++i) {
-      /* add */
-      for (j=1;j<rnthreads;++j) {
-        psnvtxs[i][j] += psnvtxs[i][j-1];
-        psnedges[i][j] += psnedges[i][j-1];
-      }
-      gnvtxs[i] = psnvtxs[i][rnthreads-1];
-      gnedges[i] = psnedges[i][rnthreads-1];
-      /* shift */
-      for (j=rnthreads-1;j>0;--j) {
-        psnvtxs[i][j] = psnvtxs[i][j-1];
-        psnedges[i][j] = psnedges[i][j-1];
-      }
-      psnvtxs[i][0] = 0;
-      psnedges[i][0] = 0;
-    }
-
-    ASSERT(isum(nparts,gnvtxs,1) == nvtxs);
-    ASSERT(isum(nparts,gnedges,1) == nedges);
-
-    /* create the split graphs */
-    #pragma omp for
-    for (i=0;i<nparts;++i) {
-      /* create each graph with only 1 adj section */
-      sgraphs[i] = ParSetupSplitGraph(graph,gnvtxs[i],gnedges[i],nthreads);
-    }
-
-    /* adjust my renaming */
-    for (i=0;i<mysize;++i) {
-      myrename[i] += psnvtxs[mywhere[i]][myid];
-    }
-
-    /* set my pointers based on the totals */
-    for (i=0;i<nparts;++i) {
-      svwgt[i] = sgraphs[i]->vwgt;
-      slabel[i] = sgraphs[i]->label;
-      sxadj[i] = sgraphs[i]->xadj;
-      sadjncy[i] = sgraphs[i]->adjncy;
-      sadjwgt[i] = sgraphs[i]->adjwgt;
-      snvtxs[i] = psnvtxs[i][myid];
-      snedges[i] = psnedges[i][myid];
-    }
-
-    /* main loop for splitting */
-    for (i=mystart;i<myend;++i) {
-      mypart = where[i];
-
-      /* local xadj copy */
-      sxadj[mypart][snvtxs[mypart]].start = snedges[mypart];
-
-      /* copy over edges */
-      istart = xadj[i].start;
-      iend = xadj[i].end;
-      if (graph->bndptr[i] == -1) { /* interior vertex */
-        icopy(iend-istart,(idx_t*)adjncy+istart,
-            sadjncy[mypart]+snedges[mypart]);
-        icopy(iend-istart,(idx_t*)adjwgt+istart,
-            sadjwgt[mypart]+snedges[mypart]);
-        snedges[mypart] += iend - istart;
-      } else { /* exterior vertex */
-        for (j=istart;j<iend;++j) {
-          k = adjncy[j];
-          if (where[k] == mypart) { /* if its an internal edge */
-            sadjncy[mypart][snedges[mypart]] = k;
-            sadjwgt[mypart][snedges[mypart]++] = adjwgt[j];
-          }
-        }
-      }
-
-      /* copy over vertex weights */
-      svwgt[mypart][snvtxs[mypart]] = vwgt[i];
-
-      /* copy over vertex labels */
-      slabel[mypart][snvtxs[mypart]] = label[i];
-
-      /* finish the vertex */
-      sxadj[mypart][snvtxs[mypart]++].end = snedges[mypart];
-    }
-
-    /* redump edges back to psnedges */
-    for (i=0;i<nparts;++i) {
-      psnedges[i][myid] = snedges[i] - psnedges[i][myid];
-    }
-
-    #pragma omp barrier
-
-    /* update number of edges and tvwgts per graph */
-    #pragma omp for
-    for (i=0;i<nparts;++i) {
-      sgraphs[i]->nedges = 0;
-      for (j=0;j<nthreads;++j) {
-        sgraphs[i]->nedges += psnedges[i][j];
-      }
-      ParSetupGraph_tvwgt(sgraphs[i],1);
-    }
-
-    /* rename edges */
-    for (mypart=0;mypart<nparts;++mypart) {
-      for (i=psnvtxs[mypart][myid];i<snvtxs[mypart];++i) {
-        for (j=sxadj[mypart][i].start;j<sxadj[mypart][i].end;++j) {
-          sadjncy[mypart][j] = rename[sadjncy[mypart][j]];
-        }
-      }
-    }
-
-    #ifndef NDEBUG
-    #pragma omp barrier
-    #pragma omp master
-    {
-      /* check nvtxs */
-      idx_t ntvtxs, ntedges;
-      ntedges = ntvtxs = 0;
-      for (i=0;i<nparts;++i) {
-        ntvtxs += sgraphs[i]->nvtxs;
-        ntedges += sgraphs[i]->nedges;
-      }
-      ASSERT(ntvtxs == graph->nvtxs);
-      ASSERT(ntedges <= graph->nedges);
-    }
-    #pragma omp for
-    for (i=0;i<nparts;++i) {
-      ASSERT(checkGraph(sgraphs[i]) == 1);
-    }
-    #endif
-  }
-  gk_free((void**)&rename,LTERM);
-}
 
 
-dgraph_t *ParSetupSplitGraph(dgraph_t *graph, const idx_t snvtxs, 
-    const idx_t snedges, const idx_t nthreads)
-{
-  dgraph_t *sgraph;
 
-  sgraph = ParCreateGraph(nthreads);
-
-  sgraph->nvtxs  = snvtxs;
-  sgraph->adjsize = sgraph->nedges = snedges;
-
-  sgraph->maxdeg = -1;
-
-  /* Allocate memory for the splitted graph */
-  sgraph->xadj        = xmalloc(snvtxs, "SetupSplitGraph: xadj");
-  sgraph->vwgt        = imalloc(sgraph->ncon*snvtxs, "SetupSplitGraph: vwgt");
-  sgraph->adjncy      = imalloc(sgraph->adjsize,  "SetupSplitGraph: adjncy");
-  sgraph->adjwgt      = imalloc(sgraph->adjsize,  "SetupSplitGraph: adjwgt");
-  sgraph->label	      = imalloc(snvtxs,   "SetupSplitGraph: label");
-  sgraph->tvwgt       = imalloc(sgraph->ncon, "SetupSplitGraph: tvwgt");
-  sgraph->invtvwgt    = rmalloc(sgraph->ncon, "SetupSplitGraph: invtvwgt");
-
-  if (graph->vsize)
-    sgraph->vsize     = imalloc(snvtxs,   "SetupSplitGraph: vsize");
-
-  return sgraph;
-}
 #endif
-

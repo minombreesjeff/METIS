@@ -5,7 +5,7 @@
 \date Started 7/23/97
 \author George  
 \author Copyright 1997-2011, Regents of the University of Minnesota 
-\version\verbatim $Id: fm.c 12542 2012-08-23 04:49:01Z dominique $ \endverbatim
+\version\verbatim $Id: fm.c 17622 2014-09-09 03:27:49Z dominique $ \endverbatim
 */
 
 #include "metislib.h"
@@ -28,7 +28,7 @@ void FM_2WayRefine(ctrl_t *ctrl, graph_t *graph, real_t *ntpwgts, idx_t niter)
 /*************************************************************************/
 void FM_2WayCutRefine(ctrl_t *ctrl, graph_t *graph, real_t *ntpwgts, idx_t niter)
 {
-  idx_t i, ii, j, k, kwgt, nvtxs, nbnd, nswaps, from, to, pass, me, limit, tmp;
+  idx_t i, ii, j, k, kwgt, nvtxs, nbnd, nswaps, from, to, pass, limit, tmp;
   idx_t *xadj, *vwgt, *adjncy, *adjwgt, *where, *id, *ed, *bndptr, *bndind, *pwgts;
   idx_t *moved, *swaps, *perm;
   rpq_t *queues[2];
@@ -207,7 +207,7 @@ void FM_2WayCutRefine(ctrl_t *ctrl, graph_t *graph, real_t *ntpwgts, idx_t niter
 void FM_Mc2WayCutRefine(ctrl_t *ctrl, graph_t *graph, real_t *ntpwgts, idx_t niter)
 {
   idx_t i, ii, j, k, l, kwgt, nvtxs, ncon, nbnd, nswaps, from, to, pass, 
-        me, limit, tmp, cnum;
+        limit, tmp, cnum;
   idx_t *xadj, *adjncy, *vwgt, *adjwgt, *pwgts, *where, *id, *ed, 
         *bndptr, *bndind;
   idx_t *moved, *swaps, *perm, *qnum;

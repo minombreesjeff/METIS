@@ -5,7 +5,7 @@
 \date Started 7/15/98
 \author George
 \author Copyright 1997-2009, Regents of the University of Minnesota 
-\version $Id: minconn.c 10513 2011-07-07 22:06:03Z karypis $
+\version $Id: minconn.c 17627 2014-09-10 00:27:58Z dominique $
 */
 
 #include "metislib.h"
@@ -18,16 +18,13 @@
 void ComputeSubDomainGraph(ctrl_t *ctrl, graph_t *graph)
 {
   idx_t i, ii, j, pid, other, nparts, nvtxs, nnbrs;
-  idx_t *xadj, *adjncy, *adjwgt, *where;
+  idx_t *where;
   idx_t *pptr, *pind;
   idx_t nads=0, *vadids, *vadwgts;
 
   WCOREPUSH;
 
   nvtxs  = graph->nvtxs;
-  xadj   = graph->xadj;
-  adjncy = graph->adjncy;
-  adjwgt = graph->adjwgt;
   where  = graph->where;
 
   nparts = ctrl->nparts; 
@@ -176,7 +173,7 @@ void UpdateEdgeSubDomainGraph(ctrl_t *ctrl, idx_t u, idx_t v, idx_t ewgt,
         ctrl->adwgts[u][j] = ctrl->adwgts[u][nads-1];
         nads--;
         if (r_maxndoms != NULL && nads+1 == *r_maxndoms)
-          *r_maxndoms = ctrl->nads[iargmax(ctrl->nparts, ctrl->nads)];
+          *r_maxndoms = ctrl->nads[iargmax(ctrl->nparts, ctrl->nads,1)];
       }
     }
     ctrl->nads[u] = nads;
@@ -262,12 +259,12 @@ void EliminateSubDomainEdges(ctrl_t *ctrl, graph_t *graph)
   while (1) {
     total = isum(nparts, nads, 1);
     avg   = total/nparts;
-    max   = nads[iargmax(nparts, nads)];
+    max   = nads[iargmax(nparts, nads,1)];
 
     IFSET(ctrl->dbglvl, METIS_DBG_CONNINFO, 
           printf("Adjacent Subdomain Stats: Total: %3"PRIDX", "
                  "Max: %3"PRIDX"[%zu], Avg: %3"PRIDX"\n", 
-                 total, max, iargmax(nparts, nads), avg)); 
+                 total, max, iargmax(nparts, nads,1), avg)); 
 
     if (max < badfactor*avg)
       break;
@@ -477,12 +474,11 @@ void EliminateSubDomainEdges(ctrl_t *ctrl, graph_t *graph)
 void MoveGroupMinConnForCut(ctrl_t *ctrl, graph_t *graph, idx_t to, idx_t nind, 
          idx_t *ind)
 {
-  idx_t i, ii, j, jj, k, l, nvtxs, nbnd, from, me;
+  idx_t i, ii, j, k, nbnd, from, me;
   idx_t *xadj, *adjncy, *adjwgt, *where, *bndptr, *bndind;
   ckrinfo_t *myrinfo;
   cnbr_t *mynbrs;
 
-  nvtxs  = graph->nvtxs;
   xadj   = graph->xadj;
   adjncy = graph->adjncy;
   adjwgt = graph->adjwgt;
@@ -561,12 +557,11 @@ void MoveGroupMinConnForCut(ctrl_t *ctrl, graph_t *graph, idx_t to, idx_t nind,
 void MoveGroupMinConnForVol(ctrl_t *ctrl, graph_t *graph, idx_t to, idx_t nind, 
          idx_t *ind, idx_t *vmarker, idx_t *pmarker, idx_t *modind)
 {
-  idx_t i, ii, j, jj, k, l, nvtxs, from, me, other, xgain, ewgt;
+  idx_t i, ii, j, k, l, from, me, other, xgain, ewgt;
   idx_t *xadj, *vsize, *adjncy, *where;
   vkrinfo_t *myrinfo, *orinfo;
   vnbr_t *mynbrs, *onbrs;
 
-  nvtxs  = graph->nvtxs;
   xadj   = graph->xadj;
   vsize  = graph->vsize;
   adjncy = graph->adjncy;

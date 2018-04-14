@@ -8,8 +8,11 @@
  * Started 9/28/95
  * George
  *
- * $Id: util.c 16384 2014-03-06 18:38:53Z dominique $
+ * $Id: util.c 17622 2014-09-09 03:27:49Z dominique $
  */
+
+#define _POSIX_SOURCE
+#include <stdlib.h>
 
 #include "metislib.h"
 
@@ -67,7 +70,7 @@ idx_t iargmax_nrm(size_t n, idx_t *x, real_t *y)
 {
   idx_t i, max=0;
       
-  for (i=1; i<n; i++)
+  for (i=1; i<(idx_t)n; i++)
      max = (x[i]*y[i] > x[max]*y[max] ? i : max);
                 
   return max;

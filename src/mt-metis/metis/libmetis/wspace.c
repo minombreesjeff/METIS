@@ -5,7 +5,7 @@
 \date Started 2/24/96
 \author George
 \author Copyright 1997-2009, Regents of the University of Minnesota 
-\version $Id: wspace.c 12542 2012-08-23 04:49:01Z dominique $
+\version $Id: wspace.c 17623 2014-09-09 03:51:44Z dominique $
 */
 
 #include "metislib.h"
@@ -175,7 +175,7 @@ idx_t cnbrpoolGetNext(ctrl_t *ctrl, idx_t nnbrs)
   ctrl->nbrpoolcpos += nnbrs;
 
   if (ctrl->nbrpoolcpos > ctrl->nbrpoolsize) {
-    ctrl->nbrpoolsize += gk_max(10*nnbrs, ctrl->nbrpoolsize/2);
+    ctrl->nbrpoolsize += gk_max(10*nnbrs, (idx_t)ctrl->nbrpoolsize/2);
 
     ctrl->cnbrpool = (cnbr_t *)gk_realloc(ctrl->cnbrpool,  
                           ctrl->nbrpoolsize*sizeof(cnbr_t), "cnbrpoolGet: cnbrpool");
@@ -203,7 +203,7 @@ idx_t vnbrpoolGetNext(ctrl_t *ctrl, idx_t nnbrs)
   ctrl->nbrpoolcpos += nnbrs;
 
   if (ctrl->nbrpoolcpos > ctrl->nbrpoolsize) {
-    ctrl->nbrpoolsize += gk_max(10*nnbrs, ctrl->nbrpoolsize/2);
+    ctrl->nbrpoolsize += gk_max(10*nnbrs, (idx_t)ctrl->nbrpoolsize/2);
 
     ctrl->vnbrpool = (vnbr_t *)gk_realloc(ctrl->vnbrpool,  
                           ctrl->nbrpoolsize*sizeof(vnbr_t), "vnbrpoolGet: vnbrpool");

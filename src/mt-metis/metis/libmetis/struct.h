@@ -8,7 +8,7 @@
  * Started 9/26/95
  * George
  *
- * $Id: struct.h 12542 2012-08-23 04:49:01Z dominique $
+ * $Id: struct.h 17622 2014-09-09 03:27:49Z dominique $
  */
 
 #ifndef _LIBMETIS_STRUCT_H_
@@ -96,9 +96,9 @@ typedef struct graph_t {
      application or library memory */
   int free_xadj, free_vwgt, free_vsize, free_adjncy, free_adjwgt;
 
-  idx_t *label;
+  idx_t *cmap;  /* The contraction/coarsening map */
 
-  idx_t *cmap;
+  idx_t *label; /* The labels of the vertices for recusive bisection (pmetis/ometis) */
 
   /* Partition parameters */
   idx_t mincut, minvol;
@@ -117,6 +117,11 @@ typedef struct graph_t {
   nrinfo_t *nrinfo;
 
   struct graph_t *coarser, *finer;
+
+  /* various fields for out-of-core processing */
+  int gID;
+  int ondisk;
+
 } graph_t;
 
 
@@ -146,6 +151,8 @@ typedef struct ctrl_t {
 
   idx_t CoarsenTo;		/* The # of vertices in the coarsest graph */
   idx_t nIparts;                /* The number of initial partitions to compute */
+  idx_t no2hop;                 /* Indicates if 2-hop matching will be used */
+  idx_t ondisk;                 /* Indicates out-of-core execution */
   idx_t minconn;                /* Indicates if the subdomain connectivity will be minimized */
   idx_t contig;                 /* Indicates if contigous partitions are required */
   idx_t nseps;			/* The number of separators to be found during multiple bisections */
@@ -199,6 +206,8 @@ typedef struct ctrl_t {
   idx_t **adwgts;               /* The edge-weight to the adjacent domains */
   idx_t *pvec1, *pvec2;         /* Auxiliar nparts-size vectors for efficiency */
 
+  /* ondisk related info */
+  pid_t pid;            /*!< The pid of the running process */
 } ctrl_t;
 
 

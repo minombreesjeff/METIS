@@ -185,7 +185,7 @@ char *gk_getfilename(char *path)
 * and extracts the directory path component if it exists, otherwise it
 * returns "./" as the path. The memory for it is dynamically allocated.
 **************************************************************************/
-char *getpathname(char *path)
+char *gk_getpathname(char *path)
 {
   char *endptr, *tmp;
 

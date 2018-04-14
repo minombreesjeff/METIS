@@ -1,8 +1,10 @@
-To build mt-metis, simply type 'make':
+To build mt-metis, use the traditional *nix style steps:
 
+$ ./configure
 $ make
+$ make install
 
-This should create the 'mt-metis' executable. For usage, type:
+This should create and install the 'mt-metis' executable. For usage, type:
 
 $ ./mt-metis -h
 

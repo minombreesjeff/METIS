@@ -8,7 +8,7 @@
  * Started 8/1/97
  * George
  *
- * $Id: sfm.c 12542 2012-08-23 04:49:01Z dominique $
+ * $Id: sfm.c 17622 2014-09-09 03:27:49Z dominique $
  *
  */
 
@@ -476,7 +476,7 @@ void FM_2WayNodeRefine1Sided(ctrl_t *ctrl, graph_t *graph, idx_t niter)
 void FM_2WayNodeBalance(ctrl_t *ctrl, graph_t *graph)
 {
   idx_t i, ii, j, k, jj, kk, nvtxs, nbnd, nswaps, gain;
-  idx_t badmaxpwgt, higain, oldgain, pass, to, other;
+  idx_t badmaxpwgt, higain, oldgain, to, other;
   idx_t *xadj, *vwgt, *adjncy, *where, *pwgts, *edegrees, *bndind, *bndptr;
   idx_t *perm, *moved;
   rpq_t *queue; 

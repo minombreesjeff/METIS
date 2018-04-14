@@ -5,15 +5,14 @@
 \date Started 7/23/97
 \author George  
 \author Copyright 1997-2011, Regents of the University of Minnesota 
-\version\verbatim $Id: coarsen.c 12542 2012-08-23 04:49:01Z dominique $ \endverbatim
+\version\verbatim $Id: coarsen.c 17715 2014-10-02 16:08:42Z dominique $ \endverbatim
 */
 
 
 #include "metislib.h"
 
-#define MAXDEGREEFOR2HOP  20  /* The maximum degree of a vertex to be considered
-                                 for matching with a 2-hop neighbor */
-
+#define UNMATCHEDFOR2HOP  0.10  /* The fraction of unmatched vertices that triggers 2-hop */
+                                  
 
 /*************************************************************************/
 /*! This function takes a graph and creates a sequence of coarser graphs.
@@ -61,6 +60,8 @@ graph_t *CoarsenGraph(ctrl_t *ctrl, graph_t *graph)
         gk_errexit(SIGERR, "Unknown ctype: %d\n", ctrl->ctype);
     }
 
+    graph_WriteToDisk(ctrl, graph);
+
     graph = graph->coarser;
     eqewgts = 0;
     level++;
@@ -69,7 +70,7 @@ graph_t *CoarsenGraph(ctrl_t *ctrl, graph_t *graph)
 
   } while (graph->nvtxs > ctrl->CoarsenTo && 
            graph->nvtxs < COARSEN_FRACTION*graph->finer->nvtxs && 
-           graph->nedges > graph->nvtxs/2); 
+           graph->nedges > graph->nvtxs/2);
 
   IFSET(ctrl->dbglvl, METIS_DBG_COARSEN, PrintCGraphStats(ctrl, graph));
   IFSET(ctrl->dbglvl, METIS_DBG_TIME, gk_stopwctimer(ctrl->CoarsenTmr));
@@ -124,6 +125,8 @@ graph_t *CoarsenGraphNlevels(ctrl_t *ctrl, graph_t *graph, idx_t nlevels)
         gk_errexit(SIGERR, "Unknown ctype: %d\n", ctrl->ctype);
     }
 
+    graph_WriteToDisk(ctrl, graph);
+
     graph = graph->coarser;
     eqewgts = 0;
 
@@ -149,10 +152,11 @@ graph_t *CoarsenGraphNlevels(ctrl_t *ctrl, graph_t *graph, idx_t nlevels)
 /**************************************************************************/
 idx_t Match_RM(ctrl_t *ctrl, graph_t *graph)
 {
-  idx_t i, pi, ii, j, jj, jjinc, k, nvtxs, ncon, cnvtxs, maxidx, last_unmatched;
-  idx_t *xadj, *vwgt, *adjncy, *adjwgt, *maxvwgt;
-  idx_t *match, *cmap, *perm;
-  idx_t *vkeys;
+  idx_t i, pi, j, k, nvtxs, ncon, cnvtxs, maxidx, 
+        last_unmatched, avgdegree, bnum;
+  idx_t *xadj, *vwgt, *adjncy, *maxvwgt;
+  idx_t *match, *cmap, *degrees, *perm, *tperm;
+  size_t nunmatched=0;
 
   WCOREPUSH;
 
@@ -163,26 +167,28 @@ idx_t Match_RM(ctrl_t *ctrl, graph_t *graph)
   xadj   = graph->xadj;
   vwgt   = graph->vwgt;
   adjncy = graph->adjncy;
-  adjwgt = graph->adjwgt;
   cmap   = graph->cmap;
 
   maxvwgt  = ctrl->maxvwgt;
 
-  match = iset(nvtxs, UNMATCHED, iwspacemalloc(ctrl, nvtxs));
-  perm  = iwspacemalloc(ctrl, nvtxs);
+  match   = iset(nvtxs, UNMATCHED, iwspacemalloc(ctrl, nvtxs));
+  perm    = iwspacemalloc(ctrl, nvtxs);
+  tperm   = iwspacemalloc(ctrl, nvtxs);
+  degrees = iwspacemalloc(ctrl, nvtxs);
 
-  /* Compute the vertex keys for 2-hop matching */
-  vkeys = iwspacemalloc(ctrl, nvtxs);
+  /* Determine a "random" traversal order that is biased towards 
+     low-degree vertices */
+  my_irandArrayPermute_r(nvtxs, tperm, nvtxs/8, 1, &ctrl->curseed);
+
+  avgdegree = 4.0*(xadj[nvtxs]/nvtxs);
   for (i=0; i<nvtxs; i++) {
-    vkeys[i] = 0;
-    if (xadj[i+1]-xadj[i] > MAXDEGREEFOR2HOP) 
-      continue;
-    for (j=xadj[i]; j<xadj[i+1]; j++)
-      vkeys[i] += adjncy[j];
+    bnum = sqrt(1+xadj[i+1]-xadj[i]);
+    degrees[i] = (bnum > avgdegree ? avgdegree : bnum);
   }
+  BucketSortKeysInc(ctrl, nvtxs, avgdegree, degrees, tperm, perm);
 
-  my_irandArrayPermute_r(nvtxs, perm, nvtxs/8, 1, &ctrl->curseed);
 
+  /* Traverse the vertices and compute the matching */
   for (cnvtxs=0, last_unmatched=0, pi=0; pi<nvtxs; pi++) {
     i = perm[pi];
 
@@ -192,7 +198,7 @@ idx_t Match_RM(ctrl_t *ctrl, graph_t *graph)
       if ((ncon == 1 ? vwgt[i] < maxvwgt[0] : ivecle(ncon, vwgt+i*ncon, maxvwgt))) {
         /* Deal with island vertices. Find a non-island and match it with. 
            The matching ignores ctrl->maxvwgt requirements */
-        if (xadj[i] == xadj[i+1]) { 
+        if (xadj[i] == xadj[i+1]) {
           last_unmatched = gk_max(pi, last_unmatched)+1;
           for (; last_unmatched<nvtxs; last_unmatched++) {
             j = perm[last_unmatched];
@@ -214,25 +220,10 @@ idx_t Match_RM(ctrl_t *ctrl, graph_t *graph)
               }
             }
 
-            /* If it did not match, find a 2-hop unmatched vertex and match it with. */
-            if (maxidx == i && xadj[i+1]-xadj[i] <= MAXDEGREEFOR2HOP) {
-              for (j=xadj[i]; j<xadj[i+1]; j++) {
-                ii    = adjncy[j];
-                jjinc = (xadj[ii+1]-xadj[ii] < 50 ? 1 : 1+my_irandInRange_r((xadj[ii+1]-xadj[ii])/10, &ctrl->curseed));
-                for (jj=xadj[ii]; jj<xadj[ii+1]; jj+=jjinc) {
-                  k = adjncy[jj];
-                  if (k != i && 
-                      match[k] == UNMATCHED &&
-                      vkeys[i] == vkeys[k] && 
-                      xadj[i+1]-xadj[i] == xadj[k+1]-xadj[k] && 
-                      vwgt[i]+vwgt[k] <= maxvwgt[0]) {
-                    maxidx = k;
-                    break;
-                  }
-                }
-                if (maxidx != i)
-                  break;
-              }
+            /* If it did not match, record for a 2-hop matching. */
+            if (maxidx == i && 2*vwgt[i] < maxvwgt[0]) {
+              nunmatched++;
+              maxidx = UNMATCHED;
             }
           }
           else {
@@ -246,42 +237,40 @@ idx_t Match_RM(ctrl_t *ctrl, graph_t *graph)
               }
             }
 
-            /* If it did not match, find a 2-hop unmatched vertex and match it with. */
-            if (maxidx == i && xadj[i+1]-xadj[i] <= MAXDEGREEFOR2HOP) {
-              for (j=xadj[i]; j<xadj[i+1]; j++) {
-                ii    = adjncy[j];
-                jjinc = (xadj[ii+1]-xadj[ii] < 50 ? 1 : 1+my_irandInRange_r((xadj[ii+1]-xadj[ii])/10, &ctrl->curseed));
-                for (jj=xadj[ii]; jj<xadj[ii+1]; jj+=jjinc) {
-                  k = adjncy[jj];
-                  if (k != i && 
-                      match[k] == UNMATCHED &&
-                      vkeys[i] == vkeys[k] && 
-                      xadj[i+1]-xadj[i] == xadj[k+1]-xadj[k] && 
-                      ivecaxpylez(ncon, 1, vwgt+i*ncon, vwgt+k*ncon, maxvwgt)) {
-                    maxidx = k;
-                    break;
-                  }
-                }
-                if (maxidx != i)
-                  break;
-              }
+            /* If it did not match, record for a 2-hop matching. */
+            if (maxidx == i && ivecaxpylez(ncon, 2, vwgt+i*ncon, vwgt+i*ncon, maxvwgt)) {
+              nunmatched++;
+              maxidx = UNMATCHED;
             }
           }
         }
       }
 
-      cmap[i]  = cmap[maxidx] = cnvtxs++;
-      match[i] = maxidx;
-      match[maxidx] = i;
+      if (maxidx != UNMATCHED) {
+        cmap[i]  = cmap[maxidx] = cnvtxs++;
+        match[i] = maxidx;
+        match[maxidx] = i;
+      }
     }
   }
 
-  /* reorder the vertices of the coarse graph for memory-friendly contraction */
-  for (k=0, i=0; i<nvtxs; i++) {
-    if (i <= match[i]) 
-      cmap[i] = cmap[match[i]] = k++;
+  /* see if a 2-hop matching is required/allowed */
+  if (!ctrl->no2hop && nunmatched > UNMATCHEDFOR2HOP*nvtxs) 
+    cnvtxs = Match_2Hop(ctrl, graph, perm, match, cnvtxs, nunmatched);
+
+
+  /* match the final unmatched vertices with themselves and reorder the vertices 
+     of the coarse graph for memory-friendly contraction */
+  for (cnvtxs=0, i=0; i<nvtxs; i++) {
+    if (match[i] == UNMATCHED) {
+      match[i] = i;
+      cmap[i]  = cnvtxs++;
+    }
+    else {
+      if (i <= match[i]) 
+        cmap[i] = cmap[match[i]] = cnvtxs++;
+    }
   }
-  ASSERT(cnvtxs == k);
 
   IFSET(ctrl->dbglvl, METIS_DBG_TIME, gk_stopwctimer(ctrl->MatchTmr));
 
@@ -301,11 +290,11 @@ idx_t Match_RM(ctrl_t *ctrl, graph_t *graph)
 /**************************************************************************/
 idx_t Match_SHEM(ctrl_t *ctrl, graph_t *graph)
 {
-  idx_t i, pi, ii, j, jj, jjinc, k, nvtxs, ncon, cnvtxs, maxidx, maxwgt, 
-        last_unmatched, avgdegree;
+  idx_t i, pi, j, k, nvtxs, ncon, cnvtxs, maxidx, maxwgt, 
+        last_unmatched, avgdegree, bnum;
   idx_t *xadj, *vwgt, *adjncy, *adjwgt, *maxvwgt;
   idx_t *match, *cmap, *degrees, *perm, *tperm;
-  idx_t *vkeys;
+  size_t nunmatched=0;
 
   WCOREPUSH;
 
@@ -326,23 +315,18 @@ idx_t Match_SHEM(ctrl_t *ctrl, graph_t *graph)
   tperm   = iwspacemalloc(ctrl, nvtxs);
   degrees = iwspacemalloc(ctrl, nvtxs);
 
-  /* Compute the vertex keys for 2-hop matching */
-  vkeys = iwspacemalloc(ctrl, nvtxs);
-  for (i=0; i<nvtxs; i++) {
-    vkeys[i] = 0;
-    if (xadj[i+1]-xadj[i] > MAXDEGREEFOR2HOP) 
-      continue;
-    for (j=xadj[i]; j<xadj[i+1]; j++)
-      vkeys[i] += adjncy[j];
-  }
-
+  /* Determine a "random" traversal order that is biased towards low-degree vertices */
   my_irandArrayPermute_r(nvtxs, tperm, nvtxs/8, 1, &ctrl->curseed);
 
-  avgdegree = 0.7*(xadj[nvtxs]/nvtxs);
-  for (i=0; i<nvtxs; i++) 
-    degrees[i] = (xadj[i+1]-xadj[i] > avgdegree ? avgdegree : xadj[i+1]-xadj[i]);
+  avgdegree = 4.0*(xadj[nvtxs]/nvtxs);
+  for (i=0; i<nvtxs; i++) {
+    bnum = sqrt(1+xadj[i+1]-xadj[i]);
+    degrees[i] = (bnum > avgdegree ? avgdegree : bnum);
+  }
   BucketSortKeysInc(ctrl, nvtxs, avgdegree, degrees, tperm, perm);
 
+
+  /* Traverse the vertices and compute the matching */
   for (cnvtxs=0, last_unmatched=0, pi=0; pi<nvtxs; pi++) {
     i = perm[pi];
 
@@ -376,25 +360,10 @@ idx_t Match_SHEM(ctrl_t *ctrl, graph_t *graph)
               }
             }
 
-            /* If it did not match, find a 2-hop unmatched vertex and match it with. */
-            if (maxidx == i && xadj[i+1]-xadj[i] <= MAXDEGREEFOR2HOP) {
-              for (j=xadj[i]; j<xadj[i+1]; j++) {
-                ii    = adjncy[j];
-                jjinc = (xadj[ii+1]-xadj[ii] < 50 ? 1 : 1+my_irandInRange_r((xadj[ii+1]-xadj[ii])/10, &ctrl->curseed));
-                for (jj=xadj[ii]; jj<xadj[ii+1]; jj+=jjinc) {
-                  k = adjncy[jj];
-                  if (k != i && 
-                      match[k] == UNMATCHED &&
-                      vkeys[i] == vkeys[k] && 
-                      xadj[i+1]-xadj[i] == xadj[k+1]-xadj[k] && 
-                      vwgt[i]+vwgt[k] <= maxvwgt[0]) {
-                    maxidx = k;
-                    break;
-                  }
-                }
-                if (maxidx != i)
-                  break;
-              }
+            /* If it did not match, record for a 2-hop matching. */
+            if (maxidx == i && 2*vwgt[i] < maxvwgt[0]) {
+              nunmatched++;
+              maxidx = UNMATCHED;
             }
           }
           else {
@@ -412,44 +381,412 @@ idx_t Match_SHEM(ctrl_t *ctrl, graph_t *graph)
               }
             }
 
-            /* If it did not match, find a 2-hop unmatched vertex and match it with. */
-            if (maxidx == i && xadj[i+1]-xadj[i] <= MAXDEGREEFOR2HOP) {
+            /* If it did not match, record for a 2-hop matching. */
+            if (maxidx == i && ivecaxpylez(ncon, 2, vwgt+i*ncon, vwgt+i*ncon, maxvwgt)) {
+              nunmatched++;
+              maxidx = UNMATCHED;
+            }
+          }
+        }
+      }
+
+      if (maxidx != UNMATCHED) {
+        cmap[i]  = cmap[maxidx] = cnvtxs++;
+        match[i] = maxidx;
+        match[maxidx] = i;
+      }
+    }
+  }
+
+  /* see if a 2-hop matching is required/allowed */
+  if (!ctrl->no2hop && nunmatched > UNMATCHEDFOR2HOP*nvtxs) 
+    cnvtxs = Match_2Hop(ctrl, graph, perm, match, cnvtxs, nunmatched);
+
+
+  /* match the final unmatched vertices with themselves and reorder the vertices 
+     of the coarse graph for memory-friendly contraction */
+  for (cnvtxs=0, i=0; i<nvtxs; i++) {
+    if (match[i] == UNMATCHED) {
+      match[i] = i;
+      cmap[i] = cnvtxs++;
+    }
+    else {
+      if (i <= match[i]) 
+        cmap[i] = cmap[match[i]] = cnvtxs++;
+    }
+  }
+
+  IFSET(ctrl->dbglvl, METIS_DBG_TIME, gk_stopcputimer(ctrl->MatchTmr));
+
+  CreateCoarseGraph(ctrl, graph, cnvtxs, match);
+
+  WCOREPOP;
+
+  return cnvtxs;
+}
+
+
+/*************************************************************************/
+/*! This function matches the unmatched vertices using a 2-hop matching 
+    that involves vertices that are two hops away from each other. */
+/**************************************************************************/
+idx_t Match_2Hop(ctrl_t *ctrl, graph_t *graph, idx_t *perm, idx_t *match, 
+          idx_t cnvtxs, size_t nunmatched)
+{
+
+  cnvtxs = Match_2HopAny(ctrl, graph, perm, match, cnvtxs, &nunmatched, 2);
+  cnvtxs = Match_2HopAll(ctrl, graph, perm, match, cnvtxs, &nunmatched, 64);
+  if (nunmatched > 1.5*UNMATCHEDFOR2HOP*graph->nvtxs) 
+    cnvtxs = Match_2HopAny(ctrl, graph, perm, match, cnvtxs, &nunmatched, 3);
+  if (nunmatched > 2.0*UNMATCHEDFOR2HOP*graph->nvtxs) 
+    cnvtxs = Match_2HopAny(ctrl, graph, perm, match, cnvtxs, &nunmatched, graph->nvtxs);
+
+  return cnvtxs;
+}
+
+
+/*************************************************************************/
+/*! This function matches the unmatched vertices whose degree is less than
+    maxdegree using a 2-hop matching that involves vertices that are two 
+    hops away from each other. 
+    The requirement of the 2-hop matching is a simple non-empty overlap
+    between the adjancency lists of the vertices. */
+/**************************************************************************/
+idx_t Match_2HopAny(ctrl_t *ctrl, graph_t *graph, idx_t *perm, idx_t *match, 
+          idx_t cnvtxs, size_t *r_nunmatched, size_t maxdegree)
+{
+  idx_t i, pi, j, jj, nvtxs;
+  idx_t *xadj, *adjncy, *colptr, *rowind;
+  idx_t *cmap;
+  size_t nunmatched;
+
+  IFSET(ctrl->dbglvl, METIS_DBG_TIME, gk_startcputimer(ctrl->Aux3Tmr));
+
+  nvtxs  = graph->nvtxs;
+  xadj   = graph->xadj;
+  adjncy = graph->adjncy;
+  cmap   = graph->cmap;
+
+  nunmatched = *r_nunmatched;
+
+  /*IFSET(ctrl->dbglvl, METIS_DBG_COARSEN, printf("IN: nunmatched: %zu\t", nunmatched)); */
+
+  /* create the inverted index */
+  WCOREPUSH;
+  colptr = iset(nvtxs, 0, iwspacemalloc(ctrl, nvtxs+1));
+  for (i=0; i<nvtxs; i++) {
+    if (match[i] == UNMATCHED && xadj[i+1]-xadj[i] < (idx_t)maxdegree) {
+      for (j=xadj[i]; j<xadj[i+1]; j++)
+        colptr[adjncy[j]]++;
+    }
+  }
+  MAKECSR(i, nvtxs, colptr);
+
+  rowind = iwspacemalloc(ctrl, colptr[nvtxs]);
+  for (pi=0; pi<nvtxs; pi++) {
+    i = perm[pi];
+    if (match[i] == UNMATCHED && xadj[i+1]-xadj[i] < (idx_t)maxdegree) {
+      for (j=xadj[i]; j<xadj[i+1]; j++)
+        rowind[colptr[adjncy[j]]++] = i;
+    }
+  }
+  SHIFTCSR(i, nvtxs, colptr);
+
+  /* compute matchings by going down the inverted index */
+  for (pi=0; pi<nvtxs; pi++) {
+    i = perm[pi];
+    if (colptr[i+1]-colptr[i] < 2)
+      continue;
+
+    for (jj=colptr[i+1], j=colptr[i]; j<jj; j++) {
+      if (match[rowind[j]] == UNMATCHED) {
+        for (jj--; jj>j; jj--) {
+          if (match[rowind[jj]] == UNMATCHED) {
+            cmap[rowind[j]] = cmap[rowind[jj]] = cnvtxs++;
+            match[rowind[j]]  = rowind[jj];
+            match[rowind[jj]] = rowind[j];
+            nunmatched -= 2;
+            break;
+          }
+        }
+      }
+    }
+  }
+  WCOREPOP;
+
+  /*IFSET(ctrl->dbglvl, METIS_DBG_COARSEN, printf("OUT: nunmatched: %zu\n", nunmatched)); */
+
+  IFSET(ctrl->dbglvl, METIS_DBG_TIME, gk_stopcputimer(ctrl->Aux3Tmr));
+
+  *r_nunmatched = nunmatched;
+  return cnvtxs;
+}
+
+
+/*************************************************************************/
+/*! This function matches the unmatched vertices whose degree is less than
+    maxdegree using a 2-hop matching that involves vertices that are two 
+    hops away from each other. 
+    The requirement of the 2-hop matching is that of identical adjacency
+    lists.
+ */
+/**************************************************************************/
+idx_t Match_2HopAll(ctrl_t *ctrl, graph_t *graph, idx_t *perm, idx_t *match, 
+          idx_t cnvtxs, size_t *r_nunmatched, size_t maxdegree)
+{
+  idx_t i, pi, pk, j, jj, k, nvtxs, mask, idegree;
+  idx_t *xadj, *adjncy;
+  idx_t *cmap, *mark;
+  ikv_t *keys;
+  idx_t nunmatched, ncand;
+
+  IFSET(ctrl->dbglvl, METIS_DBG_TIME, gk_startcputimer(ctrl->Aux3Tmr));
+
+  nvtxs  = graph->nvtxs;
+  xadj   = graph->xadj;
+  adjncy = graph->adjncy;
+  cmap   = graph->cmap;
+
+  nunmatched = *r_nunmatched;
+  mask = IDX_MAX/maxdegree;
+
+  /*IFSET(ctrl->dbglvl, METIS_DBG_COARSEN, printf("IN: nunmatched: %zu\t", nunmatched)); */
+
+  WCOREPUSH;
+
+  /* collapse vertices with identical adjancency lists */
+  keys = ikvwspacemalloc(ctrl, nunmatched);
+  for (ncand=0, pi=0; pi<nvtxs; pi++) {
+    i = perm[pi];
+    idegree = xadj[i+1]-xadj[i];
+    if (match[i] == UNMATCHED && idegree > 1 && idegree < (idx_t)maxdegree) {
+      for (k=0, j=xadj[i]; j<xadj[i+1]; j++) 
+        k += adjncy[j]%mask;
+      keys[ncand].val = i;
+      keys[ncand].key = (k%mask)*maxdegree + idegree;
+      ncand++;
+    }
+  }
+  ikvsorti(ncand, keys);
+
+  mark = iset(nvtxs, 0, iwspacemalloc(ctrl, nvtxs));
+  for (pi=0; pi<ncand; pi++) {
+    i = keys[pi].val;
+    if (match[i] != UNMATCHED)
+      continue;
+
+    for (j=xadj[i]; j<xadj[i+1]; j++)
+      mark[adjncy[j]] = i;
+
+    for (pk=pi+1; pk<ncand; pk++) {
+      k = keys[pk].val;
+      if (match[k] != UNMATCHED)
+        continue;
+
+      if (keys[pi].key != keys[pk].key)
+        break;
+      if (xadj[i+1]-xadj[i] != xadj[k+1]-xadj[k])
+        break;
+
+      for (jj=xadj[k]; jj<xadj[k+1]; jj++) {
+        if (mark[adjncy[jj]] != i)
+          break;
+      }
+      if (jj == xadj[k+1]) {
+        cmap[i] = cmap[k] = cnvtxs++;
+        match[i] = k;
+        match[k] = i;
+        nunmatched -= 2;
+        break;
+      }
+    }
+  }
+  WCOREPOP;
+
+  /*IFSET(ctrl->dbglvl, METIS_DBG_COARSEN, printf("OUT: ncand: %zu, nunmatched: %zu\n", ncand, nunmatched)); */
+
+  IFSET(ctrl->dbglvl, METIS_DBG_TIME, gk_stopcputimer(ctrl->Aux3Tmr));
+
+  *r_nunmatched = nunmatched;
+  return cnvtxs;
+}
+
+
+/*************************************************************************/
+/*! This function finds a matching by randomly selecting one of the 
+    unmatched adjacent vertices. 
+ */
+/**************************************************************************/
+idx_t Match_JC(ctrl_t *ctrl, graph_t *graph)
+{
+  idx_t i, pi, ii, iii, j, jj, jjj, k, nvtxs, ncon, cnvtxs, maxidx, 
+        last_unmatched, avgdegree, bnum;
+  idx_t *xadj, *vwgt, *adjncy, *adjwgt, *maxvwgt;
+  idx_t *match, *cmap, *degrees, *perm, *tperm, *vec, *marker;
+  idx_t mytwgt, xtwgt, ctwgt;
+  float bscore, score;
+
+  WCOREPUSH;
+
+  IFSET(ctrl->dbglvl, METIS_DBG_TIME, gk_startcputimer(ctrl->MatchTmr));
+
+  nvtxs  = graph->nvtxs;
+  ncon   = graph->ncon;
+  xadj   = graph->xadj;
+  vwgt   = graph->vwgt;
+  adjncy = graph->adjncy;
+  adjwgt = graph->adjwgt;
+  cmap   = graph->cmap;
+
+  maxvwgt  = ctrl->maxvwgt;
+
+  match   = iset(nvtxs, UNMATCHED, iwspacemalloc(ctrl, nvtxs));
+  perm    = iwspacemalloc(ctrl, nvtxs);
+  tperm   = iwspacemalloc(ctrl, nvtxs);
+  degrees = iwspacemalloc(ctrl, nvtxs);
+
+  irandArrayPermute(nvtxs, tperm, nvtxs/8, 1);
+
+  avgdegree = 4.0*(xadj[nvtxs]/nvtxs);
+  for (i=0; i<nvtxs; i++) {
+    bnum = sqrt(1+xadj[i+1]-xadj[i]);
+    degrees[i] = (bnum > avgdegree ? avgdegree : bnum);
+  }
+  BucketSortKeysInc(ctrl, nvtxs, avgdegree, degrees, tperm, perm);
+
+  /* point to the wspace vectors that are not needed any more */
+  vec    = tperm;
+  marker = degrees;
+  iset(nvtxs, -1, vec);
+  iset(nvtxs, -1, marker);
+
+  for (cnvtxs=0, last_unmatched=0, pi=0; pi<nvtxs; pi++) {
+    i = perm[pi];
+
+    if (match[i] == UNMATCHED) {  /* Unmatched */
+      maxidx = i;
+
+      if ((ncon == 1 ? vwgt[i] < maxvwgt[0] : ivecle(ncon, vwgt+i*ncon, maxvwgt))) {
+        /* Deal with island vertices. Find a non-island and match it with. 
+           The matching ignores ctrl->maxvwgt requirements */
+        if (xadj[i] == xadj[i+1]) {
+          last_unmatched = gk_max(pi, last_unmatched)+1;
+          for (; last_unmatched<nvtxs; last_unmatched++) {
+            j = perm[last_unmatched];
+            if (match[j] == UNMATCHED) {
+              maxidx = j;
+              break;
+            }
+          }
+        }
+        else {
+          if (ncon == 1) {
+            /* Find a max JC pair, subject to maxvwgt constraints */
+            if (xadj[i+1]-xadj[i] < avgdegree) {
+              marker[i] = i;
+              bscore = 0.0;
+              mytwgt = 0;
               for (j=xadj[i]; j<xadj[i+1]; j++) {
-                ii    = adjncy[j];
-                jjinc = (xadj[ii+1]-xadj[ii] < 50 ? 1 : 1+my_irandInRange_r((xadj[ii+1]-xadj[ii])/10, &ctrl->curseed));
-                for (jj=xadj[ii]; jj<xadj[ii+1]; jj+=jjinc) {
-                  k = adjncy[jj];
-                  if (k != i && 
-                      match[k] == UNMATCHED &&
-                      vkeys[i] == vkeys[k] && 
-                      xadj[i+1]-xadj[i] == xadj[k+1]-xadj[k] && 
-                      ivecaxpylez(ncon, 1, vwgt+i*ncon, vwgt+k*ncon, maxvwgt)) {
-                    maxidx = k;
-                    break;
+                mytwgt += 1;//adjwgt[j];
+                vec[adjncy[j]] = 1;//adjwgt[j];
+              }
+
+              /* single constraint pairing */
+#ifdef XXX
+              for (j=xadj[i]; j<xadj[i+1]; j++) {
+                ii = adjncy[j];
+                if (marker[ii] == i || match[ii] != UNMATCHED || vwgt[i]+vwgt[ii] > maxvwgt[0])
+                  continue;
+
+                ctwgt = xtwgt = 0;
+                for (jj=xadj[ii]; jj<xadj[ii+1]; jj++) {
+                  xtwgt += adjwgt[jj];
+                  if (vec[adjncy[jj]] > 0)
+                    ctwgt += vec[adjncy[jj]] + adjwgt[jj];
+                  else if (adjncy[jj] == i) {
+                    ctwgt += adjwgt[jj];
+                    xtwgt -= adjwgt[jj];
                   }
                 }
-                if (maxidx != i)
-                  break;
+
+                score = 1.0*ctwgt/(mytwgt+xtwgt-ctwgt);
+                if (score > bscore) {
+                  bscore = score;
+                  maxidx = ii;
+                }
+                marker[ii] = i;
+              }
+#endif
+
+              for (j=xadj[i]; j<xadj[i+1]; j++) {
+                ii = adjncy[j];
+                for (jj=xadj[ii]; jj<xadj[ii+1]; jj++) {
+                  iii = adjncy[jj];
+  
+                  if (marker[iii] == i || match[iii] != UNMATCHED || vwgt[i]+vwgt[iii] > maxvwgt[0])
+                    continue;
+  
+                  ctwgt = xtwgt = 0;
+                  for (jjj=xadj[iii]; jjj<xadj[iii+1]; jjj++) {
+                    xtwgt += 1;//adjwgt[jjj];
+                    if (vec[adjncy[jjj]] > 0)
+                      ctwgt += 2;//vec[adjncy[jjj]] + adjwgt[jjj];
+                    else if (adjncy[jjj] == i) 
+                      ctwgt += 10*adjwgt[jjj];
+                  }
+  
+                  score = 1.0*ctwgt/(mytwgt+xtwgt);
+                  //printf("%"PRIDX" %"PRIDX" %"PRIDX" %.4f\n", mytwgt, xtwgt, ctwgt, score);
+                  if (score > bscore) {
+                    bscore = score;
+                    maxidx = iii;
+                  }
+                  marker[iii] = i;
+                }
+              }
+  
+              /* reset vec array */
+              for (j=xadj[i]; j<xadj[i+1]; j++) 
+                vec[adjncy[j]] = -1;
+            }
+          }
+          else {
+            /* multi-constraint version */
+            for (j=xadj[i]; j<xadj[i+1]; j++) {
+              k = adjncy[j];
+              if (match[k] == UNMATCHED && 
+                  ivecaxpylez(ncon, 1, vwgt+i*ncon, vwgt+k*ncon, maxvwgt)) {
+                maxidx = k;
+                break;
               }
             }
           }
         }
       }
 
-      cmap[i]  = cmap[maxidx] = cnvtxs++;
-      match[i] = maxidx;
-      match[maxidx] = i;
+      if (maxidx != UNMATCHED) {
+        cmap[i]  = cmap[maxidx] = cnvtxs++;
+        match[i] = maxidx;
+        match[maxidx] = i;
+      }
     }
   }
 
-  /* reorder the vertices of the coarse graph for memory-friendly contraction */
-  for (k=0, i=0; i<nvtxs; i++) {
-    if (i <= match[i]) 
-      cmap[i] = cmap[match[i]] = k++;
-  }
-  ASSERT(cnvtxs == k);
 
-  IFSET(ctrl->dbglvl, METIS_DBG_TIME, gk_stopwctimer(ctrl->MatchTmr));
+  /* match the final unmatched vertices with themselves and reorder the vertices 
+     of the coarse graph for memory-friendly contraction */
+  for (cnvtxs=0, i=0; i<nvtxs; i++) {
+    if (match[i] == UNMATCHED) {
+      match[i] = i;
+      cmap[i]  = cnvtxs++;
+    }
+    else {
+      if (i <= match[i]) 
+        cmap[i] = cmap[match[i]] = cnvtxs++;
+    }
+  }
+
+  IFSET(ctrl->dbglvl, METIS_DBG_TIME, gk_stopcputimer(ctrl->MatchTmr));
 
   CreateCoarseGraph(ctrl, graph, cnvtxs, match);
 
@@ -467,11 +804,11 @@ void PrintCGraphStats(ctrl_t *ctrl, graph_t *graph)
 {
   idx_t i;
 
-  printf("%6"PRIDX" %7"PRIDX" %10"PRIDX" [%"PRIDX"] [", 
+  printf("%10"PRIDX" %10"PRIDX" %10"PRIDX" [%"PRIDX"] [", 
       graph->nvtxs, graph->nedges, isum(graph->nedges, graph->adjwgt, 1), ctrl->CoarsenTo);
 
   for (i=0; i<graph->ncon; i++)
-    printf(" %6"PRIDX":%6"PRIDX, ctrl->maxvwgt[i], graph->tvwgt[i]);
+    printf(" %8"PRIDX":%8"PRIDX, ctrl->maxvwgt[i], graph->tvwgt[i]);
   printf(" ]\n");
 }
 
@@ -486,7 +823,7 @@ void PrintCGraphStats(ctrl_t *ctrl, graph_t *graph)
 void CreateCoarseGraph(ctrl_t *ctrl, graph_t *graph, idx_t cnvtxs, 
          idx_t *match)
 {
-  idx_t j, jj, k, kk, l, m, istart, iend, nvtxs, nedges, ncon, cnedges, 
+  idx_t j, jj, k, kk, m, istart, iend, nvtxs, nedges, ncon, cnedges, 
         v, u, mask, dovsize;
   idx_t *xadj, *vwgt, *vsize, *adjncy, *adjwgt;
   idx_t *cmap, *htable;
@@ -797,7 +1134,7 @@ void CreateCoarseGraphNoMask(ctrl_t *ctrl, graph_t *graph, idx_t cnvtxs,
 void CreateCoarseGraphPerm(ctrl_t *ctrl, graph_t *graph, idx_t cnvtxs, 
          idx_t *match, idx_t *perm)
 {
-  idx_t i, j, jj, k, kk, l, m, istart, iend, nvtxs, nedges, ncon, cnedges, 
+  idx_t i, j, jj, k, kk, m, istart, iend, nvtxs, nedges, ncon, cnedges, 
         v, u, mask, dovsize;
   idx_t *xadj, *vwgt, *vsize, *adjncy, *adjwgt;
   idx_t *cmap, *htable;

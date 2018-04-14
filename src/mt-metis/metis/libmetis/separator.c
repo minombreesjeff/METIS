@@ -8,7 +8,7 @@
  * Started 8/1/97
  * George
  *
- * $Id: separator.c 10481 2011-07-05 18:01:23Z karypis $
+ * $Id: separator.c 17715 2014-10-02 16:08:42Z dominique $
  *
  */
 
@@ -20,7 +20,7 @@
 **************************************************************************/
 void ConstructSeparator(ctrl_t *ctrl, graph_t *graph)
 {
-  idx_t i, j, k, nvtxs, nbnd;
+  idx_t i, j, nvtxs, nbnd;
   idx_t *xadj, *where, *bndind;
 
   WCOREPUSH;
@@ -70,7 +70,7 @@ void ConstructMinCoverSeparator(ctrl_t *ctrl, graph_t *graph)
 {
   idx_t i, ii, j, jj, k, l, nvtxs, nbnd, bnvtxs[3], bnedges[2], csize;
   idx_t *xadj, *adjncy, *bxadj, *badjncy;
-  idx_t *where, *bndind, *bndptr, *vmap, *ivmap, *cover;
+  idx_t *where, *bndind, *vmap, *ivmap, *cover;
 
   WCOREPUSH;
 
@@ -80,7 +80,6 @@ void ConstructMinCoverSeparator(ctrl_t *ctrl, graph_t *graph)
 
   nbnd   = graph->nbnd;
   bndind = graph->bndind;
-  bndptr = graph->bndptr;
   where  = graph->where;
 
   vmap  = iwspacemalloc(ctrl, nvtxs);
@@ -128,7 +127,7 @@ void ConstructMinCoverSeparator(ctrl_t *ctrl, graph_t *graph)
           for (j=xadj[i]; j<xadj[i+1]; j++) {
             jj = adjncy[j];
             if (where[jj] != k) {
-              ASSERT(bndptr[jj] != -1); 
+              ASSERT(graph->bndptr[jj] != -1); 
               ASSERTP(vmap[jj] != -1, ("%"PRIDX" %"PRIDX" %"PRIDX"\n", jj, vmap[jj], graph->bndptr[jj]));
               badjncy[l++] = vmap[jj];
             }

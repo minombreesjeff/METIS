@@ -8,8 +8,60 @@
 */
 
 
-#ifndef MACROS_H
-#define MACROS_H
+
+
+#ifndef MTMETIS_MACROS_H
+#define MTMETIS_MACROS_H
+
+
+
+
+/******************************************************************************
+* MACROS **********************************************************************
+******************************************************************************/
+
+
+#define MAXDEGREEFOR2HOP 20
+
+/* sys stuff */
+#define CACHE_LINE_SIZE 64
+#define CACHE_LINE_INTS (CACHE_LINE_SIZE / sizeof(idx_t)) 
+#define CACHE_LINE_REALS (CACHE_LINE_SIZE / sizeof(real_t))
+#define CACHE_SIZE 12000000
+#define CACHE_DATA_SIZE (CACHE_SIZE*0.75f) /* assume we only get to use 3/4 */
+#define PROC_SIZE 4
+#define CACHE_PER_THREAD (CACHE_DATA_SIZE / PROC_SIZE)
+#define PAGESIZE 4096
+
+/* performance parameters */
+#define NBRPOOL_EXP_RATE 1.5
+
+/* parallel stuff */
+#define PAR_COARSEN
+#define PAR_PARTITION
+#define PAR_REFINE
+
+/* coarsening */
+#define ROOT -2
+#define LWGT 2
+
+/* initial partitioning */
+#define NSOLUTIONS 16
+#define PAR_COARSEN_FRACTION 0.75
+#define PAR_COARSEN_FACTOR 128
+#define TPPRATIO 4
+/* #define LGCOPY */
+
+/* refinement stuff */
+#define MOVEBUFFERSIZE 512 
+#define MINUPDATES 1024
+
+/* other stuff */
+#define LISTUNINDEXED -2
+#define LISTEMPTY -1
+#define UBFACTOR 1.030
+
+
 
 #define ONES 0xFFFFFFFF
 
@@ -53,57 +105,21 @@
 /******************************************************************************
 * COARSENING MACROS ***********************************************************
 ******************************************************************************/
+
 #define MY_CVTX(v,u,dv,du) \
   ( ((v) == (u)) || ((dv) > (du)) || \
     ( ( ((dv) == (du)) && \
      ( ((((v)+(u))%2==0)&&((v)>(u))) || \
        ((((v)+(u))%2==1)&&((v)<(u))) ) ) ) ) 
 
+
 #define skipEdge(v,u) \
   if ((v) == (u)) continue
 
-#define cEdgeMask(start,j,jj,k,kk,m,nedges,mask,htable,adjncy,adjwgt, \
-    cadjncy,cadjwgt) \
-  do { \
-    kk = k&mask; \
-    if ((m = htable[kk]) == -1) { \
-      cadjncy[nedges] = k; \
-      cadjwgt[nedges] = adjwgt[j]; \
-      htable[kk]      = nedges++; \
-    } else if (cadjncy[m] == k) { \
-      cadjwgt[m] += adjwgt[j]; \
-    } else { \
-      for (jj=start; jj<nedges; ++jj) { \
-        if (cadjncy[jj] == k) { \
-          cadjwgt[jj] += adjwgt[j]; \
-          break; \
-        } \
-      } \
-      if (jj == nedges) { \
-        cadjncy[nedges]   = k; \
-        cadjwgt[nedges++] = adjwgt[j]; \
-      } \
-    } \
-  } while(0)
-
-#define cEdgeNoMask(j,k,m,nedges,htable,adjncy,adjwgt,cadjncy,cadjwgt) \
-  do { \
-    if ((m = htable[k]) == -1) { \
-      cadjncy[nedges] = k; \
-      cadjwgt[nedges] = adjwgt[j]; \
-      htable[k] = nedges++; \
-    } else { \
-      cadjwgt[m] += adjwgt[j]; \
-    } \
-  } while(0)
 
 /******************************************************************************
 * OMP/PARALLEL MACROS *********************************************************
 ******************************************************************************/
-#define INIT_PARALLEL() \
-  const idx_t myid = omp_get_thread_num(); \
-  const idx_t nthreads = omp_get_num_threads() \
-  /* semi colon dropped here */
 
 #define startwctimer(tmr) \
   do { \
@@ -145,17 +161,6 @@
     } \
   } while (0)
 
-#ifdef DEBUG
-  #define dprintf(fmt, ...) \
-  do { \
-    _Pragma("omp master") \
-    { \
-      printf(fmt, ##__VA_ARGS__); \
-    } \
-  } while (0)
-#else
-  #define dprintf(fmt, ...)
-#endif
 
 /* omp junk */
 /* return the id of the thread with the minimum value */

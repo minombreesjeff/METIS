@@ -2,32 +2,111 @@
  * @file initpart.c
  * @brief Parallel initial partitioning routines (see pmetis and kmetis)
  * @author Dominique LaSalle <lasalle@cs.umn.edu>
- * Copyright 2012, Regents of the University of Minnesota
+ * Copyright 2014, Regents of the University of Minnesota
  * @version 1
  * @date 2012-07-06
  */
 
 
-#include "includes.h"
 
-idx_t ParInitKWayPartitioning(dctrl_t * const dctrl, dgraph_t * const graph)
+
+#ifndef MTMETIS_INITPART_C
+#define MTMETIS_INITPART_C
+
+
+
+
+#include "initpart.h"
+
+#undef real_t
+#include <metis.h>
+#define real_t mtmetis_real_t
+
+
+
+
+/******************************************************************************
+* PRIVATE FUNCTIONS ***********************************************************
+******************************************************************************/
+
+
+static wgt_t __initpart_metis_kway(
+    ctrl_t * const ctrl,
+    size_t const ncuts,
+    vtx_t nvtxs,
+    adj_t * const xadj,
+    vtx_t * const adjncy,
+    wgt_t * const vwgt,
+    wgt_t * const adjwgt,
+    pid_t * const where)
 {
-  INIT_PARALLEL();
+  idx_t nparts;
+  idx_t cut, ncon;
+  idx_t options[METIS_NOPTIONS];
+  real_t ubf;
 
-  idx_t i,j,idx, cut;
-  idx_t *cuts, *cutidx;
+  tid_t const myid = omp_get_thread_num();
 
-  const idx_t nvtxs = graph->nvtxs; 
-  const idx_t nedges = graph->nedges;
-  const idx_t nparts = dctrl->ctrl->nparts;
-  const idx_t ndist = graph->ndist;
+  METIS_SetDefaultOptions(options);
 
-  ParAllocateKWayPartitionMemory(dctrl->ctrl, graph);
+  ncon = 1;
 
-  const idx_t tcuts = gk_max(NSOLUTIONS,nthreads/TPPRATIO);
+  options[METIS_OPTION_NITER] = 10;
+  options[METIS_OPTION_OBJTYPE] = METIS_OBJTYPE_CUT;
+  options[METIS_OPTION_SEED] = ctrl->seed + myid;
+  options[METIS_OPTION_NCUTS] = ncuts;
+  options[METIS_OPTION_DBGLVL] = 0;
+  nparts = ctrl->nparts;
+  ubf = ctrl->ubfactor;
 
-  idx_t myncuts = (tcuts/ nthreads);
-  idx_t a = tcuts % nthreads, b = nthreads, c = a;
+  #ifdef KWAY_INIT
+  METIS_PartGraphKway((idx_t*)&nvtxs,&ncon,(idx_t*)xadj,(idx_t*)adjncy, \
+      (idx_t*)vwgt,NULL,(idx_t*)adjwgt,&nparts,NULL,&ubf,options,&cut, \
+      (idx_t*)where);
+  #else
+  METIS_PartGraphRecursive((idx_t*)&nvtxs,&ncon,(idx_t*)xadj,(idx_t*)adjncy, \
+      (idx_t*)vwgt,NULL,(idx_t*)adjwgt,&nparts,NULL,&ubf,options,&cut, \
+      (idx_t*)where);
+  #endif
+
+  return (wgt_t)cut;
+}
+
+
+
+/******************************************************************************
+* PUBLIC FUNCTIONS ************************************************************
+******************************************************************************/
+
+static pid_t * __ik_where;
+vtx_t initpart_kway(
+    ctrl_t * const ctrl,
+    graph_t * const graph)
+{
+  vtx_t voff, idx;
+  wgt_t cut;
+  adj_t * xadj;
+  vtx_t * adjncy;
+  wgt_t * adjwgt, * vwgt;
+  pid_t * where = NULL;
+
+  tid_t const nthreads = omp_get_num_threads();
+  tid_t const myid = omp_get_thread_num();
+
+  vtx_t const nvtxs = graph->nvtxs; 
+
+  size_t const tcuts = dl_max(NSOLUTIONS,nthreads/TPPRATIO);
+
+  size_t myncuts = (tcuts / nthreads);
+
+  size_t a = tcuts % nthreads, b = nthreads, c = a;
+
+  #pragma omp master
+  {
+    dl_start_timer(&ctrl->timers.initpart);
+  }
+
+  graph_gather(graph,&xadj,&adjncy,&vwgt,&adjwgt,&voff);
 
   /* factor */
   while (c > 0) {
@@ -39,115 +118,55 @@ idx_t ParInitKWayPartitioning(dctrl_t * const dctrl, dgraph_t * const graph)
   }
   myncuts += (myid % b < a) ? 1 : 0;
 
-  idx_t *where;
-  startwctimer(dctrl->convertTmr);
-  graph_t * mgraph = 
-      ParConvertDGraph(dctrl,graph,(graph_t**)&dctrl->tptr_void[0]);
-
-  ASSERT(mgraph->nvtxs == nvtxs);
-  ASSERT(mgraph->nedges == nedges);
-
-  stopwctimer(dctrl->convertTmr);
-
   if (myncuts > 0) {
-    startwctimer(dctrl->ipTmr);
+    where = pid_alloc(nvtxs);
 
-    idx_t options[METIS_NOPTIONS];
-
-    where = dctrl->tptr_idx[myid] = imalloc(nvtxs,"X");
-
-    METIS_SetDefaultOptions(options);
-
-    options[METIS_OPTION_NITER] = 10;
-    options[METIS_OPTION_OBJTYPE] = METIS_OBJTYPE_CUT;
-    options[METIS_OPTION_SEED] = dctrl->ctrl->seed + myid;
-    options[METIS_OPTION_NCUTS] = myncuts;
-
-    ASSERT(options[METIS_OPTION_NCUTS] > 0);
-
-    ctrl_t * ctrl = SetupCtrl(METIS_OP_PMETIS, options, 1, nparts, 
-        dctrl->ctrl->tpwgts, NULL);
-
-    idx_t * myxadj, *myadjncy,*myvwgt,*myadjwgt;
-
-    #ifdef LGCOPY
-    myxadj = imalloc(nvtxs+1,"X");
-    myvwgt = imalloc(nvtxs,"X");
-    myadjncy = imalloc(mgraph->nedges,"X");
-    myadjwgt = imalloc(mgraph->nedges,"X");
-
-    startwctimer(dctrl->lCopyTmr);
-    icopy(nvtxs+1,mgraph->xadj,myxadj);
-    icopy(nvtxs,mgraph->vwgt,myvwgt);
-    icopy(mgraph->nedges,mgraph->adjncy,myadjncy);
-    icopy(mgraph->nedges,mgraph->adjwgt,myadjwgt);
-    stopwctimer(dctrl->lCopyTmr);
-    #else
-    myxadj = mgraph->xadj;
-    myvwgt = mgraph->vwgt;
-    myadjncy = mgraph->adjncy;
-    myadjwgt = mgraph->adjwgt;
-    #endif
-
-    graph_t * mygraph = SetupGraph(ctrl,nvtxs,1,myxadj,
-        myadjncy,myvwgt,NULL,myadjwgt);
-
-    ASSERT(mgraph->nvtxs == mygraph->nvtxs);
-    ASSERT(mgraph->nedges == mygraph->nedges);
-
-    ctrl->ubfactors[0] = 
-      (real_t)pow(dctrl->ctrl->ubfactors[0], 1.0/log(ctrl->nparts));
-
-    AllocateWorkSpace(ctrl,mygraph);
-
-
-    startwctimer(dctrl->parBisTmr);
-    cut = MlevelRecursiveBisection(ctrl,mygraph,ctrl->nparts,where,
-        ctrl->tpwgts,0);
-    stopwctimer(dctrl->parBisTmr);
-    
-    #ifdef LGCOPY
-    gk_free((void**)&myxadj,&myvwgt,&myadjncy,&myadjwgt,LTERM);
-    #endif
-
-    FreeWorkSpace(ctrl);
-    FreeCtrl(&ctrl);
+    cut = __initpart_metis_kway(ctrl,myncuts,nvtxs,xadj,adjncy,vwgt,adjwgt, \
+        where);
   } else {
-    cut = 1<<((sizeof(idx_t)*8)-2);
-    ASSERT(cut > 0);
-    where = dctrl->tptr_idx[myid] = NULL;
+    cut = graph->tadjwgt+1;
   }
 
-  dl_omp_minreduce_index(myid,idx,cut,dctrl->buffer1,nthreads);
+  idx = wgt_omp_minreduce_index(cut);
 
   if (myid == idx) {
-    ASSERT(where != NULL);
+    DL_ASSERT(where != NULL,"Non-cutting thread chosen");
     graph->mincut = cut;
-  }
-
-  startwctimer(dctrl->renParTmr);
-
-  idx_t mynvtxs;
-  mynvtxs = graph->mynvtxs[myid];
-  for (i=0;i<mynvtxs;++i) {
-    graph->where[myid][i] = dctrl->tptr_idx[idx][graph->rename[myid][i]];
+    __ik_where = where;
   }
   #pragma omp barrier
 
-  stopwctimer(dctrl->renParTmr);
+  graph_alloc_partmemory(ctrl,graph);
 
-  gk_free((void**)&graph->rename[myid],&where,LTERM);
+  par_vprintf(ctrl->verbosity,MTMETIS_VERBOSITY_MEDIUM,"Selected initial " \
+      "partition with cut of %"PF_WGT_T"\n",graph->mincut);
 
-  stopwctimer(dctrl->ipTmr);
+  /* save the best where */
+  pid_copy(graph->where[myid],__ik_where+voff,graph->mynvtxs[myid]);
+
+  #pragma omp barrier
+  #pragma omp master
+  {
+    /* free the gathered graph */
+    dl_free(xadj);
+    dl_free(adjncy);
+    dl_free(vwgt);
+    dl_free(adjwgt);
+  }
+
+  if (where) {
+    dl_free(where);
+  }
 
   #pragma omp master
   {
-    FreeGraph(&mgraph);
+    dl_stop_timer(&ctrl->timers.initpart);
   }
-
-  ASSERT(ParComputeCut(dctrl,graph,(const idx_t **)graph->where) 
-      == graph->mincut);
 
   return graph->mincut;
 }
 
+
+
+
+#endif

@@ -4,7 +4,7 @@
 
 \date   Started 3/27/2007
 \author George
-\version\verbatim $Id: gk_proto.h 15329 2013-10-07 04:20:58Z karypis $ \endverbatim
+\version\verbatim $Id: gk_proto.h 16622 2014-04-03 18:47:48Z karypis $ \endverbatim
 */
 
 #ifndef _GK_PROTO_H_
@@ -36,6 +36,7 @@ GK_MKBLAS_PROTO(gk_idx, gk_idx_t, gk_idx_t)
 FILE *gk_fopen(char *, char *, const char *);
 void gk_fclose(FILE *);
 ssize_t gk_read(int fd, void *vbuf, size_t count);
+ssize_t gk_write(int fd, void *vbuf, size_t count);
 gk_idx_t gk_getline(char **lineptr, size_t *n, FILE *stream);
 char **gk_readfile(char *fname, size_t *r_nlines);
 int32_t *gk_i32readfile(char *fname, size_t *r_nlines);
@@ -95,13 +96,13 @@ GK_MKALLOC_PROTO(gk_idxkv, gk_idxkv_t)
 
 void   gk_AllocMatrix(void ***, size_t, size_t , size_t);
 void   gk_FreeMatrix(void ***, size_t, size_t);
-int    gk_malloc_init();
+int    gk_malloc_init(void);
 void   gk_malloc_cleanup(int showstats);
 void  *gk_malloc(size_t nbytes, char *msg);
 void  *gk_realloc(void *oldptr, size_t nbytes, char *msg);
 void   gk_free(void **ptr1,...);
-size_t gk_GetCurMemoryUsed();
-size_t gk_GetMaxMemoryUsed();
+size_t gk_GetCurMemoryUsed(void);
+size_t gk_GetMaxMemoryUsed(void);
 void   gk_GetVMInfo(size_t *vmsize, size_t *vmrss);
 
 
@@ -121,14 +122,14 @@ void gk_seq_init(gk_seq_t *seq);
 void gk_set_exit_on_error(int value);
 void errexit(char *,...);
 void gk_errexit(int signum, char *,...);
-int gk_sigtrap();
-int gk_siguntrap();
+int gk_sigtrap(void);
+int gk_siguntrap(void);
 void gk_sigthrow(int signum);
-void gk_SetSignalHandlers();
-void gk_UnsetSignalHandlers();
+void gk_SetSignalHandlers(void);
+void gk_UnsetSignalHandlers(void);
 void gk_NonLocalExit_Handler(int signum);
 char *gk_strerror(int errnum);
-void PrintBackTrace();
+void PrintBackTrace(void);
 
 
 /*-------------------------------------------------------------
@@ -333,7 +334,7 @@ float ComputeStdDev(int  n, float *values);
 
 /* mcore.c */
 gk_mcore_t *gk_mcoreCreate(size_t coresize);
-gk_mcore_t *gk_gkmcoreCreate();
+gk_mcore_t *gk_gkmcoreCreate(void);
 void gk_mcoreDestroy(gk_mcore_t **r_mcore, int showstats);
 void gk_gkmcoreDestroy(gk_mcore_t **r_mcore, int showstats);
 void *gk_mcoreMalloc(gk_mcore_t *mcore, size_t nbytes);

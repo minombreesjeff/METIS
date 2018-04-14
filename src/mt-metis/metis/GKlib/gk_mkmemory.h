@@ -73,7 +73,7 @@ TYPE *PRFX ## copy(size_t n, TYPE *a, TYPE *b)\
 /**************************************************************************/\
 TYPE **PRFX ## AllocMatrix(size_t ndim1, size_t ndim2, TYPE value, char *errmsg)\
 {\
-  gk_idx_t i, j;\
+  size_t i, j;\
   TYPE **matrix;\
 \
   matrix = (TYPE **)gk_malloc(ndim1*sizeof(TYPE *), errmsg);\
@@ -98,7 +98,7 @@ TYPE **PRFX ## AllocMatrix(size_t ndim1, size_t ndim2, TYPE value, char *errmsg)
 /**************************************************************************/\
 void PRFX ## FreeMatrix(TYPE ***r_matrix, size_t ndim1, size_t ndim2)\
 {\
-  gk_idx_t i;\
+  size_t i;\
   TYPE **matrix;\
 \
   if (*r_matrix == NULL) \
@@ -118,7 +118,7 @@ void PRFX ## FreeMatrix(TYPE ***r_matrix, size_t ndim1, size_t ndim2)\
 /**************************************************************************/\
 void PRFX ## SetMatrix(TYPE **matrix, size_t ndim1, size_t ndim2, TYPE value)\
 {\
-  gk_idx_t i, j;\
+  size_t i, j;\
 \
   for (i=0; i<ndim1; i++) {\
     for (j=0; j<ndim2; j++)\

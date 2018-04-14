@@ -6,7 +6,7 @@ This file contains various functions that perform I/O.
 
 \date Started 4/10/95
 \author George
-\version\verbatim $Id: io.c 15225 2013-09-25 14:49:08Z karypis $ \endverbatim
+\version\verbatim $Id: io.c 16693 2014-04-10 22:22:28Z karypis $ \endverbatim
 */
 
 #ifdef HAVE_GETLINE
@@ -49,7 +49,9 @@ void gk_fclose(FILE *fp)
 
 /*************************************************************************/
 /*! This function is a wrapper around the read() function that ensures 
-    that all data is been read, by issueing multiple read requests.
+    that all data is been read, by issuing multiple read requests.
+    The only time when not 'count' items are read is when the EOF has been
+    reached.
 */
 /*************************************************************************/
 ssize_t gk_read(int fd, void *vbuf, size_t count)
@@ -62,10 +64,32 @@ ssize_t gk_read(int fd, void *vbuf, size_t count)
       return -1;
     buf   += rsize;
     tsize -= rsize;
+  } while (tsize > 0 && rsize > 0);
+
+  return count-tsize;
+}
+
+
+/*************************************************************************/
+/*! This function is a wrapper around the write() function that ensures 
+    that all data is been written, by issueing multiple write requests.
+*/
+/*************************************************************************/
+ssize_t gk_write(int fd, void *vbuf, size_t count)
+{
+  char *buf = (char *)vbuf;
+  ssize_t size, tsize=count;
+
+  do {
+    if ((size = write(fd, buf, tsize)) == -1)
+      return -1;
+    buf   += size;
+    tsize -= size;
   } while (tsize > 0);
 
   return count;
 }
+
 
 
 
@@ -109,7 +133,7 @@ gk_idx_t gk_getline(char **lineptr, size_t *n, FILE *stream)
   }
   (*lineptr)[i] = '\0';
 
-  return (i == 0 ? -1 : i);
+  return (i == 0 ? -1 : (ssize_t)i);
 #endif
 }
 
@@ -124,7 +148,7 @@ gk_idx_t gk_getline(char **lineptr, size_t *n, FILE *stream)
 /*************************************************************************/
 char **gk_readfile(char *fname, size_t *r_nlines)
 {
-  size_t lnlen, nlines=0;
+  size_t lnlen=0, nlines=0;
   char *line=NULL, **lines=NULL;
   FILE *fpin;
 
@@ -159,7 +183,7 @@ char **gk_readfile(char *fname, size_t *r_nlines)
 /*************************************************************************/
 int32_t *gk_i32readfile(char *fname, size_t *r_nlines)
 {
-  size_t lnlen, nlines=0;
+  size_t lnlen=0, nlines=0;
   char *line=NULL;
   int32_t *array=NULL;
   FILE *fpin;
@@ -196,7 +220,7 @@ int32_t *gk_i32readfile(char *fname, size_t *r_nlines)
 /*************************************************************************/
 int64_t *gk_i64readfile(char *fname, size_t *r_nlines)
 {
-  size_t lnlen, nlines=0;
+  size_t lnlen=0, nlines=0;
   char *line=NULL;
   int64_t *array=NULL;
   FILE *fpin;

@@ -5,7 +5,7 @@
 \date   Started 7/24/1997
 \author George  
 \author Copyright 1997-2009, Regents of the University of Minnesota 
-\version\verbatim $Id: refine.c 12542 2012-08-23 04:49:01Z dominique $ \endverbatim
+\version\verbatim $Id: refine.c 17622 2014-09-09 03:27:49Z dominique $ \endverbatim
 */
 
 #include "metislib.h"
@@ -37,7 +37,9 @@ void Refine2Way(ctrl_t *ctrl, graph_t *orggraph, graph_t *graph, real_t *tpwgts)
       break;
 
     graph = graph->finer;
+
     IFSET(ctrl->dbglvl, METIS_DBG_TIME, gk_startwctimer(ctrl->ProjectTmr));
+
     Project2WayPartition(ctrl, graph);
     IFSET(ctrl->dbglvl, METIS_DBG_TIME, gk_stopwctimer(ctrl->ProjectTmr));
   }

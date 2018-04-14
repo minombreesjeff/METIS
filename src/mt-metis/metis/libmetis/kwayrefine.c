@@ -5,7 +5,7 @@
 \date   Started 7/28/1997
 \author George 
 \author  Copyright 1997-2009, Regents of the University of Minnesota 
-\version $Id: kwayrefine.c 12542 2012-08-23 04:49:01Z dominique $ 
+\version $Id: kwayrefine.c 17622 2014-09-09 03:27:49Z dominique $ 
 */
 
 #include "metislib.h"
@@ -103,8 +103,7 @@ void RefineKWay(ctrl_t *ctrl, graph_t *orggraph, graph_t *graph)
     Greedy_KWayOptimize(ctrl, graph, ctrl->niter, 0, OMODE_REFINE); 
   }
 
-  if (ctrl->contig) 
-    ASSERT(FindPartitionInducedComponents(graph, graph->where, NULL, NULL) == ctrl->nparts);
+  ASSERT(!ctrl->contig || FindPartitionInducedComponents(graph, graph->where, NULL, NULL) == ctrl->nparts);
 
   IFSET(ctrl->dbglvl, METIS_DBG_TIME, gk_stopwctimer(ctrl->UncoarsenTmr));
 }
@@ -116,7 +115,7 @@ void RefineKWay(ctrl_t *ctrl, graph_t *orggraph, graph_t *graph)
 void AllocateKWayPartitionMemory(ctrl_t *ctrl, graph_t *graph)
 {
 
-  graph->pwgts  = imalloc(ctrl->nparts*graph->ncon, "AllocateKWayPartitionMemory: pwgts");
+  graph->pwgts  = imalloc((ctrl->nparts+2)*graph->ncon, "AllocateKWayPartitionMemory: pwgts");
   graph->where  = imalloc(graph->nvtxs,  "AllocateKWayPartitionMemory: where");
   graph->bndptr = imalloc(graph->nvtxs,  "AllocateKWayPartitionMemory: bndptr");
   graph->bndind = imalloc(graph->nvtxs,  "AllocateKWayPartitionMemory: bndind");
@@ -148,7 +147,7 @@ void AllocateKWayPartitionMemory(ctrl_t *ctrl, graph_t *graph)
 /**************************************************************************/
 void ComputeKWayPartitionParams(ctrl_t *ctrl, graph_t *graph)
 {
-  idx_t i, j, k, l, nvtxs, ncon, nparts, nbnd, mincut, me, other;
+  idx_t i, j, k, nvtxs, ncon, nparts, nbnd, mincut, me, other;
   idx_t *xadj, *vwgt, *adjncy, *adjwgt, *pwgts, *where, *bndind, *bndptr;
 
   nparts = ctrl->nparts;
@@ -161,7 +160,7 @@ void ComputeKWayPartitionParams(ctrl_t *ctrl, graph_t *graph)
   adjwgt = graph->adjwgt;
 
   where  = graph->where;
-  pwgts  = iset(nparts*ncon, 0, graph->pwgts);
+  pwgts  = iset((nparts+2)*ncon, 0, graph->pwgts);
   bndind = graph->bndind;
   bndptr = iset(nvtxs, -1, graph->bndptr);
 
@@ -170,7 +169,7 @@ void ComputeKWayPartitionParams(ctrl_t *ctrl, graph_t *graph)
   /* Compute pwgts */
   if (ncon == 1) {
     for (i=0; i<nvtxs; i++) {
-      ASSERT(where[i] >= 0 && where[i] < nparts);
+      ASSERT(where[i] >= 0 && where[i] < nparts+2);
       pwgts[where[i]] += vwgt[i];
     }
   }
@@ -492,7 +491,7 @@ void ProjectKWayPartition(ctrl_t *ctrl, graph_t *graph)
   }
 
   graph->mincut = cgraph->mincut;
-  icopy(nparts*graph->ncon, cgraph->pwgts, graph->pwgts);
+  icopy((nparts+2)*graph->ncon, cgraph->pwgts, graph->pwgts);
 
   FreeGraph(&graph->coarser);
   graph->coarser = NULL;
@@ -561,8 +560,8 @@ void ComputeKWayBoundary(ctrl_t *ctrl, graph_t *graph, idx_t bndtype)
 /*************************************************************************/
 void ComputeKWayVolGains(ctrl_t *ctrl, graph_t *graph)
 {
-  idx_t i, ii, j, k, l, nvtxs, nparts, me, other, pid; 
-  idx_t *xadj, *vsize, *adjncy, *adjwgt, *where, 
+  idx_t i, ii, j, k, nvtxs, nparts, me, other; 
+  idx_t *xadj, *vsize, *adjncy, *where, 
         *bndind, *bndptr, *ophtable;
   vkrinfo_t *myrinfo, *orinfo;
   vnbr_t *mynbrs, *onbrs;
@@ -575,7 +574,6 @@ void ComputeKWayVolGains(ctrl_t *ctrl, graph_t *graph)
   xadj   = graph->xadj;
   vsize  = graph->vsize;
   adjncy = graph->adjncy;
-  adjwgt = graph->adjwgt;
 
   where  = graph->where;
   bndind = graph->bndind;

@@ -8,7 +8,7 @@
  * Started 8/1/97
  * George
  *
- * $Id: srefine.c 12542 2012-08-23 04:49:01Z dominique $
+ * $Id: srefine.c 17622 2014-09-09 03:27:49Z dominique $
  *
  */
 
@@ -136,7 +136,7 @@ void Compute2WayNodePartitionParams(ctrl_t *ctrl, graph_t *graph)
 /*************************************************************************/
 void Project2WayNodePartition(ctrl_t *ctrl, graph_t *graph)
 {
-  idx_t i, j, nvtxs;
+  idx_t i, nvtxs;
   idx_t *cmap, *where, *cwhere;
   graph_t *cgraph;
 

@@ -374,28 +374,28 @@ CMakeFiles/GKlib.dir/seq.c.o.provides: CMakeFiles/GKlib.dir/seq.c.o.requires
 
 CMakeFiles/GKlib.dir/seq.c.o.provides.build: CMakeFiles/GKlib.dir/seq.c.o
 
-CMakeFiles/GKlib.dir/util.c.o: CMakeFiles/GKlib.dir/flags.make
-CMakeFiles/GKlib.dir/util.c.o: ../../util.c
+CMakeFiles/GKlib.dir/gk_util.c.o: CMakeFiles/GKlib.dir/flags.make
+CMakeFiles/GKlib.dir/gk_util.c.o: ../../gk_util.c
 	$(CMAKE_COMMAND) -E cmake_progress_report /home/grad03/lasalle/src/GKlib/build/Linux-x86_64/CMakeFiles $(CMAKE_PROGRESS_15)
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building C object CMakeFiles/GKlib.dir/util.c.o"
-	/home/grad03/lasalle/bin/gcc  $(C_DEFINES) $(C_FLAGS) -o CMakeFiles/GKlib.dir/util.c.o   -c /home/grad03/lasalle/src/GKlib/util.c
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building C object CMakeFiles/GKlib.dir/gk_util.c.o"
+	/home/grad03/lasalle/bin/gcc  $(C_DEFINES) $(C_FLAGS) -o CMakeFiles/GKlib.dir/gk_util.c.o   -c /home/grad03/lasalle/src/GKlib/gk_util.c
 
-CMakeFiles/GKlib.dir/util.c.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing C source to CMakeFiles/GKlib.dir/util.c.i"
-	/home/grad03/lasalle/bin/gcc  $(C_DEFINES) $(C_FLAGS) -E /home/grad03/lasalle/src/GKlib/util.c > CMakeFiles/GKlib.dir/util.c.i
+CMakeFiles/GKlib.dir/gk_util.c.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing C source to CMakeFiles/GKlib.dir/gk_util.c.i"
+	/home/grad03/lasalle/bin/gcc  $(C_DEFINES) $(C_FLAGS) -E /home/grad03/lasalle/src/GKlib/gk_util.c > CMakeFiles/GKlib.dir/gk_util.c.i
 
-CMakeFiles/GKlib.dir/util.c.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling C source to assembly CMakeFiles/GKlib.dir/util.c.s"
-	/home/grad03/lasalle/bin/gcc  $(C_DEFINES) $(C_FLAGS) -S /home/grad03/lasalle/src/GKlib/util.c -o CMakeFiles/GKlib.dir/util.c.s
+CMakeFiles/GKlib.dir/gk_util.c.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling C source to assembly CMakeFiles/GKlib.dir/gk_util.c.s"
+	/home/grad03/lasalle/bin/gcc  $(C_DEFINES) $(C_FLAGS) -S /home/grad03/lasalle/src/GKlib/gk_util.c -o CMakeFiles/GKlib.dir/gk_util.c.s
 
-CMakeFiles/GKlib.dir/util.c.o.requires:
-.PHONY : CMakeFiles/GKlib.dir/util.c.o.requires
+CMakeFiles/GKlib.dir/gk_util.c.o.requires:
+.PHONY : CMakeFiles/GKlib.dir/gk_util.c.o.requires
 
-CMakeFiles/GKlib.dir/util.c.o.provides: CMakeFiles/GKlib.dir/util.c.o.requires
-	$(MAKE) -f CMakeFiles/GKlib.dir/build.make CMakeFiles/GKlib.dir/util.c.o.provides.build
-.PHONY : CMakeFiles/GKlib.dir/util.c.o.provides
+CMakeFiles/GKlib.dir/gk_util.c.o.provides: CMakeFiles/GKlib.dir/gk_util.c.o.requires
+	$(MAKE) -f CMakeFiles/GKlib.dir/build.make CMakeFiles/GKlib.dir/gk_util.c.o.provides.build
+.PHONY : CMakeFiles/GKlib.dir/gk_util.c.o.provides
 
-CMakeFiles/GKlib.dir/util.c.o.provides.build: CMakeFiles/GKlib.dir/util.c.o
+CMakeFiles/GKlib.dir/gk_util.c.o.provides.build: CMakeFiles/GKlib.dir/gk_util.c.o
 
 CMakeFiles/GKlib.dir/evaluate.c.o: CMakeFiles/GKlib.dir/flags.make
 CMakeFiles/GKlib.dir/evaluate.c.o: ../../evaluate.c
@@ -643,7 +643,7 @@ GKlib_OBJECTS = \
 "CMakeFiles/GKlib.dir/fs.c.o" \
 "CMakeFiles/GKlib.dir/itemsets.c.o" \
 "CMakeFiles/GKlib.dir/seq.c.o" \
-"CMakeFiles/GKlib.dir/util.c.o" \
+"CMakeFiles/GKlib.dir/gk_util.c.o" \
 "CMakeFiles/GKlib.dir/evaluate.c.o" \
 "CMakeFiles/GKlib.dir/b64.c.o" \
 "CMakeFiles/GKlib.dir/htable.c.o" \
@@ -672,7 +672,7 @@ libGKlib.a: CMakeFiles/GKlib.dir/io.c.o
 libGKlib.a: CMakeFiles/GKlib.dir/fs.c.o
 libGKlib.a: CMakeFiles/GKlib.dir/itemsets.c.o
 libGKlib.a: CMakeFiles/GKlib.dir/seq.c.o
-libGKlib.a: CMakeFiles/GKlib.dir/util.c.o
+libGKlib.a: CMakeFiles/GKlib.dir/gk_util.c.o
 libGKlib.a: CMakeFiles/GKlib.dir/evaluate.c.o
 libGKlib.a: CMakeFiles/GKlib.dir/b64.c.o
 libGKlib.a: CMakeFiles/GKlib.dir/htable.c.o
@@ -707,7 +707,7 @@ CMakeFiles/GKlib.dir/requires: CMakeFiles/GKlib.dir/io.c.o.requires
 CMakeFiles/GKlib.dir/requires: CMakeFiles/GKlib.dir/fs.c.o.requires
 CMakeFiles/GKlib.dir/requires: CMakeFiles/GKlib.dir/itemsets.c.o.requires
 CMakeFiles/GKlib.dir/requires: CMakeFiles/GKlib.dir/seq.c.o.requires
-CMakeFiles/GKlib.dir/requires: CMakeFiles/GKlib.dir/util.c.o.requires
+CMakeFiles/GKlib.dir/requires: CMakeFiles/GKlib.dir/gk_util.c.o.requires
 CMakeFiles/GKlib.dir/requires: CMakeFiles/GKlib.dir/evaluate.c.o.requires
 CMakeFiles/GKlib.dir/requires: CMakeFiles/GKlib.dir/b64.c.o.requires
 CMakeFiles/GKlib.dir/requires: CMakeFiles/GKlib.dir/htable.c.o.requires

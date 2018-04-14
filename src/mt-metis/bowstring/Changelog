@@ -1,0 +1,18 @@
+# Changelog -- introduced with version 0.1.2
+
+
+0.1.4 - 2014.0
+  -Implemented CSR reading and writing.
+  -Changed nerstrand clustering reading/writing to use the vertex label
+  reading/writing.
+  -Modified bowstring_build_tree() interface.
+
+0.1.3 - 2014.09.24
+  -Added graphtstats analysis option.
+  -Renamed types to be prefix with bowstring.
+
+0.1.2 - 2014.09.16
+  -Added connected component labeling functions.
+  -Added changelog.
+
+

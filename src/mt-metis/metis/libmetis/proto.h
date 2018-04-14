@@ -8,7 +8,7 @@
  * Started 10/19/95
  * George
  *
- * $Id: proto.h 12542 2012-08-23 04:49:01Z dominique $
+ * $Id: proto.h 17622 2014-09-09 03:27:49Z dominique $
  *
  */
 
@@ -41,6 +41,13 @@ graph_t *CoarsenGraph(ctrl_t *ctrl, graph_t *graph);
 graph_t *CoarsenGraphNlevels(ctrl_t *ctrl, graph_t *graph, idx_t nlevels);
 idx_t Match_RM(ctrl_t *ctrl, graph_t *graph);
 idx_t Match_SHEM(ctrl_t *ctrl, graph_t *graph);
+idx_t Match_2Hop(ctrl_t *ctrl, graph_t *graph, idx_t *perm, idx_t *match,
+          idx_t cnvtxs, size_t nunmatched);
+idx_t Match_2HopAny(ctrl_t *ctrl, graph_t *graph, idx_t *perm, idx_t *match,
+          idx_t cnvtxs, size_t *r_nunmatched, size_t maxdegree);
+idx_t Match_2HopAll(ctrl_t *ctrl, graph_t *graph, idx_t *perm, idx_t *match,
+          idx_t cnvtxs, size_t *r_nunmatched, size_t maxdegree);
+idx_t Match_JC(ctrl_t *ctrl, graph_t *graph);
 void PrintCGraphStats(ctrl_t *ctrl, graph_t *graph);
 void CreateCoarseGraph(ctrl_t *ctrl, graph_t *graph, idx_t cnvtxs, 
          idx_t *match);
@@ -120,6 +127,8 @@ graph_t *CreateGraph(void);
 void InitGraph(graph_t *graph);
 void FreeRData(graph_t *graph);
 void FreeGraph(graph_t **graph);
+void graph_WriteToDisk(ctrl_t *ctrl, graph_t *graph);
+void graph_ReadFromDisk(ctrl_t *ctrl, graph_t *graph);
 
 
 /* initpart.c */
@@ -136,6 +145,9 @@ void GrowBisectionNode2(ctrl_t *ctrl, graph_t *graph, real_t *ntpwgts, idx_t nip
 /* kmetis.c */
 idx_t MlevelKWayPartitioning(ctrl_t *ctrl, graph_t *graph, idx_t *part);
 void InitKWayPartitioning(ctrl_t *ctrl, graph_t *graph);
+void InitKWayPartitioningRB(ctrl_t *ctrl, graph_t *graph);
+void InitKWayPartitioningGrow(ctrl_t *ctrl, graph_t *graph);
+void GrowKWayPartitioning(ctrl_t *ctrl, graph_t *graph);
 
 
 /* kwayfm.c */
@@ -155,6 +167,8 @@ void KWayVolUpdate(ctrl_t *ctrl, graph_t *graph, idx_t v, idx_t from,
          idx_t to, ipq_t *queue, idx_t *vstatus, idx_t *r_nupd, idx_t *updptr,
          idx_t *updind, idx_t bndtype, idx_t *vmarker, idx_t *pmarker,
          idx_t *modind);
+void Greedy_KWayEdgeStats(ctrl_t *ctrl, graph_t *graph);
+void Greedy_KWayEdgeCutOptimize(ctrl_t *ctrl, graph_t *graph, idx_t niter);
 
 
 /* kwayrefine.c */
@@ -193,10 +207,12 @@ void ComputeLoadImbalanceVec(graph_t *graph, idx_t nparts, real_t *pijbm,
 /* mesh.c */
 void CreateGraphDual(idx_t ne, idx_t nn, idx_t *eptr, idx_t *eind, idx_t ncommon,
           idx_t **r_xadj, idx_t **r_adjncy);
-void CreateGraphNodal(idx_t ne, idx_t nn, idx_t *eptr, idx_t *eind, idx_t **r_xadj, 
-          idx_t **r_adjncy);
 idx_t FindCommonElements(idx_t qid, idx_t elen, idx_t *eind, idx_t *nptr,
           idx_t *nind, idx_t *eptr, idx_t ncommon, idx_t *marker, idx_t *nbrs);
+void CreateGraphNodal(idx_t ne, idx_t nn, idx_t *eptr, idx_t *eind, idx_t **r_xadj, 
+          idx_t **r_adjncy);
+idx_t FindCommonNodes(idx_t qid, idx_t nelmnts, idx_t *elmntids, idx_t *eptr,
+          idx_t *eind, idx_t *marker, idx_t *nbrs);
 mesh_t *CreateMesh(void);
 void InitMesh(mesh_t *mesh);  
 void FreeMesh(mesh_t **mesh);

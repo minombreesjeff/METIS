@@ -479,6 +479,8 @@ char *gk_time2str(time_t time)
 
 
 #if !defined(WIN32) && !defined(__MINGW32__)
+/* make sure this is defined to avoid warnings */
+extern char * strptime(const char * s, const char * f, struct tm * time);
 /************************************************************************/
 /*! \brief Converts a date/time string into its equivalent time_t value
 

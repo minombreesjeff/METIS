@@ -8,7 +8,7 @@
  * Started 7/25/97
  * George
  *
- * $Id: stat.c 9942 2011-05-17 22:09:52Z karypis $
+ * $Id: stat.c 17623 2014-09-09 03:51:44Z dominique $
  *
  */
 
@@ -20,8 +20,8 @@
 **************************************************************************/
 void ComputePartitionInfoBipartite(graph_t *graph, idx_t nparts, idx_t *where)
 {
-  idx_t i, j, k, nvtxs, ncon, mustfree=0;
-  idx_t *xadj, *adjncy, *vwgt, *vsize, *adjwgt, *kpwgts, *tmpptr;
+  idx_t i, j, nvtxs, ncon, mustfree=0;
+  idx_t *xadj, *adjncy, *vwgt, *vsize, *adjwgt, *kpwgts;
   idx_t *padjncy, *padjwgt, *padjcut;
 
   nvtxs = graph->nvtxs;
@@ -53,8 +53,8 @@ void ComputePartitionInfoBipartite(graph_t *graph, idx_t nparts, idx_t *where)
 
   if (ncon == 1) {
     printf("\tBalance: %5.3"PRREAL" out of %5.3"PRREAL"\n", 
-            1.0*nparts*kpwgts[iargmax(nparts, kpwgts)]/(1.0*isum(nparts, kpwgts, 1)),
-            1.0*nparts*vwgt[iargmax(nvtxs, vwgt)]/(1.0*isum(nparts, kpwgts, 1)));
+            1.0*nparts*kpwgts[iargmax(nparts, kpwgts,1)]/(1.0*isum(nparts, kpwgts, 1)),
+            1.0*nparts*vwgt[iargmax(nvtxs, vwgt,1)]/(1.0*isum(nparts, kpwgts, 1)));
   }
   else {
     printf("\tBalance:");
@@ -90,20 +90,20 @@ void ComputePartitionInfoBipartite(graph_t *graph, idx_t nparts, idx_t *where)
   for (i=0; i<nparts; i++)
     kpwgts[i] = isum(nparts, padjncy+i*nparts, 1);
   printf("Min/Max/Avg/Bal # of adjacent     subdomains: %5"PRIDX" %5"PRIDX" %5"PRIDX" %7.3"PRREAL"\n",
-    kpwgts[iargmin(nparts, kpwgts)], kpwgts[iargmax(nparts, kpwgts)], isum(nparts, kpwgts, 1)/nparts, 
-    1.0*nparts*kpwgts[iargmax(nparts, kpwgts)]/(1.0*isum(nparts, kpwgts, 1)));
+    kpwgts[iargmin(nparts, kpwgts,1)], kpwgts[iargmax(nparts, kpwgts,1)], isum(nparts, kpwgts, 1)/nparts, 
+    1.0*nparts*kpwgts[iargmax(nparts, kpwgts,1)]/(1.0*isum(nparts, kpwgts, 1)));
 
   for (i=0; i<nparts; i++)
     kpwgts[i] = isum(nparts, padjcut+i*nparts, 1);
   printf("Min/Max/Avg/Bal # of adjacent subdomain cuts: %5"PRIDX" %5"PRIDX" %5"PRIDX" %7.3"PRREAL"\n",
-    kpwgts[iargmin(nparts, kpwgts)], kpwgts[iargmax(nparts, kpwgts)], isum(nparts, kpwgts, 1)/nparts, 
-    1.0*nparts*kpwgts[iargmax(nparts, kpwgts)]/(1.0*isum(nparts, kpwgts, 1)));
+    kpwgts[iargmin(nparts, kpwgts,1)], kpwgts[iargmax(nparts, kpwgts,1)], isum(nparts, kpwgts, 1)/nparts, 
+    1.0*nparts*kpwgts[iargmax(nparts, kpwgts,1)]/(1.0*isum(nparts, kpwgts, 1)));
 
   for (i=0; i<nparts; i++)
     kpwgts[i] = isum(nparts, padjwgt+i*nparts, 1);
   printf("Min/Max/Avg/Bal/Frac # of interface    nodes: %5"PRIDX" %5"PRIDX" %5"PRIDX" %7.3"PRREAL" %7.3"PRREAL"\n",
-    kpwgts[iargmin(nparts, kpwgts)], kpwgts[iargmax(nparts, kpwgts)], isum(nparts, kpwgts, 1)/nparts, 
-    1.0*nparts*kpwgts[iargmax(nparts, kpwgts)]/(1.0*isum(nparts, kpwgts, 1)), 1.0*isum(nparts, kpwgts, 1)/(1.0*nvtxs));
+    kpwgts[iargmin(nparts, kpwgts,1)], kpwgts[iargmax(nparts, kpwgts,1)], isum(nparts, kpwgts, 1)/nparts, 
+    1.0*nparts*kpwgts[iargmax(nparts, kpwgts,1)]/(1.0*isum(nparts, kpwgts, 1)), 1.0*isum(nparts, kpwgts, 1)/(1.0*nvtxs));
 
 
   if (mustfree == 1 || mustfree == 3) {
@@ -126,7 +126,6 @@ void ComputePartitionBalance(graph_t *graph, idx_t nparts, idx_t *where, real_t 
 {
   idx_t i, j, nvtxs, ncon;
   idx_t *kpwgts, *vwgt;
-  real_t balance;
 
   nvtxs = graph->nvtxs;
   ncon = graph->ncon;
@@ -137,7 +136,7 @@ void ComputePartitionBalance(graph_t *graph, idx_t nparts, idx_t *where, real_t 
   if (vwgt == NULL) {
     for (i=0; i<nvtxs; i++)
       kpwgts[where[i]]++;
-    ubvec[0] = 1.0*nparts*kpwgts[iargmax(nparts, kpwgts)]/(1.0*nvtxs);
+    ubvec[0] = 1.0*nparts*kpwgts[iargmax(nparts, kpwgts,1)]/(1.0*nvtxs);
   }
   else {
     for (j=0; j<ncon; j++) {
@@ -145,7 +144,7 @@ void ComputePartitionBalance(graph_t *graph, idx_t nparts, idx_t *where, real_t 
       for (i=0; i<graph->nvtxs; i++)
         kpwgts[where[i]] += vwgt[i*ncon+j];
 
-      ubvec[j] = 1.0*nparts*kpwgts[iargmax(nparts, kpwgts)]/(1.0*isum(nparts, kpwgts, 1));
+      ubvec[j] = 1.0*nparts*kpwgts[iargmax(nparts, kpwgts,1)]/(1.0*isum(nparts, kpwgts, 1));
     }
   }
 
@@ -168,7 +167,7 @@ real_t ComputeElementBalance(idx_t ne, idx_t nparts, idx_t *where)
   for (i=0; i<ne; i++)
     kpwgts[where[i]]++;
 
-  balance = 1.0*nparts*kpwgts[iargmax(nparts, kpwgts)]/(1.0*isum(nparts, kpwgts, 1));
+  balance = 1.0*nparts*kpwgts[iargmax(nparts, kpwgts,1)]/(1.0*isum(nparts, kpwgts, 1));
 
   gk_free((void **)&kpwgts, LTERM);
 

@@ -272,6 +272,10 @@ sys/resource.h
 sys/time.h
 -
 
+/home/grad03/lasalle/src/GKlib/gk_util.c
+GKlib.h
+-
+
 /home/grad03/lasalle/src/GKlib/gkregex.c
 config.h
 /home/grad03/lasalle/src/GKlib/config.h
@@ -401,10 +405,6 @@ GKlib.h
 -
 
 /home/grad03/lasalle/src/GKlib/tokenizer.c
-GKlib.h
--
-
-/home/grad03/lasalle/src/GKlib/util.c
 GKlib.h
 -
 

@@ -6,7 +6,7 @@
 \date   Started 7/24/1997
 \author George  
 \author Copyright 1997-2009, Regents of the University of Minnesota 
-\version\verbatim $Id: pmetis.c 12542 2012-08-23 04:49:01Z dominique $ \endverbatim
+\version\verbatim $Id: pmetis.c 17622 2014-09-09 03:27:49Z dominique $ \endverbatim
 */
 
 
@@ -157,7 +157,7 @@ SIGTHROW:
 idx_t MlevelRecursiveBisection(ctrl_t *ctrl, graph_t *graph, idx_t nparts, 
           idx_t *part, real_t *tpwgts, idx_t fpart)
 {
-  idx_t i, j, nvtxs, ncon, objval;
+  idx_t i, nvtxs, ncon, objval;
   idx_t *label, *where;
   graph_t *lgraph, *rgraph;
   real_t wsum, *tpwgts2;

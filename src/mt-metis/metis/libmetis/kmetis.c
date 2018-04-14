@@ -6,7 +6,7 @@
 \date   Started 7/28/1997
 \author George  
 \author Copyright 1997-2011, Regents of the University of Minnesota 
-\version\verbatim $Id: kmetis.c 12542 2012-08-23 04:49:01Z dominique $ \endverbatim
+\version\verbatim $Id: kmetis.c 17715 2014-10-02 16:08:42Z dominique $ \endverbatim
 */
 
 #include "metislib.h"
@@ -54,8 +54,15 @@ int METIS_PartGraphKway(idx_t *nvtxs, idx_t *ncon, idx_t *xadj, idx_t *adjncy,
   SetupKWayBalMultipliers(ctrl, graph);
 
   /* set various run parameters that depend on the graph */
-  ctrl->CoarsenTo = gk_max((*nvtxs)/(20*gk_log2(*nparts)), 30*(*nparts));
-  ctrl->nIparts   = (ctrl->CoarsenTo == 30*(*nparts) ? 4 : 5);
+  if (ctrl->iptype == METIS_IPTYPE_METISRB) {
+    ctrl->CoarsenTo = gk_max((*nvtxs)/(40*gk_log2(*nparts)), 30*(*nparts));
+    ctrl->CoarsenTo = 10*(*nparts);
+    ctrl->nIparts   = (ctrl->CoarsenTo == 30*(*nparts) ? 4 : 5);
+  }
+  else {
+    ctrl->CoarsenTo = 10*(*nparts);
+    ctrl->nIparts   = 10;
+  }
 
   /* take care contiguity requests for disconnected graphs */
   if (ctrl->contig && !IsConnected(graph, 0)) 
@@ -102,10 +109,9 @@ SIGTHROW:
 /*************************************************************************/
 idx_t MlevelKWayPartitioning(ctrl_t *ctrl, graph_t *graph, idx_t *part)
 {
-  idx_t i, j, objval=0, curobj=0, bestobj=0;
+  idx_t i, objval=0, curobj=0, bestobj=0;
   real_t curbal=0.0, bestbal=0.0;
   graph_t *cgraph;
-  int status;
 
 
   for (i=0; i<ctrl->ncuts; i++) {
@@ -114,19 +120,26 @@ idx_t MlevelKWayPartitioning(ctrl_t *ctrl, graph_t *graph, idx_t *part)
     IFSET(ctrl->dbglvl, METIS_DBG_TIME, gk_startwctimer(ctrl->InitPartTmr));
     AllocateKWayPartitionMemory(ctrl, cgraph);
 
-    /* Release the work space */
-    FreeWorkSpace(ctrl);
-
     /* Compute the initial partitioning */
-    InitKWayPartitioning(ctrl, cgraph);
+    switch (ctrl->iptype) {
+      case METIS_IPTYPE_METISRB:
+        FreeWorkSpace(ctrl); /* Release the work space, for the recursive metis call */
+        InitKWayPartitioningRB(ctrl, cgraph);
+        AllocateWorkSpace(ctrl, graph); /* Re-allocate the work space */
+        break;
 
-    /* Re-allocate the work space */
-    AllocateWorkSpace(ctrl, graph);
-    AllocateRefinementWorkSpace(ctrl, 2*cgraph->nedges);
+      case METIS_IPTYPE_GROW:
+        AllocateRefinementWorkSpace(ctrl, 2*cgraph->nedges);
+        InitKWayPartitioningGrow(ctrl, cgraph);
+        break;
+
+      default:
+        gk_errexit(SIGERR, "Unknown iptype: %d\n", ctrl->iptype);
+    }
 
     IFSET(ctrl->dbglvl, METIS_DBG_TIME, gk_stopwctimer(ctrl->InitPartTmr));
-    IFSET(ctrl->dbglvl, METIS_DBG_IPART, 
-        printf("Initial %"PRIDX"-way partitioning cut: %"PRIDX"\n", ctrl->nparts, objval));
+    IFSET(ctrl->dbglvl, METIS_DBG_IPART, printf("Initial %"PRIDX \
+          "-way partitioning cut: %"PRIDX"\n", ctrl->nparts, objval));
 
     RefineKWay(ctrl, graph, cgraph);
 
@@ -165,14 +178,33 @@ idx_t MlevelKWayPartitioning(ctrl_t *ctrl, graph_t *graph, idx_t *part)
 }
 
 
-
 /*************************************************************************/
 /*! This function computes the initial k-way partitioning using PMETIS 
 */
 /*************************************************************************/
 void InitKWayPartitioning(ctrl_t *ctrl, graph_t *graph)
 {
-  idx_t i, ntrials, options[METIS_NOPTIONS], curobj=0, bestobj=0;
+  switch (ctrl->iptype) {
+    case METIS_IPTYPE_METISRB:
+      InitKWayPartitioningRB(ctrl, graph);
+      break;
+
+    case METIS_IPTYPE_GROW:
+      InitKWayPartitioningGrow(ctrl, graph);
+      break;
+
+    default:
+      gk_errexit(SIGERR, "Unknown iptype: %d\n", ctrl->iptype);
+  }
+}
+
+
+/*************************************************************************/
+/*! Compute the initial k-way partitioning using PMETIS */
+/*************************************************************************/
+void InitKWayPartitioningRB(ctrl_t *ctrl, graph_t *graph)
+{
+  idx_t i, options[METIS_NOPTIONS], curobj=0;
   idx_t *bestwhere=NULL;
   real_t *ubvec=NULL;
   int status;
@@ -180,6 +212,8 @@ void InitKWayPartitioning(ctrl_t *ctrl, graph_t *graph)
   METIS_SetDefaultOptions(options);
   options[METIS_OPTION_NITER]   = 10;
   options[METIS_OPTION_OBJTYPE] = METIS_OBJTYPE_CUT;
+  options[METIS_OPTION_NO2HOP]  = ctrl->no2hop;
+  options[METIS_OPTION_ONDISK]  = ctrl->ondisk;
 
 
   ubvec = rmalloc(graph->ncon, "InitKWayPartitioning: ubvec");
@@ -241,3 +275,228 @@ void InitKWayPartitioning(ctrl_t *ctrl, graph_t *graph)
 }
 
 
+/*************************************************************************/
+/*! Computes the initial k-way partitioning using region growing */
+/*************************************************************************/
+void InitKWayPartitioningGrow(ctrl_t *ctrl, graph_t *graph)
+{
+  idx_t ntrials, curobj=0, bestobj=0;
+  idx_t *bestwhere=NULL;
+
+  WCOREPUSH;
+
+  bestwhere = iwspacemalloc(ctrl, graph->nvtxs);
+
+  for (ntrials=0; ntrials<ctrl->nIparts; ntrials++) {
+    GrowKWayPartitioning(ctrl, graph);
+
+    switch (ctrl->objtype) {
+      case METIS_OBJTYPE_CUT:
+        curobj = graph->mincut;
+        break;
+
+      case METIS_OBJTYPE_VOL:
+        curobj = graph->minvol;
+        break;
+
+      default:
+        gk_errexit(SIGERR, "Unknown objtype: %d\n", ctrl->objtype);
+    }
+    printf("  Ipart.%"PRIDX" curobj: %"PRIDX"\n", ntrials, curobj);
+
+    if (ntrials == 0 || bestobj > curobj) {
+      icopy(graph->nvtxs, graph->where, bestwhere);
+      bestobj = curobj;
+    }
+  }
+
+  if (bestobj != curobj)
+    icopy(graph->nvtxs, bestwhere, graph->where);
+
+  printf("  Ipart Select bestobj: %"PRIDX"\n", bestobj);
+
+  WCOREPOP;
+
+}
+
+
+/*************************************************************************/
+/*! Grows and refines a k-way partitioning */
+/*************************************************************************/
+void GrowKWayPartitioning(ctrl_t *ctrl, graph_t *graph)
+{
+  idx_t v, i, ii, j, nvtxs, nparts, nmis, minvwgt;
+  idx_t *xadj, *adjncy, *vwgt, *adjwgt;
+  idx_t *where, *pwgts, *minwgt, *maxwgt, *nbrwgt;
+  idx_t *perm;
+  real_t ubfactor_original;
+
+
+  WCOREPUSH;
+
+  nvtxs  = graph->nvtxs;
+  xadj   = graph->xadj;
+  adjncy = graph->adjncy;
+  adjwgt = graph->adjwgt;
+  vwgt   = graph->vwgt;
+
+  where  = graph->where;
+  pwgts  = graph->pwgts;
+
+  nparts = ctrl->nparts;
+  
+  /* setup the weight intervals of the various subdomains */
+  minwgt  = iwspacemalloc(ctrl, nparts);
+  maxwgt  = iwspacemalloc(ctrl, nparts);
+
+  for (i=0; i<nparts; i++) {
+    maxwgt[i] = ctrl->tpwgts[i]*graph->tvwgt[0]*ctrl->ubfactors[0];
+    minwgt[i] = ctrl->tpwgts[i]*graph->tvwgt[0]*(1.0/ctrl->ubfactors[0]);
+  }
+
+  /* setup the initial state of the partitioning */
+  iset(nvtxs, nparts, where);
+  iset(nparts, 0, pwgts);
+
+  perm = iwspacemalloc(ctrl, nvtxs);
+
+  /* compute the weights of the neighborhood */
+  nbrwgt = iwspacemalloc(ctrl, nvtxs);
+  /*
+  for (i=0; i<nvtxs; i++) {
+    nbrwgt[i] = vwgt[i];
+    for (j=xadj[i]; j<xadj[i+1]; j++) {
+      ii = adjncy[j];
+      nbrwgt[i] += vwgt[ii]/log2(2+xadj[ii+1]-xadj[ii]);
+    }
+  }
+  */
+  for (i=0; i<nvtxs; i++) {
+    nbrwgt[i] = 0;
+    for (j=xadj[i]; j<xadj[i+1]; j++) 
+      nbrwgt[i] += adjwgt[j];
+  }
+  minvwgt = isum(nvtxs, nbrwgt, 1)/nvtxs;
+
+
+#ifdef XXX
+  perm    = iwspacemalloc(ctrl, nvtxs);
+  tperm   = iwspacemalloc(ctrl, nvtxs);
+  degrees = iwspacemalloc(ctrl, nvtxs);
+
+  irandArrayPermute(nvtxs, tperm, nvtxs, 1);
+  irandArrayPermute(nvtxs, tperm, nvtxs, 0);
+
+  avgdegree = 1.0*(xadj[nvtxs]/nvtxs);
+  for (i=0; i<nvtxs; i++) {
+    bnum = sqrt(1+xadj[i+1]-xadj[i]);
+    degrees[i] = (bnum > avgdegree ? avgdegree : bnum);
+  }
+  BucketSortKeysInc(ctrl, nvtxs, avgdegree, degrees, tperm, perm);
+#endif
+
+  ubfactor_original  = ctrl->ubfactors[0];
+  ctrl->ubfactors[0] = 1.05*ubfactor_original;
+
+  /* find an MIS of vertices by randomly traversing the vertices and assign them to
+     the different partitions */
+  irandArrayPermute(nvtxs, perm, nvtxs, 1);
+  for (nmis=0, ii=0; ii<nvtxs; ii++) {
+    i=perm[ii];
+
+    if (nbrwgt[i] < minvwgt)
+      continue;
+
+    if (where[i] == nparts) {
+      pwgts[nmis] = vwgt[i];
+      where[i]    = nmis++;
+
+      /* mark first level neighbors */
+      for (j=xadj[i]; j<xadj[i+1]; j++) {
+        v = adjncy[j];
+        if (where[v] == nparts)
+          where[v] = nparts+1;
+      }
+    }
+    if (nmis == nparts)
+      break;
+  }
+  printf("  nvtxs: %"PRIDX", nmis: %"PRIDX", minvwgt: %"PRIDX", ii: %"PRIDX"\n", nvtxs, nmis, minvwgt, ii);
+
+
+  /* if the size of the MIS is not sufficiently large, go and find some additional seeds */
+  if (nmis < nparts) {
+    minvwgt = .75*minvwgt;
+
+    irandArrayPermute(nvtxs, perm, nvtxs, 0);
+    for (ii=0; ii<nvtxs; ii++) {
+      i=perm[ii];
+
+      if (nbrwgt[i] < minvwgt)
+        continue;
+
+      if (where[i] == nparts) {
+        pwgts[nmis] = vwgt[i];
+        where[i]    = nmis++;
+
+        /* mark first level neighbors */
+        for (j=xadj[i]; j<xadj[i+1]; j++) {
+          v = adjncy[j];
+          if (where[v] == nparts)
+            where[v] = nparts+1;
+        }
+      }
+      if (nmis == nparts)
+        break;
+    }
+
+    printf("  nvtxs: %"PRIDX", nmis: %"PRIDX"\n", nvtxs, nmis);
+  }
+
+  /* if the size of the MIS is not sufficiently large, go and find some additional seeds */
+  if (nmis < nparts) {
+    irandArrayPermute(nvtxs, perm, nvtxs, 0);
+    for (ii=0; ii<nvtxs; ii++) {
+      i = perm[ii];
+
+      if (where[i] == nparts+1) { 
+        pwgts[nmis] = vwgt[i];
+        where[i]    = nmis++;
+      }
+      if (nmis == nparts)
+        break;
+    }
+    printf("  nvtxs: %"PRIDX", nmis: %"PRIDX"\n", nvtxs, nmis);
+  }
+
+  /* set all unassigned vertices to 'nparts' */
+  for (i=0; i<nvtxs; i++) {
+    if (where[i] >= nparts)
+      where[i] = nparts;
+  }
+
+  WCOREPOP;
+
+  /* refine the partition */
+  ComputeKWayPartitionParams(ctrl, graph);
+
+  if (ctrl->minconn)
+    EliminateSubDomainEdges(ctrl, graph);
+
+  for (i=0; i<4; i++) {
+    ComputeKWayBoundary(ctrl, graph, BNDTYPE_BALANCE);
+    Greedy_KWayOptimize(ctrl, graph, 10, 0, OMODE_BALANCE);
+    /*
+    for (k=0; k<nparts; k++)
+      printf("%"PRIDX"\n", graph->pwgts[k]);
+    exit(0);
+    */
+
+
+    ComputeKWayBoundary(ctrl, graph, BNDTYPE_REFINE);
+    Greedy_KWayOptimize(ctrl, graph, ctrl->niter, 1, OMODE_REFINE);
+    Greedy_KWayEdgeCutOptimize(ctrl, graph, ctrl->niter);
+  }
+
+  ctrl->ubfactors[0] = ubfactor_original;
+}

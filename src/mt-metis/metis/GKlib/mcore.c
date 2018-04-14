@@ -40,7 +40,7 @@ gk_mcore_t *gk_mcoreCreate(size_t coresize)
 /*! This function creates an mcore. This version is used for gkmcore.
  */
 /*************************************************************************/
-gk_mcore_t *gk_gkmcoreCreate()
+gk_mcore_t *gk_gkmcoreCreate(void)
 {
   gk_mcore_t *mcore;
 
@@ -205,7 +205,7 @@ void gk_mcorePop(gk_mcore_t *mcore)
         break; 
 
       case GK_MOPT_CORE: /* core free */
-        if (mcore->corecpos < mcore->mops[mcore->cmop].nbytes)
+        if (((ssize_t)mcore->corecpos) < mcore->mops[mcore->cmop].nbytes)
           errexit("Internal Error: wspace's core is about to be over-freed [%zu, %zu, %zd]\n",
               mcore->coresize, mcore->corecpos, mcore->mops[mcore->cmop].nbytes);
 
