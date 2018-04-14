@@ -1,0 +1,138 @@
+.TH KMETIS 1
+.SH NAME
+kmetis \- multilevel k-way graph partitioner
+.SH SYNOPSIS
+.B kmetis
+.I GraphFile
+.I Nparts
+.SH DESCRIPTION
+.B kmetis
+partitions the graph stored in
+.I GraphFile
+into 
+.I Nparts 
+using an algorithm that is based on multilevel k-way partition.
+The result of the partition is stored in a file named
+.I GraphFile.part.Nparts.
+
+.PP
+.I Nparts
+can be any number greater than one and less than the number of vertices in the
+graph. 
+
+
+.SH FORMAT OF INPUT FILE
+A graph 
+.B G = (V, E) 
+with 
+.B n 
+vertices and 
+.B m 
+edges is stored in a plain
+text file that contains 
+.B n+1 
+lines.
+The first line contains information about the size and the type of the graph,
+while the remaining 
+.B n 
+lines contain information for each vertex of 
+.B G
+.
+Any line that starts with 
+.B % 
+is a comment line and is skipped.
+
+.PP
+The first line contains either two or three integers. The first integer
+is the number of vertices, the second is the number of edges, and
+the third integer 
+.B fmt 
+contains information about the
+type of the graph. In particular, depending on the value of 
+.B fmt, 
+the graph can have weights on the edges, vertices, or both.
+In the case that the graph is unweighted, (ie., all vertices and edges have the
+same weight),
+.B fmt
+is omitted.
+
+.PP
+After this first line, the remaining 
+.B n 
+lines store the adjacency lists for each
+vertex-one line per vertex.
+In particular, the 
+.B i^th 
+line (excluding comment lines) contains the adjacency list of the 
+.B (i-1)^st 
+vertex.
+Note that the numbering starts from 1 (not from 0 as it is done in C).
+
+.PP
+The simplest format for a graph is when the weight of all vertices and the weight
+of all the edges is the same.
+However, there are cases in which the edges in 
+.B G
+have different weights. 
+In that case, the adjacency list of each vertex contains in addition to the vertices
+that is connected with, the weight of the edges.
+If 
+.B v
+has 
+.B k 
+vertices adjacent to it, then the graph file contains
+.B 2*k
+numbers, each pair of numbers stores the vertex that 
+.B v 
+is connected to, and the
+weight of the edge. Note, edge weights are integer quantities.
+Furthermore, note that the 
+.B fmt 
+parameter is equal to 
+.B 1
+indicating the fact that the graph has weights on the edges.
+
+.PP
+Finally, in addition to having weights on the edges, weights on the vertices
+are also allowed.
+In this case, the value of 
+.B fmt
+is equal to
+.B 11
+and each line of the graph file first stores the weight of the vertex, 
+and then the weighted adjacency list.
+As was the case with edge weights, vertex weights are integer quantities.
+
+
+.SH FORMAT OF OUTPUT FILE
+The partition file of a graph with 
+.B n
+vertices, consists of 
+.B n
+lines with a single number per line. 
+The 
+.B i^th 
+line of the file contains the partition number that the 
+.B i^th 
+vertex belongs to. Partition numbers start from 0, and partitions are assigned 
+in a hypercube fashion.
+
+.SH ADDITIONAL DOCUMENTATION
+A postscript copy of the manual of 
+.B METIS
+that describes 
+.B kmetis
+and other similar algorithms is available on WWW at:
+.B http://www.cs.umn.edu/~karypis/metis/manual.ps
+
+
+.SH AUTHOR
+George Karypis
+.SH DIAGNOSTICS
+Diagnostic messages are intended to be self-explanatory.
+.SH "SEE ALSO"
+metis(1), pmetis(1), KMETIS(3)
+.SH BUGS
+If you find any bugs please report them to
+.B karypis@cs.umn.edu
+.

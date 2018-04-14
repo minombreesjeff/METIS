@@ -1,0 +1,102 @@
+.TH OMETIS 1
+.SH NAME
+ometis \- multilevel recursive nested dissection algorithm
+.SH SYNOPSIS
+.B ometis
+.I GraphFile
+.SH DESCRIPTION
+.B ometis
+produces a fill reducing ordering of the graph stored in
+.I GraphFile.
+This ordering is used for performing sparse Cholesky factorization.
+The algorithm used by
+.B ometis
+is a nested dissection algorithm that uses multilevel graph bisection
+to find small separators.
+The computed ordering is stored in a file named
+.I GraphFile.perm.
+
+
+.SH FORMAT OF INPUT FILE
+A graph 
+.B G = (V, E) 
+with 
+.B n 
+vertices and 
+.B m 
+edges is stored in a plain
+text file that contains 
+.B n+1 
+lines.
+The first line contains information about the size and the type of the graph,
+while the remaining 
+.B n 
+lines contain information for each vertex of 
+.B G
+.
+Any line that starts with 
+.B % 
+is a comment line and is skipped.
+
+.PP
+The first line contains two integers. The first integer
+is the number of vertices and the second is the number of edges. 
+
+.PP
+After this first line, the remaining 
+.B n 
+lines store the adjacency lists for each
+vertex-one line per vertex.
+In particular, the 
+.B i^th 
+line (excluding comment lines) contains the adjacency list of the 
+.B (i-1)^st 
+vertex.
+Note that the numbering starts from 1 (not from 0 as it is done in C).
+
+
+.SH FORMAT OF OUTPUT FILE
+The permutation file of a graph with 
+.B n
+vertices also consists of 
+.B n
+lines with a single number per line. The 
+.B i^th 
+line of the permutation file contains the new order of the 
+.B i^th 
+vertex of the graph. Let 
+.B A
+be the matrix whose nonzero elements correspond to graph 
+.B G, 
+and let 
+.B P 
+be the permutation vector produced by 
+.B ometis.
+Row (column) 
+.B i 
+of 
+.B A 
+is mapped to row (column) 
+.B P[i] 
+of the reordered matrix.
+
+
+.SH ADDITIONAL DOCUMENTATION
+A postscript copy of the manual of 
+.B METIS
+that describes 
+.B ometis
+and other similar algorithms is available on WWW at:
+.B http://www.cs.umn.edu/~karypis/metis/manual.ps
+
+
+.SH AUTHOR
+George Karypis
+.SH DIAGNOSTICS
+Diagnostic messages are intended to be self-explanatory.
+.SH "SEE ALSO"
+metis(1), OMETIS(3)
+.SH BUGS
+If you find any bugs please report them to
+.B karypis@cs.umn.edu
+.

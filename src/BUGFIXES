@@ -1,0 +1,13 @@
+Thu Sep  5 11:55:31 CDT 1996
+	- Fixed infinite loop during initial partitioning
+
+Thu Sep 26 15:19:07 CDT 1996
+	- Added code to check for self-edges in io.c 
+
+Tue Nov  5 09:06:44 CST 1996
+	- Fixed memory problems while orering small graphs
+	- Improved speed of coarsening
+	- Improved speed of k-way refinement, especially for small k
+	- Improved speed of k-way ipart. Still needs some work.
+Tue Mar 11 09:15:57 CST 1997
+	- Fixed bug during refinement for VC++

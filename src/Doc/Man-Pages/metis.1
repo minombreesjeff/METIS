@@ -1,0 +1,384 @@
+.TH METIS 1
+.SH NAME
+metis \- multilevel recursive bisection graph partitioner
+.SH SYNOPSIS
+.B metis
+.I GraphFile
+.I Nparts
+.I CoarsenTo
+.I Mtype
+.I Rtype
+.I IPtype
+.I OPtype
+.I Options
+
+.SH DESCRIPTION
+.B metis
+implements a number of graph partitioning and fill reducing reordering algorithms
+that are based on multilevel graph partitioning.
+In particular, 
+.B metis
+implements two k-way partitioning algorithms one based on multilevel recursive
+bisection (MLB), and the other on multilevel k-way partition (MLkP), and fill reducing
+algorithm based on multilevel nested dissection (MLND).
+
+
+.SH MEANING OF VARIOUS PARAMETERS
+
+.TP
+.B GraphFile
+This is the name of the file that stores the graph 
+.B G. 
+
+.TP
+.B Nparts
+The number of parts that the graph needs to be partitioned. Nparts must be
+greater than one, and its value is ignored when 
+.B metis
+is used to find a fill reducing ordering.
+
+.TP
+.B CoarsenTo
+This is the number of vertices that the graph must be coarsened down, during the 
+coarsening phase. 
+The default value used by MLB and MLND is 100 vertices, while a value of 
+2000 is used by MLkP.
+
+.TP
+.B Mtype
+This is the type of matching to be used during the coarsening phase.  
+Mtype is an integer, whose values and their meaning are given in the following 
+table:
+.RS
+.RS
+.TP 
+.B 1
+Random (RM)
+.TP
+.B 2      
+Heavy-edge (HEM)
+.TP
+.B 3      
+Light-edge (LEM)
+.TP
+.B 4      
+Heavy-clique (HCM)
+.TP
+.B 5      
+Modified Heavy-edge (HEM*)
+.TP
+.B 11     
+Sorted Random (SRM)
+.TP
+.B 21     
+Sorted Heavy-edge (SHEM)
+.TP
+.B 51     
+Sorted Modified Heavy-edge (SHEM*)
+.RE
+.RE
+
+Out of these matching schemes, HEM, HCM, and HEM* perform consistently better 
+than either RM or LEM.
+Our experiments have shown that the sorted variants tend to find larger matchings 
+than their non-sorted counterparts.
+
+.TP
+.B Rtype
+This is the type of refinement policy to use during the uncoarsening phase.
+Rtype is an integer whose values and their meaning is as follows:
+.RS
+.RS
+.TP 
+.B 1
+Greedy (GR)
+.TP
+.B 2      
+Kernighan-Lin (KLR)
+.TP
+.B 3      
+Combination of GR and KLR (GKLR)
+.TP
+.B 11      
+Boundary Greedy (BGR)
+.TP
+.B 12      
+Boundary Kernighan-Lin (BKLR)
+.TP
+.B 13     
+Combination of BGR and BKLR (BGKLR)
+.TP
+.B 20     
+No refinement (NR)
+.RE
+.RE
+
+The boundary refinement algorithms perform better than their non-boundary
+counterparts.
+Furthermore, the boundary refinement algorithms require significantly less time.
+BGR is the fastest refinement algorithm, but tends to perform worse than either BKLR
+or
+BGKLR. Both BKLR and BGKLR, provide very good refinement and they roughly require
+the same amount of time.
+BGKLR is the refinement scheme used by MLB and MLND. Experiments show that
+BGKLR performs better than BKLR when the graph is partitioned into many parts 
+(ie., more than 64 parts). On the other hand, BKLR tends to perform slightly better than BGKLR
+for small number of partitions. However, the difference in quality is very small
+(less than 2%). You may want to experiment between BKLR and BGKLR to see which one
+performs better for your graphs.
+
+BGR is the refinement scheme used by MLkP. Experiments show that for most
+graphs, particularly those that correspond to finite element meshes, BGR performs 
+significantly better than BKLR, and it also require much less time. 
+
+.TP
+.B IPtype
+This is the type of bisection algorithm to use at the coarsest graph.
+IPtype is an integer whose values and their meaning is as follows:
+.RS
+.RS
+.TP
+.B 1
+Graph growing partition (GGP)
+.TP
+.B 2
+Greedy graph growing partition (GGGP)
+.TP
+.B 3
+Spectral bisection (EIG)
+.TP
+.B 4
+Graph growing followed by boundary Kernighan-Lin (GGPKL)
+.RE
+.RE
+
+GGP is the fastest partitioning algorithm and also tends to perform worse
+than GGGP and GGPKL. EIG tends to perform worse than GGGP and GGPKL and requires
+more
+time, particularly when the coarsest graph is quite large.
+GGGP and GGPKL require roughly the same amount of time, and they tend to perform
+quite similarly. You may want to experiment between GGGP and GGPKL to see which one
+performs
+better for your graphs.
+GGPKL is the partitioning scheme used by MLB and GGGP is the partitioning
+scheme used by MLND. This parameter is not used by MLkP.
+
+
+.TP
+.B OPtype
+This is the type of operation to be performed by 
+.B metis.
+OPtype is an integer whose values and their meaning is as follows:
+
+.RS
+.RS
+.TP
+.B 1
+Graph partitioning using multilevel recursive bisection (MLB)
+.TP
+.B 2
+Graph partitioning using multilevel k-way partitioning (MLkP)
+.TP
+.B 3
+Multilevel nested dissection ordering (MLND)
+.RE
+.RE
+
+
+.TP
+.B Options
+This is used to request 
+.B metis
+to perform certain additional operations, such
+as write partition and permutation files, print timing information, and print
+debugging information.
+The value of 
+.B Options 
+is computed as the sum of codes associated with each
+option of 
+.B metis.
+The various options and their values are:
+
+.RS
+.RS
+.TP
+.B 1
+Write the resulting partition or permutation vectors to a file 
+.TP
+.B 2
+Print timing statistics for various phases of the algorithm
+.TP
+.B 4
+Show information during the coarsening phase 
+.TP
+.B 8
+Show information during the initial partition phase 
+.TP
+.B 16
+Show information during the refinement phase 
+.TP
+.B 32
+Show the size of the partitions at the end  
+.TP
+.B 64
+Show the size of the vertex separators at each level 
+.TP
+.B 128
+Show the balance of a subtree-to-subcube mapping of the elimination tree 
+.TP
+.B 256
+Show information during the k-way refinement phase 
+.RE
+.RE
+
+For example, if we want both the partition to be written on a file and also
+to display timing information, the value of 
+.B Options 
+should be 
+.B 3.
+A value of 
+.B 195, 
+in addition to the above also shows the size of the
+separators and the balance of the ordering.
+
+
+
+.SH FORMAT OF INPUT FILE
+A graph 
+.B G = (V, E) 
+with 
+.B n 
+vertices and 
+.B m 
+edges is stored in a plain
+text file that contains 
+.B n+1 
+lines.
+The first line contains information about the size and the type of the graph,
+while the remaining 
+.B n 
+lines contain information for each vertex of 
+.B G
+.
+Any line that starts with `\%' is a comment line and is skipped.
+
+.PP
+The first line contains either two or three integers. The first integer
+is the number of vertices, the second is the number of edges, and
+the third integer 
+.B fmt 
+contains information about the
+type of the graph. In particular, depending on the value of 
+.B fmt, 
+the graph can have weights on the edges, vertices, or both.
+In the case that the graph is unweighted, (ie., all vertices and edges have the
+same weight),
+.B fmt
+is omitted.
+
+.PP
+After this first line, the remaining 
+.B n 
+lines store the adjacency lists for each
+vertex-one line per vertex.
+In particular, the 
+.B i^th 
+line (excluding comment lines) contains the adjacency list of the 
+.B (i-1)^st 
+vertex.
+Note that the numbering starts from 1 (not from 0 as it is done in C).
+
+.PP
+The simplest format for a graph is when the weight of all vertices and the weight
+of all the edges is the same.
+However, there are cases in which the edges in 
+.B G
+have different weights. 
+In that case, the adjacency list of each vertex contains in addition to the vertices
+that is connected with, the weight of the edges.
+If 
+.B v
+has 
+.B k 
+vertices adjacent to it, then the graph file contains
+.B 2*k
+numbers, each pair of numbers stores the vertex that 
+.B v 
+is connected to, and the
+weight of the edge. Note, edge weights are integer quantities.
+Furthermore, note that the 
+.B fmt 
+parameter is equal to 
+.B 1
+indicating the fact that the graph has weights on the edges.
+
+.PP
+Finally, in addition to having weights on the edges, weights on the vertices
+are also allowed.
+In this case, the value of 
+.B fmt
+is equal to
+.B 11
+and each line of the graph file first stores the weight of the vertex, 
+and then the weighted adjacency list.
+As was the case with edge weights, vertex weights are integer quantities.
+
+
+.SH FORMAT OF PARTITION FILE
+The partition file of a graph with 
+.B n
+vertices, consists of 
+.B n
+lines with a single number per line. 
+The 
+.B i^th 
+line of the file contains the partition number that the 
+.B i^th 
+vertex belongs to. Partition numbers start from 0, and partitions are assigned 
+in a hypercube fashion.
+
+.SH FORMAT OF PERMUTATION FILE
+The permutation file of a graph with 
+.B n
+vertices also consists of 
+.B n
+lines with a single number per line. The 
+.B i^th 
+line of the permutation file contains the new order of the 
+.B i^th 
+vertex of the graph. Let 
+.B A
+be the matrix whose nonzero elements correspond to graph 
+.B G, 
+and let 
+.B P 
+be the permutation vector produced by 
+.B ometis.
+Row (column) 
+.B i 
+of 
+.B A 
+is mapped to row (column) 
+.B P[i] 
+of the reordered matrix.
+
+
+.SH ADDITIONAL DOCUMENTATION
+A postscript copy of the manual of 
+.B METIS
+that describes 
+.B metis
+and other similar algorithms is available on WWW at:
+.B http://www.cs.umn.edu/~karypis/metis/manual.ps
+
+
+.SH AUTHOR
+George Karypis
+.SH DIAGNOSTICS
+Diagnostic messages are intended to be self-explanatory.
+.SH "SEE ALSO"
+pmetis(1), kmetis(1), ometis(1), PMETIS(3), KMETIS(3), OMETIS(3)
+.SH BUGS
+If you find any bugs please report them to
+.B karypis@cs.umn.edu
+.
