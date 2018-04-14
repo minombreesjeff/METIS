@@ -1,4 +1,26 @@
 
+Changes in version 2.0
+
+- Changed the names and calling sequences of all the routines to make it 
+  easier to use ParMETIS with Fortran. 
+
+- Improved the performance of the diffusive adaptive repartitioning 
+  algorithms.
+
+- Added a new set of adaptive repartitioning routines that are based on the
+  remapping paradigm. These routines are called ParMETIS_RepartRemap and
+  ParMETIS_RepartMLRemap
+
+- The number of partitions has been de-coupled from the number of processors.
+  You can now use the parallel partitioning algorithms to compute a k-way
+  partitioning independent of the number of processors that you use.
+
+- The partitioning and ordering algorithms in ParMETIS now utilize various
+  portions of the serial METIS library. As a result of this, the quality
+  of the produced partitionings and orderings have been improved. 
+  Remember to link your code with both libmetis.a and libparmetis.a
+
+
 Changes in version 1.0
 
 - Added partitioning routines that take advantage of coordinate information.

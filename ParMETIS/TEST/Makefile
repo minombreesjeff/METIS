@@ -1,50 +1,30 @@
-INCLUDES = -I. -I..
-LIBDIR = -L../
+include ../Makefile.in
 
-# The following is for mpich
-LIBS = -lm -lparmetis
-CC = mpicc 
+BINDIR = ../Graphs
 
-# On T3D you may want to use the following
-# LIBS = -lm -lmpi -lparmetis
-# CC = mppcc
-
-# On SP2 you may want to use the following
-# LIBS = -lm -lmpi -lparmetis
-# CC = mpcc
+INCLUDES = -I../ParMETISLib $(INCDIR) 
+CFLAGS = $(COPTIONS) $(OPTFLAGS) $(INCLUDES)
 
 
-CFLAGS = $(OPTIMIZATION) $(INCLUDES)
-LD = $(CC) $(LIBDIR)
+LIBSDIR = -L.. $(LIBDIR) 
+LIBS = -lparmetis -lmetis $(XTRALIBS) -lm
+PARMETISLIB = ../libparmetis.a ../libmetis.a
 
 
-P2P_OBJS = p2ptest.o 
-KMETIS_OBJS = main.o io.o
+PTESTOBJS = main.o ptest.o tio.o tstadapt.o
+          
           
 .c.o:
 	$(CC) $(CFLAGS) -c $*.c
 
-all: p2ptest parmetis.test
 
-p2ptest: $(P2P_OBJS)
-	$(LD)  -o $@ $(P2P_OBJS) $(LIBS)
+default: $(BINDIR)/ptest
+
+$(BINDIR)/ptest: $(PTESTOBJS) $(PARMETISLIB)
+	$(LD)  -o $@ $(PTESTOBJS) $(LIBSDIR) $(LIBS)
 	chmod 744 $@
 
-parmetis.test: $(KMETIS_OBJS)
-	$(LD)  -o $@ $(KMETIS_OBJS) $(LIBS) 
-	chmod 744 $@
 
-checkin:
-	@for file in *.[c,h]; \
-	do \
-	ci -u -m'Maintance' $$file;\
-	done 
-
-checkin2:
-	@for file in *.[c,h]; \
-	do \
-	ci $$file;\
-	rcs -U $$file;\
-	co $$file;\
-	done
-
+clean:
+	rm -f *.o ;\
+	rm -f $(BINDIR)/ptest$(VERNUM) 

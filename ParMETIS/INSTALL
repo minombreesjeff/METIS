@@ -2,408 +2,853 @@
 INSTALLATION
 ------------
 
-    To build ParMetis you need to edit the Makefile and set the appropriate
+    To build ParMetis you need to edit the Makefile.in and set the appropriate
     parameters for 'CC'. The default is to use mpicc from MPICH.
-    After that just type 'make' to build the library.
+    After that just type 'make' to build the libraries (libmetis.a and 
+    libparmetis.a).
 
     The header file parmetis.h can be used to provided the prototypes for
     the various routines in ParMetis.
 
+
 TESTING THE LIBRARY
 -------------------
 
-    To test the library go to the directory TEST and after editing the
-    Makefile to set the appropriate parameters for 'CC' and 'LD'
-    type 'make'. This should create 2 programs. p2ptest and par_kmetis.
-
-    Now, assuming you are using MPICH you can execute the following
-    command that will generate the following output:
+    To test the library go to the directory Graphs and execute the program
+    'mtest' that is in that directory. Now, assuming you are using MPICH you 
+    can execute the following command that will generate the following output:
 
     NOTE-1: You must have at least 20Mbytes per node in order for the test
             to go through.
 
-    NOTE-2: The data files are binary written on an SGI. They should work
-            fine on MIPS, SPARC, Power 2, and Alpha. However, on machines
-            with different byte ordering (like x86-based processors) they 
-            will not work.
-
-    NOTE-3: The data file is stored using 32 bit integers. On machines that
-            default to 64 bit integers (like Cray's T3D and T3E) you must
-            build the library by setting idxtype to short (you need to edit
-            the struct.h file for that).
+    NOTE-2: The results on your machine will most likely look different 
+            because of differences in the random number generators. 
+            Look if the test programs reports any 'incorrect' results. 
+            If the test goes through correctly, then you have compiled
+            ParMetis successfully!
 
 -------------------------------------------------------------------------
-% mpirun -np 4 parmetis.test brack2.bin
+% mpirun -np 8 ptest 3elt.graph
 
-Nvtxs: 62631, Nedges: 733118
+Nvtxs: 4720, Nedges: 27444
 
-Testing PARKMETIS with options[1-4] = {0 1 0 3}
-      Setup: Max:   0.824, Sum:   3.279, Balance:   1.005
-   Matching: Max:   0.933, Sum:   3.730, Balance:   1.000
-Contraction: Max:   0.699, Sum:   2.661, Balance:   1.051
-   InitPart: Max:   0.025, Sum:   0.099, Balance:   1.013
-    Project: Max:   0.019, Sum:   0.073, Balance:   1.017
- Initialize: Max:   0.256, Sum:   1.021, Balance:   1.003
-      K-way: Max:   0.208, Sum:   0.830, Balance:   1.002
-      Total: Max:   3.009, Sum:  12.037, Balance:   1.000
-Final Cut:   4223 	Balance:  1.047 [16389 62631 62631]
-PARKMETIS reported a cut of 4223 which is correct!
+Testing ParMETIS_PartKway with options[1-3] = { 1  0  3}, Nparts: 16
+      Setup: Max:   0.007, Sum:   0.050, Balance:   1.052
+   Matching: Max:   0.014, Sum:   0.115, Balance:   1.000
+Contraction: Max:   0.010, Sum:   0.077, Balance:   1.062
+   InitPart: Max:   0.024, Sum:   0.194, Balance:   1.003
+    Project: Max:   0.001, Sum:   0.005, Balance:   1.198
+ Initialize: Max:   0.003, Sum:   0.021, Balance:   1.047
+      K-way: Max:   0.020, Sum:   0.160, Balance:   1.000
+      Total: Max:   0.082, Sum:   0.658, Balance:   1.000
+Final 16-way Cut:    627 	Balance:  1.024 [302 4720 4720]
+ParMETIS_PartKway reported a cut of 627 which is correct!
 
-Testing PARKMETIS with options[1-4] = {0 2 0 3}
-      Setup: Max:   0.792, Sum:   3.158, Balance:   1.003
-   Matching: Max:   0.422, Sum:   1.688, Balance:   1.001
-Contraction: Max:   0.610, Sum:   2.289, Balance:   1.066
-   InitPart: Max:   0.021, Sum:   0.085, Balance:   1.002
-    Project: Max:   0.018, Sum:   0.071, Balance:   1.013
- Initialize: Max:   0.247, Sum:   0.986, Balance:   1.001
-      K-way: Max:   0.226, Sum:   0.903, Balance:   1.001
-      Total: Max:   2.362, Sum:   9.449, Balance:   1.000
-Final Cut:   3951 	Balance:  1.042 [16311 62631 62631]
-PARKMETIS reported a cut of 3951 which is correct!
+Testing ParMETIS_PartKway with options[1-3] = { 1 100  3}, Nparts: 16
+      Setup: Max:   0.003, Sum:   0.016, Balance:   1.386
+   Matching: Max:   0.012, Sum:   0.079, Balance:   1.179
+Contraction: Max:   0.007, Sum:   0.043, Balance:   1.257
+   InitPart: Max:   0.024, Sum:   0.166, Balance:   1.178
+    Project: Max:   0.001, Sum:   0.004, Balance:   1.369
+ Initialize: Max:   0.003, Sum:   0.017, Balance:   1.265
+      K-way: Max:   0.014, Sum:   0.096, Balance:   1.143
+      Total: Max:   0.056, Sum:   0.452, Balance:   1.000
+Final 16-way Cut:    628 	Balance:  1.010 [298 4720 4720]
+ParMETIS_PartKway reported a cut of 628 which is correct!
 
-Testing PARKMETIS with options[1-4] = {100 1 0 3}
-      Setup: Max:   0.815, Sum:   3.240, Balance:   1.006
-   Matching: Max:   0.409, Sum:   1.622, Balance:   1.007
-Contraction: Max:   0.593, Sum:   2.243, Balance:   1.058
-   InitPart: Max:   0.039, Sum:   0.123, Balance:   1.267
-    Project: Max:   0.017, Sum:   0.065, Balance:   1.041
- Initialize: Max:   0.220, Sum:   0.869, Balance:   1.010
-      K-way: Max:   0.181, Sum:   0.714, Balance:   1.011
-      Total: Max:   2.300, Sum:   9.200, Balance:   1.000
-Final Cut:   3462 	Balance:  1.043 [16332 62631 62631]
-PARKMETIS reported a cut of 3462 which is correct!
+Testing ParMETIS_PartKway with options[1-3] = { 1 200  3}, Nparts: 16
+      Setup: Max:   0.002, Sum:   0.014, Balance:   1.363
+   Matching: Max:   0.011, Sum:   0.076, Balance:   1.183
+Contraction: Max:   0.007, Sum:   0.042, Balance:   1.318
+   InitPart: Max:   0.024, Sum:   0.167, Balance:   1.141
+    Project: Max:   0.001, Sum:   0.004, Balance:   1.337
+ Initialize: Max:   0.003, Sum:   0.016, Balance:   1.349
+      K-way: Max:   0.013, Sum:   0.087, Balance:   1.231
+      Total: Max:   0.056, Sum:   0.448, Balance:   1.000
+Final 16-way Cut:    627 	Balance:  1.014 [299 4720 4720]
+ParMETIS_PartKway reported a cut of 627 which is correct!
 
-Testing PARKMETIS with options[1-4] = {100 2 0 3}
-      Setup: Max:   0.785, Sum:   3.121, Balance:   1.006
-   Matching: Max:   0.430, Sum:   1.707, Balance:   1.007
-Contraction: Max:   0.620, Sum:   2.285, Balance:   1.086
-   InitPart: Max:   0.034, Sum:   0.100, Balance:   1.344
-    Project: Max:   0.017, Sum:   0.068, Balance:   1.022
- Initialize: Max:   0.226, Sum:   0.897, Balance:   1.007
-      K-way: Max:   0.196, Sum:   0.770, Balance:   1.017
-      Total: Max:   2.315, Sum:   9.256, Balance:   1.000
-Final Cut:   4054 	Balance:  1.044 [16350 62631 62631]
-PARKMETIS reported a cut of 4054 which is correct!
+Testing ParMETIS_PartKway with options[1-3] = { 1 300  3}, Nparts: 16
+      Setup: Max:   0.002, Sum:   0.014, Balance:   1.390
+   Matching: Max:   0.011, Sum:   0.072, Balance:   1.188
+Contraction: Max:   0.007, Sum:   0.043, Balance:   1.313
+   InitPart: Max:   0.023, Sum:   0.159, Balance:   1.145
+    Project: Max:   0.001, Sum:   0.004, Balance:   1.323
+ Initialize: Max:   0.003, Sum:   0.016, Balance:   1.306
+      K-way: Max:   0.014, Sum:   0.088, Balance:   1.230
+      Total: Max:   0.055, Sum:   0.440, Balance:   1.000
+Final 16-way Cut:    627 	Balance:  1.014 [299 4720 4720]
+ParMETIS_PartKway reported a cut of 627 which is correct!
 
-Testing PARKMETIS with options[1-4] = {200 1 0 3}
-      Setup: Max:   0.794, Sum:   3.163, Balance:   1.004
-   Matching: Max:   0.423, Sum:   1.677, Balance:   1.010
-Contraction: Max:   0.593, Sum:   2.222, Balance:   1.068
-   InitPart: Max:   0.044, Sum:   0.131, Balance:   1.334
-    Project: Max:   0.018, Sum:   0.069, Balance:   1.043
- Initialize: Max:   0.220, Sum:   0.875, Balance:   1.008
-      K-way: Max:   0.202, Sum:   0.796, Balance:   1.017
-      Total: Max:   2.303, Sum:   9.214, Balance:   1.000
-Final Cut:   4045 	Balance:  1.046 [16374 62631 62631]
-PARKMETIS reported a cut of 4045 which is correct!
+Testing ParMETIS_PartKway with options[1-3] = { 2  0  3}, Nparts: 16
+      Setup: Max:   0.003, Sum:   0.022, Balance:   1.134
+   Matching: Max:   0.015, Sum:   0.116, Balance:   1.000
+Contraction: Max:   0.007, Sum:   0.056, Balance:   1.066
+   InitPart: Max:   0.008, Sum:   0.062, Balance:   1.012
+    Project: Max:   0.001, Sum:   0.005, Balance:   1.277
+ Initialize: Max:   0.003, Sum:   0.021, Balance:   1.047
+      K-way: Max:   0.020, Sum:   0.158, Balance:   1.000
+      Total: Max:   0.057, Sum:   0.452, Balance:   1.000
+Final 16-way Cut:    714 	Balance:  1.017 [300 4720 4720]
+ParMETIS_PartKway reported a cut of 714 which is correct!
 
-Testing PARKMETIS with options[1-4] = {200 2 0 3}
-      Setup: Max:   0.780, Sum:   3.100, Balance:   1.007
-   Matching: Max:   0.416, Sum:   1.643, Balance:   1.012
-Contraction: Max:   0.608, Sum:   2.270, Balance:   1.072
-   InitPart: Max:   0.043, Sum:   0.124, Balance:   1.374
-    Project: Max:   0.017, Sum:   0.066, Balance:   1.033
- Initialize: Max:   0.220, Sum:   0.871, Balance:   1.011
-      K-way: Max:   0.198, Sum:   0.783, Balance:   1.014
-      Total: Max:   2.288, Sum:   9.153, Balance:   1.000
-Final Cut:   3802 	Balance:  1.041 [16304 62631 62631]
-PARKMETIS reported a cut of 3802 which is correct!
+Testing ParMETIS_PartKway with options[1-3] = { 2 100  3}, Nparts: 16
+      Setup: Max:   0.003, Sum:   0.015, Balance:   1.368
+   Matching: Max:   0.011, Sum:   0.076, Balance:   1.206
+Contraction: Max:   0.007, Sum:   0.044, Balance:   1.265
+   InitPart: Max:   0.016, Sum:   0.095, Balance:   1.330
+    Project: Max:   0.001, Sum:   0.004, Balance:   1.374
+ Initialize: Max:   0.003, Sum:   0.016, Balance:   1.271
+      K-way: Max:   0.015, Sum:   0.104, Balance:   1.190
+      Total: Max:   0.049, Sum:   0.391, Balance:   1.000
+Final 16-way Cut:    630 	Balance:  1.017 [300 4720 4720]
+ParMETIS_PartKway reported a cut of 630 which is correct!
 
-Testing PARKMETIS with options[1-4] = {300 1 0 3}
-      Setup: Max:   0.835, Sum:   3.306, Balance:   1.010
-   Matching: Max:   0.418, Sum:   1.645, Balance:   1.016
-Contraction: Max:   0.599, Sum:   2.235, Balance:   1.073
-   InitPart: Max:   0.058, Sum:   0.161, Balance:   1.447
-    Project: Max:   0.018, Sum:   0.068, Balance:   1.027
- Initialize: Max:   0.231, Sum:   0.914, Balance:   1.013
-      K-way: Max:   0.190, Sum:   0.741, Balance:   1.028
-      Total: Max:   2.356, Sum:   9.423, Balance:   1.000
-Final Cut:   4021 	Balance:  1.043 [16331 62631 62631]
-PARKMETIS reported a cut of 4021 which is correct!
+Testing ParMETIS_PartKway with options[1-3] = { 2 200  3}, Nparts: 16
+      Setup: Max:   0.002, Sum:   0.013, Balance:   1.373
+   Matching: Max:   0.010, Sum:   0.069, Balance:   1.203
+Contraction: Max:   0.007, Sum:   0.042, Balance:   1.312
+   InitPart: Max:   0.015, Sum:   0.097, Balance:   1.245
+    Project: Max:   0.001, Sum:   0.004, Balance:   1.367
+ Initialize: Max:   0.003, Sum:   0.016, Balance:   1.319
+      K-way: Max:   0.016, Sum:   0.109, Balance:   1.185
+      Total: Max:   0.049, Sum:   0.392, Balance:   1.000
+Final 16-way Cut:    624 	Balance:  1.020 [301 4720 4720]
+ParMETIS_PartKway reported a cut of 624 which is correct!
 
-Testing PARKMETIS with options[1-4] = {300 2 0 3}
-      Setup: Max:   0.809, Sum:   3.207, Balance:   1.009
-   Matching: Max:   0.415, Sum:   1.638, Balance:   1.014
-Contraction: Max:   0.597, Sum:   2.235, Balance:   1.069
-   InitPart: Max:   0.052, Sum:   0.141, Balance:   1.484
-    Project: Max:   0.018, Sum:   0.066, Balance:   1.054
- Initialize: Max:   0.219, Sum:   0.863, Balance:   1.017
-      K-way: Max:   0.202, Sum:   0.783, Balance:   1.034
-      Total: Max:   2.310, Sum:   9.239, Balance:   1.000
-Final Cut:   4696 	Balance:  1.016 [15901 62631 62631]
-PARKMETIS reported a cut of 4696 which is correct!
+Testing ParMETIS_PartKway with options[1-3] = { 2 300  3}, Nparts: 16
+      Setup: Max:   0.002, Sum:   0.014, Balance:   1.390
+   Matching: Max:   0.011, Sum:   0.074, Balance:   1.193
+Contraction: Max:   0.007, Sum:   0.042, Balance:   1.316
+   InitPart: Max:   0.015, Sum:   0.096, Balance:   1.242
+    Project: Max:   0.001, Sum:   0.004, Balance:   1.304
+ Initialize: Max:   0.003, Sum:   0.017, Balance:   1.313
+      K-way: Max:   0.015, Sum:   0.097, Balance:   1.206
+      Total: Max:   0.048, Sum:   0.384, Balance:   1.000
+Final 16-way Cut:    624 	Balance:  1.020 [301 4720 4720]
+ParMETIS_PartKway reported a cut of 624 which is correct!
 
-Testing PARGKMETIS with options[1-4] = {0 1 0 3}
-      Setup: Max:   0.318, Sum:   1.262, Balance:   1.006
-      Total: Max:   0.595, Sum:   2.379, Balance:   1.000
-XYZ Cut:  12153 	Balance:  1.000 [15658 62631 62631][22964 65762 19183 65762]
-      Setup: Max:   0.510, Sum:   2.028, Balance:   1.006
-   Matching: Max:   0.248, Sum:   0.989, Balance:   1.002
-Contraction: Max:   0.507, Sum:   1.888, Balance:   1.075
-   InitPart: Max:   0.016, Sum:   0.062, Balance:   1.005
-    Project: Max:   0.015, Sum:   0.059, Balance:   1.035
- Initialize: Max:   0.320, Sum:   1.277, Balance:   1.002
-      K-way: Max:   0.193, Sum:   0.770, Balance:   1.001
-       Move: Max:   0.492, Sum:   1.965, Balance:   1.000
-      Total: Max:   2.034, Sum:   8.135, Balance:   1.000
-Final Cut:   3632 	Balance:  1.050 [16437 62631 62631][2437 7438 2674 7438]
-PARGKMETIS reported a cut of 3632 which is correct!
+Testing ParMETIS_PartKway with options[1-3] = { 1  0  3}, Nparts: 8
+Savings from remapping: 2094
+      Setup: Max:   0.004, Sum:   0.025, Balance:   1.141
+   Matching: Max:   0.018, Sum:   0.142, Balance:   1.000
+Contraction: Max:   0.008, Sum:   0.064, Balance:   1.055
+   InitPart: Max:   0.007, Sum:   0.056, Balance:   1.011
+    Project: Max:   0.001, Sum:   0.006, Balance:   1.209
+ Initialize: Max:   0.003, Sum:   0.025, Balance:   1.048
+      K-way: Max:   0.017, Sum:   0.135, Balance:   1.000
+      Remap: Max:   0.003, Sum:   0.022, Balance:   1.001
+      Total: Max:   0.061, Sum:   0.488, Balance:   1.000
+Final 8-way Cut:    406 	Balance:  1.007 [594 4720 4720]
+ParMETIS_PartKway reported a cut of 406 which is correct!
 
-Testing PARGKMETIS with options[1-4] = {0 2 0 3}
-      Setup: Max:   0.322, Sum:   1.275, Balance:   1.008
-      Total: Max:   0.598, Sum:   2.391, Balance:   1.000
-XYZ Cut:  12153 	Balance:  1.000 [15658 62631 62631][22964 65762 19183 65762]
-      Setup: Max:   0.509, Sum:   2.028, Balance:   1.004
-   Matching: Max:   0.235, Sum:   0.939, Balance:   1.000
-Contraction: Max:   0.476, Sum:   1.814, Balance:   1.049
-   InitPart: Max:   0.015, Sum:   0.059, Balance:   1.007
-    Project: Max:   0.016, Sum:   0.060, Balance:   1.076
- Initialize: Max:   0.289, Sum:   1.150, Balance:   1.003
-      K-way: Max:   0.212, Sum:   0.848, Balance:   1.001
-       Move: Max:   0.356, Sum:   1.422, Balance:   1.000
-      Total: Max:   1.975, Sum:   7.900, Balance:   1.000
-Final Cut:   4602 	Balance:  1.027 [16075 62631 62631][2437 7438 2674 7438]
-PARGKMETIS reported a cut of 4602 which is correct!
+Testing ParMETIS_PartKway with options[1-3] = { 1 100  3}, Nparts: 8
+Savings from remapping: 769
+      Setup: Max:   0.003, Sum:   0.016, Balance:   1.417
+   Matching: Max:   0.013, Sum:   0.085, Balance:   1.266
+Contraction: Max:   0.008, Sum:   0.047, Balance:   1.332
+   InitPart: Max:   0.018, Sum:   0.099, Balance:   1.442
+    Project: Max:   0.001, Sum:   0.004, Balance:   1.454
+ Initialize: Max:   0.003, Sum:   0.017, Balance:   1.319
+      K-way: Max:   0.016, Sum:   0.107, Balance:   1.226
+      Remap: Max:   0.009, Sum:   0.068, Balance:   1.000
+      Total: Max:   0.061, Sum:   0.489, Balance:   1.000
+Final 8-way Cut:    405 	Balance:  1.012 [597 4720 4720]
+ParMETIS_PartKway reported a cut of 405 which is correct!
 
-Testing PARGKMETIS with options[1-4] = {100 1 0 3}
-      Setup: Max:   0.337, Sum:   1.344, Balance:   1.004
-      Total: Max:   0.605, Sum:   2.420, Balance:   1.000
-XYZ Cut:  12153 	Balance:  1.000 [15658 62631 62631][22964 65762 19183 65762]
-      Setup: Max:   0.517, Sum:   2.066, Balance:   1.001
-   Matching: Max:   0.228, Sum:   0.901, Balance:   1.012
-Contraction: Max:   0.445, Sum:   1.706, Balance:   1.043
-   InitPart: Max:   0.025, Sum:   0.077, Balance:   1.281
-    Project: Max:   0.015, Sum:   0.057, Balance:   1.022
- Initialize: Max:   0.273, Sum:   1.085, Balance:   1.005
-      K-way: Max:   0.186, Sum:   0.733, Balance:   1.013
-       Move: Max:   0.325, Sum:   1.301, Balance:   1.000
-      Total: Max:   1.893, Sum:   7.572, Balance:   1.000
-Final Cut:   4079 	Balance:  1.019 [15951 62631 62631][2437 7438 2674 7438]
-PARGKMETIS reported a cut of 4079 which is correct!
+Testing ParMETIS_PartKway with options[1-3] = { 1 200  3}, Nparts: 8
+Savings from remapping: 1211
+      Setup: Max:   0.003, Sum:   0.014, Balance:   1.465
+   Matching: Max:   0.012, Sum:   0.076, Balance:   1.240
+Contraction: Max:   0.008, Sum:   0.044, Balance:   1.463
+   InitPart: Max:   0.016, Sum:   0.100, Balance:   1.277
+    Project: Max:   0.001, Sum:   0.004, Balance:   1.455
+ Initialize: Max:   0.003, Sum:   0.016, Balance:   1.441
+      K-way: Max:   0.010, Sum:   0.063, Balance:   1.268
+      Remap: Max:   0.003, Sum:   0.021, Balance:   1.001
+      Total: Max:   0.047, Sum:   0.379, Balance:   1.000
+Final 8-way Cut:    400 	Balance:  1.012 [597 4720 4720]
+ParMETIS_PartKway reported a cut of 400 which is correct!
 
-Testing PARGKMETIS with options[1-4] = {100 2 0 3}
-      Setup: Max:   0.317, Sum:   1.262, Balance:   1.005
-      Total: Max:   0.574, Sum:   2.298, Balance:   1.000
-XYZ Cut:  12153 	Balance:  1.000 [15658 62631 62631][22964 65762 19183 65762]
-      Setup: Max:   0.509, Sum:   2.030, Balance:   1.003
-   Matching: Max:   0.252, Sum:   0.991, Balance:   1.020
-Contraction: Max:   0.460, Sum:   1.763, Balance:   1.043
-   InitPart: Max:   0.026, Sum:   0.081, Balance:   1.295
-    Project: Max:   0.014, Sum:   0.054, Balance:   1.030
- Initialize: Max:   0.275, Sum:   1.096, Balance:   1.004
-      K-way: Max:   0.188, Sum:   0.734, Balance:   1.022
-       Move: Max:   0.310, Sum:   1.240, Balance:   1.000
-      Total: Max:   1.918, Sum:   7.672, Balance:   1.000
-Final Cut:   4128 	Balance:  1.046 [16374 62631 62631][2437 7438 2674 7438]
-PARGKMETIS reported a cut of 4128 which is correct!
+Testing ParMETIS_PartKway with options[1-3] = { 1 300  3}, Nparts: 8
+Savings from remapping: 1211
+      Setup: Max:   0.003, Sum:   0.015, Balance:   1.441
+   Matching: Max:   0.011, Sum:   0.071, Balance:   1.253
+Contraction: Max:   0.008, Sum:   0.044, Balance:   1.421
+   InitPart: Max:   0.016, Sum:   0.097, Balance:   1.278
+    Project: Max:   0.001, Sum:   0.004, Balance:   1.388
+ Initialize: Max:   0.003, Sum:   0.016, Balance:   1.389
+      K-way: Max:   0.010, Sum:   0.063, Balance:   1.264
+      Remap: Max:   0.004, Sum:   0.032, Balance:   1.000
+      Total: Max:   0.048, Sum:   0.383, Balance:   1.000
+Final 8-way Cut:    400 	Balance:  1.012 [597 4720 4720]
+ParMETIS_PartKway reported a cut of 400 which is correct!
 
-Testing PARGKMETIS with options[1-4] = {200 1 0 3}
-      Setup: Max:   0.322, Sum:   1.281, Balance:   1.004
-      Total: Max:   0.817, Sum:   3.270, Balance:   1.000
-XYZ Cut:  12153 	Balance:  1.000 [15658 62631 62631][22964 65762 19183 65762]
-      Setup: Max:   0.508, Sum:   2.029, Balance:   1.002
-   Matching: Max:   0.256, Sum:   1.006, Balance:   1.018
-Contraction: Max:   0.463, Sum:   1.810, Balance:   1.023
-   InitPart: Max:   0.037, Sum:   0.102, Balance:   1.437
-    Project: Max:   0.014, Sum:   0.056, Balance:   1.025
- Initialize: Max:   0.282, Sum:   1.120, Balance:   1.007
-      K-way: Max:   0.182, Sum:   0.712, Balance:   1.021
-       Move: Max:   0.307, Sum:   1.226, Balance:   1.000
-      Total: Max:   2.193, Sum:   8.771, Balance:   1.000
-Final Cut:   3712 	Balance:  1.004 [15723 62631 62631][2437 7438 2674 7438]
-PARGKMETIS reported a cut of 3712 which is correct!
+Testing ParMETIS_PartKway with options[1-3] = { 2  0  3}, Nparts: 8
+Savings from remapping: 2097
+      Setup: Max:   0.004, Sum:   0.025, Balance:   1.144
+   Matching: Max:   0.018, Sum:   0.144, Balance:   1.000
+Contraction: Max:   0.009, Sum:   0.066, Balance:   1.059
+   InitPart: Max:   0.005, Sum:   0.041, Balance:   1.018
+    Project: Max:   0.001, Sum:   0.006, Balance:   1.234
+ Initialize: Max:   0.003, Sum:   0.024, Balance:   1.032
+      K-way: Max:   0.021, Sum:   0.171, Balance:   1.000
+      Remap: Max:   0.008, Sum:   0.064, Balance:   1.000
+      Total: Max:   0.069, Sum:   0.554, Balance:   1.000
+Final 8-way Cut:    406 	Balance:  1.014 [598 4720 4720]
+ParMETIS_PartKway reported a cut of 406 which is correct!
 
-Testing PARGKMETIS with options[1-4] = {200 2 0 3}
-      Setup: Max:   0.324, Sum:   1.291, Balance:   1.005
-      Total: Max:   0.583, Sum:   2.333, Balance:   1.000
-XYZ Cut:  12153 	Balance:  1.000 [15658 62631 62631][22964 65762 19183 65762]
-      Setup: Max:   0.506, Sum:   2.016, Balance:   1.005
-   Matching: Max:   0.230, Sum:   0.905, Balance:   1.016
-Contraction: Max:   0.439, Sum:   1.721, Balance:   1.020
-   InitPart: Max:   0.031, Sum:   0.091, Balance:   1.363
-    Project: Max:   0.014, Sum:   0.052, Balance:   1.041
- Initialize: Max:   0.272, Sum:   1.078, Balance:   1.007
-      K-way: Max:   0.155, Sum:   0.602, Balance:   1.032
-       Move: Max:   0.316, Sum:   1.262, Balance:   1.000
-      Total: Max:   1.845, Sum:   7.382, Balance:   1.000
-Final Cut:   3264 	Balance:  1.048 [16407 62631 62631][2437 7438 2674 7438]
-PARGKMETIS reported a cut of 3264 which is correct!
+Testing ParMETIS_PartKway with options[1-3] = { 2 100  3}, Nparts: 8
+Savings from remapping: 920
+      Setup: Max:   0.003, Sum:   0.017, Balance:   1.401
+   Matching: Max:   0.013, Sum:   0.081, Balance:   1.255
+Contraction: Max:   0.008, Sum:   0.048, Balance:   1.330
+   InitPart: Max:   0.015, Sum:   0.080, Balance:   1.528
+    Project: Max:   0.001, Sum:   0.004, Balance:   1.420
+ Initialize: Max:   0.003, Sum:   0.018, Balance:   1.317
+      K-way: Max:   0.013, Sum:   0.084, Balance:   1.234
+      Remap: Max:   0.002, Sum:   0.019, Balance:   1.001
+      Total: Max:   0.049, Sum:   0.391, Balance:   1.000
+Final 8-way Cut:    391 	Balance:  1.010 [596 4720 4720]
+ParMETIS_PartKway reported a cut of 391 which is correct!
 
-Testing PARGKMETIS with options[1-4] = {300 1 0 3}
-      Setup: Max:   0.317, Sum:   1.265, Balance:   1.004
-      Total: Max:   0.588, Sum:   2.352, Balance:   1.000
-XYZ Cut:  12153 	Balance:  1.000 [15658 62631 62631][22964 65762 19183 65762]
-      Setup: Max:   0.498, Sum:   1.988, Balance:   1.002
-   Matching: Max:   0.232, Sum:   0.911, Balance:   1.019
-Contraction: Max:   0.448, Sum:   1.723, Balance:   1.039
-   InitPart: Max:   0.040, Sum:   0.115, Balance:   1.403
-    Project: Max:   0.015, Sum:   0.057, Balance:   1.040
- Initialize: Max:   0.297, Sum:   1.170, Balance:   1.014
-      K-way: Max:   0.185, Sum:   0.714, Balance:   1.034
-       Move: Max:   0.357, Sum:   1.429, Balance:   1.000
-      Total: Max:   1.924, Sum:   7.694, Balance:   1.000
-Final Cut:   3641 	Balance:  1.023 [16018 62631 62631][2437 7438 2674 7438]
-PARGKMETIS reported a cut of 3641 which is correct!
+Testing ParMETIS_PartKway with options[1-3] = { 2 200  3}, Nparts: 8
+Savings from remapping: 606
+      Setup: Max:   0.003, Sum:   0.015, Balance:   1.480
+   Matching: Max:   0.011, Sum:   0.071, Balance:   1.268
+Contraction: Max:   0.008, Sum:   0.043, Balance:   1.414
+   InitPart: Max:   0.013, Sum:   0.079, Balance:   1.345
+    Project: Max:   0.001, Sum:   0.004, Balance:   1.461
+ Initialize: Max:   0.003, Sum:   0.016, Balance:   1.421
+      K-way: Max:   0.013, Sum:   0.078, Balance:   1.298
+      Remap: Max:   0.004, Sum:   0.034, Balance:   1.000
+      Total: Max:   0.048, Sum:   0.387, Balance:   1.000
+Final 8-way Cut:    415 	Balance:  1.012 [597 4720 4720]
+ParMETIS_PartKway reported a cut of 415 which is correct!
 
-Testing PARGKMETIS with options[1-4] = {300 2 0 3}
-      Setup: Max:   0.319, Sum:   1.269, Balance:   1.004
-      Total: Max:   0.586, Sum:   2.343, Balance:   1.000
-XYZ Cut:  12153 	Balance:  1.000 [15658 62631 62631][22964 65762 19183 65762]
-      Setup: Max:   0.510, Sum:   2.028, Balance:   1.006
-   Matching: Max:   0.243, Sum:   0.954, Balance:   1.019
-Contraction: Max:   0.457, Sum:   1.793, Balance:   1.019
-   InitPart: Max:   0.036, Sum:   0.103, Balance:   1.389
-    Project: Max:   0.015, Sum:   0.056, Balance:   1.038
- Initialize: Max:   0.277, Sum:   1.095, Balance:   1.010
-      K-way: Max:   0.193, Sum:   0.746, Balance:   1.033
-       Move: Max:   0.309, Sum:   1.237, Balance:   1.000
-      Total: Max:   1.936, Sum:   7.743, Balance:   1.000
-Final Cut:   5006 	Balance:  1.045 [16356 62631 62631][2437 7438 2674 7438]
-PARGKMETIS reported a cut of 5006 which is correct!
+Testing ParMETIS_PartKway with options[1-3] = { 2 300  3}, Nparts: 8
+Savings from remapping: 606
+      Setup: Max:   0.003, Sum:   0.014, Balance:   1.463
+   Matching: Max:   0.011, Sum:   0.072, Balance:   1.259
+Contraction: Max:   0.008, Sum:   0.043, Balance:   1.414
+   InitPart: Max:   0.013, Sum:   0.078, Balance:   1.342
+    Project: Max:   0.001, Sum:   0.005, Balance:   1.491
+ Initialize: Max:   0.003, Sum:   0.018, Balance:   1.430
+      K-way: Max:   0.012, Sum:   0.075, Balance:   1.303
+      Remap: Max:   0.003, Sum:   0.028, Balance:   1.001
+      Total: Max:   0.048, Sum:   0.381, Balance:   1.000
+Final 8-way Cut:    415 	Balance:  1.012 [597 4720 4720]
+ParMETIS_PartKway reported a cut of 415 which is correct!
 
-Testing PARGRMETIS with options[3-4] = {0 3}
-      Setup: Max:   0.320, Sum:   1.278, Balance:   1.003
-      Total: Max:   0.604, Sum:   2.417, Balance:   1.000
-XYZ Cut:  12153 	Balance:  1.000 [15658 62631 62631][22964 65762 19183 65762]
-      Setup: Max:   0.516, Sum:   2.061, Balance:   1.001
-   Matching: Max:   0.154, Sum:   0.617, Balance:   1.001
-Contraction: Max:   0.422, Sum:   1.623, Balance:   1.039
-   InitPart: Max:   0.000, Sum:   0.000, Balance:   1.394
-    Project: Max:   0.013, Sum:   0.050, Balance:   1.012
- Initialize: Max:   0.282, Sum:   1.127, Balance:   1.001
-      K-way: Max:   0.172, Sum:   0.686, Balance:   1.001
-       Move: Max:   0.323, Sum:   1.291, Balance:   1.000
-      Total: Max:   1.780, Sum:   7.120, Balance:   1.000
-Final Cut:   6485 	Balance:  1.009 [15806 62631 62631][2437 7438 2674 7438]
-PARGRMETIS reported a cut of 6485 which is correct!
+Testing ParMETIS_PartKway with options[1-3] = { 1  0  3}, Nparts: 4
+      Setup: Max:   0.004, Sum:   0.025, Balance:   1.139
+   Matching: Max:   0.018, Sum:   0.144, Balance:   1.000
+Contraction: Max:   0.009, Sum:   0.065, Balance:   1.052
+   InitPart: Max:   0.004, Sum:   0.032, Balance:   1.019
+    Project: Max:   0.001, Sum:   0.006, Balance:   1.213
+ Initialize: Max:   0.003, Sum:   0.024, Balance:   1.045
+      K-way: Max:   0.018, Sum:   0.143, Balance:   1.000
+      Total: Max:   0.057, Sum:   0.456, Balance:   1.000
+Final 4-way Cut:    235 	Balance:  1.003 [1183 4720 4720]
+ParMETIS_PartKway reported a cut of 235 which is correct!
 
-Testing PARGMETIS with options[3-4] = {0 3}
-      Total: Max:   0.273, Sum:   1.093, Balance:   1.000
-XYZ Cut:  12153 	Balance:  1.000 [15658 62631 62631][22964 65762 19183 65762]
-PARGMETIS reported a cut of 12153 which is correct!
+Testing ParMETIS_PartKway with options[1-3] = { 1 100  3}, Nparts: 4
+      Setup: Max:   0.003, Sum:   0.016, Balance:   1.420
+   Matching: Max:   0.013, Sum:   0.083, Balance:   1.261
+Contraction: Max:   0.008, Sum:   0.047, Balance:   1.330
+   InitPart: Max:   0.014, Sum:   0.072, Balance:   1.593
+    Project: Max:   0.001, Sum:   0.005, Balance:   1.433
+ Initialize: Max:   0.003, Sum:   0.017, Balance:   1.320
+      K-way: Max:   0.012, Sum:   0.074, Balance:   1.320
+      Total: Max:   0.045, Sum:   0.357, Balance:   1.000
+Final 4-way Cut:    247 	Balance:  1.004 [1185 4720 4720]
+ParMETIS_PartKway reported a cut of 247 which is correct!
 
-Testing PARRMETIS with options[3-4] = {0 3}
-      Setup: Max:   0.831, Sum:   3.308, Balance:   1.004
-   Matching: Max:   0.179, Sum:   0.715, Balance:   1.002
-Contraction: Max:   0.488, Sum:   1.792, Balance:   1.089
-   InitPart: Max:   0.000, Sum:   0.000, Balance:   1.386
-    Project: Max:   0.014, Sum:   0.050, Balance:   1.104
- Initialize: Max:   0.251, Sum:   0.999, Balance:   1.005
-      K-way: Max:   0.309, Sum:   1.234, Balance:   1.000
-      Total: Max:   2.092, Sum:   8.369, Balance:   1.000
-Final Cut:   9061 	Balance:  1.022 [16007 62631 62631]
-PARRMETIS reported a cut of 9061 which is correct!
+Testing ParMETIS_PartKway with options[1-3] = { 1 200  3}, Nparts: 4
+      Setup: Max:   0.003, Sum:   0.014, Balance:   1.466
+   Matching: Max:   0.012, Sum:   0.072, Balance:   1.285
+Contraction: Max:   0.008, Sum:   0.043, Balance:   1.417
+   InitPart: Max:   0.013, Sum:   0.076, Balance:   1.361
+    Project: Max:   0.001, Sum:   0.005, Balance:   1.737
+ Initialize: Max:   0.003, Sum:   0.016, Balance:   1.459
+      K-way: Max:   0.009, Sum:   0.060, Balance:   1.245
+      Total: Max:   0.041, Sum:   0.326, Balance:   1.000
+Final 4-way Cut:    226 	Balance:  1.009 [1191 4720 4720]
+ParMETIS_PartKway reported a cut of 226 which is correct!
 
-Testing PARRMETIS with options[3-4] = {0 3} (after move)
-      Setup: Max:   0.138, Sum:   0.545, Balance:   1.011
-   Matching: Max:   0.138, Sum:   0.551, Balance:   1.001
-Contraction: Max:   0.421, Sum:   1.609, Balance:   1.047
-   InitPart: Max:   0.000, Sum:   0.000, Balance:   1.051
-    Project: Max:   0.012, Sum:   0.046, Balance:   1.052
- Initialize: Max:   0.185, Sum:   0.737, Balance:   1.004
-      K-way: Max:   0.084, Sum:   0.334, Balance:   1.001
-      Total: Max:   0.991, Sum:   3.966, Balance:   1.000
-Final Cut:   4187 	Balance:  1.046 [16385 62631 62631]
-PARRMETIS reported a cut of 4187 which is correct!
-Initial Load Imbalance: 1.3282, [15044 26262 79090]
+Testing ParMETIS_PartKway with options[1-3] = { 1 300  3}, Nparts: 4
+      Setup: Max:   0.003, Sum:   0.014, Balance:   1.479
+   Matching: Max:   0.012, Sum:   0.074, Balance:   1.257
+Contraction: Max:   0.008, Sum:   0.046, Balance:   1.374
+   InitPart: Max:   0.013, Sum:   0.075, Balance:   1.363
+    Project: Max:   0.001, Sum:   0.005, Balance:   1.757
+ Initialize: Max:   0.003, Sum:   0.016, Balance:   1.356
+      K-way: Max:   0.009, Sum:   0.056, Balance:   1.254
+      Total: Max:   0.041, Sum:   0.325, Balance:   1.000
+Final 4-way Cut:    226 	Balance:  1.009 [1191 4720 4720]
+ParMETIS_PartKway reported a cut of 226 which is correct!
 
-Testing PARUAMETIS with options[3-4] = {0 3}
-      Setup: Max:   0.138, Sum:   0.545, Balance:   1.010
-   Matching: Max:   0.128, Sum:   0.510, Balance:   1.001
-Contraction: Max:   0.421, Sum:   1.611, Balance:   1.044
-   InitPart: Max:   0.000, Sum:   0.000, Balance:   1.195
-    Project: Max:   0.013, Sum:   0.048, Balance:   1.063
- Initialize: Max:   0.185, Sum:   0.740, Balance:   1.003
-      K-way: Max:   0.311, Sum:   1.245, Balance:   1.000
-      Total: Max:   1.211, Sum:   4.845, Balance:   1.000
-Final Cut:   4912 	Balance:  1.050 
-NMoved: 7233 3248 3248 6496 [4 20761 79090 62631]
-PARUAMETIS reported a cut of 4912 which is correct!
+Testing ParMETIS_PartKway with options[1-3] = { 2  0  3}, Nparts: 4
+      Setup: Max:   0.003, Sum:   0.024, Balance:   1.146
+   Matching: Max:   0.018, Sum:   0.141, Balance:   1.000
+Contraction: Max:   0.009, Sum:   0.067, Balance:   1.049
+   InitPart: Max:   0.004, Sum:   0.030, Balance:   1.026
+    Project: Max:   0.001, Sum:   0.007, Balance:   1.210
+ Initialize: Max:   0.003, Sum:   0.024, Balance:   1.045
+      K-way: Max:   0.016, Sum:   0.129, Balance:   1.000
+      Total: Max:   0.054, Sum:   0.435, Balance:   1.000
+Final 4-way Cut:    227 	Balance:  1.008 [1190 4720 4720]
+ParMETIS_PartKway reported a cut of 227 which is correct!
 
-Testing PARDAMETIS with options[3-4] = {0 3}
-      Setup: Max:   0.145, Sum:   0.576, Balance:   1.004
-   Matching: Max:   0.133, Sum:   0.532, Balance:   1.001
-Contraction: Max:   0.444, Sum:   1.655, Balance:   1.073
-   InitPart: Max:   0.008, Sum:   0.033, Balance:   1.024
-    Project: Max:   0.013, Sum:   0.050, Balance:   1.033
- Initialize: Max:   0.188, Sum:   0.747, Balance:   1.005
-      K-way: Max:   0.306, Sum:   1.221, Balance:   1.001
-      Total: Max:   1.256, Sum:   5.025, Balance:   1.000
-Final Cut:   4238 	Balance:  1.048 
-NMoved: 7603 3465 3465 6930 [4 20728 79090 62631]
-PARUAMETIS reported a cut of 4238 which is correct!
+Testing ParMETIS_PartKway with options[1-3] = { 2 100  3}, Nparts: 4
+      Setup: Max:   0.003, Sum:   0.016, Balance:   1.436
+   Matching: Max:   0.013, Sum:   0.083, Balance:   1.276
+Contraction: Max:   0.008, Sum:   0.048, Balance:   1.327
+   InitPart: Max:   0.015, Sum:   0.075, Balance:   1.589
+    Project: Max:   0.001, Sum:   0.004, Balance:   1.455
+ Initialize: Max:   0.003, Sum:   0.020, Balance:   1.272
+      K-way: Max:   0.012, Sum:   0.078, Balance:   1.249
+      Total: Max:   0.045, Sum:   0.362, Balance:   1.000
+Final 4-way Cut:    215 	Balance:  1.003 [1183 4720 4720]
+ParMETIS_PartKway reported a cut of 215 which is correct!
 
-Testing PAROMETIS with options[1-4] = {0 1 0 3}
-      Setup: Max:   0.792, Sum:   3.159, Balance:   1.003
-   Matching: Max:   0.419, Sum:   1.675, Balance:   1.001
-Contraction: Max:   0.598, Sum:   2.273, Balance:   1.051
-   InitPart: Max:   0.028, Sum:   0.109, Balance:   1.006
-    Project: Max:   0.018, Sum:   0.068, Balance:   1.052
- Initialize: Max:   0.227, Sum:   0.903, Balance:   1.005
-      K-way: Max:   0.209, Sum:   0.837, Balance:   1.001
-      Total: Max:   2.312, Sum:   9.246, Balance:   1.000
-SepSizes:  219 [30102 32310]
-SepSizes:  407 [14615 15080] 233 [15312 16765]
-      Setup: Max:   1.130, Sum:   4.501, Balance:   1.004
-   Matching: Max:   0.687, Sum:   2.745, Balance:   1.001
-Contraction: Max:   1.434, Sum:   5.608, Balance:   1.023
-   InitPart: Max:   0.155, Sum:   0.617, Balance:   1.003
-    Project: Max:   0.041, Sum:   0.158, Balance:   1.034
- Initialize: Max:   0.274, Sum:   1.088, Balance:   1.009
-      K-way: Max:   0.357, Sum:   1.423, Balance:   1.004
-       Move: Max:   0.795, Sum:   3.179, Balance:   1.000
-      Total: Max:   6.315, Sum:  25.259, Balance:   1.000
+Testing ParMETIS_PartKway with options[1-3] = { 2 200  3}, Nparts: 4
+      Setup: Max:   0.003, Sum:   0.014, Balance:   1.479
+   Matching: Max:   0.011, Sum:   0.071, Balance:   1.260
+Contraction: Max:   0.008, Sum:   0.046, Balance:   1.433
+   InitPart: Max:   0.013, Sum:   0.076, Balance:   1.382
+    Project: Max:   0.001, Sum:   0.004, Balance:   1.418
+ Initialize: Max:   0.003, Sum:   0.016, Balance:   1.374
+      K-way: Max:   0.009, Sum:   0.057, Balance:   1.228
+      Total: Max:   0.040, Sum:   0.320, Balance:   1.000
+Final 4-way Cut:    243 	Balance:  1.006 [1187 4720 4720]
+ParMETIS_PartKway reported a cut of 243 which is correct!
 
-Testing PAROMETIS with options[1-4] = {0 2 0 3}
-      Setup: Max:   0.801, Sum:   3.197, Balance:   1.003
-   Matching: Max:   0.431, Sum:   1.720, Balance:   1.002
-Contraction: Max:   0.604, Sum:   2.246, Balance:   1.076
-   InitPart: Max:   0.025, Sum:   0.100, Balance:   1.001
-    Project: Max:   0.019, Sum:   0.071, Balance:   1.053
- Initialize: Max:   0.234, Sum:   0.933, Balance:   1.005
-      K-way: Max:   0.240, Sum:   0.956, Balance:   1.003
-      Total: Max:   2.391, Sum:   9.565, Balance:   1.000
-SepSizes:  219 [30102 32310]
-SepSizes:  413 [15506 14183] 239 [15487 16584]
-      Setup: Max:   1.124, Sum:   4.485, Balance:   1.002
-   Matching: Max:   0.694, Sum:   2.775, Balance:   1.001
-Contraction: Max:   1.417, Sum:   5.534, Balance:   1.025
-   InitPart: Max:   0.130, Sum:   0.517, Balance:   1.003
-    Project: Max:   0.043, Sum:   0.164, Balance:   1.058
- Initialize: Max:   0.282, Sum:   1.120, Balance:   1.007
-      K-way: Max:   0.386, Sum:   1.540, Balance:   1.004
-       Move: Max:   0.694, Sum:   2.774, Balance:   1.000
-      Total: Max:   6.085, Sum:  24.340, Balance:   1.000
+Testing ParMETIS_PartKway with options[1-3] = { 2 300  3}, Nparts: 4
+      Setup: Max:   0.003, Sum:   0.014, Balance:   1.462
+   Matching: Max:   0.011, Sum:   0.073, Balance:   1.258
+Contraction: Max:   0.008, Sum:   0.043, Balance:   1.404
+   InitPart: Max:   0.013, Sum:   0.074, Balance:   1.365
+    Project: Max:   0.001, Sum:   0.004, Balance:   1.468
+ Initialize: Max:   0.003, Sum:   0.016, Balance:   1.384
+      K-way: Max:   0.009, Sum:   0.057, Balance:   1.219
+      Total: Max:   0.040, Sum:   0.317, Balance:   1.000
+Final 4-way Cut:    243 	Balance:  1.006 [1187 4720 4720]
+ParMETIS_PartKway reported a cut of 243 which is correct!
 
--------------------------------------------------------------------------
+Testing ParMETIS_PartGeomKway with options[1-3] = { 1  0  3}, Nparts: 16
+      Setup: Max:   0.001, Sum:   0.006, Balance:   1.112
+      Total: Max:   0.003, Sum:   0.026, Balance:   1.000
+XYZ Cut:   1478 	Balance:  1.000 [590 4720 4720][189 1058 151 1058]
+      Setup: Max:   0.004, Sum:   0.029, Balance:   1.085
+   Matching: Max:   0.014, Sum:   0.116, Balance:   1.000
+Contraction: Max:   0.009, Sum:   0.068, Balance:   1.025
+   InitPart: Max:   0.018, Sum:   0.147, Balance:   1.005
+    Project: Max:   0.001, Sum:   0.008, Balance:   1.237
+ Initialize: Max:   0.005, Sum:   0.034, Balance:   1.116
+      K-way: Max:   0.023, Sum:   0.184, Balance:   1.018
+       Move: Max:   0.002, Sum:   0.019, Balance:   1.001
+      Total: Max:   0.077, Sum:   0.613, Balance:   1.000
+Final 16-way Cut:    637 	Balance:  1.017 [300 4720 4720][237 1465 246 1465]
+ParMETIS_PartGeomKway reported a cut of 637 which is correct!
 
-If you get something like the above (runtimes will be different), 
-then ParMetis has been built correctly. Also note that the edgecut and
-separators may be slightly different due to the different random 
-number generators on different architectures.
+Testing ParMETIS_PartGeomKway with options[1-3] = { 1 100  3}, Nparts: 16
+      Setup: Max:   0.001, Sum:   0.006, Balance:   1.106
+      Total: Max:   0.003, Sum:   0.027, Balance:   1.000
+XYZ Cut:   1478 	Balance:  1.000 [590 4720 4720][189 1058 151 1058]
+      Setup: Max:   0.004, Sum:   0.023, Balance:   1.256
+   Matching: Max:   0.014, Sum:   0.094, Balance:   1.158
+Contraction: Max:   0.007, Sum:   0.044, Balance:   1.293
+   InitPart: Max:   0.027, Sum:   0.179, Balance:   1.182
+    Project: Max:   0.001, Sum:   0.004, Balance:   1.528
+ Initialize: Max:   0.003, Sum:   0.024, Balance:   1.157
+      K-way: Max:   0.017, Sum:   0.116, Balance:   1.177
+       Move: Max:   0.002, Sum:   0.019, Balance:   1.000
+      Total: Max:   0.067, Sum:   0.540, Balance:   1.000
+Final 16-way Cut:    660 	Balance:  1.020 [301 4720 4720][237 1465 246 1465]
+ParMETIS_PartGeomKway reported a cut of 660 which is correct!
 
+Testing ParMETIS_PartGeomKway with options[1-3] = { 1 200  3}, Nparts: 16
+      Setup: Max:   0.001, Sum:   0.007, Balance:   1.093
+      Total: Max:   0.003, Sum:   0.027, Balance:   1.000
+XYZ Cut:   1478 	Balance:  1.000 [590 4720 4720][189 1058 151 1058]
+      Setup: Max:   0.004, Sum:   0.024, Balance:   1.240
+   Matching: Max:   0.012, Sum:   0.080, Balance:   1.211
+Contraction: Max:   0.007, Sum:   0.046, Balance:   1.249
+   InitPart: Max:   0.025, Sum:   0.164, Balance:   1.201
+    Project: Max:   0.001, Sum:   0.004, Balance:   1.470
+ Initialize: Max:   0.003, Sum:   0.023, Balance:   1.159
+      K-way: Max:   0.017, Sum:   0.108, Balance:   1.222
+       Move: Max:   0.002, Sum:   0.019, Balance:   1.001
+      Total: Max:   0.064, Sum:   0.509, Balance:   1.000
+Final 16-way Cut:    660 	Balance:  1.020 [301 4720 4720][237 1465 246 1465]
+ParMETIS_PartGeomKway reported a cut of 660 which is correct!
 
-PERFORMANCE OF MPI
-------------------
+Testing ParMETIS_PartGeomKway with options[1-3] = { 1 300  3}, Nparts: 16
+      Setup: Max:   0.001, Sum:   0.006, Balance:   1.119
+      Total: Max:   0.003, Sum:   0.027, Balance:   1.000
+XYZ Cut:   1478 	Balance:  1.000 [590 4720 4720][189 1058 151 1058]
+      Setup: Max:   0.003, Sum:   0.021, Balance:   1.297
+   Matching: Max:   0.010, Sum:   0.069, Balance:   1.201
+Contraction: Max:   0.009, Sum:   0.056, Balance:   1.246
+   InitPart: Max:   0.024, Sum:   0.170, Balance:   1.140
+    Project: Max:   0.001, Sum:   0.004, Balance:   1.533
+ Initialize: Max:   0.004, Sum:   0.025, Balance:   1.272
+      K-way: Max:   0.014, Sum:   0.089, Balance:   1.231
+       Move: Max:   0.002, Sum:   0.020, Balance:   1.000
+      Total: Max:   0.062, Sum:   0.495, Balance:   1.000
+Final 16-way Cut:    662 	Balance:  1.017 [300 4720 4720][237 1465 246 1465]
+ParMETIS_PartGeomKway reported a cut of 662 which is correct!
 
-The performance of ParMetis depends highly on the latency of send
-and receive operations. You can test this latency by executing the
-program p2ptest as follows:
+Testing ParMETIS_PartGeomKway with options[1-3] = { 2  0  3}, Nparts: 16
+      Setup: Max:   0.001, Sum:   0.006, Balance:   1.109
+      Total: Max:   0.004, Sum:   0.029, Balance:   1.000
+XYZ Cut:   1478 	Balance:  1.000 [590 4720 4720][189 1058 151 1058]
+      Setup: Max:   0.004, Sum:   0.029, Balance:   1.081
+   Matching: Max:   0.018, Sum:   0.140, Balance:   1.000
+Contraction: Max:   0.007, Sum:   0.054, Balance:   1.022
+   InitPart: Max:   0.008, Sum:   0.064, Balance:   1.013
+    Project: Max:   0.001, Sum:   0.006, Balance:   1.115
+ Initialize: Max:   0.004, Sum:   0.028, Balance:   1.022
+      K-way: Max:   0.020, Sum:   0.158, Balance:   1.000
+       Move: Max:   0.002, Sum:   0.019, Balance:   1.000
+      Total: Max:   0.064, Sum:   0.508, Balance:   1.000
+Final 16-way Cut:    650 	Balance:  1.014 [299 4720 4720][237 1465 246 1465]
+ParMETIS_PartGeomKway reported a cut of 650 which is correct!
 
-% mpirun -np 4 p2ptest
-    0, 0.00050
- 1000, 0.00442
- 2000, 0.00662
- 3000, 0.00626
- 4000, 0.00745
- 5000, 0.00923
- 6000, 0.00842
- 7000, 0.01102
- 8000, 0.01073
- 9000, 0.01191
+Testing ParMETIS_PartGeomKway with options[1-3] = { 2 100  3}, Nparts: 16
+      Setup: Max:   0.001, Sum:   0.006, Balance:   1.107
+      Total: Max:   0.004, Sum:   0.030, Balance:   1.000
+XYZ Cut:   1478 	Balance:  1.000 [590 4720 4720][189 1058 151 1058]
+      Setup: Max:   0.004, Sum:   0.025, Balance:   1.310
+   Matching: Max:   0.014, Sum:   0.093, Balance:   1.172
+Contraction: Max:   0.007, Sum:   0.042, Balance:   1.268
+   InitPart: Max:   0.017, Sum:   0.098, Balance:   1.353
+    Project: Max:   0.001, Sum:   0.004, Balance:   1.441
+ Initialize: Max:   0.004, Sum:   0.024, Balance:   1.184
+      K-way: Max:   0.018, Sum:   0.115, Balance:   1.233
+       Move: Max:   0.002, Sum:   0.019, Balance:   1.000
+      Total: Max:   0.058, Sum:   0.466, Balance:   1.000
+Final 16-way Cut:    650 	Balance:  1.014 [299 4720 4720][237 1465 246 1465]
+ParMETIS_PartGeomKway reported a cut of 650 which is correct!
 
-Please, email be whatever p2ptest gives for you machine and MPI implementation.
+Testing ParMETIS_PartGeomKway with options[1-3] = { 2 200  3}, Nparts: 16
+      Setup: Max:   0.001, Sum:   0.006, Balance:   1.102
+      Total: Max:   0.003, Sum:   0.026, Balance:   1.001
+XYZ Cut:   1478 	Balance:  1.000 [590 4720 4720][189 1058 151 1058]
+      Setup: Max:   0.004, Sum:   0.024, Balance:   1.255
+   Matching: Max:   0.011, Sum:   0.076, Balance:   1.199
+Contraction: Max:   0.009, Sum:   0.051, Balance:   1.414
+   InitPart: Max:   0.017, Sum:   0.098, Balance:   1.355
+    Project: Max:   0.001, Sum:   0.004, Balance:   1.523
+ Initialize: Max:   0.003, Sum:   0.023, Balance:   1.164
+      K-way: Max:   0.018, Sum:   0.123, Balance:   1.185
+       Move: Max:   0.002, Sum:   0.018, Balance:   1.000
+      Total: Max:   0.058, Sum:   0.465, Balance:   1.000
+Final 16-way Cut:    650 	Balance:  1.014 [299 4720 4720][237 1465 246 1465]
+ParMETIS_PartGeomKway reported a cut of 650 which is correct!
 
-So far the best results I've obtained are on Cray~T3D with Cray's MPI library.
+Testing ParMETIS_PartGeomKway with options[1-3] = { 2 300  3}, Nparts: 16
+      Setup: Max:   0.001, Sum:   0.006, Balance:   1.098
+      Total: Max:   0.003, Sum:   0.027, Balance:   1.000
+XYZ Cut:   1478 	Balance:  1.000 [590 4720 4720][189 1058 151 1058]
+      Setup: Max:   0.004, Sum:   0.022, Balance:   1.415
+   Matching: Max:   0.011, Sum:   0.073, Balance:   1.210
+Contraction: Max:   0.009, Sum:   0.048, Balance:   1.437
+   InitPart: Max:   0.017, Sum:   0.105, Balance:   1.295
+    Project: Max:   0.001, Sum:   0.004, Balance:   1.631
+ Initialize: Max:   0.003, Sum:   0.023, Balance:   1.217
+      K-way: Max:   0.013, Sum:   0.087, Balance:   1.182
+       Move: Max:   0.003, Sum:   0.022, Balance:   1.000
+      Total: Max:   0.053, Sum:   0.420, Balance:   1.000
+Final 16-way Cut:    671 	Balance:  1.024 [302 4720 4720][237 1465 246 1465]
+ParMETIS_PartGeomKway reported a cut of 671 which is correct!
 
-George
+Testing ParMETIS_PartGeomKway with options[1-3] = { 1  0  3}, Nparts: 8
+      Setup: Max:   0.001, Sum:   0.006, Balance:   1.105
+      Total: Max:   0.004, Sum:   0.030, Balance:   1.000
+XYZ Cut:   1478 	Balance:  1.000 [590 4720 4720][189 1058 151 1058]
+      Setup: Max:   0.004, Sum:   0.032, Balance:   1.080
+   Matching: Max:   0.017, Sum:   0.140, Balance:   1.000
+Contraction: Max:   0.008, Sum:   0.065, Balance:   1.025
+   InitPart: Max:   0.007, Sum:   0.055, Balance:   1.009
+    Project: Max:   0.001, Sum:   0.006, Balance:   1.098
+ Initialize: Max:   0.004, Sum:   0.031, Balance:   1.051
+      K-way: Max:   0.021, Sum:   0.170, Balance:   1.000
+       Move: Max:   0.002, Sum:   0.019, Balance:   1.001
+      Total: Max:   0.067, Sum:   0.537, Balance:   1.000
+Final 8-way Cut:    396 	Balance:  1.012 [597 4720 4720][237 1465 246 1465]
+ParMETIS_PartGeomKway reported a cut of 396 which is correct!
+
+Testing ParMETIS_PartGeomKway with options[1-3] = { 1 100  3}, Nparts: 8
+      Setup: Max:   0.001, Sum:   0.006, Balance:   1.104
+      Total: Max:   0.003, Sum:   0.027, Balance:   1.000
+XYZ Cut:   1478 	Balance:  1.000 [590 4720 4720][189 1058 151 1058]
+      Setup: Max:   0.004, Sum:   0.024, Balance:   1.294
+   Matching: Max:   0.013, Sum:   0.083, Balance:   1.277
+Contraction: Max:   0.008, Sum:   0.047, Balance:   1.323
+   InitPart: Max:   0.018, Sum:   0.099, Balance:   1.455
+    Project: Max:   0.001, Sum:   0.005, Balance:   1.566
+ Initialize: Max:   0.004, Sum:   0.024, Balance:   1.227
+      K-way: Max:   0.014, Sum:   0.093, Balance:   1.213
+       Move: Max:   0.002, Sum:   0.019, Balance:   1.000
+      Total: Max:   0.054, Sum:   0.433, Balance:   1.000
+Final 8-way Cut:    370 	Balance:  1.010 [596 4720 4720][237 1465 246 1465]
+ParMETIS_PartGeomKway reported a cut of 370 which is correct!
+
+Testing ParMETIS_PartGeomKway with options[1-3] = { 1 200  3}, Nparts: 8
+      Setup: Max:   0.001, Sum:   0.006, Balance:   1.107
+      Total: Max:   0.003, Sum:   0.026, Balance:   1.000
+XYZ Cut:   1478 	Balance:  1.000 [590 4720 4720][189 1058 151 1058]
+      Setup: Max:   0.004, Sum:   0.023, Balance:   1.314
+   Matching: Max:   0.012, Sum:   0.078, Balance:   1.251
+Contraction: Max:   0.008, Sum:   0.048, Balance:   1.341
+   InitPart: Max:   0.017, Sum:   0.096, Balance:   1.376
+    Project: Max:   0.001, Sum:   0.004, Balance:   1.615
+ Initialize: Max:   0.004, Sum:   0.024, Balance:   1.226
+      K-way: Max:   0.014, Sum:   0.090, Balance:   1.251
+       Move: Max:   0.002, Sum:   0.020, Balance:   1.000
+      Total: Max:   0.053, Sum:   0.427, Balance:   1.000
+Final 8-way Cut:    393 	Balance:  1.008 [595 4720 4720][237 1465 246 1465]
+ParMETIS_PartGeomKway reported a cut of 393 which is correct!
+
+Testing ParMETIS_PartGeomKway with options[1-3] = { 1 300  3}, Nparts: 8
+      Setup: Max:   0.001, Sum:   0.006, Balance:   1.104
+      Total: Max:   0.003, Sum:   0.027, Balance:   1.000
+XYZ Cut:   1478 	Balance:  1.000 [590 4720 4720][189 1058 151 1058]
+      Setup: Max:   0.004, Sum:   0.023, Balance:   1.347
+   Matching: Max:   0.011, Sum:   0.071, Balance:   1.255
+Contraction: Max:   0.008, Sum:   0.043, Balance:   1.462
+   InitPart: Max:   0.016, Sum:   0.100, Balance:   1.282
+    Project: Max:   0.001, Sum:   0.004, Balance:   1.717
+ Initialize: Max:   0.004, Sum:   0.023, Balance:   1.270
+      K-way: Max:   0.015, Sum:   0.099, Balance:   1.212
+       Move: Max:   0.002, Sum:   0.019, Balance:   1.000
+      Total: Max:   0.053, Sum:   0.425, Balance:   1.000
+Final 8-way Cut:    412 	Balance:  1.015 [599 4720 4720][237 1465 246 1465]
+ParMETIS_PartGeomKway reported a cut of 412 which is correct!
+
+Testing ParMETIS_PartGeomKway with options[1-3] = { 2  0  3}, Nparts: 8
+      Setup: Max:   0.001, Sum:   0.006, Balance:   1.112
+      Total: Max:   0.003, Sum:   0.027, Balance:   1.000
+XYZ Cut:   1478 	Balance:  1.000 [590 4720 4720][189 1058 151 1058]
+      Setup: Max:   0.004, Sum:   0.032, Balance:   1.080
+   Matching: Max:   0.017, Sum:   0.136, Balance:   1.000
+Contraction: Max:   0.008, Sum:   0.065, Balance:   1.030
+   InitPart: Max:   0.005, Sum:   0.038, Balance:   1.016
+    Project: Max:   0.001, Sum:   0.007, Balance:   1.124
+ Initialize: Max:   0.004, Sum:   0.032, Balance:   1.039
+      K-way: Max:   0.018, Sum:   0.144, Balance:   1.000
+       Move: Max:   0.002, Sum:   0.019, Balance:   1.000
+      Total: Max:   0.060, Sum:   0.482, Balance:   1.000
+Final 8-way Cut:    397 	Balance:  1.010 [596 4720 4720][237 1465 246 1465]
+ParMETIS_PartGeomKway reported a cut of 397 which is correct!
+
+Testing ParMETIS_PartGeomKway with options[1-3] = { 2 100  3}, Nparts: 8
+      Setup: Max:   0.001, Sum:   0.006, Balance:   1.102
+      Total: Max:   0.003, Sum:   0.026, Balance:   1.000
+XYZ Cut:   1478 	Balance:  1.000 [590 4720 4720][189 1058 151 1058]
+      Setup: Max:   0.004, Sum:   0.024, Balance:   1.286
+   Matching: Max:   0.014, Sum:   0.087, Balance:   1.261
+Contraction: Max:   0.008, Sum:   0.048, Balance:   1.323
+   InitPart: Max:   0.016, Sum:   0.081, Balance:   1.556
+    Project: Max:   0.001, Sum:   0.005, Balance:   1.576
+ Initialize: Max:   0.004, Sum:   0.025, Balance:   1.216
+      K-way: Max:   0.015, Sum:   0.095, Balance:   1.250
+       Move: Max:   0.002, Sum:   0.019, Balance:   1.000
+      Total: Max:   0.053, Sum:   0.424, Balance:   1.000
+Final 8-way Cut:    414 	Balance:  1.007 [594 4720 4720][237 1465 246 1465]
+ParMETIS_PartGeomKway reported a cut of 414 which is correct!
+
+Testing ParMETIS_PartGeomKway with options[1-3] = { 2 200  3}, Nparts: 8
+      Setup: Max:   0.001, Sum:   0.006, Balance:   1.079
+      Total: Max:   0.003, Sum:   0.027, Balance:   1.000
+XYZ Cut:   1478 	Balance:  1.000 [590 4720 4720][189 1058 151 1058]
+      Setup: Max:   0.004, Sum:   0.023, Balance:   1.304
+   Matching: Max:   0.013, Sum:   0.082, Balance:   1.237
+Contraction: Max:   0.008, Sum:   0.045, Balance:   1.379
+   InitPart: Max:   0.015, Sum:   0.080, Balance:   1.458
+    Project: Max:   0.001, Sum:   0.005, Balance:   1.545
+ Initialize: Max:   0.004, Sum:   0.024, Balance:   1.232
+      K-way: Max:   0.015, Sum:   0.093, Balance:   1.248
+       Move: Max:   0.002, Sum:   0.019, Balance:   1.000
+      Total: Max:   0.052, Sum:   0.414, Balance:   1.000
+Final 8-way Cut:    427 	Balance:  1.012 [597 4720 4720][237 1465 246 1465]
+ParMETIS_PartGeomKway reported a cut of 427 which is correct!
+
+Testing ParMETIS_PartGeomKway with options[1-3] = { 2 300  3}, Nparts: 8
+      Setup: Max:   0.001, Sum:   0.006, Balance:   1.112
+      Total: Max:   0.003, Sum:   0.026, Balance:   1.000
+XYZ Cut:   1478 	Balance:  1.000 [590 4720 4720][189 1058 151 1058]
+      Setup: Max:   0.004, Sum:   0.022, Balance:   1.338
+   Matching: Max:   0.011, Sum:   0.073, Balance:   1.253
+Contraction: Max:   0.008, Sum:   0.042, Balance:   1.441
+   InitPart: Max:   0.014, Sum:   0.085, Balance:   1.330
+    Project: Max:   0.001, Sum:   0.004, Balance:   1.831
+ Initialize: Max:   0.004, Sum:   0.023, Balance:   1.273
+      K-way: Max:   0.014, Sum:   0.092, Balance:   1.203
+       Move: Max:   0.002, Sum:   0.019, Balance:   1.000
+      Total: Max:   0.050, Sum:   0.400, Balance:   1.000
+Final 8-way Cut:    403 	Balance:  1.005 [593 4720 4720][237 1465 246 1465]
+ParMETIS_PartGeomKway reported a cut of 403 which is correct!
+
+Testing ParMETIS_PartGeomKway with options[1-3] = { 1  0  3}, Nparts: 4
+      Setup: Max:   0.001, Sum:   0.006, Balance:   1.102
+      Total: Max:   0.003, Sum:   0.026, Balance:   1.000
+XYZ Cut:   1478 	Balance:  1.000 [590 4720 4720][189 1058 151 1058]
+      Setup: Max:   0.004, Sum:   0.033, Balance:   1.089
+   Matching: Max:   0.018, Sum:   0.142, Balance:   1.000
+Contraction: Max:   0.010, Sum:   0.078, Balance:   1.017
+   InitPart: Max:   0.004, Sum:   0.032, Balance:   1.020
+    Project: Max:   0.001, Sum:   0.007, Balance:   1.147
+ Initialize: Max:   0.004, Sum:   0.030, Balance:   1.045
+      K-way: Max:   0.014, Sum:   0.113, Balance:   1.001
+       Move: Max:   0.002, Sum:   0.019, Balance:   1.000
+      Total: Max:   0.058, Sum:   0.464, Balance:   1.000
+Final 4-way Cut:    231 	Balance:  1.001 [1181 4720 4720][237 1465 246 1465]
+ParMETIS_PartGeomKway reported a cut of 231 which is correct!
+
+Testing ParMETIS_PartGeomKway with options[1-3] = { 1 100  3}, Nparts: 4
+      Setup: Max:   0.001, Sum:   0.006, Balance:   1.090
+      Total: Max:   0.003, Sum:   0.026, Balance:   1.000
+XYZ Cut:   1478 	Balance:  1.000 [590 4720 4720][189 1058 151 1058]
+      Setup: Max:   0.004, Sum:   0.024, Balance:   1.291
+   Matching: Max:   0.014, Sum:   0.086, Balance:   1.269
+Contraction: Max:   0.008, Sum:   0.046, Balance:   1.330
+   InitPart: Max:   0.015, Sum:   0.075, Balance:   1.600
+    Project: Max:   0.001, Sum:   0.005, Balance:   1.690
+ Initialize: Max:   0.004, Sum:   0.025, Balance:   1.266
+      K-way: Max:   0.011, Sum:   0.075, Balance:   1.201
+       Move: Max:   0.002, Sum:   0.019, Balance:   1.000
+      Total: Max:   0.049, Sum:   0.389, Balance:   1.000
+Final 4-way Cut:    238 	Balance:  1.011 [1193 4720 4720][237 1465 246 1465]
+ParMETIS_PartGeomKway reported a cut of 238 which is correct!
+
+Testing ParMETIS_PartGeomKway with options[1-3] = { 1 200  3}, Nparts: 4
+      Setup: Max:   0.001, Sum:   0.006, Balance:   1.116
+      Total: Max:   0.003, Sum:   0.026, Balance:   1.000
+XYZ Cut:   1478 	Balance:  1.000 [590 4720 4720][189 1058 151 1058]
+      Setup: Max:   0.004, Sum:   0.022, Balance:   1.321
+   Matching: Max:   0.012, Sum:   0.079, Balance:   1.251
+Contraction: Max:   0.008, Sum:   0.044, Balance:   1.384
+   InitPart: Max:   0.014, Sum:   0.074, Balance:   1.486
+    Project: Max:   0.001, Sum:   0.004, Balance:   1.593
+ Initialize: Max:   0.004, Sum:   0.023, Balance:   1.236
+      K-way: Max:   0.015, Sum:   0.097, Balance:   1.216
+       Move: Max:   0.003, Sum:   0.021, Balance:   1.000
+      Total: Max:   0.051, Sum:   0.406, Balance:   1.000
+Final 4-way Cut:    233 	Balance:  1.008 [1190 4720 4720][237 1465 246 1465]
+ParMETIS_PartGeomKway reported a cut of 233 which is correct!
+
+Testing ParMETIS_PartGeomKway with options[1-3] = { 1 300  3}, Nparts: 4
+      Setup: Max:   0.001, Sum:   0.006, Balance:   1.103
+      Total: Max:   0.003, Sum:   0.027, Balance:   1.000
+XYZ Cut:   1478 	Balance:  1.000 [590 4720 4720][189 1058 151 1058]
+      Setup: Max:   0.004, Sum:   0.022, Balance:   1.365
+   Matching: Max:   0.012, Sum:   0.077, Balance:   1.248
+Contraction: Max:   0.008, Sum:   0.042, Balance:   1.455
+   InitPart: Max:   0.013, Sum:   0.077, Balance:   1.371
+    Project: Max:   0.001, Sum:   0.004, Balance:   1.643
+ Initialize: Max:   0.004, Sum:   0.024, Balance:   1.324
+      K-way: Max:   0.011, Sum:   0.076, Balance:   1.195
+       Move: Max:   0.002, Sum:   0.019, Balance:   1.000
+      Total: Max:   0.047, Sum:   0.379, Balance:   1.000
+Final 4-way Cut:    232 	Balance:  1.009 [1191 4720 4720][237 1465 246 1465]
+ParMETIS_PartGeomKway reported a cut of 232 which is correct!
+
+Testing ParMETIS_PartGeomKway with options[1-3] = { 2  0  3}, Nparts: 4
+      Setup: Max:   0.001, Sum:   0.006, Balance:   1.104
+      Total: Max:   0.004, Sum:   0.029, Balance:   1.000
+XYZ Cut:   1478 	Balance:  1.000 [590 4720 4720][189 1058 151 1058]
+      Setup: Max:   0.004, Sum:   0.032, Balance:   1.088
+   Matching: Max:   0.017, Sum:   0.138, Balance:   1.000
+Contraction: Max:   0.008, Sum:   0.065, Balance:   1.027
+   InitPart: Max:   0.004, Sum:   0.033, Balance:   1.020
+    Project: Max:   0.001, Sum:   0.007, Balance:   1.113
+ Initialize: Max:   0.004, Sum:   0.030, Balance:   1.043
+      K-way: Max:   0.016, Sum:   0.131, Balance:   1.001
+       Move: Max:   0.002, Sum:   0.019, Balance:   1.000
+      Total: Max:   0.058, Sum:   0.468, Balance:   1.000
+Final 4-way Cut:    234 	Balance:  1.007 [1188 4720 4720][237 1465 246 1465]
+ParMETIS_PartGeomKway reported a cut of 234 which is correct!
+
+Testing ParMETIS_PartGeomKway with options[1-3] = { 2 100  3}, Nparts: 4
+      Setup: Max:   0.001, Sum:   0.006, Balance:   1.110
+      Total: Max:   0.003, Sum:   0.027, Balance:   1.001
+XYZ Cut:   1478 	Balance:  1.000 [590 4720 4720][189 1058 151 1058]
+      Setup: Max:   0.004, Sum:   0.024, Balance:   1.295
+   Matching: Max:   0.013, Sum:   0.084, Balance:   1.278
+Contraction: Max:   0.008, Sum:   0.047, Balance:   1.327
+   InitPart: Max:   0.015, Sum:   0.077, Balance:   1.588
+    Project: Max:   0.001, Sum:   0.005, Balance:   1.541
+ Initialize: Max:   0.004, Sum:   0.026, Balance:   1.193
+      K-way: Max:   0.012, Sum:   0.078, Balance:   1.192
+       Move: Max:   0.002, Sum:   0.019, Balance:   1.001
+      Total: Max:   0.049, Sum:   0.391, Balance:   1.000
+Final 4-way Cut:    249 	Balance:  1.008 [1190 4720 4720][237 1465 246 1465]
+ParMETIS_PartGeomKway reported a cut of 249 which is correct!
+
+Testing ParMETIS_PartGeomKway with options[1-3] = { 2 200  3}, Nparts: 4
+      Setup: Max:   0.001, Sum:   0.006, Balance:   1.086
+      Total: Max:   0.003, Sum:   0.026, Balance:   1.000
+XYZ Cut:   1478 	Balance:  1.000 [590 4720 4720][189 1058 151 1058]
+      Setup: Max:   0.004, Sum:   0.023, Balance:   1.299
+   Matching: Max:   0.013, Sum:   0.079, Balance:   1.267
+Contraction: Max:   0.008, Sum:   0.044, Balance:   1.367
+   InitPart: Max:   0.014, Sum:   0.076, Balance:   1.493
+    Project: Max:   0.001, Sum:   0.004, Balance:   1.591
+ Initialize: Max:   0.004, Sum:   0.025, Balance:   1.284
+      K-way: Max:   0.011, Sum:   0.073, Balance:   1.221
+       Move: Max:   0.002, Sum:   0.019, Balance:   1.000
+      Total: Max:   0.048, Sum:   0.381, Balance:   1.000
+Final 4-way Cut:    248 	Balance:  1.007 [1188 4720 4720][237 1465 246 1465]
+ParMETIS_PartGeomKway reported a cut of 248 which is correct!
+
+Testing ParMETIS_PartGeomKway with options[1-3] = { 2 300  3}, Nparts: 4
+      Setup: Max:   0.001, Sum:   0.006, Balance:   1.105
+      Total: Max:   0.004, Sum:   0.030, Balance:   1.000
+XYZ Cut:   1478 	Balance:  1.000 [590 4720 4720][189 1058 151 1058]
+      Setup: Max:   0.004, Sum:   0.022, Balance:   1.343
+   Matching: Max:   0.012, Sum:   0.076, Balance:   1.246
+Contraction: Max:   0.008, Sum:   0.043, Balance:   1.462
+   InitPart: Max:   0.013, Sum:   0.078, Balance:   1.358
+    Project: Max:   0.001, Sum:   0.004, Balance:   1.709
+ Initialize: Max:   0.004, Sum:   0.022, Balance:   1.272
+      K-way: Max:   0.013, Sum:   0.085, Balance:   1.221
+       Move: Max:   0.002, Sum:   0.019, Balance:   1.000
+      Total: Max:   0.049, Sum:   0.393, Balance:   1.000
+Final 4-way Cut:    259 	Balance:  1.003 [1184 4720 4720][237 1465 246 1465]
+ParMETIS_PartGeomKway reported a cut of 259 which is correct!
+
+Testing ParMETIS_PartGeom
+ParMETIS_PartGeom reported a cut of 1478
+
+Testing ParMETIS_RefineKway with default options
+      Setup: Max:   0.004, Sum:   0.029, Balance:   1.156
+   Matching: Max:   0.003, Sum:   0.022, Balance:   1.001
+Contraction: Max:   0.006, Sum:   0.043, Balance:   1.106
+   InitPart: Max:   0.000, Sum:   0.000, Balance:   1.373
+    Project: Max:   0.000, Sum:   0.002, Balance:   1.030
+ Initialize: Max:   0.004, Sum:   0.032, Balance:   1.027
+      K-way: Max:   0.025, Sum:   0.204, Balance:   1.000
+      Total: Max:   0.043, Sum:   0.344, Balance:   1.000
+Final Cut:    594 	Balance:  1.017 [600 4720 4720]
+ParMETIS_RefineKway reported a cut of 594 which is correct!
+
+Testing ParMETIS_RefineKway with defualt options (after move)
+      Setup: Max:   0.003, Sum:   0.021, Balance:   1.119
+   Matching: Max:   0.002, Sum:   0.017, Balance:   1.000
+Contraction: Max:   0.005, Sum:   0.034, Balance:   1.089
+   InitPart: Max:   0.000, Sum:   0.000, Balance:   1.488
+    Project: Max:   0.000, Sum:   0.002, Balance:   1.029
+ Initialize: Max:   0.003, Sum:   0.021, Balance:   1.018
+      K-way: Max:   0.006, Sum:   0.048, Balance:   1.001
+      Total: Max:   0.019, Sum:   0.150, Balance:   1.000
+Final Cut:    405 	Balance:  1.007 [594 4720 4720]
+ParMETIS_RefineKway reported a cut of 405 which is correct!
+Initial Load Imbalance: 1.3074, [ 1307  2275 13921]
+
+Testing ParMETIS_RepartLDiffusion with defualt options
+Savings from remapping: 0
+      Setup: Max:   0.002, Sum:   0.018, Balance:   1.096
+   Matching: Max:   0.002, Sum:   0.014, Balance:   1.001
+Contraction: Max:   0.004, Sum:   0.032, Balance:   1.083
+   InitPart: Max:   0.000, Sum:   0.000, Balance:   1.193
+    Project: Max:   0.000, Sum:   0.002, Balance:   1.057
+ Initialize: Max:   0.003, Sum:   0.020, Balance:   1.015
+      K-way: Max:   0.020, Sum:   0.157, Balance:   1.000
+      Remap: Max:   0.002, Sum:   0.016, Balance:   1.001
+      Total: Max:   0.033, Sum:   0.266, Balance:   1.000
+Final Cut:    451 	Balance:  1.050 
+NMoved: 218 60 123 183 [8 1827 13921 4720]
+ParMETIS_RepartLDiffusion reported a cut of 451 which is correct!
+
+Testing ParMETIS_RepartGDiffusion with defualt options
+Savings from remapping: 0
+      Setup: Max:   0.003, Sum:   0.018, Balance:   1.124
+   Matching: Max:   0.002, Sum:   0.014, Balance:   1.001
+Contraction: Max:   0.004, Sum:   0.032, Balance:   1.078
+   InitPart: Max:   0.002, Sum:   0.014, Balance:   1.028
+    Project: Max:   0.000, Sum:   0.002, Balance:   1.136
+ Initialize: Max:   0.002, Sum:   0.017, Balance:   1.013
+      K-way: Max:   0.014, Sum:   0.113, Balance:   1.000
+      Remap: Max:   0.002, Sum:   0.016, Balance:   1.001
+      Total: Max:   0.029, Sum:   0.233, Balance:   1.000
+Final Cut:    522 	Balance:  1.055 
+NMoved: 303 78 119 197 [8 1835 13921 4720]
+ParMETIS_RepartGDiffusion reported a cut of 522 which is correct!
+
+Testing ParMETIS_RepartRemap with defualt options
+Savings from remapping: 2243
+      Setup: Max:   0.002, Sum:   0.015, Balance:   1.117
+   Matching: Max:   0.009, Sum:   0.069, Balance:   1.000
+Contraction: Max:   0.005, Sum:   0.034, Balance:   1.078
+   InitPart: Max:   0.013, Sum:   0.102, Balance:   1.005
+    Project: Max:   0.001, Sum:   0.005, Balance:   1.859
+ Initialize: Max:   0.004, Sum:   0.025, Balance:   1.174
+      K-way: Max:   0.014, Sum:   0.109, Balance:   1.031
+      Remap: Max:   0.002, Sum:   0.019, Balance:   1.001
+      Total: Max:   0.048, Sum:   0.386, Balance:   1.000
+Final Cut:    405 	Balance:  1.006 
+NMoved: 1350 365 306 671 [8 1750 13921 4720]
+ParMETIS_RepartRemap reported a cut of 405 which is correct!
+
+Testing ParMETIS_RepartMLRemap with defualt options
+Savings from remapping: 1163
+Savings from remapping: 0
+      Setup: Max:   0.002, Sum:   0.015, Balance:   1.111
+   Matching: Max:   0.001, Sum:   0.011, Balance:   1.001
+Contraction: Max:   0.004, Sum:   0.027, Balance:   1.079
+   InitPart: Max:   0.012, Sum:   0.097, Balance:   1.005
+    Project: Max:   0.000, Sum:   0.001, Balance:   1.079
+ Initialize: Max:   0.003, Sum:   0.021, Balance:   1.005
+      K-way: Max:   0.014, Sum:   0.109, Balance:   1.000
+      Remap: Max:   0.005, Sum:   0.038, Balance:   1.001
+      Total: Max:   0.041, Sum:   0.326, Balance:   1.000
+Final Cut:    397 	Balance:  1.041 
+NMoved: 1683 461 399 860 [8 1811 13921 4720]
+ParMETIS_RepartMLRemap reported a cut of 397 which is correct!
+
+Testing ParMETIS_NodeND with options[1,3] = {1 3}
+      Setup: Max:   0.003, Sum:   0.014, Balance:   1.462
+   Matching: Max:   0.013, Sum:   0.084, Balance:   1.211
+Contraction: Max:   0.008, Sum:   0.043, Balance:   1.419
+   InitPart: Max:   0.013, Sum:   0.078, Balance:   1.340
+    Project: Max:   0.001, Sum:   0.004, Balance:   1.456
+ Initialize: Max:   0.003, Sum:   0.019, Balance:   1.346
+      K-way: Max:   0.012, Sum:   0.075, Balance:   1.330
+      Total: Max:   0.046, Sum:   0.365, Balance:   1.000
+SepSizes:  47 [2222 2451]
+SepSizes:  32 [1139 1051] 40 [1173 1238]
+SepSizes:  19 [578 542] 25 [525 501] 17 [595 561] 24 [607 607]
+      Setup: Max:   0.009, Sum:   0.067, Balance:   1.103
+   Matching: Max:   0.017, Sum:   0.120, Balance:   1.148
+Contraction: Max:   0.018, Sum:   0.125, Balance:   1.130
+   InitPart: Max:   0.033, Sum:   0.235, Balance:   1.116
+    Project: Max:   0.001, Sum:   0.008, Balance:   1.210
+ Initialize: Max:   0.007, Sum:   0.049, Balance:   1.129
+      K-way: Max:   0.052, Sum:   0.387, Balance:   1.064
+       Move: Max:   0.005, Sum:   0.038, Balance:   1.000
+      Total: Max:   0.151, Sum:   1.210, Balance:   1.000
+
+Testing ParMETIS_NodeND with options[1,3] = {2 3}
+      Setup: Max:   0.003, Sum:   0.014, Balance:   1.446
+   Matching: Max:   0.011, Sum:   0.072, Balance:   1.257
+Contraction: Max:   0.008, Sum:   0.046, Balance:   1.397
+   InitPart: Max:   0.013, Sum:   0.079, Balance:   1.337
+    Project: Max:   0.001, Sum:   0.004, Balance:   1.418
+ Initialize: Max:   0.003, Sum:   0.016, Balance:   1.413
+      K-way: Max:   0.012, Sum:   0.077, Balance:   1.288
+      Total: Max:   0.044, Sum:   0.354, Balance:   1.000
+SepSizes:  50 [2300 2370]
+SepSizes:  29 [1089 1182] 31 [1223 1116]
+SepSizes:  26 [521 542] 25 [587 570] 25 [617 581] 17 [571 528]
+      Setup: Max:   0.009, Sum:   0.069, Balance:   1.094
+   Matching: Max:   0.016, Sum:   0.107, Balance:   1.173
+Contraction: Max:   0.018, Sum:   0.127, Balance:   1.135
+   InitPart: Max:   0.031, Sum:   0.222, Balance:   1.126
+    Project: Max:   0.001, Sum:   0.008, Balance:   1.197
+ Initialize: Max:   0.006, Sum:   0.043, Balance:   1.150
+      K-way: Max:   0.045, Sum:   0.339, Balance:   1.065
+       Move: Max:   0.005, Sum:   0.042, Balance:   1.000
+      Total: Max:   0.140, Sum:   1.120, Balance:   1.000
