@@ -35,9 +35,7 @@ void ReadGraph(GraphType *graph, char *filename, int *wgtflag)
     exit(0);
   }
 
-  do {
-    fgets(line, MAXLINE, fpin);
-  } while (line[0] == '%' && !feof(fpin));
+  while (fgets(line, MAXLINE, fpin) && line[0] == '%');
 
   if (feof(fpin)) {
     graph->nvtxs = 0;
@@ -87,9 +85,13 @@ void ReadGraph(GraphType *graph, char *filename, int *wgtflag)
 
   /* Start reading the graph file */
   for (xadj[0]=0, k=0, i=0; i<graph->nvtxs; i++) {
-    do {
-      fgets(line, MAXLINE, fpin);
-    } while (line[0] == '%' && !feof(fpin));
+    while ((oldstr = fgets(line, MAXLINE, fpin)) && line[0] == '%'); /* skip lines with '#' */
+    if (oldstr == NULL && feof(fpin)) {
+      printf("------------------------------------------------------------------------------\n");
+      printf("Premature end of input file when reading the adjacency list for vertex %d\n", i+1);
+      printf("------------------------------------------------------------------------------\n");
+      exit(0);
+    }
     oldstr = line;
     newstr = NULL;
 
@@ -284,7 +286,10 @@ idxtype *ReadMesh(char *filename, int *ne, int *nn, int *etype)
     exit(0);
   }
 
-  fscanf(fpin, "%d %d", ne, etype);
+  if (fscanf(fpin, "%d %d", ne, etype) != 2) {
+    printf("Header line of input file does not contain two numbers.\n");
+    exit(0);
+  }
 
   switch (*etype) {
     case 1:
@@ -306,7 +311,10 @@ idxtype *ReadMesh(char *filename, int *ne, int *nn, int *etype)
   elmnts = idxmalloc(esize*(*ne), "ReadMesh: elmnts");
 
   for (j=esize*(*ne), i=0; i<j; i++) {
-    fscanf(fpin, "%d", elmnts+i);
+    if (fscanf(fpin, "%d", elmnts+i) != 1) {
+      printf("Missing node number %d for element %d\n", i%esize+1, i/esize);
+      exit(0);
+    }
     elmnts[i]--;
   }
 

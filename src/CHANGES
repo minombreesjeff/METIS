@@ -1,4 +1,18 @@
 
+METIS 4.0.3, 3/19/11
+------------------------------------------------------------------------------
+r9587 | karypis | 2011-03-19 12:22:36 -0500 (Sat, 19 Mar 2011) | 1 line
+
+- Renamed log2() to ilog2() to remove conflicts with C99 log2() function
+- Fixed I/O routines to eliminate compilation warnings
+- Fixed error reporting routines to eliminate compilation warnings
+
+
+METIS 4.0.2, 3/10/04
+------------------------------------------------------------------------------
+- Fixed a problem with weighted graphs and ometis.c
+
+
 METIS 4.0.1, 11/29/98
 ------------------------------------------------------------------------------
 This is mostly a bug-fix release
