@@ -1,9 +1,9 @@
 include ../Makefile.in
 
-INCLUDES = -I./ 
+INCLUDES = -I.
 
 CFLAGS = $(COPTIONS) $(OPTFLAGS) $(INCLUDES)
-LD = $(CC) -L./ 
+LD = $(CC) -L. 
 
 
 OBJS = coarsen.o fm.o initpart.o match.o ccgraph.o memory.o \
@@ -11,7 +11,11 @@ OBJS = coarsen.o fm.o initpart.o match.o ccgraph.o memory.o \
        bucketsort.o graph.o stat.o kmetis.o kwayrefine.o \
        kwayfm.o balance.o ometis.o srefine.o sfm.o separator.o \
        mincover.o mmd.o mesh.o meshpart.o frename.o fortran.o \
-       myqsort.o compress.o ometispar.o estmem.o
+       myqsort.o compress.o parmetis.o estmem.o \
+       mpmetis.o mcoarsen.o mmatch.o minitpart.o mbalance.o \
+       mrefine.o mutil.o mfm.o mkmetis.o mkwayrefine.o mkwayfmh.o \
+       mrefine2.o minitpart2.o mbalance2.o mfm2.o \
+       kvmetis.o kwayvolrefine.o kwayvolfm.o subdomains.o
 
 .c.o:
 	$(CC) $(CFLAGS) -c $*.c
@@ -19,20 +23,6 @@ OBJS = coarsen.o fm.o initpart.o match.o ccgraph.o memory.o \
 ../libmetis.a: $(OBJS)
 	$(AR) $@ $(OBJS)
 	$(RANLIB) $@
-
-checkin:
-	@for file in *.[c,h]; \
-	do \
-	ci -u -m'Maintance' $$file;\
-	done 
-
-checkin2:
-	@for file in *.[c,h]; \
-	do \
-	ci $$file;\
-	rcs -U $$file;\
-	co $$file;\
-	done
 
 clean:
 	rm -f *.o

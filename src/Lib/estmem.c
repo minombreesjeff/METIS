@@ -9,7 +9,7 @@
  * Started 11/4/97
  * George
  *
- * $Id: estmem.c,v 1.5 1997/12/22 23:08:50 karypis Exp $
+ * $Id: estmem.c,v 1.1 1998/11/27 17:59:13 karypis Exp $
  *
  */
 
@@ -30,7 +30,7 @@ void METIS_EstimateMemory(int *nvtxs, idxtype *xadj, idxtype *adjncy, int *numfl
 
   nedges = xadj[*nvtxs];
 
-  InitRandom();
+  InitRandom(-1);
   EstimateCFraction(*nvtxs, xadj, adjncy, &vfraction, &efraction);
 
   /* Estimate the amount of memory for coresize */
@@ -99,7 +99,7 @@ void EstimateCFraction(int nvtxs, idxtype *xadj, idxtype *adjncy, float *vfracti
   *vfraction = (1.0*cnvtxs)/(1.0*nvtxs);
   *efraction = (1.0*cnedges)/(1.0*xadj[nvtxs]);
 
-  GKfree(&cmap, &match, &perm, -1);
+  GKfree(&cmap, &match, &perm, LTERM);
 }
 
 
@@ -149,7 +149,7 @@ int ComputeCoarseGraphSize(int nvtxs, idxtype *xadj, idxtype *adjncy, int cnvtxs
     cnvtxs++;
   }
 
-  GKfree(&htable, -1);
+  GKfree(&htable, LTERM);
 
   return cnedges;
 }

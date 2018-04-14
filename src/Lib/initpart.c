@@ -9,7 +9,7 @@
  * Started 7/23/97
  * George
  *
- * $Id: initpart.c,v 1.4 1997/11/05 13:25:27 karypis Exp $
+ * $Id: initpart.c,v 1.1 1998/11/27 17:59:15 karypis Exp $
  *
  */
 
@@ -41,7 +41,6 @@ void Init2WayPartition(CtrlType *ctrl, GraphType *graph, int *tpwgts, float ubfa
 
   IFSET(ctrl->dbglvl, DBG_IPART, printf("Initial Cut: %d\n", graph->mincut));
   IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->InitPartTmr));
-
   ctrl->dbglvl = dbglvl;
 
 /*
@@ -146,7 +145,7 @@ void GrowBisection(CtrlType *ctrl, GraphType *graph, int *tpwgts, float ubfactor
       }
 
       i = queue[first++];
-      if (pwgts[1]-vwgt[i] < minpwgt[1]) {
+      if (pwgts[0] > 0 && pwgts[1]-vwgt[i] < minpwgt[1]) {
         drain = 1;
         continue;
       }
@@ -167,23 +166,24 @@ void GrowBisection(CtrlType *ctrl, GraphType *graph, int *tpwgts, float ubfactor
       }
     }
 
+    /* Check to see if we hit any bad limiting cases */
+    if (pwgts[1] == 0) { 
+      i = RandomInRange(nvtxs);
+      where[i] = 1;
+      INC_DEC(pwgts[1], pwgts[0], vwgt[i]);
+    }
+
     /*************************************************************
     * Do some partition refinement 
     **************************************************************/
     Compute2WayPartitionParams(ctrl, graph);
-    /*
-    printf("IPART: %3d [%5d %5d] [%5d %5d] %5d\n", graph->nvtxs, pwgts[0], pwgts[1], graph->pwgts[0], graph->pwgts[1], graph->mincut); 
-    */
+    /*printf("IPART: %3d [%5d %5d] [%5d %5d] %5d\n", graph->nvtxs, pwgts[0], pwgts[1], graph->pwgts[0], graph->pwgts[1], graph->mincut); */
 
     Balance2Way(ctrl, graph, tpwgts, ubfactor);
-    /*
-    printf("BPART: [%5d %5d] %5d\n", graph->pwgts[0], graph->pwgts[1], graph->mincut); 
-    */
+    /*printf("BPART: [%5d %5d] %5d\n", graph->pwgts[0], graph->pwgts[1], graph->mincut);*/
 
     FM_2WayEdgeRefine(ctrl, graph, tpwgts, 4);
-    /*
-    printf("RPART: [%5d %5d] %5d\n", graph->pwgts[0], graph->pwgts[1], graph->mincut); 
-    */
+    /*printf("RPART: [%5d %5d] %5d\n", graph->pwgts[0], graph->pwgts[1], graph->mincut);*/
 
     if (bestcut > graph->mincut) {
       bestcut = graph->mincut;
@@ -196,7 +196,7 @@ void GrowBisection(CtrlType *ctrl, GraphType *graph, int *tpwgts, float ubfactor
   graph->mincut = bestcut;
   idxcopy(nvtxs, bestwhere, where);
 
-  GKfree(&bestwhere, &queue, &touched, -1);
+  GKfree(&bestwhere, &queue, &touched, LTERM);
 }
 
 
@@ -334,7 +334,7 @@ void GrowBisectionNode(CtrlType *ctrl, GraphType *graph, float ubfactor)
 
   Compute2WayNodePartitionParams(ctrl, graph); 
 
-  GKfree(&bestwhere, &queue, &touched, -1);
+  GKfree(&bestwhere, &queue, &touched, LTERM);
 }
 
 
@@ -414,7 +414,7 @@ void RandomBisection(CtrlType *ctrl, GraphType *graph, int *tpwgts, float ubfact
   graph->mincut = bestcut;
   idxcopy(nvtxs, bestwhere, where);
 
-  GKfree(&bestwhere, &perm, -1);
+  GKfree(&bestwhere, &perm, LTERM);
 }
 
 

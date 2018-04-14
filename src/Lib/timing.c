@@ -8,7 +8,7 @@
  * Started 7/24/97
  * George
  *
- * $Id: timing.c,v 1.1 1997/11/04 23:19:38 karypis Exp $
+ * $Id: timing.c,v 1.1 1998/11/27 17:59:32 karypis Exp $
  *
  */
 
@@ -56,11 +56,9 @@ void PrintTimers(CtrlType *ctrl)
   printf("\n          Refinement: \t\t\t %7.3f", gettimer(ctrl->RefTmr));
   printf("\n          Projection: \t\t\t %7.3f", gettimer(ctrl->ProjectTmr));
   printf("\n     Splitting: \t\t %7.3f", gettimer(ctrl->SplitTmr));
-/*
   printf("\n          AUX1: \t\t %7.3f", gettimer(ctrl->AuxTmr1));
   printf("\n          AUX2: \t\t %7.3f", gettimer(ctrl->AuxTmr2));
   printf("\n          AUX3: \t\t %7.3f", gettimer(ctrl->AuxTmr3));
-*/
   printf("\n********************************************************************\n");
 }
 

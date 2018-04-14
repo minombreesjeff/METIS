@@ -1,5 +1,5 @@
 
-The distribution of METIS 3.0 consists of a number of files arranged
+The distribution of METIS 4.0 consists of a number of files arranged
 in five directories. The files contained in each directory are as follows:
 
 Doc/		Contains METIS's user manual
@@ -11,6 +11,6 @@ Lib/		Contains the code for METIS's library
 
 Programs/	Contains the code for METIS's stand-alone programs
 
-Test/		Contains some small programs used for testing
-		Documentation is provided there.
+Test/		Contains a comprehensive tester for METIS's partitioning
+                routines.
 

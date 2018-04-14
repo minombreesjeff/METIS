@@ -8,7 +8,7 @@
  * Started 8/1/97
  * George
  *
- * $Id: smbfactor.c,v 1.1 1997/11/04 23:19:49 karypis Exp $
+ * $Id: smbfactor.c,v 1.1 1998/11/27 17:59:40 karypis Exp $
  *
  */
 
@@ -77,7 +77,7 @@ void ComputeFillIn(GraphType *graph, idxtype *iperm)
   printf("  Nonzeros: %d, \tOperation Count: %6.4le\n", maxlnz, opc);
 
 
-  GKfree(&perm, &xlnz, &xnzsub, &nzsub, -1);
+  GKfree(&perm, &xlnz, &xnzsub, &nzsub, LTERM);
 
 
   /* Relabel the vertices so that it starts from 0 */
@@ -149,7 +149,7 @@ idxtype ComputeFillIn2(GraphType *graph, idxtype *iperm)
     opc += (xlnz[i+1]-xlnz[i])*(xlnz[i+1]-xlnz[i]) - (xlnz[i+1]-xlnz[i]);
 
 
-  GKfree(&perm, &xlnz, &xnzsub, &nzsub, -1);
+  GKfree(&perm, &xlnz, &xnzsub, &nzsub, LTERM);
 
 
   /* Relabel the vertices so that it starts from 0 */
@@ -377,7 +377,7 @@ L1400:
   perm++;
   adjncy++;
   xadj++;
-  GKfree(&rchlnk, &mrglnk, &marker, -1);
+  GKfree(&rchlnk, &mrglnk, &marker, LTERM);
 
   return flag;
   

@@ -8,7 +8,7 @@
  * Started 9/26/95
  * George
  *
- * $Id: struct.h,v 1.1 1997/11/04 23:19:36 karypis Exp $
+ * $Id: struct.h,v 1.1 1998/11/27 17:59:31 karypis Exp $
  */
 
 /* Undefine the following #define in order to use short int as the idxtype */
@@ -20,6 +20,8 @@ typedef int idxtype;
 #else
 typedef short idxtype;
 #endif
+
+#define MAXIDX	(1<<8*sizeof(idxtype)-2)
 
 
 /*************************************************************************
@@ -53,6 +55,7 @@ struct PQueueType {
   int type;                     /* The type of the representation used */
   int nnodes;
   int maxnodes;
+  int mustfree;
 
   /* Linear array version of the data structures */
   int pgainspan, ngainspan;     /* plus and negative gain span */
@@ -79,6 +82,17 @@ typedef struct edegreedef EDegreeType;
 
 
 /*************************************************************************
+* The following data structure stores an edge for vol
+**************************************************************************/
+struct vedegreedef {
+  idxtype pid;
+  idxtype ed, ned;
+  idxtype gv;
+};
+typedef struct vedegreedef VEDegreeType;
+
+
+/*************************************************************************
 * This data structure holds various working space data
 **************************************************************************/
 struct workspacedef {
@@ -86,7 +100,13 @@ struct workspacedef {
   int maxcore, ccore;
 
   EDegreeType *edegrees;
+  VEDegreeType *vedegrees;
   int cdegree;
+
+  idxtype *auxcore;			/* This points to the memory of the edegrees */
+
+  idxtype *pmat;			/* An array of k^2 used for eliminating domain 
+                                           connectivity in k-way refinement */
 };
 
 typedef struct workspacedef WorkSpaceType;
@@ -97,12 +117,26 @@ typedef struct workspacedef WorkSpaceType;
 * partition
 **************************************************************************/
 struct rinfodef {
- int id, ed;            /* ID/ED of edges */
- int ndegrees;          /* The number of different ext-degrees */
- EDegreeType *edegrees;     /* List of edges */
+ int id, ed;            	/* ID/ED of nodes */
+ int ndegrees;          	/* The number of different ext-degrees */
+ EDegreeType *edegrees;     	/* List of edges */
 };
 
 typedef struct rinfodef RInfoType;
+
+
+/*************************************************************************
+* The following data structure holds information on degrees for k-way
+* vol-based partition
+**************************************************************************/
+struct vrinfodef {
+ int id, ed, nid;            	/* ID/ED of nodes */
+ int gv;            		/* IV/EV of nodes */
+ int ndegrees;          	/* The number of different ext-degrees */
+ VEDegreeType *edegrees;     	/* List of edges */
+};
+
+typedef struct vrinfodef VRInfoType;
 
 
 /*************************************************************************
@@ -127,6 +161,7 @@ struct graphdef {
   int nvtxs, nedges;		/* The # of vertices and edges in the graph */
   idxtype *xadj;		/* Pointers to the locally stored vertices */
   idxtype *vwgt;		/* Vertex weights */
+  idxtype *vsize;		/* Vertex sizes for min-volume formulation */
   idxtype *adjncy;		/* Array that stores the adjacency lists of nvtxs */
   idxtype *adjwgt;		/* Array that stores the weights of the adjacency lists */
 
@@ -137,7 +172,7 @@ struct graphdef {
   idxtype *cmap;
 
   /* Partition parameters */
-  int mincut;
+  int mincut, minvol;
   idxtype *where, *pwgts;
   int nbnd;
   idxtype *bndptr, *bndind;
@@ -148,13 +183,23 @@ struct graphdef {
   /* K-way refinement parameters */
   RInfoType *rinfo;
 
+  /* K-way volume refinement parameters */
+  VRInfoType *vrinfo;
+
   /* Node refinement information */
   NRInfoType *nrinfo;
+
+
+  /* Additional info needed by the MOC routines */
+  int ncon;			/* The # of constrains */ 
+  float *nvwgt;			/* Normalized vertex weights */
+  float *npwgts;		/* The normalized partition weights */
 
   struct graphdef *coarser, *finer;
 };
 
 typedef struct graphdef GraphType;
+
 
 
 /*************************************************************************
@@ -164,7 +209,7 @@ typedef double timer;
 
 
 /*************************************************************************
-* The following structure stores information used by parallel kmetis
+* The following structure stores information used by Metis
 **************************************************************************/
 struct controldef {
   int CoarsenTo;		/* The # of vertices in the coarsest graph */
@@ -173,6 +218,7 @@ struct controldef {
   int IType;			/* The type of initial partitioning */
   int RType;			/* The type of refinement */
   int maxvwgt;			/* The maximum allowed weight for a vertex */
+  float nmaxvwgt;		/* The maximum allowed weight for a vertex for each constrain */
   int optype;			/* Type of operation */
   int pfactor;			/* .1*prunning factor */
   int nseps;			/* The number of separators to be found during multiple bisections */
@@ -187,6 +233,18 @@ struct controldef {
 };
 
 typedef struct controldef CtrlType;
+
+
+/*************************************************************************
+* The following data structure stores max-partition weight info for 
+* Vertical MOC k-way refinement
+**************************************************************************/
+struct vpwgtdef {
+  float max[2][MAXNCON];
+  int imax[2][MAXNCON];
+};
+
+typedef struct vpwgtdef VPInfoType;
 
 
 

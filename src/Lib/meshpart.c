@@ -8,7 +8,7 @@
  * Started 9/29/97
  * George
  *
- * $Id: meshpart.c,v 1.1 1997/11/04 23:19:22 karypis Exp $
+ * $Id: meshpart.c,v 1.1 1998/11/27 17:59:21 karypis Exp $
  *
  */
 
@@ -76,7 +76,7 @@ void METIS_PartMeshNodal(int *ne, int *nn, idxtype *elmnts, int *etype, int *num
         }
       }
       /* Try to assign it first to the domain with most things in common */
-      j = idxamax(nnbrs, nbrwgt);
+      j = iamax(nnbrs, nbrwgt);
       if (pwgts[nbrind[j]] < maxpwgt) {
         epart[i] = nbrind[j];
       }
@@ -89,7 +89,7 @@ void METIS_PartMeshNodal(int *ne, int *nn, idxtype *elmnts, int *etype, int *num
           }
         }
         if (j == nnbrs) 
-          epart[i] = nbrind[idxamax(nnbrs, nbrwgt)];
+          epart[i] = nbrind[iamax(nnbrs, nbrwgt)];
       }
       pwgts[epart[i]]++;
     }
@@ -98,7 +98,7 @@ void METIS_PartMeshNodal(int *ne, int *nn, idxtype *elmnts, int *etype, int *num
   if (*numflag == 1)
     ChangeMesh2FNumbering2((*ne)*esize, elmnts, *ne, *nn, epart, npart);
 
-  GKfree(&xadj, &adjncy, &pwgts, -1);
+  GKfree(&xadj, &adjncy, &pwgts, LTERM);
 
 }
 
@@ -145,7 +145,7 @@ void METIS_PartMeshDual(int *ne, int *nn, idxtype *elmnts, int *etype, int *numf
   nptr[0] = 0;
 
 
-  /* OK, now compute an element partition based on the nodal partition npart */
+  /* OK, now compute a nodal partition based on the element partition npart */
   idxset(*nn, -1, npart);
   pwgts = idxsmalloc(*nparts, 0, "METIS_MESHPARTDUAL: pwgts");
   for (i=0; i<*nn; i++) {
@@ -178,7 +178,7 @@ void METIS_PartMeshDual(int *ne, int *nn, idxtype *elmnts, int *etype, int *numf
         }
       }
       /* Try to assign it first to the domain with most things in common */
-      j = idxamax(nnbrs, nbrwgt);
+      j = iamax(nnbrs, nbrwgt);
       if (pwgts[nbrind[j]] < maxpwgt) {
         npart[i] = nbrind[j];
       }
@@ -199,6 +199,6 @@ void METIS_PartMeshDual(int *ne, int *nn, idxtype *elmnts, int *etype, int *numf
   if (*numflag == 1)
     ChangeMesh2FNumbering2((*ne)*esize, elmnts, *ne, *nn, epart, npart);
 
-  GKfree(&xadj, &adjncy, &pwgts, &nptr, &nind, -1);
+  GKfree(&xadj, &adjncy, &pwgts, &nptr, &nind, LTERM);
 
 }

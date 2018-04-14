@@ -8,7 +8,7 @@
  * Started 9/25/94
  * George
  *
- * $Id: macros.h,v 1.2 1997/12/01 16:22:11 karypis Exp $
+ * $Id: macros.h,v 1.1 1998/11/27 17:59:18 karypis Exp $
  *
  */
 
@@ -16,10 +16,14 @@
 /*************************************************************************
 * The following macro returns a random number in the specified range
 **************************************************************************/
+#ifdef __VC__
+#define RandomInRange(u) ((rand()>>3)%(u))
+#define RandomInRangeFast(u) ((rand()>>3)%(u))
+#else
 #define RandomInRange(u) ((int)(drand48()*((double)(u))))
 #define RandomInRangeFast(u) ((rand()>>3)%(u))
+#endif
 
-#define log2(x) ((int) (log((double)(x)) / log(2.0)))
 
 
 #define amax(a, b) ((a) >= (b) ? (a) : (b))
@@ -36,8 +40,8 @@
                  do {(a) += (val); (b) -= (val);} while(0)
 
 
-#define scopy(n, a, b) memcpy((void *)(b), (void *)(a), sizeof(float)*(n))
-#define idxcopy(n, a, b) memcpy((void *)(b), (void *)(a), sizeof(idxtype)*(n)) 
+#define scopy(n, a, b) (float *)memcpy((void *)(b), (void *)(a), sizeof(float)*(n))
+#define idxcopy(n, a, b) (idxtype *)memcpy((void *)(b), (void *)(a), sizeof(idxtype)*(n)) 
 
 #define HASHFCT(key, size) ((key)%(size))
 
@@ -67,6 +71,19 @@
 #define idxsmalloc(n, val, msg) (idxset((n), (val), malloc(sizeof(idxtype)*(n))))
 #define GKmalloc(a, b) (malloc((a)))
 #endif
+
+#ifdef DMALLOC
+#   define MALLOC_CHECK(ptr)                                          \
+    if (malloc_verify((ptr)) == DMALLOC_VERIFY_ERROR) {  \
+        printf("***MALLOC_CHECK failed on line %d of file %s: " #ptr "\n", \
+              __LINE__, __FILE__);                               \
+        abort();                                                \
+    }
+#else
+#   define MALLOC_CHECK(ptr) ;
+#endif 
+
+
 
 /*************************************************************************
 * This macro converts a length array in a CSR one

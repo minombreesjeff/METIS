@@ -9,7 +9,7 @@
  * Started 9/17/97
  * George
  *
- * $Id: compress.c,v 1.1 1997/11/04 23:19:08 karypis Exp $
+ * $Id: compress.c,v 1.1 1998/11/27 17:59:12 karypis Exp $
  */
 
 #include <metis.h>
@@ -81,6 +81,7 @@ void CompressGraph(CtrlType *ctrl, GraphType *graph, int nvtxs, idxtype *xadj, i
   if (cnvtxs >= COMPRESSION_FRACTION*nvtxs) {
     graph->nvtxs = nvtxs;
     graph->nedges = xadj[nvtxs];
+    graph->ncon = 1;
     graph->xadj = xadj;
     graph->adjncy = adjncy;
 
@@ -135,6 +136,7 @@ void CompressGraph(CtrlType *ctrl, GraphType *graph, int nvtxs, idxtype *xadj, i
 
     graph->nvtxs = cnvtxs;
     graph->nedges = l;
+    graph->ncon = 1;
 
     idxset(graph->nedges, 1, graph->adjwgt);
     for (i=0; i<cnvtxs; i++)
@@ -146,7 +148,7 @@ void CompressGraph(CtrlType *ctrl, GraphType *graph, int nvtxs, idxtype *xadj, i
 
   }
 
-  GKfree(&keys, &map, &mark, -1);
+  GKfree(&keys, &map, &mark, LTERM);
 }
 
 
@@ -185,6 +187,7 @@ void PruneGraph(CtrlType *ctrl, GraphType *graph, int nvtxs, idxtype *xadj, idxt
   if (nlarge == 0) { /* No prunning */
     graph->nvtxs = nvtxs;
     graph->nedges = xadj[nvtxs];
+    graph->ncon = 1;
     graph->xadj = xadj;
     graph->adjncy = adjncy;
 
@@ -227,6 +230,7 @@ void PruneGraph(CtrlType *ctrl, GraphType *graph, int nvtxs, idxtype *xadj, idxt
 
     graph->nvtxs = pnvtxs;
     graph->nedges = pnedges;
+    graph->ncon = 1;
 
     idxset(pnvtxs, 1, graph->vwgt);
     idxset(pnedges, 1, graph->adjwgt);

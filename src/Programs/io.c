@@ -8,24 +8,27 @@
  * Started 8/28/94
  * George
  *
- * $Id: io.c,v 1.2 1998/01/28 17:23:11 karypis Exp $
+ * $Id: io.c,v 1.1 1998/11/27 17:59:34 karypis Exp $
  *
  */
 
 #include <metis.h>
 
 
+
 /*************************************************************************
 * This function reads the spd matrix
 **************************************************************************/
-void ReadGraph(GraphType *graph, char *filename)
+void ReadGraph(GraphType *graph, char *filename, int *wgtflag)
 {
-  int i, j, k, fmt, readew, readvw, edge, ewgt;
+  int i, j, k, l, fmt, readew, readvw, ncon, edge, ewgt;
   idxtype *xadj, *adjncy, *vwgt, *adjwgt;
-  char line[MAXLINE+1], *oldstr, *newstr;
+  char *line, *oldstr, *newstr;
   FILE *fpin;
 
   InitGraph(graph);
+
+  line = (char *)malloc(sizeof(char)*(MAXLINE+1));
 
   if ((fpin = fopen(filename, "r")) == NULL) {
     printf("Failed to open file %s\n", filename);
@@ -38,27 +41,49 @@ void ReadGraph(GraphType *graph, char *filename)
 
   if (feof(fpin)) {
     graph->nvtxs = 0;
+    free(line);
     return;
   }
 
-  if (sscanf(line,"%d %d %d",&(graph->nvtxs), &(graph->nedges), &fmt) == 2)
-    fmt = 0;
+  fmt = ncon = 0;
+  sscanf(line, "%d %d %d %d", &(graph->nvtxs), &(graph->nedges), &fmt, &ncon);
 
   readew = (fmt%10 > 0);
   readvw = ((fmt/10)%10 > 0);
-  if (fmt >= 100)
-    errexit("Cannot read this type of file format!");
+  if (fmt >= 100) {
+    printf("Cannot read this type of file format!");
+    exit(0);
+  }
+
+
+  *wgtflag = 0;
+  if (readew)
+    *wgtflag += 1;
+  if (readvw)
+    *wgtflag += 2;
+
+  if (ncon > 0 && !readvw) {
+    printf("------------------------------------------------------------------------------\n");
+    printf("***  I detected an error in your input file  ***\n\n");
+    printf("You specified ncon=%d, but the fmt parameter does not specify vertex weights\n", ncon);
+    printf("Make sure that the fmt parameter is set to either 10 or 11.\n");
+    printf("------------------------------------------------------------------------------\n");
+    exit(0);
+  }
 
   graph->nedges *=2;
+  ncon = graph->ncon = (ncon == 0 ? 1 : ncon);
+
+  /*printf("%d %d %d %d %d [%d %d]\n", fmt, fmt%10, (fmt/10)%10, ncon, graph->ncon, readew, readvw);*/
 
   if (graph->nvtxs > MAXIDX) 
-    errexit("\nThe matrix is too big: %d", graph->nvtxs);
+    errexit("\nThe matrix is too big: %d [%d %d]\n", graph->nvtxs, MAXIDX, sizeof(idxtype));
 
   xadj = graph->xadj = idxsmalloc(graph->nvtxs+1, 0, "ReadGraph: xadj");
   adjncy = graph->adjncy = idxmalloc(graph->nedges, "ReadGraph: adjncy");
 
-  vwgt = graph->vwgt = (readvw ? idxmalloc(graph->nvtxs, "ReadGraph: vwgt") : idxsmalloc(graph->nvtxs, 1, "ReadGraph: vwgt"));
-  adjwgt = graph->adjwgt = (readew ? idxmalloc(graph->nedges, "ReadGraph: adjwgt") : idxsmalloc(graph->nedges, 1, "ReadGraph: adjwgt"));
+  vwgt = graph->vwgt = (readvw ? idxmalloc(ncon*graph->nvtxs, "ReadGraph: vwgt") : NULL);
+  adjwgt = graph->adjwgt = (readew ? idxmalloc(graph->nedges, "ReadGraph: adjwgt") : NULL);
 
   /* Start reading the graph file */
   for (xadj[0]=0, k=0, i=0; i<graph->nvtxs; i++) {
@@ -72,8 +97,10 @@ void ReadGraph(GraphType *graph, char *filename)
       errexit("\nBuffer for fgets not big enough!\n");
 
     if (readvw) {
-      vwgt[i] = (int)strtol(oldstr, &newstr, 10);
-      oldstr = newstr;
+      for (l=0; l<ncon; l++) {
+        vwgt[i*ncon+l] = (int)strtol(oldstr, &newstr, 10);
+        oldstr = newstr;
+      }
     }
 
     for (;;) {
@@ -98,9 +125,21 @@ void ReadGraph(GraphType *graph, char *filename)
 
   fclose(fpin);
 
-  if (k != graph->nedges)
-    errexit("ReadGraph: Something wrong with the edges from input file %d %d",graph->nedges, k);
+  if (k != graph->nedges) {
+    printf("------------------------------------------------------------------------------\n");
+    printf("***  I detected an error in your input file  ***\n\n");
+    printf("In the first line of the file, you specified that the graph contained\n%d edges. However, I only found %d edges in the file.\n", graph->nedges/2, k/2);
+    if (2*k == graph->nedges) {
+      printf("\n *> I detected that you specified twice the number of edges that you have in\n");
+      printf("    the file. Remember that the number of edges specified in the first line\n");
+      printf("    counts each edge between vertices v and u only once.\n\n");
+    }
+    printf("Please specify the correct number of edges in the first line of the file.\n");
+    printf("------------------------------------------------------------------------------\n");
+    exit(0);
+  }
 
+  free(line);
 }
 
 
@@ -209,7 +248,7 @@ int CheckGraph(GraphType *graph)
       else {
         for (l=xadj[k]; l<xadj[k+1]; l++) {
           if (adjncy[l] == i) {
-            if (adjwgt[l] != adjwgt[j]) {
+            if (adjwgt != NULL && adjwgt[l] != adjwgt[j]) {
               printf("Edges (%d %d) and (%d %d) do not have the same weight! %d %d\n", i,k,k,i, adjwgt[l], adjwgt[adjncy[j]]);
               err++;
             }
@@ -280,7 +319,7 @@ idxtype *ReadMesh(char *filename, int *ne, int *nn, int *etype)
 
 
 /*************************************************************************
-* This function reads the element node array of a mesh
+* This function writes a graphs into a file 
 **************************************************************************/
 void WriteGraph(char *filename, int nvtxs, idxtype *xadj, idxtype *adjncy)
 {
@@ -296,6 +335,45 @@ void WriteGraph(char *filename, int nvtxs, idxtype *xadj, idxtype *adjncy)
 
   for (i=0; i<nvtxs; i++) {
     fprintf(fpout, "\n");
+    for (j=xadj[i]; j<xadj[i+1]; j++)
+      fprintf(fpout, " %d", adjncy[j]+1);
+  }
+
+  fclose(fpout);
+}
+
+
+/*************************************************************************
+* This function writes a graphs into a file 
+**************************************************************************/
+void WriteMocGraph(GraphType *graph)
+{
+  int i, j, nvtxs, ncon;
+  idxtype *xadj, *adjncy;
+  float *nvwgt;
+  char filename[256];
+  FILE *fpout;
+
+  nvtxs = graph->nvtxs;
+  ncon = graph->ncon;
+  xadj = graph->xadj;
+  adjncy = graph->adjncy;
+  nvwgt = graph->nvwgt;
+
+  sprintf(filename, "moc.graph.%d.%d", nvtxs, ncon);
+
+  if ((fpout = fopen(filename, "w")) == NULL) {
+    printf("Failed to open file %s\n", filename);
+    exit(0);
+  }
+
+  fprintf(fpout, "%d %d 10 1 %d", nvtxs, xadj[nvtxs]/2, ncon);
+
+  for (i=0; i<nvtxs; i++) {
+    fprintf(fpout, "\n");
+    for (j=0; j<ncon; j++)
+      fprintf(fpout, "%d ", (int)((float)10e6*nvwgt[i*ncon+j]));
+
     for (j=xadj[i]; j<xadj[i+1]; j++)
       fprintf(fpout, " %d", adjncy[j]+1);
   }

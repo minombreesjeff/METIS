@@ -8,7 +8,7 @@
  * Started 8/1/97
  * George
  *
- * $Id: sfm.c,v 1.3 1997/12/22 19:54:54 karypis Exp $
+ * $Id: sfm.c,v 1.1 1998/11/27 17:59:30 karypis Exp $
  *
  */
 
@@ -77,7 +77,7 @@ void FM_2WayNodeRefine(CtrlType *ctrl, GraphType *graph, float ubfactor, int npa
     ASSERT(CheckNodeBnd(graph, nbnd));
     ASSERT(CheckNodePartitionParams(graph));
 
-    limit = (ctrl->oflags&OFLAG_COMPRESS ? amin(5*nbnd, 300) : amin(2*nbnd, 150));
+    limit = (ctrl->oflags&OFLAG_COMPRESS ? amin(5*nbnd, 400) : amin(2*nbnd, 300));
 
     /******************************************************
     * Get into the FM loop
@@ -312,7 +312,7 @@ void FM_2WayNodeRefine2(CtrlType *ctrl, GraphType *graph, float ubfactor, int np
     ASSERT(CheckNodeBnd(graph, nbnd));
     ASSERT(CheckNodePartitionParams(graph));
 
-    limit = (ctrl->oflags&OFLAG_COMPRESS ? amin(5*nbnd, 300) : amin(2*nbnd, 150));
+    limit = (ctrl->oflags&OFLAG_COMPRESS ? amin(5*nbnd, 400) : amin(2*nbnd, 300));
 
     /******************************************************
     * Get into the FM loop
@@ -547,7 +547,7 @@ void FM_2WayNodeRefineEqWgt(CtrlType *ctrl, GraphType *graph, int npasses)
     ASSERT(CheckNodeBnd(graph, nbnd));
     ASSERT(CheckNodePartitionParams(graph));
 
-    limit = (ctrl->oflags&OFLAG_COMPRESS ? amin(5*nbnd, 300) : amin(2*nbnd, 150));
+    limit = (ctrl->oflags&OFLAG_COMPRESS ? amin(5*nbnd, 400) : amin(2*nbnd, 300));
 
     /******************************************************
     * Get into the FM loop
@@ -750,8 +750,6 @@ void FM_2WayNodeRefine_OneSided(CtrlType *ctrl, GraphType *graph, float ubfactor
 
   to = (pwgts[0] < pwgts[1] ? 1 : 0);
   for (pass=0; pass<npasses; pass++) {
-    limit = (ctrl->oflags&OFLAG_COMPRESS ? amin(5*nbnd, 300) : amin(2*nbnd, 150));
-
     other = to; 
     to = (to+1)%2;
 
@@ -770,6 +768,8 @@ void FM_2WayNodeRefine_OneSided(CtrlType *ctrl, GraphType *graph, float ubfactor
 
     ASSERT(CheckNodeBnd(graph, nbnd));
     ASSERT(CheckNodePartitionParams(graph));
+
+    limit = (ctrl->oflags&OFLAG_COMPRESS ? amin(5*nbnd, 400) : amin(2*nbnd, 300));
 
     /******************************************************
     * Get into the FM loop

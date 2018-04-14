@@ -9,7 +9,7 @@
  * Started 9/29/97
  * George
  *
- * $Id: partnmesh.c,v 1.1 1997/11/04 23:19:47 karypis Exp $
+ * $Id: partnmesh.c,v 1.1 1998/11/27 17:59:39 karypis Exp $
  *
  */
 
@@ -50,7 +50,7 @@ main(int argc, char *argv[])
   npart = idxmalloc(nn, "main: npart");
 
   printf("**********************************************************************\n");
-  printf("  METIS 3.0   Copyright 1997, Regents of the University of Minnesota\n\n");
+  printf("%s", METISTITLE);
   printf("Mesh Information ----------------------------------------------------\n");
   printf("  Name: %s, #Elements: %d, #Nodes: %d, Etype: %s\n\n", argv[1], ne, nn, etypestr[etype-1]);
   printf("Partitioning Nodal Graph... -----------------------------------------\n");
@@ -83,10 +83,10 @@ main(int argc, char *argv[])
 
   ComputePartitionInfo(&graph, nparts, epart);
 
-  GKfree(&graph.xadj, &graph.adjncy, &graph.vwgt, &graph.adjwgt, -1);
+  GKfree(&graph.xadj, &graph.adjncy, &graph.vwgt, &graph.adjwgt, LTERM);
 */
 
-  GKfree(&elmnts, &epart, &npart, -1);
+  GKfree(&elmnts, &epart, &npart, LTERM);
 
 }
 

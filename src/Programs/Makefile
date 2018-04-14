@@ -6,7 +6,7 @@ INCLUDES = -I../Lib
 CFLAGS = $(COPTIONS) $(OPTFLAGS) $(INCLUDES)
 
 LIBS = -lmetis -lm
-LD = $(CC) $(LDOPTIONS) -L./ -L../ 
+LD = $(CC) $(LDOPTIONS) -L. -L..
 METISLIB = ../libmetis.a
 
 
@@ -66,20 +66,6 @@ $(BINDIR)/graphchk$(VERNUM): $(GRAPHCHKOBJ) $(METISLIB)
 	$(LD)  -o $@ $(GRAPHCHKOBJ) $(LIBS)
 	chmod 755 $@
 
-
-checkin:
-	@for file in *.[c,h]; \
-	do \
-	ci -u -m'Maintance' $$file;\
-	done 
-
-checkin2:
-	@for file in *.[c,h]; \
-	do \
-	ci $$file;\
-	rcs -U $$file;\
-	co $$file;\
-	done
 
 clean:
 	rm -f *.o

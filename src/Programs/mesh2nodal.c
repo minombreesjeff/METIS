@@ -9,7 +9,7 @@
  * Started 9/29/97
  * George
  *
- * $Id: mesh2nodal.c,v 1.2 1997/12/01 16:22:19 karypis Exp $
+ * $Id: mesh2nodal.c,v 1.1 1998/11/27 17:59:35 karypis Exp $
  *
  */
 
@@ -40,7 +40,7 @@ main(int argc, char *argv[])
   stoptimer(IOTmr);
 
   printf("**********************************************************************\n");
-  printf("  METIS 3.0   Copyright 1997, Regents of the University of Minnesota\n\n");
+  printf("%s", METISTITLE);
   printf("Mesh Information ----------------------------------------------------\n");
   printf("  Name: %s, #Elements: %d, #Nodes: %d, Etype: %s\n\n", argv[1], ne, nn, etypestr[etype-1]);
   printf("Forming Nodal Graph... ----------------------------------------------\n");
@@ -65,7 +65,7 @@ main(int argc, char *argv[])
   printf("  Nodal Creation:\t\t %7.3f\n", gettimer(DUALTmr));
   printf("**********************************************************************\n");
 
-  GKfree(&elmnts, &xadj, &adjncy, -1);
+  GKfree(&elmnts, &xadj, &adjncy, LTERM);
 
 }
 

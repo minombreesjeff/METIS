@@ -6,7 +6,7 @@
  * Started 7/23/97
  * George
  *
- * $Id: coarsen.c,v 1.1 1997/11/04 23:19:08 karypis Exp $
+ * $Id: coarsen.c,v 1.1 1998/11/27 17:59:12 karypis Exp $
  *
  */
 
@@ -36,29 +36,35 @@ GraphType *Coarsen2Way(CtrlType *ctrl, GraphType *graph)
 
   do {
     IFSET(ctrl->dbglvl, DBG_COARSEN, printf("%6d %7d [%d] [%d %d]\n",
-          cgraph->nvtxs, cgraph->nedges, ctrl->CoarsenTo, ctrl->maxvwgt, idxsum(cgraph->nvtxs, cgraph->vwgt)));
+          cgraph->nvtxs, cgraph->nedges, ctrl->CoarsenTo, ctrl->maxvwgt, 
+          (cgraph->vwgt ? idxsum(cgraph->nvtxs, cgraph->vwgt) : cgraph->nvtxs)));
 
-    switch (ctrl->CType) {
-      case MATCH_RM:
-        Match_RM(ctrl, cgraph);
-        break;
-      case MATCH_HEM:
-        if (clevel < 1)
+    if (cgraph->adjwgt) {
+      switch (ctrl->CType) {
+        case MATCH_RM:
           Match_RM(ctrl, cgraph);
-        else
-          Match_HEM(ctrl, cgraph);
-        break;
-      case MATCH_SHEM:
-        if (clevel < 1)
-          Match_RM(ctrl, cgraph);
-        else
+          break;
+        case MATCH_HEM:
+          if (clevel < 1)
+            Match_RM(ctrl, cgraph);
+          else
+            Match_HEM(ctrl, cgraph);
+          break;
+        case MATCH_SHEM:
+          if (clevel < 1)
+            Match_RM(ctrl, cgraph);
+          else
+            Match_SHEM(ctrl, cgraph);
+          break;
+        case MATCH_SHEMKWAY:
           Match_SHEM(ctrl, cgraph);
-        break;
-      case MATCH_SHEMKWAY:
-        Match_SHEM(ctrl, cgraph);
-        break;
-      default:
-        errexit("Unknown CType: %d\n", ctrl->CType);
+          break;
+        default:
+          errexit("Unknown CType: %d\n", ctrl->CType);
+      }
+    }
+    else {
+      Match_RM_NVW(ctrl, cgraph);
     }
 
     cgraph = cgraph->coarser;
@@ -67,7 +73,8 @@ GraphType *Coarsen2Way(CtrlType *ctrl, GraphType *graph)
   } while (cgraph->nvtxs > ctrl->CoarsenTo && cgraph->nvtxs < COARSEN_FRACTION2*cgraph->finer->nvtxs && cgraph->nedges > cgraph->nvtxs/2); 
 
   IFSET(ctrl->dbglvl, DBG_COARSEN, printf("%6d %7d [%d] [%d %d]\n",
-        cgraph->nvtxs, cgraph->nedges, ctrl->CoarsenTo, ctrl->maxvwgt, idxsum(cgraph->nvtxs, cgraph->vwgt)));
+        cgraph->nvtxs, cgraph->nedges, ctrl->CoarsenTo, ctrl->maxvwgt, 
+        (cgraph->vwgt ? idxsum(cgraph->nvtxs, cgraph->vwgt) : cgraph->nvtxs)));
 
   IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->CoarsenTmr));
 

@@ -1,5 +1,5 @@
 
-Copyright 1997, Regents of the University of Minnesota.
+Copyright 1998, Regents of the University of Minnesota.
 METIS was written by George Karypis (karypis@cs.umn.edu)
 
 Introduction ------------------------------------------------------------
@@ -41,8 +41,9 @@ to modify the following:
 
 
 After saving the modified Makefile.in, type 'make' at the prompt. This will
-build all of METIS's stand-alone programs as well as the METIS's library.
-Upon successful completion, make creates the following 10 files:
+build all of METIS's stand-alone programs, METIS's library, and a program that
+tests the various partitioning algorithms.
+Upon successful completion, make creates the following 11 files:
 
   pmetis, 
   kmetis, 
@@ -54,22 +55,25 @@ Upon successful completion, make creates the following 10 files:
   mesh2dual,
   graphchk,
   libmetis.a
+  Graphs/mtest
 
-
+Please read the instructions in the file Graphs/0README on how to go and
+test the various programs.
 
 
 Contact Information -----------------------------------------------------
 
 If you have any comments, suggestions, or bug reports, please send them
-to me. My email address is 
-  karypis@cs.umn.edu
+to metis@cs.umn.edu.
 
 Any bug fixes and upgrades of the METIS packages is available on WWW at
 URL: http://www.cs.umn.edu/~metis
+or
+URL: http://www.cs.umn.edu/~karypis/metis
 
 
 George Karypis
-Wed Nov  5 17:33:14 CST 1997
+Sun Sep 20 13:18:36 CDT 1998
 
 
 

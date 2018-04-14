@@ -8,7 +8,7 @@
  * Started 9/28/95
  * George
  *
- * $Id: util.c,v 1.2 1997/12/22 19:54:56 karypis Exp $
+ * $Id: util.c,v 1.1 1998/11/27 17:59:32 karypis Exp $
  */
 
 #include <metis.h>
@@ -131,7 +131,7 @@ void GKfree(void **ptr1,...)
   va_start(plist, ptr1);
 
   /* while ((int)(ptr = va_arg(plist, void **)) != -1) { */
-  while ((ptr = va_arg(plist, void **)) != (void **) -1) {
+  while ((ptr = va_arg(plist, void **)) != LTERM) {
     if (*ptr != NULL)
       free(*ptr);
     *ptr = NULL;
@@ -169,6 +169,34 @@ idxtype *idxset(int n, idxtype val, idxtype *x)
 }
 
 
+/*************************************************************************
+* These functions set the values of a vector
+**************************************************************************/
+float *sset(int n, float val, float *x)
+{
+  int i;
+
+  for (i=0; i<n; i++)
+    x[i] = val;
+
+  return x;
+}
+
+
+
+/*************************************************************************
+* These functions return the index of the maximum element in a vector
+**************************************************************************/
+int iamax(int n, int *x)
+{
+  int i, max=0;
+
+  for (i=1; i<n; i++)
+    max = (x[i] > x[max] ? i : max);
+
+  return max;
+}
+
 
 /*************************************************************************
 * These functions return the index of the maximum element in a vector
@@ -183,11 +211,82 @@ int idxamax(int n, idxtype *x)
   return max;
 }
 
+/*************************************************************************
+* These functions return the index of the maximum element in a vector
+**************************************************************************/
+int idxamax_strd(int n, idxtype *x, int incx)
+{
+  int i, max=0;
+
+  n *= incx;
+  for (i=incx; i<n; i+=incx)
+    max = (x[i] > x[max] ? i : max);
+
+  return max/incx;
+}
+
+
+
+/*************************************************************************
+* These functions return the index of the maximum element in a vector
+**************************************************************************/
+int samax(int n, float *x)
+{
+  int i, max=0;
+
+  for (i=1; i<n; i++)
+    max = (x[i] > x[max] ? i : max);
+
+  return max;
+}
+
+/*************************************************************************
+* These functions return the index of the almost maximum element in a vector
+**************************************************************************/
+int samax2(int n, float *x)
+{
+  int i, max1, max2;
+
+  if (x[0] > x[1]) {
+    max1 = 0;
+    max2 = 1;
+  }
+  else {
+    max1 = 1;
+    max2 = 0;
+  }
+
+  for (i=2; i<n; i++) {
+    if (x[i] > x[max1]) {
+      max2 = max1;
+      max1 = i;
+    }
+    else if (x[i] > x[max2])
+      max2 = i;
+  }
+
+  return max2;
+}
+
 
 /*************************************************************************
 * These functions return the index of the minimum element in a vector
 **************************************************************************/
 int idxamin(int n, idxtype *x)
+{
+  int i, min=0;
+
+  for (i=1; i<n; i++)
+    min = (x[i] < x[min] ? i : min);
+
+  return min;
+}
+
+
+/*************************************************************************
+* These functions return the index of the minimum element in a vector
+**************************************************************************/
+int samin(int n, float *x)
 {
   int i, min=0;
 
@@ -209,6 +308,31 @@ int idxsum(int n, idxtype *x)
     sum += x[i];
 
   return sum;
+}
+
+
+/*************************************************************************
+* This function sums the entries in an array
+**************************************************************************/
+int idxsum_strd(int n, idxtype *x, int incx)
+{
+  int i, sum = 0;
+
+  for (i=0; i<n; i++, x+=incx) {
+    sum += *x;
+  }
+
+  return sum;
+}
+
+
+/*************************************************************************
+* This function sums the entries in an array
+**************************************************************************/
+void idxadd(int n, idxtype *x, idxtype *y)
+{
+  for (n--; n>=0; n--)
+    y[n] += x[n];
 }
 
 
@@ -248,6 +372,20 @@ float ssum(int n, float *x)
 
   for (i=0; i<n; i++)
     sum += x[i];
+
+  return sum;
+}
+
+/*************************************************************************
+* This function sums the entries in an array
+**************************************************************************/
+float ssum_strd(int n, float *x, int incx)
+{
+  int i;
+  float sum = 0.0;
+
+  for (i=0; i<n; i++, x+=incx)
+    sum += *x;
 
   return sum;
 }
@@ -298,12 +436,12 @@ float sdot(int n, float *x, float *y)
 /*************************************************************************
 * This function computes a 2-norm
 **************************************************************************/
-void saxpy(int n, float alpha, float *x, float *y)
+void saxpy(int n, float alpha, float *x, int incx, float *y, int incy)
 {
   int i;
  
-  for (i=0; i<n; i++)
-    y[i] += alpha*x[i];
+  for (i=0; i<n; i++, x+=incx, y+=incy) 
+    *y += alpha*(*x);
 }
 
 
@@ -352,9 +490,30 @@ int ispow2(int a)
 /*************************************************************************
 * This function initializes the random number generator
 **************************************************************************/
-void InitRandom(void)
+void InitRandom(int seed)
 {
-  srand48(7654321L);  
-  srand(4321);  
+  if (seed == -1) {
+#ifndef __VC__
+    srand48(7654321L);  
+#endif
+    srand(4321);  
+  }
+  else {
+#ifndef __VC__
+    srand48(seed);  
+#endif
+    srand(seed);  
+  }
+}
+
+/*************************************************************************
+* This function returns the log2(x)
+**************************************************************************/
+int log2(int a)
+{
+  int i;
+
+  for (i=1; a > 1; i++, a = a>>1);
+  return i-1;
 }
 

@@ -8,7 +8,7 @@
  * Started 7/24/97
  * George
  *
- * $Id: debug.c,v 1.1 1997/11/04 23:19:09 karypis Exp $
+ * $Id: debug.c,v 1.1 1998/11/27 17:59:13 karypis Exp $
  *
  */
 
@@ -21,10 +21,19 @@ int ComputeCut(GraphType *graph, idxtype *where)
 {
   int i, j, cut;
 
-  for (cut=0, i=0; i<graph->nvtxs; i++) {
-    for (j=graph->xadj[i]; j<graph->xadj[i+1]; j++)
-      if (where[i] != where[graph->adjncy[j]])
-        cut += graph->adjwgt[j];
+  if (graph->adjwgt == NULL) {
+    for (cut=0, i=0; i<graph->nvtxs; i++) {
+      for (j=graph->xadj[i]; j<graph->xadj[i+1]; j++)
+        if (where[i] != where[graph->adjncy[j]])
+          cut++;
+    }
+  }
+  else {
+    for (cut=0, i=0; i<graph->nvtxs; i++) {
+      for (j=graph->xadj[i]; j<graph->xadj[i+1]; j++)
+        if (where[i] != where[graph->adjncy[j]])
+          cut += graph->adjwgt[j];
+    }
   }
 
   return cut/2;

@@ -9,7 +9,7 @@
  * Started 7/23/97
  * George
  *
- * $Id: match.c,v 1.3 1997/12/22 19:54:48 karypis Exp $
+ * $Id: match.c,v 1.1 1998/11/27 17:59:18 karypis Exp $
  *
  */
 
@@ -63,6 +63,57 @@ void Match_RM(CtrlType *ctrl, GraphType *graph)
   IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->MatchTmr));
 
   CreateCoarseGraph(ctrl, graph, cnvtxs, match, perm);
+
+  idxwspacefree(ctrl, nvtxs);
+  idxwspacefree(ctrl, nvtxs);
+}
+
+
+/*************************************************************************
+* This function finds a matching using the HEM heuristic
+**************************************************************************/
+void Match_RM_NVW(CtrlType *ctrl, GraphType *graph)
+{
+  int i, ii, j, nvtxs, cnvtxs, maxidx;
+  idxtype *xadj, *adjncy;
+  idxtype *match, *cmap, *perm;
+
+  IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->MatchTmr));
+
+  nvtxs = graph->nvtxs;
+  xadj = graph->xadj;
+  adjncy = graph->adjncy;
+
+  cmap = graph->cmap;
+  match = idxset(nvtxs, UNMATCHED, idxwspacemalloc(ctrl, nvtxs));
+
+  perm = idxwspacemalloc(ctrl, nvtxs);
+  RandomPermute(nvtxs, perm, 1);
+
+  cnvtxs = 0;
+  for (ii=0; ii<nvtxs; ii++) {
+    i = perm[ii];
+
+    if (match[i] == UNMATCHED) {  /* Unmatched */
+      maxidx = i;
+
+      /* Find a random matching, subject to maxvwgt constraints */
+      for (j=xadj[i]; j<xadj[i+1]; j++) {
+        if (match[adjncy[j]] == UNMATCHED) {
+          maxidx = adjncy[j];
+          break;
+        }
+      }
+
+      cmap[i] = cmap[maxidx] = cnvtxs++;
+      match[i] = maxidx;
+      match[maxidx] = i;
+    }
+  }
+
+  IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->MatchTmr));
+
+  CreateCoarseGraph_NVW(ctrl, graph, cnvtxs, match, perm);
 
   idxwspacefree(ctrl, nvtxs);
   idxwspacefree(ctrl, nvtxs);
@@ -205,10 +256,11 @@ void Match_SHEM(CtrlType *ctrl, GraphType *graph)
 
   IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->MatchTmr));
 
+  idxwspacefree(ctrl, nvtxs);  /* degrees */
+  idxwspacefree(ctrl, nvtxs);  /* tperm */
+
   CreateCoarseGraph(ctrl, graph, cnvtxs, match, perm);
 
-  idxwspacefree(ctrl, nvtxs);
-  idxwspacefree(ctrl, nvtxs);
   idxwspacefree(ctrl, nvtxs);
   idxwspacefree(ctrl, nvtxs);
 }

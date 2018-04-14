@@ -8,7 +8,7 @@
  * Started 8/1/97
  * George
  *
- * $Id: separator.c,v 1.2 1997/12/22 19:54:54 karypis Exp $
+ * $Id: separator.c,v 1.1 1998/11/27 17:59:30 karypis Exp $
  *
  */
 
@@ -37,7 +37,7 @@ void ConstructSeparator(CtrlType *ctrl, GraphType *graph, float ubfactor)
       where[j] = 2;
   }
 
-  GKfree(&graph->rdata, -1);
+  GKfree(&graph->rdata, LTERM);
   Allocate2WayNodePartitionMemory(ctrl, graph);
   idxcopy(nvtxs, where, graph->where);
   idxwspacefree(ctrl, nvtxs);
@@ -143,7 +143,7 @@ void ConstructMinCoverSeparator0(CtrlType *ctrl, GraphType *graph, float ubfacto
       where[j] = 2;
     }
 
-    GKfree(&bxadj, &badjncy, -1);
+    GKfree(&bxadj, &badjncy, LTERM);
 
     for (i=0; i<nbnd; i++)
       bndptr[bndind[i]] = -1;
@@ -165,7 +165,7 @@ void ConstructMinCoverSeparator0(CtrlType *ctrl, GraphType *graph, float ubfacto
   graph->nbnd = nbnd;
 
 
-  IsSeparable(graph);
+  ASSERT(IsSeparable(graph));
 }
 
 
@@ -258,7 +258,7 @@ void ConstructMinCoverSeparator(CtrlType *ctrl, GraphType *graph, float ubfactor
       where[j] = 2;
     }
 
-    GKfree(&bxadj, &badjncy, -1);
+    GKfree(&bxadj, &badjncy, LTERM);
   }
   else {
     IFSET(ctrl->dbglvl, DBG_SEPINFO,
@@ -267,7 +267,7 @@ void ConstructMinCoverSeparator(CtrlType *ctrl, GraphType *graph, float ubfactor
 
   /* Prepare to refine the vertex separator */
   idxcopy(nvtxs, graph->where, vmap);
-  GKfree(&graph->rdata, -1);
+  GKfree(&graph->rdata, LTERM);
 
   Allocate2WayNodePartitionMemory(ctrl, graph);
   idxcopy(nvtxs, vmap, graph->where);
@@ -279,6 +279,6 @@ void ConstructMinCoverSeparator(CtrlType *ctrl, GraphType *graph, float ubfactor
 
   FM_2WayNodeRefine_OneSided(ctrl, graph, ubfactor, 6); 
 
-  IsSeparable(graph);
+  ASSERT(IsSeparable(graph));
 }
 

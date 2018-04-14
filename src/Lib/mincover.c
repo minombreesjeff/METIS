@@ -8,7 +8,7 @@
  * Started 8/1/97
  * George
  *
- * $Id: mincover.c,v 1.1 1997/11/04 23:19:23 karypis Exp $
+ * $Id: mincover.c,v 1.1 1998/11/27 17:59:22 karypis Exp $
  */
 
 #include <metis.h>
@@ -115,7 +115,7 @@ void MinCover(idxtype *xadj, idxtype *adjncy, int asize, int bsize, idxtype *cov
 
   MinCover_Decompose(xadj, adjncy, asize, bsize, mate, cover, csize);
 
-  GKfree(&mate, &flag, &level, &queue, &lst, -1);
+  GKfree(&mate, &flag, &level, &queue, &lst, LTERM);
 
 }
 

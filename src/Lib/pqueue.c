@@ -10,7 +10,7 @@
  * Started 9/2/94
  * George
  *
- * $Id: pqueue.c,v 1.4 1997/12/22 21:28:40 karypis Exp $
+ * $Id: pqueue.c,v 1.1 1998/11/27 17:59:28 karypis Exp $
  *
  */
 
@@ -22,7 +22,7 @@
 **************************************************************************/
 void PQueueInit(CtrlType *ctrl, PQueueType *queue, int maxnodes, int maxgain)
 {
-  int i, j;
+  int i, j, ncore;
 
   queue->nnodes = 0;
   queue->maxnodes = maxnodes;
@@ -41,12 +41,24 @@ void PQueueInit(CtrlType *ctrl, PQueueType *queue, int maxnodes, int maxgain)
     queue->pgainspan = amin(PLUS_GAINSPAN, maxgain);
     queue->ngainspan = amin(NEG_GAINSPAN, maxgain);
 
-    queue->nodes = (ListNodeType *)idxwspacemalloc(ctrl, (sizeof(ListNodeType)/sizeof(idxtype))*maxnodes);
+    j = queue->ngainspan+queue->pgainspan+1;
+
+    ncore = 2 + (sizeof(ListNodeType)/sizeof(idxtype))*maxnodes + (sizeof(ListNodeType *)/sizeof(idxtype))*j;
+
+    if (WspaceAvail(ctrl) > ncore) {
+      queue->nodes = (ListNodeType *)idxwspacemalloc(ctrl, (sizeof(ListNodeType)/sizeof(idxtype))*maxnodes);
+      queue->buckets = (ListNodeType **)idxwspacemalloc(ctrl, (sizeof(ListNodeType *)/sizeof(idxtype))*j);
+      queue->mustfree = 0;
+    }
+    else { /* Not enough memory in the wspace, allocate it */
+      queue->nodes = (ListNodeType *)idxmalloc((sizeof(ListNodeType)/sizeof(idxtype))*maxnodes, "PQueueInit: queue->nodes");
+      queue->buckets = (ListNodeType **)idxmalloc((sizeof(ListNodeType *)/sizeof(idxtype))*j, "PQueueInit: queue->buckets");
+      queue->mustfree = 1;
+    }
+
     for (i=0; i<maxnodes; i++) 
       queue->nodes[i].id = i;
 
-    j = queue->ngainspan+queue->pgainspan+1;
-    queue->buckets = (ListNodeType **)idxwspacemalloc(ctrl, (sizeof(ListNodeType *)/sizeof(idxtype))*j);
     for (i=0; i<j; i++)
       queue->buckets[i] = NULL;
 
@@ -93,8 +105,14 @@ void PQueueFree(CtrlType *ctrl, PQueueType *queue)
 {
 
   if (queue->type == 1) {
-    idxwspacefree(ctrl, sizeof(ListNodeType *)*(queue->ngainspan+queue->pgainspan+1)/sizeof(idxtype));
-    idxwspacefree(ctrl, sizeof(ListNodeType)*queue->maxnodes/sizeof(idxtype));
+    if (queue->mustfree) {
+      queue->buckets -= queue->ngainspan;  
+      GKfree(&queue->nodes, &queue->buckets, LTERM);
+    } 
+    else {
+      idxwspacefree(ctrl, sizeof(ListNodeType *)*(queue->ngainspan+queue->pgainspan+1)/sizeof(idxtype));
+      idxwspacefree(ctrl, sizeof(ListNodeType)*queue->maxnodes/sizeof(idxtype));
+    }
   }
   else {
     idxwspacefree(ctrl, sizeof(KeyValueType)*queue->maxnodes/sizeof(idxtype));
@@ -102,6 +120,15 @@ void PQueueFree(CtrlType *ctrl, PQueueType *queue)
   }
 
   queue->maxnodes = 0;
+}
+
+
+/*************************************************************************
+* This function returns the number of nodes in the queue
+**************************************************************************/
+int PQueueGetSize(PQueueType *queue)
+{
+  return queue->nnodes;
 }
 
 
@@ -494,6 +521,25 @@ int PQueueSeeMax(PQueueType *queue)
     vtx = queue->heap[0].val;
 
   return vtx;
+}
+      
+
+/*************************************************************************
+* This function returns the vertex with the largest gain from a partition
+**************************************************************************/
+int PQueueGetKey(PQueueType *queue)
+{
+  int key;
+
+  if (queue->nnodes == 0)
+    return -1;
+
+  if (queue->type == 1) 
+    key = queue->maxgain;
+  else
+    key = queue->heap[0].key;
+
+  return key;
 }
       
 

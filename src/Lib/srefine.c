@@ -8,7 +8,7 @@
  * Started 8/1/97
  * George
  *
- * $Id: srefine.c,v 1.4 1997/12/22 21:28:42 karypis Exp $
+ * $Id: srefine.c,v 1.1 1998/11/27 17:59:30 karypis Exp $
  *
  */
 

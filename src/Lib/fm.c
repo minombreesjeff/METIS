@@ -8,7 +8,7 @@
  * Started 7/23/97
  * George
  *
- * $Id: fm.c,v 1.3 1997/12/22 19:54:45 karypis Exp $
+ * $Id: fm.c,v 1.1 1998/11/27 17:59:14 karypis Exp $
  */
 
 #include <metis.h>
@@ -42,7 +42,7 @@ void FM_2WayEdgeRefine(CtrlType *ctrl, GraphType *graph, int *tpwgts, int npasse
   perm = idxwspacemalloc(ctrl, nvtxs);
 
   limit = amin(amax(0.01*nvtxs, 15), 100);
-  avgvwgt = 2*(pwgts[0]+pwgts[1])/nvtxs;
+  avgvwgt = amin((pwgts[0]+pwgts[1])/20, 2*(pwgts[0]+pwgts[1])/nvtxs);
 
   tmp = graph->adjwgtsum[idxamax(nvtxs, graph->adjwgtsum)];
   PQueueInit(ctrl, &parts[0], nvtxs, tmp);

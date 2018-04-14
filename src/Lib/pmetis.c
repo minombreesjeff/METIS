@@ -9,7 +9,7 @@
  * Started 7/24/97
  * George
  *
- * $Id: pmetis.c,v 1.5 1998/01/28 17:23:06 karypis Exp $
+ * $Id: pmetis.c,v 1.1 1998/11/27 17:59:28 karypis Exp $
  *
  */
 
@@ -54,7 +54,7 @@ void METIS_WPartGraphRecursive(int *nvtxs, idxtype *xadj, idxtype *adjncy, idxty
   if (*numflag == 1)
     Change2CNumbering(*nvtxs, xadj, adjncy);
 
-  SetUpGraph(&graph, OP_PMETIS, *nvtxs, xadj, adjncy, vwgt, adjwgt, *wgtflag);
+  SetUpGraph(&graph, OP_PMETIS, *nvtxs, 1, xadj, adjncy, vwgt, adjwgt, *wgtflag);
 
   if (options[0] == 0) {  /* Use the default parameters */
     ctrl.CType = PMETIS_CTYPE;
@@ -76,7 +76,7 @@ void METIS_WPartGraphRecursive(int *nvtxs, idxtype *xadj, idxtype *adjncy, idxty
   for (i=0; i<*nparts; i++) 
     mytpwgts[i] = tpwgts[i];
 
-  InitRandom();
+  InitRandom(-1);
 
   AllocateWorkSpace(&ctrl, &graph, *nparts);
 
@@ -118,10 +118,10 @@ int MlevelRecursiveBisection(CtrlType *ctrl, GraphType *graph, int nparts, idxty
   tpwgts2[0] = tvwgt*ssum(nparts/2, tpwgts);
   tpwgts2[1] = tvwgt-tpwgts2[0];
 
-  /* printf("%d %d\n", tpwgts2[0], tpwgts2[1]);*/
-
   MlevelEdgeBisection(ctrl, graph, tpwgts2, ubfactor);
   cut = graph->mincut;
+
+  /* printf("%5d %5d %5d [%5d %f]\n", tpwgts2[0], tpwgts2[1], cut, tvwgt, ssum(nparts/2, tpwgts));*/
 
   label = graph->label;
   where = graph->where;
@@ -135,7 +135,7 @@ int MlevelRecursiveBisection(CtrlType *ctrl, GraphType *graph, int nparts, idxty
 
 
   /* Free the memory of the top level graph */
-  GKfree(&graph->gdata, &graph->rdata, &graph->label, -1);
+  GKfree(&graph->gdata, &graph->rdata, &graph->label, LTERM);
 
   /* Scale the fractions in the tpwgts according to the true weight */
   wsum = ssum(nparts/2, tpwgts);
@@ -154,7 +154,7 @@ int MlevelRecursiveBisection(CtrlType *ctrl, GraphType *graph, int nparts, idxty
   }
   else if (nparts == 3) {
     cut += MlevelRecursiveBisection(ctrl, &rgraph, nparts-nparts/2, part, tpwgts+nparts/2, ubfactor, fpart+nparts/2);
-    GKfree(&lgraph.gdata, &lgraph.label, -1);
+    GKfree(&lgraph.gdata, &lgraph.label, LTERM);
   }
 
   return cut;
@@ -189,23 +189,29 @@ void MlevelEdgeBisection(CtrlType *ctrl, GraphType *graph, int *tpwgts, float ub
 **************************************************************************/
 void SplitGraphPart(CtrlType *ctrl, GraphType *graph, GraphType *lgraph, GraphType *rgraph)
 {
-  int i, j, k, l, istart, iend, mypart, nvtxs, snvtxs[2], snedges[2], sum;
+  int i, j, k, kk, l, istart, iend, mypart, nvtxs, ncon, snvtxs[2], snedges[2], sum;
   idxtype *xadj, *vwgt, *adjncy, *adjwgt, *adjwgtsum, *label, *where, *bndptr;
   idxtype *sxadj[2], *svwgt[2], *sadjncy[2], *sadjwgt[2], *sadjwgtsum[2], *slabel[2];
   idxtype *rename;
   idxtype *auxadjncy, *auxadjwgt;
+  float *nvwgt, *snvwgt[2], *npwgts;
+
 
   IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->SplitTmr));
 
   nvtxs = graph->nvtxs;
+  ncon = graph->ncon;
   xadj = graph->xadj;
   vwgt = graph->vwgt;
+  nvwgt = graph->nvwgt;
   adjncy = graph->adjncy;
   adjwgt = graph->adjwgt;
   adjwgtsum = graph->adjwgtsum;
   label = graph->label;
   where = graph->where;
   bndptr = graph->bndptr;
+  npwgts = graph->npwgts;
+
   ASSERT(bndptr != NULL);
 
   rename = idxwspacemalloc(ctrl, nvtxs);
@@ -217,28 +223,23 @@ void SplitGraphPart(CtrlType *ctrl, GraphType *graph, GraphType *lgraph, GraphTy
     snedges[k] += xadj[i+1]-xadj[i];
   }
 
-  InitGraph(lgraph);
-  InitGraph(rgraph);
+  SetUpSplitGraph(graph, lgraph, snvtxs[0], snedges[0]);
+  sxadj[0] = lgraph->xadj;
+  svwgt[0] = lgraph->vwgt;
+  snvwgt[0] = lgraph->nvwgt;
+  sadjwgtsum[0] = lgraph->adjwgtsum;
+  sadjncy[0] = lgraph->adjncy; 	
+  sadjwgt[0] = lgraph->adjwgt; 
+  slabel[0] = lgraph->label;
 
-  /* Allocate memory and set the pointers accordingly */
-  lgraph->gdata = idxmalloc(4*snvtxs[0]+1+2*snedges[0], "SplitGraphPart: lgdata");
-  sxadj[0] = lgraph->xadj 		= lgraph->gdata;
-  svwgt[0] = lgraph->vwgt 		= lgraph->gdata + snvtxs[0]+1;
-  sadjwgtsum[0] = lgraph->adjwgtsum 	= lgraph->gdata + 2*snvtxs[0]+1;
-  lgraph->cmap 				= lgraph->gdata + 3*snvtxs[0]+1;
-  sadjncy[0] = lgraph->adjncy 		= lgraph->gdata + 4*snvtxs[0]+1;
-  sadjwgt[0] = lgraph->adjwgt 		= lgraph->gdata + 4*snvtxs[0]+1 + snedges[0];
-  slabel[0] = lgraph->label = idxmalloc(snvtxs[0], "SplitGraphPart: lgraph->label");
-
-  rgraph->gdata = idxmalloc(4*snvtxs[1]+1+2*snedges[1], "SplitGraphPart: rgdata");
-  sxadj[1] = rgraph->xadj 		= rgraph->gdata;
-  svwgt[1] = rgraph->vwgt 		= rgraph->gdata + snvtxs[1]+1;
-  sadjwgtsum[1] = rgraph->adjwgtsum 	= rgraph->gdata + 2*snvtxs[1]+1;
-  rgraph->cmap 				= rgraph->gdata + 3*snvtxs[1]+1;
-  sadjncy[1] = rgraph->adjncy 		= rgraph->gdata + 4*snvtxs[1]+1;
-  sadjwgt[1] = rgraph->adjwgt 		= rgraph->gdata + 4*snvtxs[1]+1 + snedges[1];
-  slabel[1] = rgraph->label = idxmalloc(snvtxs[1], "Ser_SplitGraphPart: rgraph->label");
-
+  SetUpSplitGraph(graph, rgraph, snvtxs[1], snedges[1]);
+  sxadj[1] = rgraph->xadj;
+  svwgt[1] = rgraph->vwgt;
+  snvwgt[1] = rgraph->nvwgt;
+  sadjwgtsum[1] = rgraph->adjwgtsum;
+  sadjncy[1] = rgraph->adjncy; 	
+  sadjwgt[1] = rgraph->adjwgt; 
+  slabel[1] = rgraph->label;
 
   snvtxs[0] = snvtxs[1] = snedges[0] = snedges[1] = 0;
   sxadj[0][0] = sxadj[1][0] = 0;
@@ -274,7 +275,13 @@ void SplitGraphPart(CtrlType *ctrl, GraphType *graph, GraphType *lgraph, GraphTy
       snedges[mypart] = l;
     }
 
-    svwgt[mypart][snvtxs[mypart]] = vwgt[i];
+    if (ncon == 1)
+      svwgt[mypart][snvtxs[mypart]] = vwgt[i];
+    else {
+      for (kk=0; kk<ncon; kk++)
+        snvwgt[mypart][snvtxs[mypart]*ncon+kk] = nvwgt[i*ncon+kk]/npwgts[mypart*ncon+kk];
+    }
+
     sadjwgtsum[mypart][snvtxs[mypart]] = sum;
     slabel[mypart][snvtxs[mypart]] = label[i];
     sxadj[mypart][++snvtxs[mypart]] = snedges[mypart];
@@ -287,9 +294,7 @@ void SplitGraphPart(CtrlType *ctrl, GraphType *graph, GraphType *lgraph, GraphTy
       auxadjncy[i] = rename[auxadjncy[i]];
   }
 
-  lgraph->nvtxs = snvtxs[0];
   lgraph->nedges = snedges[0];
-  rgraph->nvtxs = snvtxs[1];
   rgraph->nedges = snedges[1];
 
   IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->SplitTmr));
@@ -297,4 +302,40 @@ void SplitGraphPart(CtrlType *ctrl, GraphType *graph, GraphType *lgraph, GraphTy
   idxwspacefree(ctrl, nvtxs);
 }
 
+
+/*************************************************************************
+* Setup the various arrays for the splitted graph
+**************************************************************************/
+void SetUpSplitGraph(GraphType *graph, GraphType *sgraph, int snvtxs, int snedges)
+{
+  InitGraph(sgraph);
+  sgraph->nvtxs = snvtxs;
+  sgraph->nedges = snedges;
+  sgraph->ncon = graph->ncon;
+
+  /* Allocate memory for the splitted graph */
+  if (graph->ncon == 1) {
+    sgraph->gdata = idxmalloc(4*snvtxs+1 + 2*snedges, "SetUpSplitGraph: gdata");
+
+    sgraph->xadj        = sgraph->gdata;
+    sgraph->vwgt        = sgraph->gdata + snvtxs+1;
+    sgraph->adjwgtsum   = sgraph->gdata + 2*snvtxs+1;
+    sgraph->cmap        = sgraph->gdata + 3*snvtxs+1;
+    sgraph->adjncy      = sgraph->gdata + 4*snvtxs+1;
+    sgraph->adjwgt      = sgraph->gdata + 4*snvtxs+1 + snedges;
+  }
+  else {
+    sgraph->gdata = idxmalloc(3*snvtxs+1 + 2*snedges, "SetUpSplitGraph: gdata");
+
+    sgraph->xadj        = sgraph->gdata;
+    sgraph->adjwgtsum   = sgraph->gdata + snvtxs+1;
+    sgraph->cmap        = sgraph->gdata + 2*snvtxs+1;
+    sgraph->adjncy      = sgraph->gdata + 3*snvtxs+1;
+    sgraph->adjwgt      = sgraph->gdata + 3*snvtxs+1 + snedges;
+
+    sgraph->nvwgt       = fmalloc(graph->ncon*snvtxs, "SetUpSplitGraph: nvwgt");
+  }
+
+  sgraph->label	= idxmalloc(snvtxs, "SetUpSplitGraph: sgraph->label");
+}
 

@@ -8,7 +8,7 @@
  * Started 7/28/97
  * George
  *
- * $Id: kwayrefine.c,v 1.3 1997/12/22 21:28:37 karypis Exp $
+ * $Id: kwayrefine.c,v 1.1 1998/11/27 17:59:17 karypis Exp $
  */
 
 #include <metis.h>
@@ -19,23 +19,39 @@
 **************************************************************************/
 void RefineKWay(CtrlType *ctrl, GraphType *orggraph, GraphType *graph, int nparts, float *tpwgts, float ubfactor)
 {
-  int i, nlevels;
+  int i, nlevels, mustfree=0;
   GraphType *ptr;
 
   IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->UncoarsenTmr));
 
-  /* Determine how many levels are there */
-  for (ptr=graph, nlevels=0; ptr!=orggraph; ptr=ptr->finer, nlevels++); 
-
   /* Compute the parameters of the coarsest graph */
   ComputeKWayPartitionParams(ctrl, graph, nparts);
 
+  /* Take care any non-contiguity */
+  IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->AuxTmr1));
+  if (ctrl->RType == RTYPE_KWAYRANDOM_MCONN) {
+    EliminateComponents(ctrl, graph, nparts, tpwgts, 1.25);
+    EliminateSubDomainEdges(ctrl, graph, nparts, tpwgts);
+    EliminateComponents(ctrl, graph, nparts, tpwgts, 1.25);
+  }
+  IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->AuxTmr1));
+
+  /* Determine how many levels are there */
+  for (ptr=graph, nlevels=0; ptr!=orggraph; ptr=ptr->finer, nlevels++); 
+
   for (i=0; ;i++) {
+    /* PrintSubDomainGraph(graph, nparts, graph->where); */
+    if (ctrl->RType == RTYPE_KWAYRANDOM_MCONN && (i == nlevels/2 || i == nlevels/2+1))
+      EliminateSubDomainEdges(ctrl, graph, nparts, tpwgts);
+
     IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->RefTmr));
 
     if (2*i >= nlevels && !IsBalanced(graph->pwgts, nparts, tpwgts, 1.04*ubfactor)) {
       ComputeKWayBalanceBoundary(ctrl, graph, nparts);
-      Greedy_KWayEdgeBalance(ctrl, graph, nparts, tpwgts, ubfactor, 1); 
+      if (ctrl->RType == RTYPE_KWAYRANDOM_MCONN)
+        Greedy_KWayEdgeBalanceMConn(ctrl, graph, nparts, tpwgts, ubfactor, 1); 
+      else
+        Greedy_KWayEdgeBalance(ctrl, graph, nparts, tpwgts, ubfactor, 1); 
       ComputeKWayBoundary(ctrl, graph, nparts);
     }
 
@@ -46,27 +62,48 @@ void RefineKWay(CtrlType *ctrl, GraphType *orggraph, GraphType *graph, int npart
       case RTYPE_KWAYGREEDY:
         Greedy_KWayEdgeRefine(ctrl, graph, nparts, tpwgts, ubfactor, 10); 
         break;
+      case RTYPE_KWAYRANDOM_MCONN:
+        Random_KWayEdgeRefineMConn(ctrl, graph, nparts, tpwgts, ubfactor, 10, 1); 
+        break;
     }
     IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->RefTmr));
 
     if (graph == orggraph)
       break;
 
-/*
-    ComputePartitionInfo(graph, nparts, graph->where); 
-*/
+    GKfree(&graph->gdata, LTERM);  /* Deallocate the graph related arrays */
 
     graph = graph->finer;
+
     IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->ProjectTmr));
+    if (graph->vwgt == NULL) {
+      graph->vwgt = idxsmalloc(graph->nvtxs, 1, "RefineKWay: graph->vwgt");
+      graph->adjwgt = idxsmalloc(graph->nedges, 1, "RefineKWay: graph->adjwgt");
+      mustfree = 1;
+    }
     ProjectKWayPartition(ctrl, graph, nparts);
     IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->ProjectTmr));
   }
 
   if (!IsBalanced(graph->pwgts, nparts, tpwgts, ubfactor)) {
     ComputeKWayBalanceBoundary(ctrl, graph, nparts);
-    Greedy_KWayEdgeBalance(ctrl, graph, nparts, tpwgts, ubfactor, 8); 
-    Random_KWayEdgeRefine(ctrl, graph, nparts, tpwgts, ubfactor, 10, 0); 
+    if (ctrl->RType == RTYPE_KWAYRANDOM_MCONN) {
+      Greedy_KWayEdgeBalanceMConn(ctrl, graph, nparts, tpwgts, ubfactor, 8); 
+      Random_KWayEdgeRefineMConn(ctrl, graph, nparts, tpwgts, ubfactor, 10, 0); 
+    }
+    else {
+      Greedy_KWayEdgeBalance(ctrl, graph, nparts, tpwgts, ubfactor, 8); 
+      Random_KWayEdgeRefine(ctrl, graph, nparts, tpwgts, ubfactor, 10, 0); 
+    }
   }
+
+  /* Take care any trivial non-contiguity */
+  IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->AuxTmr2));
+  EliminateComponents(ctrl, graph, nparts, tpwgts, ubfactor);
+  IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->AuxTmr2));
+
+  if (mustfree) 
+    GKfree(&graph->vwgt, &graph->adjwgt, LTERM);
 
   IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->UncoarsenTmr));
 }
@@ -89,6 +126,12 @@ void AllocateKWayPartitionMemory(CtrlType *ctrl, GraphType *graph, int nparts)
   graph->bndptr         = graph->rdata + nvtxs + nparts;
   graph->bndind         = graph->rdata + 2*nvtxs + nparts;
   graph->rinfo          = (RInfoType *)(graph->rdata + 3*nvtxs+nparts + pad64);
+
+/*
+  if (ctrl->wspace.edegrees != NULL)
+    free(ctrl->wspace.edegrees);
+  ctrl->wspace.edegrees = (EDegreeType *)GKmalloc(graph->nedges*sizeof(EDegreeType), "AllocateKWayPartitionMemory: edegrees");
+*/
 }
 
 

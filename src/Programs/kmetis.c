@@ -8,7 +8,7 @@
  * Started 8/28/94
  * George
  *
- * $Id: kmetis.c,v 1.2 1998/01/28 17:23:11 karypis Exp $
+ * $Id: kmetis.c,v 1.1 1998/11/27 17:59:35 karypis Exp $
  *
  */
 
@@ -23,11 +23,11 @@ main(int argc, char *argv[])
 {
   int i, nparts, options[10];
   idxtype *part;
+  float rubvec[MAXNCON], lbvec[MAXNCON];
   GraphType graph;
   char filename[256];
-  int numflag = 0, wgtflag = 3, edgecut;
+  int numflag = 0, wgtflag = 0, edgecut;
   timer TOTALTmr, METISTmr, IOTmr;
-
 
   if (argc != 3) {
     printf("Usage: %s <GraphFile> <Nparts>\n",argv[0]);
@@ -48,7 +48,7 @@ main(int argc, char *argv[])
 
   starttimer(TOTALTmr);
   starttimer(IOTmr);
-  ReadGraph(&graph, filename);
+  ReadGraph(&graph, filename, &wgtflag);
   if (graph.nvtxs <= 0) {
     printf("Empty graph. Nothing to do.\n");
     exit(0);
@@ -56,20 +56,36 @@ main(int argc, char *argv[])
   stoptimer(IOTmr);
 
   printf("**********************************************************************\n");
-  printf("  METIS 3.0   Copyright 1997, Regents of the University of Minnesota\n\n");
+  printf("%s", METISTITLE);
   printf("Graph Information ---------------------------------------------------\n");
-  printf("  Name: %s, #Vertices: %d, #Edges: %d, #Parts: %d\n\n", filename, graph.nvtxs, graph.nedges/2, nparts);
-  printf("K-way Partitioning... -----------------------------------------------\n");
+  printf("  Name: %s, #Vertices: %d, #Edges: %d, #Parts: %d\n", filename, graph.nvtxs, graph.nedges/2, nparts);
+  if (graph.ncon > 1)
+    printf("  Balancing Constraints: %d\n", graph.ncon);
+  printf("\nK-way Partitioning... -----------------------------------------------\n");
 
   part = idxmalloc(graph.nvtxs, "main: part");
   options[0] = 0;
 
   starttimer(METISTmr);
-  METIS_PartGraphKway(&graph.nvtxs, graph.xadj, graph.adjncy, graph.vwgt, graph.adjwgt, 
-                      &wgtflag, &numflag, &nparts, options, &edgecut, part);
+  if (graph.ncon == 1) {
+    METIS_PartGraphKway(&graph.nvtxs, graph.xadj, graph.adjncy, graph.vwgt, graph.adjwgt, 
+          &wgtflag, &numflag, &nparts, options, &edgecut, part);
+  }
+  else {
+    for (i=0; i<graph.ncon; i++)
+      rubvec[i] = HORIZONTAL_IMBALANCE;
+
+    METIS_mCPartGraphKway(&graph.nvtxs, &graph.ncon, graph.xadj, graph.adjncy, graph.vwgt, 
+          graph.adjwgt, &wgtflag, &numflag, &nparts, rubvec, options, &edgecut, part);
+  }
   stoptimer(METISTmr);
 
-  printf("  %d-way Edge-Cut: %7d, Balance: %5.2f\n", nparts, edgecut, ComputePartitionBalance(&graph, nparts, part));
+  ComputePartitionBalance(&graph, nparts, part, lbvec);
+
+  printf("  %d-way Edge-Cut: %7d, Balance: ", nparts, edgecut);
+  for (i=0; i<graph.ncon; i++)
+    printf("%5.2f ", lbvec[i]);
+  printf("\n");
 
   starttimer(IOTmr);
   WritePartition(filename, part, graph.nvtxs, nparts); 
@@ -83,7 +99,7 @@ main(int argc, char *argv[])
   printf("**********************************************************************\n");
 
 
-  GKfree(&graph.xadj, &graph.adjncy, &graph.vwgt, &graph.adjwgt, &part, -1);
+  GKfree(&graph.xadj, &graph.adjncy, &graph.vwgt, &graph.adjwgt, &part, LTERM);
 }  
 
 

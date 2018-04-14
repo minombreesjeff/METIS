@@ -8,14 +8,22 @@
  * Started 8/27/94
  * George
  *
- * $Id: defs.h,v 1.2 1997/11/05 00:42:16 karypis Exp $
+ * $Id: defs.h,v 1.1 1998/11/27 17:59:13 karypis Exp $
  *
  */
 
+#define METISTITLE              "  METIS 4.0.1 Copyright 1998, Regents of the University of Minnesota\n\n"
 #define MAXLINE			1280000
+
+#define LTERM			(void **) 0	/* List terminator for GKfree() */
+
+#define MAXNCON			16		/* The maximum number of constrains */
+#define MAXNOBJ			16		/* The maximum number of objectives */
 
 #define PLUS_GAINSPAN   	500             /* Parameters for FM buckets */
 #define NEG_GAINSPAN    	500
+
+#define HTLENGTH		((1<<11)-1)
 
 /* Meaning of various options[] parameters */
 #define OPTION_PTYPE		0
@@ -40,7 +48,7 @@
 /* Default options for KMETIS */
 #define KMETIS_CTYPE		MATCH_SHEM
 #define KMETIS_ITYPE		IPART_PMETIS
-#define KMETIS_RTYPE		RTYPE_KWAYRANDOM
+#define KMETIS_RTYPE		RTYPE_KWAYRANDOM_MCONN
 #define KMETIS_DBGLVL		0
 
 /* Default options for OEMETIS */
@@ -58,6 +66,24 @@
 #define ONMETIS_PFACTOR		-1
 #define ONMETIS_NSEPS		1
 
+/* Default options for McPMETIS */
+#define McPMETIS_CTYPE		MATCH_SHEBM_ONENORM
+#define McPMETIS_ITYPE		IPART_RANDOM
+#define McPMETIS_RTYPE		RTYPE_FM
+#define McPMETIS_DBGLVL		0
+
+/* Default options for McKMETIS */
+#define McKMETIS_CTYPE		MATCH_SHEBM_ONENORM
+#define McKMETIS_ITYPE		IPART_McHPMETIS
+#define McKMETIS_RTYPE		RTYPE_KWAYRANDOM
+#define McKMETIS_DBGLVL		0
+
+/* Default options for KVMETIS */
+#define KVMETIS_CTYPE		MATCH_SHEM
+#define KVMETIS_ITYPE		IPART_PMETIS
+#define KVMETIS_RTYPE		RTYPE_KWAYRANDOM
+#define KVMETIS_DBGLVL		0
+
 
 /* Operations supported by stand-alone code */
 #define OP_PMETIS		1
@@ -65,6 +91,7 @@
 #define OP_OEMETIS		3
 #define OP_ONMETIS		4
 #define OP_ONWMETIS		5
+#define OP_KVMETIS		6
 
 
 /* Matching Schemes */
@@ -72,10 +99,15 @@
 #define MATCH_HEM		2
 #define MATCH_SHEM		3
 #define MATCH_SHEMKWAY		4
+#define MATCH_SHEBM_ONENORM	5
+#define MATCH_SHEBM_INFNORM	6
+#define MATCH_SBHEM_ONENORM	7
+#define MATCH_SBHEM_INFNORM	8
 
 /* Initial partitioning schemes for PMETIS and ONMETIS */
 #define IPART_GGPKL		1
 #define IPART_GGPKLNODE		2
+#define IPART_RANDOM		2
 
 /* Refinement schemes for PMETIS */
 #define RTYPE_FM		1
@@ -86,15 +118,17 @@
 /* Refinement schemes for KMETIS */
 #define RTYPE_KWAYRANDOM	1
 #define RTYPE_KWAYGREEDY	2
+#define RTYPE_KWAYRANDOM_MCONN	3
 
 /* Refinement schemes for ONMETIS */
 #define RTYPE_SEP2SIDED		1
 #define RTYPE_SEP1SIDED		2
 
+/* Initial Partitioning Schemes for McKMETIS */
+#define IPART_McPMETIS		1   	/* Simple McPMETIS */
+#define IPART_McHPMETIS		2	/* horizontally relaxed McPMETIS */
 
 #define UNMATCHED		-1
-
-#define MAXIDX			(1<<30)
 
 #define HTABLE_EMPTY    	-1
 
@@ -113,6 +147,8 @@
 #define ORDER_UNBALANCE_FRACTION	1.10
 
 #define MMDSWITCH		200
+
+#define HORIZONTAL_IMBALANCE		1.05
 
 /* Debug Levels */
 #define DBG_TIME	1		/* Perform timing analysis */

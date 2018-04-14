@@ -9,7 +9,7 @@
  * Started 7/28/97
  * George
  *
- * $Id: kmetis.c,v 1.2 1998/02/10 19:34:22 karypis Exp $
+ * $Id: kmetis.c,v 1.1 1998/11/27 17:59:15 karypis Exp $
  *
  */
 
@@ -51,7 +51,7 @@ void METIS_WPartGraphKway(int *nvtxs, idxtype *xadj, idxtype *adjncy, idxtype *v
   if (*numflag == 1)
     Change2CNumbering(*nvtxs, xadj, adjncy);
 
-  SetUpGraph(&graph, OP_KMETIS, *nvtxs, xadj, adjncy, vwgt, adjwgt, *wgtflag);
+  SetUpGraph(&graph, OP_KMETIS, *nvtxs, 1, xadj, adjncy, vwgt, adjwgt, *wgtflag);
 
   if (options[0] == 0) {  /* Use the default parameters */
     ctrl.CType = KMETIS_CTYPE;
@@ -66,10 +66,10 @@ void METIS_WPartGraphKway(int *nvtxs, idxtype *xadj, idxtype *adjncy, idxtype *v
     ctrl.dbglvl = options[OPTION_DBGLVL];
   }
   ctrl.optype = OP_KMETIS;
-  ctrl.CoarsenTo = 20*(*nparts);
-  ctrl.maxvwgt = 1.5*(idxsum(*nvtxs, graph.vwgt)/ctrl.CoarsenTo);
+  ctrl.CoarsenTo = amax((*nvtxs)/(40*log2(*nparts)), 20*(*nparts));
+  ctrl.maxvwgt = 1.5*((graph.vwgt ? idxsum(*nvtxs, graph.vwgt) : (*nvtxs))/ctrl.CoarsenTo);
 
-  InitRandom();
+  InitRandom(-1);
 
   AllocateWorkSpace(&ctrl, &graph, *nparts);
 
@@ -121,7 +121,7 @@ int MlevelKWayPartitioning(CtrlType *ctrl, GraphType *graph, int nparts, idxtype
 
   idxcopy(graph->nvtxs, graph->where, part);
 
-  GKfree(&graph->gdata, &graph->rdata, -1);
+  GKfree(&graph->gdata, &graph->rdata, LTERM);
 
   return graph->mincut;
 

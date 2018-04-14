@@ -1,4 +1,40 @@
 
+METIS 4.0.1, 11/29/98
+------------------------------------------------------------------------------
+This is mostly a bug-fix release
+
+  - Fixed some bugs in the multi-constraint partitioning routines
+  - Fixed some bugs in the volume-minimization routines
+
+
+
+METIS 4.0.0, 9/20/98
+------------------------------------------------------------------------------
+METIS 4.0 contains a number of changes over the previous major release (ver 
+3.0.x). Most of these changes are concentrated on the graph and mesh 
+partitioning routines and they do not affect the sparse matrix re-ordering 
+routines. Here is a list of the major changes:
+
+  Multi-Constraint Partitioning
+  -----------------------------
+  METIS now includes partitioning routines that can be used to a partition
+  a graph in the presence of multiple balancing constraints.
+
+  Minimizing the Total Communication Volume
+  -----------------------------------------
+  METIS now includes partitioning routines whose objective is to minimize
+  the total communication volume (as opposed to minimizing the edge-cut).
+
+  Minimizing the Maximum Connectivity of the Subdomains
+  -----------------------------------------------------
+  The k-way partitioning routines in METIS can now directly minimize the number
+  of adjacent subdomains. For most graphs corresponding to finite element 
+  meshes, METIS is able to significantly reduce the maximum (and total) number of 
+  adjacent subdomains.
+
+
+
+
 METIS 3.0.6, 1/28/98
 -------------------------------------------------------------------------------
   - Fixed some problems when too many partitions were asked, and each partition
