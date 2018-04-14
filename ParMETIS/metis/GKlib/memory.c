@@ -9,7 +9,7 @@ can be used to define other memory allocation routines.
 
 \date   Started 4/3/2007
 \author George
-\version\verbatim $Id: memory.c 10561 2011-07-13 13:19:54Z karypis $ \endverbatim
+\version\verbatim $Id: memory.c 10431 2011-06-28 21:04:44Z karypis $ \endverbatim
 */
 
 
@@ -44,10 +44,9 @@ GK_MKALLOC(gk_idxkv, gk_idxkv_t)
 
 
 
-/*************************************************************************/
-/*! This function allocates a two-dimensional matrix.
-  */
-/*************************************************************************/
+/*************************************************************************
+* This function allocates a two-dimensional matrix 
+**************************************************************************/
 void gk_AllocMatrix(void ***r_matrix, size_t elmlen, size_t ndim1, size_t ndim2)
 {
   gk_idx_t i, j;
@@ -70,10 +69,9 @@ void gk_AllocMatrix(void ***r_matrix, size_t elmlen, size_t ndim1, size_t ndim2)
 }
 
 
-/*************************************************************************/
-/*! This function frees a two-dimensional matrix.
-  */
-/*************************************************************************/
+/*************************************************************************
+* This function frees a two-dimensional matrix 
+**************************************************************************/
 void gk_FreeMatrix(void ***r_matrix, size_t ndim1, size_t ndim2)
 {
   gk_idx_t i;
@@ -90,21 +88,17 @@ void gk_FreeMatrix(void ***r_matrix, size_t ndim1, size_t ndim2)
 }
 
 
+
 /*************************************************************************/
 /*! This function initializes tracking of heap allocations. 
 */
 /*************************************************************************/
-int gk_malloc_init()
+void gk_malloc_init()
 {
   if (gkmcore == NULL)
-    gkmcore = gk_gkmcoreCreate();
+    gkmcore = gk_mcoreCreate(0);
 
-  if (gkmcore == NULL)
-    return 0;
-
-  gk_gkmcorePush(gkmcore);
-
-  return 1;
+  gk_mcorePush(gkmcore);
 }
 
 
@@ -116,9 +110,9 @@ int gk_malloc_init()
 void gk_malloc_cleanup(int showstats)
 {
   if (gkmcore != NULL) {
-    gk_gkmcorePop(gkmcore);
+    gk_mcorePop(gkmcore);
     if (gkmcore->cmop == 0) {
-      gk_gkmcoreDestroy(&gkmcore, showstats);
+      gk_mcoreDestroy(&gkmcore, showstats);
       gkmcore = NULL;
     }
   }
@@ -153,7 +147,7 @@ void *gk_malloc(size_t nbytes, char *msg)
   }
 
   /* add this memory allocation */
-  if (gkmcore != NULL) gk_gkmcoreAdd(gkmcore, GK_MOPT_HEAP, nbytes, ptr);
+  if (gkmcore != NULL) gk_mcoreAdd(gkmcore, GK_MOPT_HEAP, nbytes, ptr);
 
   /* zero-out the allocated space */
 #ifndef NDEBUG
@@ -175,7 +169,7 @@ void *gk_realloc(void *oldptr, size_t nbytes, char *msg)
     nbytes++;  /* Force mallocs to actually allocate some memory */
 
   /* remove this memory de-allocation */
-  if (gkmcore != NULL && oldptr != NULL) gk_gkmcoreDel(gkmcore, oldptr);
+  if (gkmcore != NULL) gk_mcoreDel(gkmcore, oldptr);
 
   ptr = (void *)realloc(oldptr, nbytes);
 
@@ -188,7 +182,7 @@ void *gk_realloc(void *oldptr, size_t nbytes, char *msg)
   }
 
   /* add this memory allocation */
-  if (gkmcore != NULL) gk_gkmcoreAdd(gkmcore, GK_MOPT_HEAP, nbytes, ptr);
+  if (gkmcore != NULL) gk_mcoreAdd(gkmcore, GK_MOPT_HEAP, nbytes, ptr);
 
   return ptr;
 }
@@ -206,7 +200,7 @@ void gk_free(void **ptr1,...)
     free(*ptr1);
 
     /* remove this memory de-allocation */
-    if (gkmcore != NULL) gk_gkmcoreDel(gkmcore, *ptr1);
+    if (gkmcore != NULL) gk_mcoreDel(gkmcore, *ptr1);
   }
   *ptr1 = NULL;
 
@@ -216,7 +210,7 @@ void gk_free(void **ptr1,...)
       free(*ptr);
 
       /* remove this memory de-allocation */
-      if (gkmcore != NULL) gk_gkmcoreDel(gkmcore, *ptr);
+      if (gkmcore != NULL) gk_mcoreDel(gkmcore, *ptr);
     }
     *ptr = NULL;
   }

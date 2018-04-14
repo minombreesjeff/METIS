@@ -8,7 +8,7 @@
  * Started 8/28/94
  * George
  *
- * $Id: gpmetis.c 10567 2011-07-13 16:17:07Z karypis $
+ * $Id: gpmetis.c 10409 2011-06-25 16:58:34Z karypis $
  *
  */
 
@@ -28,7 +28,6 @@ int main(int argc, char *argv[])
   idx_t *part;
   idx_t objval;
   params_t *params;
-  int status=0;
 
   params = parse_cmdline(argc, argv);
 
@@ -58,16 +57,6 @@ int main(int argc, char *argv[])
     }
   }
 
-  /* Setup iptype */
-  if (params->iptype == -1) {
-    if (params->ptype == METIS_PTYPE_RB) {
-      if (graph->ncon == 1)
-        params->iptype = METIS_IPTYPE_GROW;
-      else
-        params->iptype = METIS_IPTYPE_RANDOM;
-    }
-  }
-
   GPPrintInfo(params, graph);
 
   part = imalloc(graph->nvtxs, "main: part");
@@ -90,17 +79,15 @@ int main(int argc, char *argv[])
 
   switch (params->ptype) {
     case METIS_PTYPE_RB:
-      status = METIS_PartGraphRecursive(&graph->nvtxs, &graph->ncon, graph->xadj, 
-                   graph->adjncy, graph->vwgt, graph->vsize, graph->adjwgt, 
-                   &params->nparts, params->tpwgts, params->ubvec, options, 
-                   &objval, part);
+      METIS_PartGraphRecursive(&graph->nvtxs, &graph->ncon, graph->xadj, graph->adjncy, 
+          graph->vwgt, graph->vsize, graph->adjwgt, &params->nparts, params->tpwgts, 
+          params->ubvec, options, &objval, part);
       break;
 
     case METIS_PTYPE_KWAY:
-      status = METIS_PartGraphKway(&graph->nvtxs, &graph->ncon, graph->xadj, 
-                   graph->adjncy, graph->vwgt, graph->vsize, graph->adjwgt, 
-                   &params->nparts, params->tpwgts, params->ubvec, options, 
-                   &objval, part);
+      METIS_PartGraphKway(&graph->nvtxs, &graph->ncon, graph->xadj, graph->adjncy, 
+          graph->vwgt, graph->vsize, graph->adjwgt, &params->nparts, params->tpwgts, 
+          params->ubvec, options, &objval, part);
       break;
 
   }
@@ -108,24 +95,19 @@ int main(int argc, char *argv[])
   gk_stopcputimer(params->parttimer);
 
   if (gk_GetCurMemoryUsed() != 0)
-    printf("***It seems that Metis did not free all of its memory! Report this.\n");
+        printf("***It seems that Metis did not free all of its memory! Report this.\n");
   params->maxmemory = gk_GetMaxMemoryUsed();
   gk_malloc_cleanup(0);
 
 
-  if (status != METIS_OK) {
-    printf("\n***Metis returned with an error.\n");
+  if (!params->nooutput) {
+    /* Write the solution */
+    gk_startcputimer(params->iotimer);
+    WritePartition(params->filename, part, graph->nvtxs, params->nparts); 
+    gk_stopcputimer(params->iotimer);
   }
-  else {
-    if (!params->nooutput) {
-      /* Write the solution */
-      gk_startcputimer(params->iotimer);
-      WritePartition(params->filename, part, graph->nvtxs, params->nparts); 
-      gk_stopcputimer(params->iotimer);
-    }
 
-    GPReportResults(params, graph, part, objval);
-  }
+  GPReportResults(params, graph, part, objval);
 
   FreeGraph(&graph);
   gk_free((void **)&part, LTERM);
@@ -204,7 +186,25 @@ void GPPrintInfo(params_t *params, graph_t *graph)
 /*************************************************************************/
 void GPReportResults(params_t *params, graph_t *graph, idx_t *part, idx_t objval)
 { 
+  idx_t i;
+  real_t lbvec[MAXNCON];
+
   gk_startcputimer(params->reporttimer);
+#ifdef XXX
+  ComputePartitionBalance(graph, params->nparts, part, lbvec);
+
+  printf("  %"PRIDX"-way %s: %7"PRIDX", Balance: ", 
+      params->nparts, 
+      (params->objtype == METIS_OBJTYPE_CUT ? "Edgecut" : "Volume"),
+      objval);
+
+  for (i=0; i<graph->ncon; i++)
+    printf("%5.2"PRREAL" ", lbvec[i]);
+  printf("\n");
+
+  printf("\nPartitioning Information ----------------------------------------------------\n");
+#endif
+
   ComputePartitionInfo(params, graph, part);
 
   gk_stopcputimer(params->reporttimer);

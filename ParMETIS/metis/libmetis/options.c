@@ -5,7 +5,7 @@
   \date   Started 5/12/2011
   \author George  
   \author Copyright 1997-2011, Regents of the University of Minnesota 
-  \version\verbatim $Id: options.c 10492 2011-07-06 09:28:42Z karypis $ \endverbatim
+  \version\verbatim $Id: options.c 10237 2011-06-14 15:22:13Z karypis $ \endverbatim
   */
 
 #include "metislib.h"
@@ -65,7 +65,7 @@ ctrl_t *SetupCtrl(moptype_et optype, idx_t *options, idx_t ncon, idx_t nparts,
 
     case METIS_OP_OMETIS:
       ctrl->objtype  = GETOPTION(options, METIS_OPTION_OBJTYPE,  METIS_OBJTYPE_NODE);
-      ctrl->ctype    = GETOPTION(options, METIS_OPTION_CTYPE,    METIS_CTYPE_SHEM);
+      ctrl->ctype    = GETOPTION(options, METIS_OPTION_CTYPE,    METIS_CTYPE_RM);
       ctrl->rtype    = GETOPTION(options, METIS_OPTION_RTYPE,    METIS_RTYPE_SEP1SIDED);
       ctrl->iptype   = GETOPTION(options, METIS_OPTION_IPTYPE,   METIS_IPTYPE_EDGE);
       ctrl->nseps    = GETOPTION(options, METIS_OPTION_NSEPS,    1);
@@ -81,7 +81,7 @@ ctrl_t *SetupCtrl(moptype_et optype, idx_t *options, idx_t ncon, idx_t nparts,
       break;
 
     default:
-      gk_errexit(SIGERR, "Unknown optype of %d\n", optype);
+      errexit("Unknown optype of %d\n", optype);
   }
 
   ctrl->numflag  = GETOPTION(options, METIS_OPTION_NUMBERING, 0);
@@ -103,13 +103,13 @@ ctrl_t *SetupCtrl(moptype_et optype, idx_t *options, idx_t ncon, idx_t nparts,
           ctrl->tpwgts[i*ncon+j] = 1.0/nparts;
       }
     }
-  }
-  else {  /* METIS_OP_OMETIS */
-    /* this is required to allow the pijbm to be defined properly for
-       the edge-based refinement during initial partitioning */
-    ctrl->tpwgts    = rsmalloc(2, .5,  "SetupCtrl: ctrl->tpwgts");
-  }
 
+    ctrl->invtpwgts = rmalloc(nparts*ncon, "SetupCtrl: ctrl->invtpwgts");
+    for (i=0; i<nparts; i++) {
+      for (j=0; j<ncon; j++)
+        ctrl->invtpwgts[i*ncon+j] = 1.0/ctrl->tpwgts[i*ncon+j];
+    }
+  }
 
   /* setup the ubfactors */
   ctrl->ubfactors = rsmalloc(ctrl->ncon, I2RUBFACTOR(ctrl->ufactor), "SetupCtrl: ubfactors");
@@ -119,9 +119,10 @@ ctrl_t *SetupCtrl(moptype_et optype, idx_t *options, idx_t ncon, idx_t nparts,
     ctrl->ubfactors[i] += 0.0000499;
 
   /* Allocate memory for balance multipliers. 
-     Note that for PMETIS/OMETIS routines the memory allocated is more 
-     than required as balance multipliers for 2 parts is sufficient. */
+     Note that for PMETIS routines the memory allocated is more than required
+     as balance multipliers for 2 parts is sufficient. */
   ctrl->pijbm = rmalloc(nparts*ncon, "SetupCtrl: ctrl->pijbm");
+
 
   InitRandom(ctrl->seed);
 
@@ -146,7 +147,7 @@ void SetupKWayBalMultipliers(ctrl_t *ctrl, graph_t *graph)
 
   for (i=0; i<ctrl->nparts; i++) {
     for (j=0; j<graph->ncon; j++)
-      ctrl->pijbm[i*graph->ncon+j] = graph->invtvwgt[j]/ctrl->tpwgts[i*graph->ncon+j];
+      ctrl->pijbm[i*graph->ncon+j] = graph->invtvwgt[j]*ctrl->invtpwgts[i*graph->ncon+j];
   }
 }
 
@@ -252,7 +253,7 @@ void PrintCtrl(ctrl_t *ctrl)
   }
   else {
     printf("   Number of partitions: %"PRIDX"\n", ctrl->nparts);
-    printf("   Number of cuts: %"PRIDX"\n", ctrl->ncuts);
+    printf("   Number of trials: %"PRIDX"\n", ctrl->ncuts);
     printf("   User-supplied ufactor: %"PRIDX"\n", ctrl->ufactor);
 
     if (ctrl->optype == METIS_OP_KMETIS) {
@@ -281,239 +282,6 @@ void PrintCtrl(ctrl_t *ctrl)
   printf("\n");
 }
 
-
-/*************************************************************************/
-/*! This function checks the validity of user-supplied parameters */
-/*************************************************************************/
-int CheckParams(ctrl_t *ctrl)
-{
-  idx_t i, j;
-  real_t sum;
-  mdbglvl_et  dbglvl=METIS_DBG_INFO;
-
-  switch (ctrl->optype) {
-    case METIS_OP_PMETIS:
-      if (ctrl->objtype != METIS_OBJTYPE_CUT) {
-        IFSET(dbglvl, METIS_DBG_INFO, printf("Input Error: Incorrect objective type.\n"));
-        return 0;
-      }
-      if (ctrl->ctype != METIS_CTYPE_RM && ctrl->ctype != METIS_CTYPE_SHEM) {
-        IFSET(dbglvl, METIS_DBG_INFO, printf("Input Error: Incorrect coarsening scheme.\n"));
-        return 0;
-      }
-      if (ctrl->iptype != METIS_IPTYPE_GROW && ctrl->iptype != METIS_IPTYPE_RANDOM) {
-        IFSET(dbglvl, METIS_DBG_INFO, printf("Input Error: Incorrect initial partitioning scheme.\n"));
-        return 0;
-      }
-      if (ctrl->rtype != METIS_RTYPE_FM) {
-        IFSET(dbglvl, METIS_DBG_INFO, printf("Input Error: Incorrect refinement scheme.\n"));
-        return 0;
-      }
-      if (ctrl->ncuts <= 0) {
-        IFSET(dbglvl, METIS_DBG_INFO, printf("Input Error: Incorrect ncuts.\n"));
-        return 0;
-      }
-      if (ctrl->niter <= 0) {
-        IFSET(dbglvl, METIS_DBG_INFO, printf("Input Error: Incorrect niter.\n"));
-        return 0;
-      }
-      if (ctrl->ufactor <= 0) {
-        IFSET(dbglvl, METIS_DBG_INFO, printf("Input Error: Incorrect ufactor.\n"));
-        return 0;
-      }
-      if (ctrl->numflag != 0 && ctrl->numflag != 1) {
-        IFSET(dbglvl, METIS_DBG_INFO, printf("Input Error: Incorrect numflag.\n"));
-        return 0;
-      }
-      if (ctrl->nparts <= 0) {
-        IFSET(dbglvl, METIS_DBG_INFO, printf("Input Error: Incorrect nparts.\n"));
-        return 0;
-      }
-      if (ctrl->ncon <= 0) {
-        IFSET(dbglvl, METIS_DBG_INFO, printf("Input Error: Incorrect ncon.\n"));
-        return 0;
-      }
-
-      for (i=0; i<ctrl->ncon; i++) {
-        sum = rsum(ctrl->nparts, ctrl->tpwgts+i, ctrl->ncon);
-        if (sum < 0.99 || sum > 1.01) {
-          IFSET(dbglvl, METIS_DBG_INFO, 
-              printf("Input Error: Incorrect sum of %"PRREAL" for tpwgts for constraint %"PRIDX".\n", sum, i));
-          return 0;
-        }
-      }
-      for (i=0; i<ctrl->ncon; i++) {
-        for (j=0; j<ctrl->nparts; j++) {
-          if (ctrl->tpwgts[j*ctrl->ncon+i] <= 0.0) {
-            IFSET(dbglvl, METIS_DBG_INFO, 
-                printf("Input Error: Incorrect tpwgts for partition %"PRIDX" and constraint %"PRIDX".\n", j, i));
-            return 0;
-          }
-        }
-      }
-
-      for (i=0; i<ctrl->ncon; i++) {
-        if (ctrl->ubfactors[i] <= 1.0) {
-          IFSET(dbglvl, METIS_DBG_INFO, 
-              printf("Input Error: Incorrect ubfactor for constraint %"PRIDX".\n", i));
-          return 0;
-        }
-      }
-
-      break;
-
-    case METIS_OP_KMETIS:
-      if (ctrl->objtype != METIS_OBJTYPE_CUT && ctrl->objtype != METIS_OBJTYPE_VOL) {
-        IFSET(dbglvl, METIS_DBG_INFO, printf("Input Error: Incorrect objective type.\n"));
-        return 0;
-      }
-      if (ctrl->ctype != METIS_CTYPE_RM && ctrl->ctype != METIS_CTYPE_SHEM) {
-        IFSET(dbglvl, METIS_DBG_INFO, printf("Input Error: Incorrect coarsening scheme.\n"));
-        return 0;
-      }
-      if (ctrl->iptype != METIS_IPTYPE_METISRB) {
-        IFSET(dbglvl, METIS_DBG_INFO, printf("Input Error: Incorrect initial partitioning scheme.\n"));
-        return 0;
-      }
-      if (ctrl->rtype != METIS_RTYPE_GREEDY) {
-        IFSET(dbglvl, METIS_DBG_INFO, printf("Input Error: Incorrect refinement scheme.\n"));
-        return 0;
-      }
-      if (ctrl->ncuts <= 0) {
-        IFSET(dbglvl, METIS_DBG_INFO, printf("Input Error: Incorrect ncuts.\n"));
-        return 0;
-      }
-      if (ctrl->niter <= 0) {
-        IFSET(dbglvl, METIS_DBG_INFO, printf("Input Error: Incorrect niter.\n"));
-        return 0;
-      }
-      if (ctrl->ufactor <= 0) {
-        IFSET(dbglvl, METIS_DBG_INFO, printf("Input Error: Incorrect ufactor.\n"));
-        return 0;
-      }
-      if (ctrl->numflag != 0 && ctrl->numflag != 1) {
-        IFSET(dbglvl, METIS_DBG_INFO, printf("Input Error: Incorrect numflag.\n"));
-        return 0;
-      }
-      if (ctrl->nparts <= 0) {
-        IFSET(dbglvl, METIS_DBG_INFO, printf("Input Error: Incorrect nparts.\n"));
-        return 0;
-      }
-      if (ctrl->ncon <= 0) {
-        IFSET(dbglvl, METIS_DBG_INFO, printf("Input Error: Incorrect ncon.\n"));
-        return 0;
-      }
-      if (ctrl->contig != 0 && ctrl->contig != 1) {
-        IFSET(dbglvl, METIS_DBG_INFO, printf("Input Error: Incorrect contig.\n"));
-        return 0;
-      }
-      if (ctrl->minconn != 0 && ctrl->minconn != 1) {
-        IFSET(dbglvl, METIS_DBG_INFO, printf("Input Error: Incorrect minconn.\n"));
-        return 0;
-      }
-
-      for (i=0; i<ctrl->ncon; i++) {
-        sum = rsum(ctrl->nparts, ctrl->tpwgts+i, ctrl->ncon);
-        if (sum < 0.99 || sum > 1.01) {
-          IFSET(dbglvl, METIS_DBG_INFO, 
-              printf("Input Error: Incorrect sum of %"PRREAL" for tpwgts for constraint %"PRIDX".\n", sum, i));
-          return 0;
-        }
-      }
-      for (i=0; i<ctrl->ncon; i++) {
-        for (j=0; j<ctrl->nparts; j++) {
-          if (ctrl->tpwgts[j*ctrl->ncon+i] <= 0.0) {
-            IFSET(dbglvl, METIS_DBG_INFO, 
-                printf("Input Error: Incorrect tpwgts for partition %"PRIDX" and constraint %"PRIDX".\n", j, i));
-            return 0;
-          }
-        }
-      }
-
-      for (i=0; i<ctrl->ncon; i++) {
-        if (ctrl->ubfactors[i] <= 1.0) {
-          IFSET(dbglvl, METIS_DBG_INFO, 
-              printf("Input Error: Incorrect ubfactor for constraint %"PRIDX".\n", i));
-          return 0;
-        }
-      }
-
-      break;
-
-
-
-    case METIS_OP_OMETIS:
-      if (ctrl->objtype != METIS_OBJTYPE_NODE) {
-        IFSET(dbglvl, METIS_DBG_INFO, printf("Input Error: Incorrect objective type.\n"));
-        return 0;
-      }
-      if (ctrl->ctype != METIS_CTYPE_RM && ctrl->ctype != METIS_CTYPE_SHEM) {
-        IFSET(dbglvl, METIS_DBG_INFO, printf("Input Error: Incorrect coarsening scheme.\n"));
-        return 0;
-      }
-      if (ctrl->iptype != METIS_IPTYPE_EDGE && ctrl->iptype != METIS_IPTYPE_NODE) {
-        IFSET(dbglvl, METIS_DBG_INFO, printf("Input Error: Incorrect initial partitioning scheme.\n"));
-        return 0;
-      }
-      if (ctrl->rtype != METIS_RTYPE_SEP1SIDED && ctrl->rtype != METIS_RTYPE_SEP2SIDED) {
-        IFSET(dbglvl, METIS_DBG_INFO, printf("Input Error: Incorrect refinement scheme.\n"));
-        return 0;
-      }
-      if (ctrl->nseps <= 0) {
-        IFSET(dbglvl, METIS_DBG_INFO, printf("Input Error: Incorrect nseps.\n"));
-        return 0;
-      }
-      if (ctrl->niter <= 0) {
-        IFSET(dbglvl, METIS_DBG_INFO, printf("Input Error: Incorrect niter.\n"));
-        return 0;
-      }
-      if (ctrl->ufactor <= 0) {
-        IFSET(dbglvl, METIS_DBG_INFO, printf("Input Error: Incorrect ufactor.\n"));
-        return 0;
-      }
-      if (ctrl->numflag != 0 && ctrl->numflag != 1) {
-        IFSET(dbglvl, METIS_DBG_INFO, printf("Input Error: Incorrect numflag.\n"));
-        return 0;
-      }
-      if (ctrl->nparts != 3) {
-        IFSET(dbglvl, METIS_DBG_INFO, printf("Input Error: Incorrect nparts.\n"));
-        return 0;
-      }
-      if (ctrl->ncon != 1) {
-        IFSET(dbglvl, METIS_DBG_INFO, printf("Input Error: Incorrect ncon.\n"));
-        return 0;
-      }
-      if (ctrl->compress != 0 && ctrl->compress != 1) {
-        IFSET(dbglvl, METIS_DBG_INFO, printf("Input Error: Incorrect compress.\n"));
-        return 0;
-      }
-      if (ctrl->ccorder != 0 && ctrl->ccorder != 1) {
-        IFSET(dbglvl, METIS_DBG_INFO, printf("Input Error: Incorrect ccorder.\n"));
-        return 0;
-      }
-      if (ctrl->pfactor < 0.0 ) {
-        IFSET(dbglvl, METIS_DBG_INFO, printf("Input Error: Incorrect pfactor.\n"));
-        return 0;
-      }
-
-      for (i=0; i<ctrl->ncon; i++) {
-        if (ctrl->ubfactors[i] <= 1.0) {
-          IFSET(dbglvl, METIS_DBG_INFO, 
-              printf("Input Error: Incorrect ubfactor for constraint %"PRIDX".\n", i));
-          return 0;
-        }
-      }
-
-      break;
-
-    default:
-      IFSET(dbglvl, METIS_DBG_INFO, printf("Input Error: Incorrect optype\n"));
-      return 0;
-  }
-
-  return 1;
-}
-
   
 /*************************************************************************/
 /*! This function frees the memory associated with a ctrl_t */
@@ -524,10 +292,19 @@ void FreeCtrl(ctrl_t **r_ctrl)
 
   FreeWorkSpace(ctrl);
 
-  gk_free((void **)&ctrl->tpwgts, &ctrl->pijbm, 
+  gk_free((void **)&ctrl->tpwgts, &ctrl->invtpwgts, &ctrl->pijbm, 
           &ctrl->ubfactors, &ctrl->maxvwgt, &ctrl, LTERM);
 
   *r_ctrl = NULL;
 }
 
+
+/*************************************************************************/
+/*! This function checks the validity of user-supplied parameters */
+/*************************************************************************/
+idx_t CheckParams(ctrl_t *ctrl)
+{
+  /* TODO! */
+  return 1;
+}
 

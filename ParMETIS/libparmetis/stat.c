@@ -8,7 +8,7 @@
  * Started 7/25/97
  * George
  *
- * $Id: stat.c 10578 2011-07-14 18:10:15Z karypis $
+ * $Id: stat.c 10367 2011-06-22 13:45:44Z karypis $
  *
  */
 
@@ -59,10 +59,9 @@ void ComputeSerialBalance(ctrl_t *ctrl, graph_t *graph, idx_t *where, real_t *ub
 void ComputeParallelBalance(ctrl_t *ctrl, graph_t *graph, idx_t *where, real_t *ubvec)
 {
   idx_t i, j, nvtxs, ncon, nparts;
-  real_t *nvwgt, *lnpwgts, *gnpwgts, *lminvwgts, *gminvwgts;
+  real_t *nvwgt, *lnpwgts, *gnpwgts;
   real_t *tpwgts, maximb;
-
-  WCOREPUSH;
+  real_t lminvwgts[MAXNCON], gminvwgts[MAXNCON];
 
   ncon   = graph->ncon;
   nvtxs  = graph->nvtxs;
@@ -70,10 +69,10 @@ void ComputeParallelBalance(ctrl_t *ctrl, graph_t *graph, idx_t *where, real_t *
   nparts = ctrl->nparts;
   tpwgts = ctrl->tpwgts;
 
-  lminvwgts = rset(ncon, 1.0, rwspacemalloc(ctrl, ncon)); 
-  gminvwgts = rwspacemalloc(ctrl, ncon); 
-  lnpwgts   = rset(nparts*ncon, 0.0, rwspacemalloc(ctrl, nparts*ncon));
-  gnpwgts   = rwspacemalloc(ctrl, nparts*ncon);
+  lnpwgts = rmalloc(nparts*ncon, "CPB: lnpwgts");
+  gnpwgts = rmalloc(nparts*ncon, "CPB: gnpwgts");
+  rset(nparts*ncon, 0.0, lnpwgts);
+  rset(ncon, 1.0, lminvwgts);
 
   for (i=0; i<nvtxs; i++) {
     for (j=0; j<ncon; j++) {
@@ -95,7 +94,9 @@ void ComputeParallelBalance(ctrl_t *ctrl, graph_t *graph, idx_t *where, real_t *
     ubvec[j] = maximb;
   }
 
-  WCOREPOP;
+  gk_free((void **)&lnpwgts, (void **)&gnpwgts, LTERM);
+
+  return;
 }
 
 
@@ -126,72 +127,210 @@ void Mc_PrintThrottleMatrix(ctrl_t *ctrl, graph_t *graph, real_t *matrix)
 }
 
 
-/***********************************************************************************/
-/*! This function prints post-partitioning information 
-   */
-/***********************************************************************************/
-void PrintPostPartInfo(ctrl_t *ctrl, graph_t *graph, idx_t movestats)
-{
-  idx_t i, j, ncon, nmoved, maxin, maxout, nparts;
-  real_t maximb, *tpwgts;
-
-  ncon = graph->ncon;
-
-  nparts = ctrl->nparts;
-  tpwgts = ctrl->tpwgts;
-
-  rprintf(ctrl, "Final %3"PRIDX"-way Cut: %6"PRIDX" \tBalance: ", nparts, graph->mincut);
-
-  for (j=0; j<ncon; j++) {
-    for (maximb=0.0, i=0; i<nparts; i++) 
-      maximb = gk_max(maximb, graph->gnpwgts[i*ncon+j]/tpwgts[i*ncon+j]);
-    rprintf(ctrl, "%.3"PRREAL" ", maximb);
-  }
-
-  if (movestats) {
-    Mc_ComputeMoveStatistics(ctrl, graph, &nmoved, &maxin, &maxout);
-    rprintf(ctrl, "\nNMoved: %"PRIDX" %"PRIDX" %"PRIDX" %"PRIDX"\n", 
-        nmoved, maxin, maxout, maxin+maxout);
-  }
-  else {
-    rprintf(ctrl, "\n");
-  }
-}
-
-
-
 /*************************************************************************
-* This function computes movement statistics for adaptive refinement
-* schemes
+*  This function computes stats for refinement
 **************************************************************************/
-void ComputeMoveStatistics(ctrl_t *ctrl, graph_t *graph, idx_t *nmoved, idx_t *maxin, idx_t *maxout)
+void Mc_ComputeRefineStats(ctrl_t *ctrl, graph_t *graph, real_t *ubvec)
 {
-  idx_t i, j, nvtxs;
-  idx_t *vwgt, *where;
-  idx_t *lpvtxs, *gpvtxs;
+  idx_t h, i, j, k;
+  idx_t nvtxs, ncon;
+  idx_t *xadj, *adjncy, *adjwgt, *where;
+  real_t *nvwgt, *lnpwgts, *gnpwgts;
+  idx_t mype = ctrl->mype, nparts = ctrl->nparts;
+  idx_t *gborder, *border, *gfrom, *from, *gto, *to, *connect, *gconnect;
+  idx_t gain[20] = {0}, ggain[20];
+  idx_t lnborders, gnborders;
+  idx_t bestgain, pmoves, gpmoves, other;
+  real_t tpwgts[MAXNCON], badmaxpwgt[MAXNCON];
+  idx_t HIST_FACTOR = graph->level + 1;
+  ckrinfo_t *rinfo;
+  cnbr_t *mynbrs;
 
-  nvtxs = graph->nvtxs;
-  vwgt = graph->vwgt;
-  where = graph->where;
+  nvtxs   = graph->nvtxs;
+  ncon    = graph->ncon;
+  xadj    = graph->xadj;
+  adjncy  = graph->adjncy;
+  adjwgt  = graph->adjwgt;
+  where   = graph->where;
+  lnpwgts = graph->lnpwgts;
+  gnpwgts = graph->gnpwgts;
+  rinfo   = graph->ckrinfo;
 
-  lpvtxs = ismalloc(ctrl->nparts, 0, "ComputeMoveStatistics: lpvtxs");
-  gpvtxs = ismalloc(ctrl->nparts, 0, "ComputeMoveStatistics: gpvtxs");
+  connect  = ismalloc(nparts*nparts, 0, "CRS: connect");
+  gconnect = imalloc(nparts*nparts, "CRS: gconnect");
+  border   = ismalloc(nparts, 0, "CRS: border");
+  gborder  = imalloc(nparts, "CRS: gborder");
+  from     = ismalloc(nparts, 0, "CRS: from");
+  gfrom    = imalloc(nparts, "CRS: gfrom");
+  to       = ismalloc(nparts, 0, "CRS: to");
+  gto      = imalloc(nparts, "CRS: gto");
 
-  for (j=i=0; i<nvtxs; i++) {
-    lpvtxs[where[i]]++;
-    if (where[i] != ctrl->mype)
-      j++;
+  for (h=0; h<ncon; h++) {
+    tpwgts[h] = rsum(nparts, gnpwgts+h, ncon)/nparts;
+    badmaxpwgt[h] = ubvec[h]*tpwgts[h];
   }
 
-  /* PrintVector(ctrl, ctrl->npes, 0, lpvtxs, "Lpvtxs: "); */
+  if (mype == 0) printf("******************************\n");
+  if (mype == 0) printf("******************************\n");
 
-  gkMPI_Allreduce((void *)lpvtxs, (void *)gpvtxs, ctrl->nparts, IDX_T, MPI_SUM, ctrl->comm);
+  /***************************************/
+  if (mype == 0) {
+    printf("subdomain weights:\n");
+    for (h=0; h<ncon; h++) {
+      for (i=0; i<nparts; i++)
+        printf("%9.3"PRREAL" ", gnpwgts[i*ncon+h]);
+      printf("\n");
+    }
+    printf("\n");
+  }
 
-  *nmoved = GlobalSESum(ctrl, j);
-  *maxout = GlobalSEMax(ctrl, j);
-  *maxin = GlobalSEMax(ctrl, gpvtxs[ctrl->mype]-(nvtxs-j));
+  /***************************************/
+  if (mype == 0) {
+    printf("subdomain imbalance:\n");
+    for (h=0; h<ncon; h++) {
+      for (i=0; i<nparts; i++)
+        printf("%9.3"PRREAL" ", gnpwgts[i*ncon+h] * (real_t)(nparts));
+      printf("\n");
+    }
+    printf("\n");
+  }
 
-  gk_free((void **)&lpvtxs, (void **)&gpvtxs, LTERM);
+  /***************************************/
+  for (i=0; i<nparts; i++)
+    connect[i*nparts+i] = -1;
+
+  for (i=0; i<nvtxs; i++) {
+    for (j=xadj[i]; j<xadj[i+1]; j++) {
+      if (where[i] != where[adjncy[j]]) {
+        connect[where[i]*nparts+where[adjncy[j]]] = 1;
+        connect[where[adjncy[j]]*nparts+where[i]] = 1;
+      }
+    }
+  }
+
+  gkMPI_Reduce((void *)connect, (void *)gconnect, nparts*nparts, IDX_T, MPI_MAX, 0, ctrl->comm);
+  if (mype == 0) { 
+    printf("connectivity\n");
+    for (i=0; i<nparts; i++) {
+      printf("%"PRIDX": ", i);
+      for (j=0; j<nparts; j++)
+        printf("%9"PRIDX" ", gconnect[i*nparts+j]);
+      printf("\n");
+    }
+    printf("\n");
+  }
+
+  /***************************************/
+  lnborders = 0;
+  for (i=0; i<nvtxs; i++) {
+    if (rinfo[i].nnbrs > 0) {
+      lnborders++;
+      border[where[i]]++;
+    } 
+  }
+
+  gkMPI_Reduce((void *)border, (void *)gborder, nparts, IDX_T, MPI_SUM, 0, ctrl->comm);
+  gnborders = GlobalSESum(ctrl, lnborders);
+  if (mype == 0) {
+    printf("number of borders: %"PRIDX"\n", gnborders);
+    for (i=0; i<nparts; i++)
+      printf("%9"PRIDX" ", gborder[i]);
+    printf("\n\n");
+  }
+
+  /***************************************/
+  pmoves = 0;
+  for (i=0; i<nvtxs; i++) {
+    nvwgt  = graph->nvwgt+i*ncon;
+    mynbrs = ctrl->cnbrpool + rinfo[i].inbr;
+
+    for (j=0; j<rinfo[i].nnbrs; j++) {
+      other = mynbrs[j].pid;
+      for (h=0; h<ncon; h++) {
+        if (gnpwgts[other*ncon+h]+nvwgt[h] > badmaxpwgt[h])
+          break;
+      }
+
+      if (h == ncon)
+        break;
+    }
+
+    if (j < rinfo[i].nnbrs) {
+      pmoves++;
+      from[where[i]]++;
+      to[other]++;
+      for (k=j+1; k<rinfo[i].nnbrs; k++) {
+        other = mynbrs[j].pid;
+        for (h=0; h<ncon; h++)
+          if (gnpwgts[other*ncon+h]+nvwgt[h] > badmaxpwgt[h])
+            break;
+
+        if (h == ncon) {
+          pmoves++;
+          from[where[i]]++;
+          to[other]++;
+        }
+      }
+    }
+  }
+
+  gpmoves = GlobalSESum(ctrl, pmoves);
+  gkMPI_Reduce((void *)from, (void *)gfrom, nparts, IDX_T, MPI_SUM, 0, ctrl->comm);
+  gkMPI_Reduce((void *)to, (void *)gto, nparts, IDX_T, MPI_SUM, 0, ctrl->comm);
+
+  if (mype == 0) {
+    printf("possible moves: %"PRIDX"\n", gpmoves);
+    printf("from   ");
+    for (i=0; i<nparts; i++) {
+      printf("%9"PRIDX" ", gfrom[i]);
+    }
+    printf("\n");
+    printf("to     ");
+    for (i=0; i<nparts; i++) {
+      printf("%9"PRIDX" ", gto[i]);
+    }
+    printf("\n\n");
+  }
+
+  /***************************************/
+  for (i=0; i<nvtxs; i++) {
+    if (rinfo[i].nnbrs > 0) {
+      mynbrs = ctrl->cnbrpool + rinfo[i].inbr;
+
+      bestgain = mynbrs[0].ed-rinfo[i].id;
+      for (j=1; j<rinfo[i].nnbrs; j++)
+        bestgain = gk_max(bestgain, mynbrs[j].ed-rinfo[i].id);
+
+      if (bestgain / HIST_FACTOR >= 10) {
+        gain[19]++;
+        continue;
+      }
+
+      if (bestgain / HIST_FACTOR < -10) {
+        gain[0]++;
+        continue;
+      }
+
+      gain[(bestgain/HIST_FACTOR)+10]++;
+    }
+  }
+
+  gkMPI_Reduce((void *)gain, (void *)ggain, 20, IDX_T, MPI_SUM, 0, ctrl->comm);
+  if (mype == 0) {
+    printf("gain histogram (buckets of %"PRIDX")\n", HIST_FACTOR);
+    for (i=0; i<20; i++) {
+      if (i == 10 || i == 11)
+        printf("    ");
+      printf("%"PRIDX" ", ggain[i]);
+    }
+    printf("\n\n");
+  }
+
+
+  /***************************************/
+  if (mype == 0) printf("******************************\n");
+  if (mype == 0) printf("******************************\n");
+
+  gk_free((void **)&gconnect, (void **)&connect, (void **)&gborder, (void **)&border, (void **)&gfrom, (void **)&from, (void **)&gto, (void **)&to, LTERM);
+  return;
 }
-
-

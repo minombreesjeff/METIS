@@ -9,7 +9,7 @@
  * Started 10/19/94
  * George
  *
- * $Id: mesh.c 10575 2011-07-14 14:46:42Z karypis $
+ * $Id: mesh.c 10057 2011-06-02 13:44:44Z karypis $
  *
  */
 
@@ -19,9 +19,9 @@
 /*************************************************************************
 * This function converts a mesh into a dual graph
 **************************************************************************/
-int ParMETIS_V3_Mesh2Dual(idx_t *elmdist, idx_t *eptr, idx_t *eind, 
-                 idx_t *numflag, idx_t *ncommon, idx_t **r_xadj, 
-		 idx_t **r_adjncy, MPI_Comm *comm)
+void ParMETIS_V3_Mesh2Dual(idx_t *elmdist, idx_t *eptr, idx_t *eind, 
+                 idx_t *numflag, idx_t *ncommonnodes, idx_t **xadj, 
+		 idx_t **adjncy, MPI_Comm *comm)
 {
   idx_t i, j, jj, k, kk, m;
   idx_t npes, mype, pe, count, mask, pass;
@@ -29,24 +29,22 @@ int ParMETIS_V3_Mesh2Dual(idx_t *elmdist, idx_t *eptr, idx_t *eind,
   idx_t firstelm, firstnode, lnode, nrecv, nsend;
   idx_t *scounts, *rcounts, *sdispl, *rdispl;
   idx_t *nodedist, *nmap, *auxarray;
-  idx_t *gnptr, *gnind, *nptr, *nind, *myxadj=NULL, *myadjncy = NULL;
+  idx_t *gnptr, *gnind, *nptr, *nind, *myxadj, *myadjncy = NULL;
   idx_t *sbuffer, *rbuffer, *htable;
   ikv_t *nodelist, *recvbuffer;
   idx_t maxcount, *ind, *wgt;
   idx_t gmaxnode, gminnode;
-  size_t curmem;
+  ctrl_t ctrl;
 
-  gk_malloc_init();
-  curmem = gk_GetCurMemoryUsed();
-  
-  /* Get basic comm info */
-  gkMPI_Comm_size(*comm, &npes);
-  gkMPI_Comm_rank(*comm, &mype);
 
+  SetUpCtrl(&ctrl, -1, 0, *comm);
+
+  npes = ctrl.npes;
+  mype = ctrl.mype;
 
   nelms = elmdist[mype+1]-elmdist[mype];
 
-  if (*numflag > 0) 
+  if (*numflag == 1) 
     ChangeNumberingMesh(elmdist, eptr, eind, NULL, NULL, NULL, npes, mype, 1);
 
   mask = (1<<11)-1;
@@ -54,11 +52,11 @@ int ParMETIS_V3_Mesh2Dual(idx_t *elmdist, idx_t *eptr, idx_t *eind,
   /*****************************/
   /* Determine number of nodes */
   /*****************************/
-  gminnode = GlobalSEMinComm(*comm, imin(eptr[nelms], eind));
+  gminnode = GlobalSEMin(&ctrl, imin(eptr[nelms], eind));
   for (i=0; i<eptr[nelms]; i++)
     eind[i] -= gminnode;
 
-  gmaxnode = GlobalSEMaxComm(*comm, imax(eptr[nelms], eind));
+  gmaxnode = GlobalSEMax(&ctrl, imax(eptr[nelms], eind));
 
 
   /**************************/
@@ -79,10 +77,10 @@ int ParMETIS_V3_Mesh2Dual(idx_t *elmdist, idx_t *eptr, idx_t *eind,
   nodelist = ikvmalloc(eptr[nelms], "nodelist");
   auxarray = imalloc(eptr[nelms], "auxarray");
   htable   = ismalloc(gk_max(my_nns, mask+1), -1, "htable");
-  scounts  = imalloc(npes, "scounts");
-  rcounts  = imalloc(npes, "rcounts");
-  sdispl   = imalloc(npes+1, "sdispl");
-  rdispl   = imalloc(npes+1, "rdispl");
+  scounts  = imalloc(4*npes+2, "scounts");
+  rcounts  = scounts+npes;
+  sdispl   = scounts+2*npes;
+  rdispl   = scounts+3*npes+1;
 
 
   /*********************************************/
@@ -145,7 +143,7 @@ int ParMETIS_V3_Mesh2Dual(idx_t *elmdist, idx_t *eptr, idx_t *eind,
   recvbuffer = ikvmalloc(gk_max(1, nrecv), "recvbuffer");
 
   gkMPI_Alltoallv((void *)nodelist, scounts, sdispl, IDX_T, (void *)recvbuffer, 
-      rcounts, rdispl, IDX_T, *comm);
+                rcounts, rdispl, IDX_T, *comm);
 
   /**************************************/
   /* construct global node-element list */
@@ -203,7 +201,7 @@ int ParMETIS_V3_Mesh2Dual(idx_t *elmdist, idx_t *eptr, idx_t *eind,
 
   /* create the send buffer */
   nsend = sdispl[npes];
-  sbuffer = imalloc(gk_max(1, nsend), "sbuffer");
+  sbuffer = (idx_t *)realloc(nodelist, sizeof(idx_t)*gk_max(1, nsend));
 
   count = 0;
   for (pe=0; pe<npes; pe++) {
@@ -231,11 +229,11 @@ int ParMETIS_V3_Mesh2Dual(idx_t *elmdist, idx_t *eptr, idx_t *eind,
   icopy(npes, rcounts, rdispl);
   MAKECSR(i, npes, rdispl);
 
-  nrecv   = rdispl[npes];
-  rbuffer = imalloc(gk_max(1, nrecv), "rbuffer");
+  nrecv = rdispl[npes];
+  rbuffer = (idx_t *)realloc(recvbuffer, sizeof(idx_t)*gk_max(1, nrecv));
 
   gkMPI_Alltoallv((void *)sbuffer, scounts, sdispl, IDX_T, (void *)rbuffer, 
-      rcounts, rdispl, IDX_T, *comm);
+                rcounts, rdispl, IDX_T, *comm);
 
   k = -1;
   nptr = ismalloc(lnns+1, 0, "nptr");
@@ -254,11 +252,7 @@ int ParMETIS_V3_Mesh2Dual(idx_t *elmdist, idx_t *eptr, idx_t *eind,
   ASSERT(k+1 == lnns);
   ASSERT(nptr[lnns] == nrecv)
 
-  myxadj = *r_xadj = (idx_t *)malloc(sizeof(idx_t)*(nelms+1));
-  if (myxadj == NULL) 
-    gk_errexit(SIGMEM, "Failed to allocate memory for the dual graph's xadj array.\n");
-  iset(nelms+1, 0, myxadj);
-
+  myxadj = *xadj = ismalloc(nelms+1, 0, "xadj");
   iset(mask+1, -1, htable);
 
   firstelm = elmdist[mype];
@@ -305,16 +299,25 @@ int ParMETIS_V3_Mesh2Dual(idx_t *elmdist, idx_t *eptr, idx_t *eind,
           /* Adjust the memory. 
              This will be replaced by a idxrealloc() when GKlib will be incorporated */
           if (count == maxcount-1) {
+            idx_t *tmpptr;
+
+            tmpptr = imalloc(2*maxcount, "ParMETIS_V3_Mesh2Dual: tmpptr");
+            icopy(maxcount, ind, tmpptr);
+            ind = tmpptr;
+
+            tmpptr = imalloc(2*maxcount, "ParMETIS_V3_Mesh2Dual: tmpptr");
+            icopy(maxcount, wgt, tmpptr);
+            wgt = tmpptr;
+
             maxcount *= 2;
-            ind = irealloc(ind, maxcount, "ParMETIS_V3_Mesh2Dual: ind");
-            wgt = irealloc(wgt, maxcount, "ParMETIS_V3_Mesh2Dual: wgt");
           }
+
         }
       }
 
       for (j=0; j<count; j++) {
         htable[(ind[j]&mask)] = -1;
-        if (wgt[j] >= *ncommon) {
+        if (wgt[j] >= *ncommonnodes) {
           if (pass == 0) 
             myxadj[i]++;
           else 
@@ -325,9 +328,7 @@ int ParMETIS_V3_Mesh2Dual(idx_t *elmdist, idx_t *eptr, idx_t *eind,
 
     if (pass == 0) {
       MAKECSR(i, nelms, myxadj);
-      myadjncy = *r_adjncy = (idx_t *)malloc(sizeof(idx_t)*myxadj[nelms]);
-      if (myadjncy == NULL)
-        gk_errexit(SIGMEM, "Failed to allocate memory for dual graph's adjncy array.\n");
+      myadjncy = *adjncy = imalloc(myxadj[nelms], "adjncy");
     }
     else {
       SHIFTCSR(i, nelms, myxadj);
@@ -344,16 +345,12 @@ int ParMETIS_V3_Mesh2Dual(idx_t *elmdist, idx_t *eptr, idx_t *eind,
     ChangeNumberingMesh(elmdist, eptr, eind, myxadj, myadjncy, NULL, npes, mype, 0);
 
   /* do not free nodelist, recvbuffer, rbuffer */
-  gk_free((void **)&nodedist, &nodelist, &auxarray, &htable, &scounts, &rcounts,
-      &sdispl, &rdispl, &nmap, &recvbuffer, &gnptr, &gnind, &sbuffer, &rbuffer,
-      &nptr, &ind, &wgt, LTERM);
+  gk_free((void **)&scounts, (void **)&nodedist, (void **)&nmap, (void **)&sbuffer, 
+         (void **)&htable, (void **)&nptr, (void **)&nind, (void **)&gnptr, 
+	 (void **)&gnind, (void **)&auxarray, &ind, &wgt, LTERM);
 
-  if (gk_GetCurMemoryUsed() - curmem > 0) {
-    printf("ParMETIS appears to have a memory leak of %zdbytes. Report this.\n",
-        (ssize_t)(gk_GetCurMemoryUsed() - curmem));
-  }
-  gk_malloc_cleanup(0);
+  FreeCtrl(&ctrl);
 
-  return METIS_OK;
+  return;
 }
 

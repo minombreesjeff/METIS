@@ -8,7 +8,7 @@
  * Started 7/23/97
  * George
  *
- * $Id: balancemylink.c 10542 2011-07-11 16:56:22Z karypis $
+ * $Id: balancemylink.c 10416 2011-06-27 15:48:33Z karypis $
  */
 
 #include <parmetislib.h>
@@ -28,7 +28,7 @@ idx_t BalanceMyLink(ctrl_t *ctrl, graph_t *graph, idx_t *home, idx_t me,
   idx_t pass, nswaps, nmoves, multiplier;
   idx_t *xadj, *vsize, *adjncy, *adjwgt, *where, *ed, *id;
   idx_t *hval, *nvpq, *inq, *map, *rmap, *ptr, *myqueue, *changes;
-  real_t *nvwgt, *lbvec, *pwgts, *tpwgts, *my_wgt;
+  real_t *nvwgt, lbvec[MAXNCON], pwgts[MAXNCON*2], tpwgts[MAXNCON*2], my_wgt[MAXNCON];
   real_t newgain;
   real_t lbavg, bestflow, mycost;
   real_t ipc_factor, redist_factor, ftmp;
@@ -58,11 +58,7 @@ idx_t BalanceMyLink(ctrl_t *ctrl, graph_t *graph, idx_t *home, idx_t me,
   myqueue = iwspacemalloc(ctrl, nvtxs);
   changes = iwspacemalloc(ctrl, nvtxs);
 
-  lbvec  = rwspacemalloc(ctrl, ncon);
-  pwgts  = rset(2*ncon, 0.0, rwspacemalloc(ctrl, 2*ncon));
-  tpwgts = rwspacemalloc(ctrl, 2*ncon);
-  my_wgt = rset(ncon, 0.0, rwspacemalloc(ctrl, ncon));
-
+  rset(ncon*2, 0.0, pwgts);
   for (h=0; h<ncon; h++) {
     tpwgts[h]      = -1.0*flows[h];
     tpwgts[ncon+h] = flows[h];
@@ -115,7 +111,7 @@ idx_t BalanceMyLink(ctrl_t *ctrl, graph_t *graph, idx_t *home, idx_t me,
   queues  = (rpq_t **)(wspacemalloc(ctrl, sizeof(rpq_t *)*2*nqueues));
 
   for (i=0; i<nvtxs; i++)
-    hval[i] = Mc_HashVwgts(ctrl, ncon, nvwgt+i*ncon) - minval;
+    hval[i] = Mc_HashVwgts(ncon, nvwgt+i*ncon) - minval;
 
   for (i=0; i<nvtxs; i++)
     nvpq[hval[i]]++;
@@ -182,8 +178,8 @@ idx_t BalanceMyLink(ctrl_t *ctrl, graph_t *graph, idx_t *home, idx_t me,
     nchanges = nmoves = 0;
     for (ii=0; ii<nvtxs/2; ii++) {
       from = -1;
-      Mc_DynamicSelectQueue(ctrl, nqueues, ncon, me, you, inq, flows, 
-          &from, &qnum, minval, avgvwgt, maxdiff);
+      Mc_DynamicSelectQueue(nqueues, ncon, me, you, inq, flows, &from,
+          &qnum, minval, avgvwgt, maxdiff);
 
       /* can't find a vertex in one subdomain, try the other */
       if (from != -1 && qnum == -1) {
@@ -203,8 +199,8 @@ idx_t BalanceMyLink(ctrl_t *ctrl, graph_t *graph, idx_t *home, idx_t me,
         }
 
         if (j != ncon)
-          Mc_DynamicSelectQueue(ctrl, nqueues, ncon, me, you, inq, flows, 
-              &from, &qnum, minval, avgvwgt, maxdiff);
+          Mc_DynamicSelectQueue(nqueues, ncon, me, you, inq, flows, &from,
+              &qnum, minval, avgvwgt, maxdiff);
       }
 
       if (qnum == -1)
@@ -299,6 +295,7 @@ idx_t BalanceMyLink(ctrl_t *ctrl, graph_t *graph, idx_t *home, idx_t me,
   /***************************/
   /* compute 2-way imbalance */
   /***************************/
+  rset(ncon, 0.0, my_wgt);
   for (i=0; i<nvtxs; i++) {
     if (where[i] == me) {
       for (h=0; h<ncon; h++)

@@ -9,7 +9,7 @@
  * Started 7/24/97
  * George
  *
- * $Id: ometis.c 10513 2011-07-07 22:06:03Z karypis $
+ * $Id: ometis.c 10237 2011-06-14 15:22:13Z karypis $
  *
  */
 
@@ -43,35 +43,19 @@
 int METIS_NodeND(idx_t *nvtxs, idx_t *xadj, idx_t *adjncy, idx_t *vwgt,
           idx_t *options, idx_t *perm, idx_t *iperm) 
 {
-  int sigrval=0, renumber=0;
   idx_t i, ii, j, l, nnvtxs=0;
   graph_t *graph=NULL;
   ctrl_t *ctrl;
   idx_t *cptr, *cind, *piperm;
-  int numflag = 0;
-
-  /* set up malloc cleaning code and signal catchers */
-  if (!gk_malloc_init()) 
-    return METIS_ERROR_MEMORY;
-
-  gk_sigtrap();
-
-  if ((sigrval = gk_sigcatch()) != 0) 
-    goto SIGTHROW;
-
 
   /* set up the run time parameters */
   ctrl = SetupCtrl(METIS_OP_OMETIS, options, 1, 3, NULL, NULL);
-  if (!ctrl) {
-    gk_siguntrap();
-    return METIS_ERROR_INPUT;
-  }
+  if (!ctrl) return METIS_ERROR_INPUT;
 
-  /* if required, change the numbering to 0 */
-  if (ctrl->numflag == 1) {
+  /* renumber indices if necessary */
+  if (ctrl->numflag == 1)
     Change2CNumbering(*nvtxs, xadj, adjncy);
-    renumber = 1;
-  }
+
 
   IFSET(ctrl->dbglvl, METIS_DBG_TIME, InitTimers(ctrl));
   IFSET(ctrl->dbglvl, METIS_DBG_TIME, gk_startcputimer(ctrl->TotalTmr));
@@ -106,10 +90,6 @@ int METIS_NodeND(idx_t *nvtxs, idx_t *xadj, idx_t *adjncy, idx_t *vwgt,
     }
     else {
       nnvtxs = graph->nvtxs;
-      ctrl->cfactor = 1.0*(*nvtxs)/nnvtxs;
-      if (ctrl->cfactor > 1.5 && ctrl->nseps == 1)
-        ctrl->nseps = 2;
-      //ctrl->nseps = (idx_t)(ctrl->cfactor*ctrl->nseps);
     }
   }
 
@@ -157,18 +137,13 @@ int METIS_NodeND(idx_t *nvtxs, idx_t *xadj, idx_t *adjncy, idx_t *vwgt,
   IFSET(ctrl->dbglvl, METIS_DBG_TIME, gk_stopcputimer(ctrl->TotalTmr));
   IFSET(ctrl->dbglvl, METIS_DBG_TIME, PrintTimers(ctrl));
 
+  if (ctrl->numflag == 1)
+    Change2FNumberingOrder(*nvtxs, xadj, adjncy, perm, iperm);
+
   /* clean up */
   FreeCtrl(&ctrl);
 
-SIGTHROW:
-  /* if required, change the numbering back to 1 */
-  if (renumber)
-    Change2FNumberingOrder(*nvtxs, xadj, adjncy, perm, iperm);
-
-  gk_siguntrap();
-  gk_malloc_cleanup(0);
-
-  return metis_rcode(sigrval);
+  return METIS_OK;
 }
 
 
@@ -299,92 +274,74 @@ void MlevelNestedDissectionCC(ctrl_t *ctrl, graph_t *graph, idx_t *order,
 /*************************************************************************/
 void MlevelNodeBisectionMultiple(ctrl_t *ctrl, graph_t *graph)
 {
-  idx_t i, mincut;
-  idx_t *bestwhere;
-
-  /* if the graph is small, just find a single vertex separator */
-  if (ctrl->nseps == 1 || graph->nvtxs < (ctrl->compress ? 1000 : 2000)) {
-    MlevelNodeBisectionL2(ctrl, graph, LARGENIPARTS);
-    return;
-  }
-
-  WCOREPUSH;
-
-  bestwhere = iwspacemalloc(ctrl, graph->nvtxs);
-
-  mincut = graph->tvwgt[0];
-  for (i=0; i<ctrl->nseps; i++) {
-    MlevelNodeBisectionL2(ctrl, graph, LARGENIPARTS);
-
-    if (i == 0 || graph->mincut < mincut) {
-      mincut = graph->mincut;
-      if (i < ctrl->nseps-1)
-        icopy(graph->nvtxs, graph->where, bestwhere);
-    }
-
-    if (mincut == 0)
-      break;
-
-    if (i < ctrl->nseps-1) 
-      FreeRData(graph);
-  }
-
-  if (mincut != graph->mincut) {
-    icopy(graph->nvtxs, bestwhere, graph->where);
-    Compute2WayNodePartitionParams(ctrl, graph);
-  }
-
-  WCOREPOP;
-}
-
-
-/*************************************************************************/
-/*! This function performs multilevel node bisection (i.e., tri-section).
-    It performs multiple bisections and selects the best. */
-/*************************************************************************/
-void MlevelNodeBisectionL2(ctrl_t *ctrl, graph_t *graph, idx_t niparts)
-{
-  idx_t i, mincut, nruns=5;
+  idx_t i, nvtxs, cnvtxs, mincut;
   graph_t *cgraph; 
   idx_t *bestwhere;
 
+  nvtxs  = graph->nvtxs;
+  mincut = graph->tvwgt[0];
+
   /* if the graph is small, just find a single vertex separator */
-  if (graph->nvtxs < 5000) {
-    MlevelNodeBisectionL1(ctrl, graph, niparts);
+  if (ctrl->nseps == 1 || nvtxs < (ctrl->compress ? 1000 : 2000)) {
+    MlevelNodeBisection(ctrl, graph);
     return;
   }
 
-  WCOREPUSH;
 
-  ctrl->CoarsenTo = gk_max(100, graph->nvtxs/30);
+  if (ctrl->compress) { /* Multiple separators at the original graph */
+    bestwhere = imalloc(nvtxs, "MlevelNodeBisectionMultiple: bestwhere");
 
-  cgraph = CoarsenGraphNlevels(ctrl, graph, 4);
+    for (i=ctrl->nseps; i>0; i--) {
+      MlevelNodeBisection(ctrl, graph);
 
-  bestwhere = iwspacemalloc(ctrl, cgraph->nvtxs);
+      if (i==ctrl->nseps || graph->mincut < mincut) {
+        mincut = graph->mincut;
+        icopy(nvtxs, graph->where, bestwhere);
+      }
 
-  mincut = graph->tvwgt[0];
-  for (i=0; i<nruns; i++) {
-    MlevelNodeBisectionL1(ctrl, cgraph, 0.7*niparts);
-
-    if (i == 0 || cgraph->mincut < mincut) {
-      mincut = cgraph->mincut;
-      if (i < nruns-1)
-        icopy(cgraph->nvtxs, cgraph->where, bestwhere);
+      FreeRData(graph);
+    
+      if (mincut == 0)
+        break;
     }
 
-    if (mincut == 0)
-      break;
+    Allocate2WayNodePartitionMemory(ctrl, graph);
+    icopy(nvtxs, bestwhere, graph->where);
+    gk_free((void **)&bestwhere, LTERM);
 
-    if (i < nruns-1) 
-      FreeRData(cgraph);
+    Compute2WayNodePartitionParams(ctrl, graph);
   }
+  else { /* Coarsen it a bit */
+    ctrl->CoarsenTo = nvtxs-1;
 
-  if (mincut != cgraph->mincut) 
-    icopy(cgraph->nvtxs, bestwhere, cgraph->where);
+    cgraph = CoarsenGraph(ctrl, graph);
 
-  WCOREPOP;
+    cnvtxs = cgraph->nvtxs;
 
-  Refine2WayNode(ctrl, graph, cgraph);
+    bestwhere = imalloc(cnvtxs, "MlevelNodeBisectionMultiple: bestwhere");
+
+    for (i=ctrl->nseps; i>0; i--) {
+      MlevelNodeBisection(ctrl, cgraph);
+
+      if (i==ctrl->nseps || cgraph->mincut < mincut) {
+        mincut = cgraph->mincut;
+        icopy(cnvtxs, cgraph->where, bestwhere);
+      }
+
+      FreeRData(graph);
+    
+      if (mincut == 0)
+        break;
+    }
+
+    Allocate2WayNodePartitionMemory(ctrl, cgraph);
+    icopy(cnvtxs, bestwhere, cgraph->where);
+    gk_free((void **)&bestwhere, LTERM);
+
+    Compute2WayNodePartitionParams(ctrl, cgraph);
+
+    Refine2WayNode(ctrl, graph, cgraph);
+  }
 
 }
 
@@ -392,7 +349,7 @@ void MlevelNodeBisectionL2(ctrl_t *ctrl, graph_t *graph, idx_t niparts)
 /*************************************************************************/
 /*! The top-level routine of the actual multilevel node bisection */
 /*************************************************************************/
-void MlevelNodeBisectionL1(ctrl_t *ctrl, graph_t *graph, idx_t niparts)
+void MlevelNodeBisection(ctrl_t *ctrl, graph_t *graph)
 {
   graph_t *cgraph;
 
@@ -404,9 +361,7 @@ void MlevelNodeBisectionL1(ctrl_t *ctrl, graph_t *graph, idx_t niparts)
 
   cgraph = CoarsenGraph(ctrl, graph);
 
-  niparts = gk_max(1, (cgraph->nvtxs <= ctrl->CoarsenTo ? niparts/2: niparts));
-  /*niparts = (cgraph->nvtxs <= ctrl->CoarsenTo ? SMALLNIPARTS : LARGENIPARTS);*/
-  InitSeparator(ctrl, cgraph, niparts);
+  InitSeparator(ctrl, cgraph);
 
   Refine2WayNode(ctrl, graph, cgraph);
 }
@@ -423,8 +378,8 @@ void SplitGraphOrder(ctrl_t *ctrl, graph_t *graph, graph_t **r_lgraph,
          graph_t **r_rgraph)
 {
   idx_t i, ii, j, k, l, istart, iend, mypart, nvtxs, snvtxs[3], snedges[3];
-  idx_t *xadj, *vwgt, *adjncy, *adjwgt, *label, *where, *bndptr, *bndind;
-  idx_t *sxadj[2], *svwgt[2], *sadjncy[2], *sadjwgt[2], *slabel[2];
+  idx_t *xadj, *vwgt, *adjncy, *adjwgt, *adjrsum, *label, *where, *bndptr, *bndind;
+  idx_t *sxadj[2], *svwgt[2], *sadjncy[2], *sadjwgt[2], *sadjrsum[2], *slabel[2];
   idx_t *rename;
   idx_t *auxadjncy;
   graph_t *lgraph, *rgraph;
@@ -438,6 +393,7 @@ void SplitGraphOrder(ctrl_t *ctrl, graph_t *graph, graph_t **r_lgraph,
   vwgt    = graph->vwgt;
   adjncy  = graph->adjncy;
   adjwgt  = graph->adjwgt;
+  adjrsum = graph->adjrsum;
   label   = graph->label;
   where   = graph->where;
   bndptr  = graph->bndptr;
@@ -456,6 +412,7 @@ void SplitGraphOrder(ctrl_t *ctrl, graph_t *graph, graph_t **r_lgraph,
   lgraph      = SetupSplitGraph(graph, snvtxs[0], snedges[0]);
   sxadj[0]    = lgraph->xadj;
   svwgt[0]    = lgraph->vwgt;
+  sadjrsum[0] = lgraph->adjrsum;
   sadjncy[0]  = lgraph->adjncy; 
   sadjwgt[0]  = lgraph->adjwgt; 
   slabel[0]   = lgraph->label;
@@ -463,6 +420,7 @@ void SplitGraphOrder(ctrl_t *ctrl, graph_t *graph, graph_t **r_lgraph,
   rgraph      = SetupSplitGraph(graph, snvtxs[1], snedges[1]);
   sxadj[1]    = rgraph->xadj;
   svwgt[1]    = rgraph->vwgt;
+  sadjrsum[1] = rgraph->adjrsum;
   sadjncy[1]  = rgraph->adjncy; 
   sadjwgt[1]  = rgraph->adjwgt; 
   slabel[1]   = rgraph->label;
@@ -500,6 +458,7 @@ void SplitGraphOrder(ctrl_t *ctrl, graph_t *graph, graph_t **r_lgraph,
     }
 
     svwgt[mypart][snvtxs[mypart]]    = vwgt[i];
+    sadjrsum[mypart][snvtxs[mypart]] = snedges[mypart]-sxadj[mypart][snvtxs[mypart]];
     slabel[mypart][snvtxs[mypart]]   = label[i];
     sxadj[mypart][++snvtxs[mypart]]  = snedges[mypart];
   }
@@ -553,8 +512,8 @@ graph_t **SplitGraphOrderCC(ctrl_t *ctrl, graph_t *graph, idx_t ncmps,
               idx_t *cptr, idx_t *cind)
 {
   idx_t i, ii, iii, j, k, l, istart, iend, mypart, nvtxs, snvtxs, snedges;
-  idx_t *xadj, *vwgt, *adjncy, *adjwgt, *label, *where, *bndptr, *bndind;
-  idx_t *sxadj, *svwgt, *sadjncy, *sadjwgt, *slabel;
+  idx_t *xadj, *vwgt, *adjncy, *adjwgt, *adjrsum, *label, *where, *bndptr, *bndind;
+  idx_t *sxadj, *svwgt, *sadjncy, *sadjwgt, *sadjrsum, *slabel;
   idx_t *rename;
   idx_t *auxadjncy;
   graph_t **sgraphs;
@@ -568,6 +527,7 @@ graph_t **SplitGraphOrderCC(ctrl_t *ctrl, graph_t *graph, idx_t ncmps,
   vwgt    = graph->vwgt;
   adjncy  = graph->adjncy;
   adjwgt  = graph->adjwgt;
+  adjrsum = graph->adjrsum;
   label   = graph->label;
   where   = graph->where;
   bndptr  = graph->bndptr;
@@ -599,6 +559,7 @@ graph_t **SplitGraphOrderCC(ctrl_t *ctrl, graph_t *graph, idx_t ncmps,
 
     sxadj    = sgraphs[iii]->xadj;
     svwgt    = sgraphs[iii]->vwgt;
+    sadjrsum = sgraphs[iii]->adjrsum;
     sadjncy  = sgraphs[iii]->adjncy;
     sadjwgt  = sgraphs[iii]->adjwgt;
     slabel   = sgraphs[iii]->label;
@@ -626,6 +587,7 @@ graph_t **SplitGraphOrderCC(ctrl_t *ctrl, graph_t *graph, idx_t ncmps,
       }
 
       svwgt[snvtxs]    = vwgt[i];
+      sadjrsum[snvtxs] = snedges-sxadj[snvtxs];
       slabel[snvtxs]   = label[i];
       sxadj[++snvtxs]  = snedges;
     }

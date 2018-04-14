@@ -6,7 +6,7 @@
  *
  * \date Started 8/1/2008
  * \author George Karypis
- * \version\verbatim $Id: ometis.c 10666 2011-08-04 05:22:36Z karypis $ \endverbatime
+ * \version\verbatim $Id: ometis.c 10385 2011-06-22 23:07:13Z karypis $ \endverbatime
  *
  */
 
@@ -17,19 +17,12 @@
 /*! This function is the entry point of the parallel ordering algorithm. 
     It simply translates the arguments to the tunable version. */
 /***********************************************************************************/
-int ParMETIS_V3_NodeND(idx_t *vtxdist, idx_t *xadj, idx_t *adjncy, 
+void ParMETIS_V3_NodeND(idx_t *vtxdist, idx_t *xadj, idx_t *adjncy, 
          idx_t *numflag, idx_t *options, idx_t *order, idx_t *sizes,
          MPI_Comm *comm)
 {
-  idx_t status;
   idx_t seed   = (options != NULL && options[0] != 0 ? options[PMV3_OPTION_SEED] : -1);
   idx_t dbglvl = (options != NULL && options[0] != 0 ? options[PMV3_OPTION_DBGLVL] : -1);
-
-  /* Check the input parameters and return if an error */
-  status = CheckInputsNodeND(vtxdist, xadj, adjncy, numflag, options, order, sizes, comm);
-  if (GlobalSEMinComm(*comm, status) == 0) 
-    return METIS_ERROR;
-
 
   ParMETIS_V32_NodeND(vtxdist, xadj, adjncy, 
       /*vwgt=*/NULL, 
@@ -42,8 +35,28 @@ int ParMETIS_V3_NodeND(idx_t *vtxdist, idx_t *xadj, idx_t *adjncy,
       /*seed=*/(options==NULL || options[0] == 0 ? NULL : &seed),
       /*dbglvl=*/(options==NULL || options[0] == 0 ? NULL : &dbglvl),
       order, sizes, comm);
+}
 
-  return METIS_OK;
+
+/***********************************************************************************/
+/*! This function is the entry point of the parallel ordering algorithm using the
+    old API */
+/***********************************************************************************/
+void PAROMETIS(idx_t *vtxdist, idx_t *xadj, idx_t *vwgt, idx_t *adjncy, 
+         idx_t *adjwgt, idx_t *order, idx_t *sizes, idx_t *options, MPI_Comm comm)
+{
+  idx_t numflag, newoptions[5];
+
+  newoptions[0] = 1;
+  newoptions[PMV3_OPTION_DBGLVL] = options[4];
+  newoptions[PMV3_OPTION_SEED] = GLOBAL_SEED;
+
+  numflag = options[3];
+
+  ParMETIS_V3_NodeND(vtxdist, xadj, adjncy, &numflag, newoptions, order, sizes, &comm);
+
+  options[0] = -1;
+
 }
 
 
@@ -53,68 +66,83 @@ int ParMETIS_V3_NodeND(idx_t *vtxdist, idx_t *xadj, idx_t *adjncy,
     dissection ordering approach. 
 */
 /***********************************************************************************/
-int ParMETIS_V32_NodeND(idx_t *vtxdist, idx_t *xadj, idx_t *adjncy, idx_t *vwgt, 
+void ParMETIS_V32_NodeND(idx_t *vtxdist, idx_t *xadj, idx_t *adjncy, idx_t *vwgt, 
               idx_t *numflag, idx_t *mtype, idx_t *rtype, idx_t *p_nseps, idx_t *s_nseps, 
-              real_t *ubfrac, idx_t *seed, idx_t *idbglvl, idx_t *order, idx_t *sizes, 
+              real_t *ubfrac, idx_t *seed, idx_t *dbglvl, idx_t *order, idx_t *sizes, 
               MPI_Comm *comm)
 {
-  idx_t i, npes, mype, dbglvl, status, wgtflag=0;
-  ctrl_t *ctrl;
+  idx_t i, j;
+  idx_t ltvwgts[MAXNCON];
+  idx_t npes, mype, wgtflag;
+  ctrl_t ctrl;
   graph_t *graph, *mgraph;
   idx_t *morder;
-  size_t curmem;
+  idx_t minnvtxs, dbglvl_original;
 
   gkMPI_Comm_size(*comm, &npes);
   gkMPI_Comm_rank(*comm, &mype);
 
   /* Deal with poor vertex distributions */
-  if (GlobalSEMinComm(*comm, vtxdist[mype+1]-vtxdist[mype]) < 1) {
-    printf("Error: Poor vertex distribution (processor with no vertices).\n");
-    return METIS_ERROR;
+  ctrl.comm = *comm;
+  if (GlobalSEMin(&ctrl, vtxdist[mype+1]-vtxdist[mype]) < 1) {
+    if (mype == 0)
+      printf("Error: Poor vertex distribution (processor with no vertices).\n");
+    return;
   }
 
-  status = METIS_OK;
-  gk_malloc_init();
-  curmem = gk_GetCurMemoryUsed();
+#ifdef XXX
+  /* Increase all weights by one to eliminate potentially zero weight vertices */
+  if (vwgt) {
+    for (i=0; i<vtxdist[mype+1]-vtxdist[mype]; i++)
+      vwgt[i]++;
+  }
+#endif
 
-  /* Setup the ctrl */
-  ctrl = SetupCtrl(PARMETIS_OP_KMETIS, NULL, 1, 5*npes, NULL, NULL, *comm);
 
-  dbglvl = (idbglvl == NULL ? 0 : *idbglvl);
+  /* Renumber the adjacency list if appropriate */ 
+  if (*numflag == 1) 
+    ChangeNumbering(vtxdist, xadj, adjncy, order, npes, mype, 1);
 
-  ctrl->dbglvl = dbglvl;
-  STARTTIMER(ctrl, ctrl->TotalTmr);
-  ctrl->dbglvl = 0;
+
+  SetUpComm(&ctrl, *comm);
+
+  dbglvl_original = (dbglvl == NULL ? 0 : *dbglvl);
+
   /*=======================================================================*/
   /*! Compute the initial k-way partitioning */
   /*=======================================================================*/
-  /* Setup the graph */
-  if (*numflag > 0) 
-    ChangeNumbering(vtxdist, xadj, adjncy, order, npes, mype, 1);
+  ctrl.nparts      = 5*npes;
+  ctrl.partType    = STATIC_PARTITION;
+  ctrl.tpwgts      = rsmalloc(ctrl.nparts, 1.0/(real_t)(ctrl.nparts), "tpwgts");
+  ctrl.ubvec[0]    = 1.03;
+  ctrl.CoarsenTo   = gk_min(vtxdist[npes]+1, 200*gk_max(npes, ctrl.nparts));
+  ctrl.ps_relation = -1;
+  ctrl.dbglvl      = 0;
 
-  graph = SetupGraph(ctrl, 1, vtxdist, xadj, NULL, NULL, adjncy, NULL, 0);
+  ctrl.seed        = (seed == NULL ? GLOBAL_SEED : *seed);
+  ctrl.seed        = (ctrl.seed == 0 ? mype : ctrl.seed*mype);
+  ctrl.sync        = GlobalSEMax(&ctrl, ctrl.seed);
 
-  /* Allocate workspace */
-  AllocateWSpace(ctrl, 10*graph->nvtxs);
+  wgtflag = 0;
+  graph = SetUpGraph(&ctrl, 1, vtxdist, xadj, NULL, adjncy, NULL, &wgtflag);
 
+  AllocateWSpace(&ctrl, graph);
 
-  /* Compute the partitioning */
-  ctrl->CoarsenTo = gk_min(vtxdist[npes]+1, 200*gk_max(npes, ctrl->nparts));
-  if (seed != NULL) 
-    ctrl->seed = (*seed == 0 ? mype : (*seed)*mype);
+  IFSET(dbglvl_original, DBG_TIME, InitTimers(&ctrl));
+  IFSET(dbglvl_original, DBG_TIME, gkMPI_Barrier(ctrl.gcomm));
+  IFSET(dbglvl_original, DBG_TIME, starttimer(ctrl.TotalTmr));
 
-  Global_Partition(ctrl, graph);
+  Global_Partition(&ctrl, graph);
 
   /* Collapse the number of partitions to be from 0..npes-1 */
   for (i=0; i<graph->nvtxs; i++)
     graph->where[i] = graph->where[i]%npes;
-  ctrl->nparts = npes;
+  ctrl.nparts = npes;
 
   /* Put back the real vertex weights */
   if (vwgt) {
     gk_free((void **)&graph->vwgt, LTERM);
-    graph->vwgt      = vwgt;
-    graph->free_vwgt = 0;
+    graph->vwgt = vwgt;
     wgtflag = 2;
   }
 
@@ -122,61 +150,77 @@ int ParMETIS_V32_NodeND(idx_t *vtxdist, idx_t *xadj, idx_t *adjncy, idx_t *vwgt,
   /*=======================================================================*/
   /*! Move the graph according to the partitioning */
   /*=======================================================================*/
-  STARTTIMER(ctrl, ctrl->MoveTmr);
+  IFSET(dbglvl_original, DBG_TIME, gkMPI_Barrier(ctrl.gcomm));
+  IFSET(dbglvl_original, DBG_TIME, starttimer(ctrl.MoveTmr));
 
-  mgraph = MoveGraph(ctrl, graph);
+  mgraph = MoveGraph(&ctrl, graph);
 
-  /* compute nvwgts for the moved graph */
-  SetupGraph_nvwgts(ctrl, mgraph);
-
-  STOPTIMER(ctrl, ctrl->MoveTmr);
+  IFSET(dbglvl_original, DBG_TIME, gkMPI_Barrier(ctrl.gcomm));
+  IFSET(dbglvl_original, DBG_TIME, stoptimer(ctrl.MoveTmr));
 
 
   /*=======================================================================*/
   /*! Now compute an ordering of the moved graph */
   /*=======================================================================*/
-  ctrl->optype    = PARMETIS_OP_OMETIS;
-  ctrl->partType  = ORDER_PARTITION;
-  ctrl->mtype     = (mtype  == NULL ? PARMETIS_MTYPE_GLOBAL  : *mtype);
-  ctrl->rtype     = (rtype  == NULL ? PARMETIS_SRTYPE_2PHASE : *rtype);
-  ctrl->p_nseps   = (p_nseps  == NULL ? 1 : *p_nseps);
-  ctrl->s_nseps   = (s_nseps  == NULL ? 1 : *s_nseps);
-  ctrl->ubfrac    = (ubfrac == NULL ? ORDER_UNBALANCE_FRACTION : *ubfrac);
-  ctrl->dbglvl    = dbglvl;
-  ctrl->ipart     = ISEP_NODE;
-  ctrl->CoarsenTo = gk_min(graph->gnvtxs-1,
+  ctrl.partType  = ORDER_PARTITION;
+  ctrl.mtype     = (mtype  == NULL ? PARMETIS_MTYPE_GLOBAL  : *mtype);
+  ctrl.rtype     = (rtype  == NULL ? PARMETIS_SRTYPE_2PHASE : *rtype);
+  ctrl.p_nseps   = (p_nseps  == NULL ? 1 : *p_nseps);
+  ctrl.s_nseps   = (s_nseps  == NULL ? 1 : *s_nseps);
+  ctrl.ubfrac    = (ubfrac == NULL ? ORDER_UNBALANCE_FRACTION : *ubfrac);
+  ctrl.dbglvl    = dbglvl_original;
+  ctrl.ipart     = ISEP_NODE;
+  ctrl.CoarsenTo = gk_min(graph->gnvtxs-1,
                        gk_max(1500*npes, graph->gnvtxs/(5*NUM_INIT_MSECTIONS*npes)));
 
-  morder = imalloc(mgraph->nvtxs, "ParMETIS_NodeND: morder");
-  MultilevelOrder(ctrl, mgraph, morder, sizes);
+  /* compute tvwgts */
+  for (j=0; j<mgraph->ncon; j++)
+    ltvwgts[j] = 0;
+
+  for (i=0; i<mgraph->nvtxs; i++)
+    for (j=0; j<mgraph->ncon; j++)
+      ltvwgts[j] += mgraph->vwgt[i*mgraph->ncon+j];
+
+  for (j=0; j<mgraph->ncon; j++) {
+    ctrl.tvwgts[j] = GlobalSESum(&ctrl, ltvwgts[j]);
+    ctrl.invtvwgts[j] = 1.0/ctrl.tvwgts[j];
+  }
+
+  mgraph->nvwgt = rmalloc(mgraph->nvtxs*mgraph->ncon, "mgraph->nvwgt");
+  for (i=0; i<mgraph->nvtxs; i++) {
+    for (j=0; j<mgraph->ncon; j++)
+      mgraph->nvwgt[i*mgraph->ncon+j] = ctrl.invtvwgts[j]*mgraph->vwgt[i*mgraph->ncon+j];
+  }
+
+
+  morder = imalloc(mgraph->nvtxs, "PAROMETIS: morder");
+  MultilevelOrder(&ctrl, mgraph, morder, sizes);
 
   /* Invert the ordering back to the original graph */
-  ProjectInfoBack(ctrl, graph, order, morder);
+  ProjectInfoBack(&ctrl, graph, order, morder);
 
-  STOPTIMER(ctrl, ctrl->TotalTmr);
-  IFSET(dbglvl, DBG_TIME, PrintTimingInfo(ctrl));
-  IFSET(dbglvl, DBG_TIME, gkMPI_Barrier(ctrl->gcomm));
+  IFSET(dbglvl_original, DBG_TIME, gkMPI_Barrier(ctrl.gcomm));
+  IFSET(dbglvl_original, DBG_TIME, stoptimer(ctrl.TotalTmr));
+  IFSET(dbglvl_original, DBG_TIME, PrintTimingInfo(&ctrl));
+  IFSET(dbglvl_original, DBG_TIME, gkMPI_Barrier(ctrl.gcomm));
 
-  gk_free((void **)&morder, LTERM);
+  gk_free((void **)&ctrl.tpwgts, &morder, LTERM);
   FreeGraph(mgraph);
-  FreeInitialGraphAndRemap(graph);
+  FreeInitialGraphAndRemap(graph, wgtflag, 1);
+  FreeCtrl(&ctrl);
 
   /* If required, restore the graph numbering */
-  if (*numflag > 0) 
+  if (*numflag == 1) 
     ChangeNumbering(vtxdist, xadj, adjncy, order, npes, mype, 0);
 
-  goto DONE;  /* Remove the warning for now */
-
-
-DONE:
-  FreeCtrl(&ctrl);
-  if (gk_GetCurMemoryUsed() - curmem > 0) {
-    printf("ParMETIS appears to have a memory leak of %zdbytes. Report this.\n",
-        (ssize_t)(gk_GetCurMemoryUsed() - curmem));
+#ifdef XXX
+  /* Decrease the earlier increased weights */
+  if (vwgt) {
+    for (i=0; i<vtxdist[mype+1]-vtxdist[mype]; i++)
+      vwgt[i]--;
   }
-  gk_malloc_cleanup(0);
+#endif
 
-  return (int)status;
 }
 
 

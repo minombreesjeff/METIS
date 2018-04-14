@@ -8,7 +8,7 @@
  * Started 5/28/11
  * George
  *
- * $Id: m2gmetis.c 10498 2011-07-06 16:41:38Z karypis $
+ * $Id: m2gmetis.c 10409 2011-06-25 16:58:34Z karypis $
  *
  */
 
@@ -24,7 +24,6 @@ int main(int argc, char *argv[])
   mesh_t *mesh;
   graph_t *graph;
   params_t *params;
-  int status=0;
 
   params = parse_cmdline(argc, argv);
 
@@ -47,25 +46,21 @@ int main(int argc, char *argv[])
 
   switch (params->gtype) {
     case METIS_GTYPE_DUAL:
-      status = METIS_MeshToDual(&mesh->ne, &mesh->nn, mesh->eptr, mesh->eind, 
-                   &params->ncommon, &params->numflag, &graph->xadj, &graph->adjncy);
+      METIS_MeshToDual(&mesh->ne, &mesh->nn, mesh->eptr, mesh->eind, 
+            &params->ncommon, &params->numflag, &graph->xadj, &graph->adjncy);
 
-      if (status == METIS_OK) {
-        graph->nvtxs  = mesh->ne;
-        graph->nedges = graph->xadj[graph->nvtxs]; 
-        graph->ncon   = 1;
-      }
+      graph->nvtxs  = mesh->ne;
+      graph->nedges = graph->xadj[graph->nvtxs]; 
+      graph->ncon   = 1;
       break;
 
     case METIS_GTYPE_NODAL:
-      status = METIS_MeshToNodal(&mesh->ne, &mesh->nn, mesh->eptr, mesh->eind, 
-                   &params->numflag, &graph->xadj, &graph->adjncy);
+      METIS_MeshToNodal(&mesh->ne, &mesh->nn, mesh->eptr, mesh->eind, 
+            &params->numflag, &graph->xadj, &graph->adjncy);
 
-      if (status == METIS_OK) {
-        graph->nvtxs  = mesh->nn;
-        graph->nedges = graph->xadj[graph->nvtxs]; 
-        graph->ncon   = 1;
-      }
+      graph->nvtxs  = mesh->nn;
+      graph->nedges = graph->xadj[graph->nvtxs]; 
+      graph->ncon   = 1;
       break;
   }
 
@@ -75,21 +70,17 @@ int main(int argc, char *argv[])
   params->maxmemory = gk_GetMaxMemoryUsed();
   gk_malloc_cleanup(0);
 
-  if (status != METIS_OK) {
-    printf("\n***Metis returned with an error.\n");
-  }
-  else {
-    /* Write the graph */
-    gk_startcputimer(params->iotimer);
-    WriteGraph(graph, params->outfile);
-    gk_stopcputimer(params->iotimer);
 
-    M2GReportResults(params, mesh, graph);
-  }
+  /* Write the graph */
+  gk_startcputimer(params->iotimer);
+  WriteGraph(graph, params->outfile);
+  gk_stopcputimer(params->iotimer);
+
+  M2GReportResults(params, mesh, graph);
 
   FreeGraph(&graph);
   FreeMesh(&mesh);
-  gk_free((void **)&params->filename, &params->outfile, &params, LTERM);
+  gk_free((void **)&params->filename, &params->outfile, LTERM);
 }
 
 

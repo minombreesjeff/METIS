@@ -8,447 +8,17 @@
  * Started 10/19/96
  * George
  *
- * $Id: weird.c 10592 2011-07-16 21:17:53Z karypis $
+ * $Id: weird.c 10361 2011-06-21 19:16:22Z karypis $
  *
  */
 
 #include <parmetislib.h>
 
-#define RIFN(x) \
-  if ((x) == NULL) {\
-    printf("PARMETIS ERROR " #x " is NULL.\n");\
-    return 0;\
-  }
 
-#define RIFNP(x) \
-  if ((*x) <= 0) {\
-    printf("PARMETIS ERROR " #x " is <= 0.\n");\
-    return 0;\
-  }
 
-
-/*************************************************************************/
-/*! This function checks the validity of the inputs for PartKway
-  */
-/*************************************************************************/
-int CheckInputsPartKway(idx_t *vtxdist, idx_t *xadj, idx_t *adjncy, idx_t *vwgt,
-        idx_t *adjwgt, idx_t *wgtflag, idx_t *numflag, idx_t *ncon, idx_t *nparts,
-        real_t *tpwgts, real_t *ubvec, idx_t *options, idx_t *edgecut, idx_t *part,
-        MPI_Comm *comm)
-{
-  idx_t i, j, mype;
-  real_t sum;
-
-  /* Check that the supplied information is actually non-NULL */
-  if (comm == NULL) {
-    printf("PARMETIS ERROR: comm is NULL. Aborting\n");
-    abort();
-  }
-  gkMPI_Comm_rank(*comm, &mype);
-
-  RIFN(vtxdist);
-  RIFN(xadj);
-  RIFN(adjncy);
-  RIFN(wgtflag);
-  RIFN(numflag);
-  RIFN(ncon);
-  RIFN(nparts);
-  RIFN(tpwgts);
-  RIFN(ubvec);
-  RIFN(options);
-  RIFN(edgecut);
-  RIFN(part);
-
-  if (*wgtflag == 2 || *wgtflag == 3) {
-    RIFN(vwgt);
-    for (j=0; j<*ncon; j++) {
-      if (GlobalSESumComm(*comm, isum(vtxdist[mype+1]-vtxdist[mype], vwgt+j, *ncon)) == 0) {
-        printf("PARMETIS ERROR: sum weight for constraint %"PRIDX" is zero.\n", j);
-        return 0;
-      }
-    }
-  }
-  if (*wgtflag == 1 || *wgtflag == 3) 
-    RIFN(adjwgt);
-
-
-  /* Check that the supplied information is actually valid/reasonable */
-  if (vtxdist[mype+1]-vtxdist[mype] < 1) {
-    printf("PARMETIS ERROR: Poor initial vertex distribution. "
-           "Processor %"PRIDX" has no vertices assigned to it!\n", mype);
-    return 0;
-  }
-
-  RIFNP(ncon);
-  RIFNP(nparts);
-
-
-  for (j=0; j<*ncon; j++) {
-    sum = rsum(*nparts, tpwgts+j, *ncon);
-    if (sum < 0.999 || sum > 1.001) {
-      printf("PARMETIS ERROR: The sum of tpwgts for constraint #%"PRIDX" is not 1.0\n", j);
-      return 0;
-    }
-  }
-  for (j=0; j<*ncon; j++) {
-    for (i=0; i<*nparts; i++) {
-      if (tpwgts[i*(*ncon)+j] < 0.0 || tpwgts[i] > 1.001) {
-        printf("PARMETIS ERROR: The tpwgts for constraint #%"PRIDX" and partition #%"PRIDX" is out of bounds.\n", j, i);
-        return 0;
-      }
-    }
-  }
-
-
-  for (j=0; j<*ncon; j++) {
-    if (ubvec[j] <= 1.0) {
-      printf("PARMETIS ERROR: The ubvec for constraint #%"PRIDX" must be > 1.0\n", j);
-      return 0;
-    }
-  }
-
-  return 1;
-}
-
-
-/*************************************************************************/
-/*! This function checks the validity of the inputs for PartGeomKway
-  */
-/*************************************************************************/
-int CheckInputsPartGeomKway(idx_t *vtxdist, idx_t *xadj, idx_t *adjncy, idx_t *vwgt,
-        idx_t *adjwgt, idx_t *wgtflag, idx_t *numflag, idx_t *ndims, real_t *xyz, 
-        idx_t *ncon, idx_t *nparts, real_t *tpwgts, real_t *ubvec, idx_t *options, 
-        idx_t *edgecut, idx_t *part, MPI_Comm *comm)
-{
-  idx_t i, j, mype;
-  real_t sum;
-
-  /* Check that the supplied information is actually non-NULL */
-  if (comm == NULL) {
-    printf("PARMETIS ERROR: comm is NULL. Aborting\n");
-    abort();
-  }
-  gkMPI_Comm_rank(*comm, &mype);
-
-  RIFN(vtxdist);
-  RIFN(xadj);
-  RIFN(adjncy);
-  RIFN(xyz);
-  RIFN(ndims);
-  RIFN(wgtflag);
-  RIFN(numflag);
-  RIFN(ncon);
-  RIFN(nparts);
-  RIFN(tpwgts);
-  RIFN(ubvec);
-  RIFN(options);
-  RIFN(edgecut);
-  RIFN(part);
-
-  if (*wgtflag == 2 || *wgtflag == 3) {
-    RIFN(vwgt);
-    for (j=0; j<*ncon; j++) {
-      if (GlobalSESumComm(*comm, isum(vtxdist[mype+1]-vtxdist[mype], vwgt+j, *ncon)) == 0) {
-        printf("PARMETIS ERROR: sum weight for constraint %"PRIDX" is zero.\n", j);
-        return 0;
-      }
-    }
-  }
-  if (*wgtflag == 1 || *wgtflag == 3)
-    RIFN(adjwgt);
-
-
-  /* Check that the supplied information is actually valid/reasonable */
-  if (vtxdist[mype+1]-vtxdist[mype] < 1) {
-    printf("PARMETIS ERROR: Poor initial vertex distribution. "
-           "Processor %"PRIDX" has no vertices assigned to it!\n", mype);
-    return 0;
-  }
-
-  RIFNP(ncon);
-  RIFNP(nparts);
-  RIFNP(ndims);
-
-  if (*ndims > 3) {
-    printf("PARMETIS ERROR: The ndims should be <= 3.\n");
-    return 0;
-  }
-
-  for (j=0; j<*ncon; j++) {
-    sum = rsum(*nparts, tpwgts+j, *ncon);
-    if (sum < 0.999 || sum > 1.001) {
-      printf("PARMETIS ERROR: The sum of tpwgts for constraint #%"PRIDX" is not 1.0\n", j);
-      return 0;
-    }
-  }
-  for (j=0; j<*ncon; j++) {
-    for (i=0; i<*nparts; i++) {
-      if (tpwgts[i*(*ncon)+j] < 0.0 || tpwgts[i] > 1.001) {
-        printf("PARMETIS ERROR: The tpwgts for constraint #%"PRIDX" and partition #%"PRIDX" is out of bounds.\n", j, i);
-        return 0;
-      }
-    }
-  }
-
-
-  for (j=0; j<*ncon; j++) {
-    if (ubvec[j] <= 1.0) {
-      printf("PARMETIS ERROR: The ubvec for constraint #%"PRIDX" must be > 1.0\n", j);
-      return 0;
-    }
-  }
-
-  return 1;
-}
-
-
-/*************************************************************************/
-/*! This function checks the validity of the inputs for PartGeom
-  */
-/*************************************************************************/
-int CheckInputsPartGeom(idx_t *vtxdist, idx_t *ndims, real_t *xyz, 
-        idx_t *part, MPI_Comm *comm)
-{
-  idx_t mype;
-
-  /* Check that the supplied information is actually non-NULL */
-  if (comm == NULL) {
-    printf("PARMETIS ERROR: comm is NULL. Aborting\n");
-    abort();
-  }
-
-  RIFN(vtxdist);
-  RIFN(xyz);
-  RIFN(ndims);
-  RIFN(part);
-
-  /* Check that the supplied information is actually valid/reasonable */
-  gkMPI_Comm_rank(*comm, &mype);
-  if (vtxdist[mype+1]-vtxdist[mype] < 1) {
-    printf("PARMETIS ERROR: Poor initial vertex distribution. "
-           "Processor %"PRIDX" has no vertices assigned to it!\n", mype);
-    return 0;
-  }
-
-  RIFNP(ndims);
-
-  if (*ndims > 3) {
-    printf("PARMETIS ERROR: The ndims should be <= 3.\n");
-    return 0;
-  }
-
-  return 1;
-}
-
-
-/*************************************************************************/
-/*! This function checks the validity of the inputs for AdaptiveRepart
-  */
-/*************************************************************************/
-int CheckInputsAdaptiveRepart(idx_t *vtxdist, idx_t *xadj, idx_t *adjncy, 
-        idx_t *vwgt, idx_t *vsize, idx_t *adjwgt, idx_t *wgtflag, 
-        idx_t *numflag, idx_t *ncon, idx_t *nparts, real_t *tpwgts, 
-        real_t *ubvec, real_t *ipc2redist, idx_t *options, idx_t *edgecut, 
-        idx_t *part, MPI_Comm *comm)
-{
-  idx_t i, j, mype;
-  real_t sum;
-
-  /* Check that the supplied information is actually non-NULL */
-  if (comm == NULL) {
-    printf("PARMETIS ERROR: comm is NULL. Aborting\n");
-    abort();
-  }
-  gkMPI_Comm_rank(*comm, &mype);
-
-  RIFN(vtxdist);
-  RIFN(xadj);
-  RIFN(adjncy);
-  /*RIFN(vsize);*/
-  RIFN(wgtflag);
-  RIFN(numflag);
-  RIFN(ncon);
-  RIFN(nparts);
-  RIFN(tpwgts);
-  RIFN(ubvec);
-  RIFN(options);
-  RIFN(edgecut);
-  RIFN(part);
-
-  if (*wgtflag == 2 || *wgtflag == 3) {
-    RIFN(vwgt);
-    for (j=0; j<*ncon; j++) {
-      if (GlobalSESumComm(*comm, isum(vtxdist[mype+1]-vtxdist[mype], vwgt+j, *ncon)) == 0) {
-        printf("PARMETIS ERROR: sum weight for constraint %"PRIDX" is zero.\n", j);
-        return 0;
-      }
-    }
-  }
-  if (*wgtflag == 1 || *wgtflag == 3)
-    RIFN(adjwgt);
-
-
-  /* Check that the supplied information is actually valid/reasonable */
-  if (vtxdist[mype+1]-vtxdist[mype] < 1) {
-    printf("PARMETIS ERROR: Poor initial vertex distribution. "
-           "Processor %"PRIDX" has no vertices assigned to it!\n", mype);
-    return 0;
-  }
-
-  RIFNP(ncon);
-  RIFNP(nparts);
-
-
-  for (j=0; j<*ncon; j++) {
-    sum = rsum(*nparts, tpwgts+j, *ncon);
-    if (sum < 0.999 || sum > 1.001) {
-      printf("PARMETIS ERROR: The sum of tpwgts for constraint #%"PRIDX" is not 1.0\n", j);
-      return 0;
-    }
-  }
-  for (j=0; j<*ncon; j++) {
-    for (i=0; i<*nparts; i++) {
-      if (tpwgts[i*(*ncon)+j] < 0.0 || tpwgts[i] > 1.001) {
-        printf("PARMETIS ERROR: The tpwgts for constraint #%"PRIDX" and partition #%"PRIDX" is out of bounds.\n", j, i);
-        return 0;
-      }
-    }
-  }
-
-
-  for (j=0; j<*ncon; j++) {
-    if (ubvec[j] <= 1.0) {
-      printf("PARMETIS ERROR: The ubvec for constraint #%"PRIDX" must be > 1.0\n", j);
-      return 0;
-    }
-  }
-
-  if (*ipc2redist < 0.0001 || *ipc2redist > 1000000.0) {
-    printf("PARMETIS ERROR: The ipc2redist value should be between [0.0001, 1000000.0]\n");
-    return 0;
-  }
-
-  return 1;
-}
-
-
-/*************************************************************************/
-/*! This function checks the validity of the inputs for NodeND
-  */
-/*************************************************************************/
-int CheckInputsNodeND(idx_t *vtxdist, idx_t *xadj, idx_t *adjncy, 
-        idx_t *numflag, idx_t *options, idx_t *order, idx_t *sizes,
-        MPI_Comm *comm)
-{
-  idx_t mype;
-
-  /* Check that the supplied information is actually non-NULL */
-  if (comm == NULL) {
-    printf("PARMETIS ERROR: comm is NULL. Aborting\n");
-    abort();
-  }
-
-  RIFN(vtxdist);
-  RIFN(xadj);
-  RIFN(adjncy);
-  RIFN(numflag);
-  RIFN(options);
-  RIFN(order);
-  RIFN(sizes);
-
-  /* Check that the supplied information is actually valid/reasonable */
-  gkMPI_Comm_rank(*comm, &mype);
-  if (vtxdist[mype+1]-vtxdist[mype] < 1) {
-    printf("PARMETIS ERROR: Poor initial vertex distribution. "
-           "Processor %"PRIDX" has no vertices assigned to it!\n", mype);
-    return 0;
-  }
-
-  return 1;
-}
-
-
-
-/*************************************************************************/
-/*! This function checks the validity of the inputs for PartMeshKway
-  */
-/*************************************************************************/
-int CheckInputsPartMeshKway(idx_t *elmdist, idx_t *eptr, idx_t *eind, idx_t *elmwgt,
-        idx_t *wgtflag, idx_t *numflag, idx_t *ncon, idx_t *ncommon, idx_t *nparts,
-        real_t *tpwgts, real_t *ubvec, idx_t *options, idx_t *edgecut, idx_t *part,
-        MPI_Comm *comm)
-{
-  idx_t i, j, mype;
-  real_t sum;
-
-  /* Check that the supplied information is actually non-NULL */
-  if (comm == NULL) {
-    printf("PARMETIS ERROR: comm is NULL. Aborting\n");
-    abort();
-  }
-
-  RIFN(elmdist);
-  RIFN(eptr);
-  RIFN(eind);
-  RIFN(wgtflag);
-  RIFN(numflag);
-  RIFN(ncon);
-  RIFN(nparts);
-  RIFN(tpwgts);
-  RIFN(ubvec);
-  RIFN(options);
-  RIFN(edgecut);
-  RIFN(part);
-
-  if (*wgtflag == 2 || *wgtflag == 3)
-    RIFN(elmwgt);
-
-
-  /* Check that the supplied information is actually valid/reasonable */
-  gkMPI_Comm_rank(*comm, &mype);
-  if (elmdist[mype+1]-elmdist[mype] < 1) {
-    printf("PARMETIS ERROR: Poor initial element distribution. "
-           "Processor %"PRIDX" has no elements assigned to it!\n", mype);
-    return 0;
-  }
-
-  RIFNP(ncon);
-  RIFNP(nparts);
-
-
-  for (j=0; j<*ncon; j++) {
-    sum = rsum(*nparts, tpwgts+j, *ncon);
-    if (sum < 0.999 || sum > 1.001) {
-      printf("PARMETIS ERROR: The sum of tpwgts for constraint #%"PRIDX" is not 1.0\n", j);
-      return 0;
-    }
-  }
-  for (j=0; j<*ncon; j++) {
-    for (i=0; i<*nparts; i++) {
-      if (tpwgts[i*(*ncon)+j] < 0.0 || tpwgts[i] > 1.001) {
-        printf("PARMETIS ERROR: The tpwgts for constraint #%"PRIDX" and partition #%"PRIDX" is out of bounds.\n", j, i);
-        return 0;
-      }
-    }
-  }
-
-
-  for (j=0; j<*ncon; j++) {
-    if (ubvec[j] <= 1.0) {
-      printf("PARMETIS ERROR: The ubvec for constraint #%"PRIDX" must be > 1.0\n", j);
-      return 0;
-    }
-  }
-
-  return 1;
-}
-
-
-
-/*************************************************************************/
-/*! This function computes a partitioning of a small graph
-  */
-/*************************************************************************/
+/*************************************************************************
+* This function computes a partitioning of a small graph
+**************************************************************************/
 void PartitionSmallGraph(ctrl_t *ctrl, graph_t *graph)
 {
   idx_t i, h, ncon, nparts, npes, mype;
@@ -462,15 +32,14 @@ void PartitionSmallGraph(ctrl_t *ctrl, graph_t *graph)
 
   ncon   = graph->ncon;
   nparts = ctrl->nparts;
-  npes   = ctrl->npes;
-  mype   = ctrl->mype;
 
-  WCOREPUSH;
+  gkMPI_Comm_size(ctrl->comm, &npes);
+  gkMPI_Comm_rank(ctrl->comm, &mype);
 
   CommSetup(ctrl, graph);
   graph->where = imalloc(graph->nvtxs+graph->nrecv, "PartitionSmallGraph: where");
   agraph       = AssembleAdaptiveGraph(ctrl, graph);
-  mypart       = iwspacemalloc(ctrl, agraph->nvtxs);
+  mypart       = imalloc(agraph->nvtxs, "mypart");
 
   METIS_SetDefaultOptions(moptions);
   moptions[METIS_OPTION_SEED] = ctrl->sync + mype;
@@ -489,8 +58,8 @@ void PartitionSmallGraph(ctrl_t *ctrl, graph_t *graph)
   if (lpecut[1] == 0 && gpecut[1] != 0)
     gkMPI_Recv((void *)mypart, agraph->nvtxs, IDX_T, gpecut[1], 1, ctrl->comm, &ctrl->status);
 
-  sendcounts = iwspacemalloc(ctrl, npes);
-  displs     = iwspacemalloc(ctrl, npes);
+  sendcounts = imalloc(npes, "sendcounts");
+  displs     = imalloc(npes, "displs");
 
   for (i=0; i<npes; i++) {
     sendcounts[i] = graph->vtxdist[i+1]-graph->vtxdist[i];
@@ -498,7 +67,7 @@ void PartitionSmallGraph(ctrl_t *ctrl, graph_t *graph)
   }
 
   gkMPI_Scatterv((void *)mypart, sendcounts, displs, IDX_T,
-      (void *)graph->where, graph->nvtxs, IDX_T, 0, ctrl->comm);
+               (void *)graph->where, graph->nvtxs, IDX_T, 0, ctrl->comm);
 
   lnpwgts = graph->lnpwgts = rmalloc(nparts*ncon, "lnpwgts");
   gnpwgts = graph->gnpwgts = rmalloc(nparts*ncon, "gnpwgts");
@@ -509,11 +78,184 @@ void PartitionSmallGraph(ctrl_t *ctrl, graph_t *graph)
       lnpwgts[me*ncon+h] += graph->nvwgt[i*ncon+h];
   }
   gkMPI_Allreduce((void *)lnpwgts, (void *)gnpwgts, nparts*ncon, REAL_T, MPI_SUM, ctrl->comm);
-
+  gk_free((void**)&mypart, (void**)&sendcounts, (void**)&displs, LTERM);
   FreeGraph(agraph);
-
-  WCOREPOP;
 
   return;
 }
+
+
+
+/*************************************************************************
+* This function checks the inputs for the partitioning routines
+**************************************************************************/
+void CheckInputs(idx_t partType, idx_t npes, idx_t dbglvl, idx_t *wgtflag, idx_t *iwgtflag,
+                 idx_t *numflag, idx_t *inumflag, idx_t *ncon, idx_t *incon, idx_t *nparts, 
+		 idx_t *inparts, real_t *tpwgts, real_t **itpwgts, real_t *ubvec, 
+		 real_t *iubvec, real_t *ipc2redist, real_t *iipc2redist, idx_t *options, 
+		 idx_t *ioptions, idx_t *part, MPI_Comm *comm)
+{
+  idx_t i, j;
+  idx_t doweabort, doiabort = 0;
+  real_t tsum, *myitpwgts;
+  idx_t mgcnums[5] = {-1, 2, 3, 4, 2};
+
+  /**************************************/
+  if (part == NULL) {
+    doiabort = 1;
+    IFSET(dbglvl, DBG_INFO, printf("ERROR: part array is set to NULL.\n"));
+  }
+  /**************************************/
+
+
+  /**************************************/
+  if (wgtflag == NULL) {
+    *iwgtflag = 0;
+    IFSET(dbglvl, DBG_INFO, printf("WARNING: wgtflag is NULL.  Using a value of 0.\n"));
+  }
+  else {
+    *iwgtflag = *wgtflag;
+  }
+  /**************************************/
+
+
+  /**************************************/
+  if (numflag == NULL) {
+    *inumflag = 0;
+    IFSET(dbglvl, DBG_INFO, printf("WARNING: numflag is NULL.  Using a value of 0.\n"));
+  }
+  else {
+    if (*numflag != 0 && *numflag != 1) {
+      IFSET(dbglvl, DBG_INFO, printf("WARNING: bad value for numflag %"PRIDX".  Using a value of 0.\n", *numflag));
+      *inumflag = 0;
+    }
+    else {
+      *inumflag = *numflag;
+    }
+  }
+  /**************************************/
+
+
+  /**************************************/
+  if (ncon == NULL) {
+    *incon = 1;
+    IFSET(dbglvl, DBG_INFO, printf("WARNING: ncon is NULL.  Using a value of 1.\n"));
+  }
+  else {
+    if (*ncon < 1 || *ncon > MAXNCON) {
+      IFSET(dbglvl, DBG_INFO, printf("WARNING: bad value for ncon %"PRIDX".  Using a value of 1.\n", *ncon));
+      *incon = 1;
+    }
+    else {
+      *incon = *ncon;
+    }
+  }
+  /**************************************/
+
+
+  /**************************************/
+  if (nparts == NULL) {
+    *inparts = npes;
+    IFSET(dbglvl, DBG_INFO, printf("WARNING: nparts is NULL.  Using a value of %"PRIDX".\n", npes));
+  }
+  else {
+    if (*nparts < 1 || *nparts > MAX_NPARTS) {
+      IFSET(dbglvl, DBG_INFO, printf("WARNING: bad value for nparts %"PRIDX".  Using a value of %"PRIDX".\n", *nparts, npes));
+      *inparts = npes;
+    }
+    else {
+      *inparts = *nparts;
+    }
+  }
+  /**************************************/
+
+
+  /**************************************/
+  myitpwgts = *itpwgts = rmalloc((*inparts)*(*incon), "CheckInputs: itpwgts");
+  if (tpwgts == NULL) {
+    rset((*inparts)*(*incon), 1.0/(real_t)(*inparts), myitpwgts);
+    IFSET(dbglvl, DBG_INFO, printf("WARNING: tpwgts is NULL.  Setting all array elements to %.3"PRREAL".\n", 1.0/(real_t)(*inparts)));
+  }
+  else {
+    for (i=0; i<*incon; i++) {
+      tsum = 0.0;
+      for (j=0; j<*inparts; j++) {
+        tsum += tpwgts[j*(*incon)+i];
+      } 
+      if (fabs(1.0-tsum) < SMALLFLOAT)
+        tsum = 1.0;
+      for (j=0; j<*inparts; j++)
+       myitpwgts[j*(*incon)+i] = tpwgts[j*(*incon)+i] / tsum;
+    }
+  }
+  /**************************************/
+
+
+  /**************************************/
+  if (ubvec == NULL) {
+    rset(*incon, 1.05, iubvec);
+    IFSET(dbglvl, DBG_INFO, printf("WARNING: ubvec is NULL.  Setting all array elements to 1.05.\n"));
+  }
+  else {
+    for (i=0; i<*incon; i++) {
+      if (ubvec[i] < 1.0 || ubvec[i] > (real_t)(*inparts)) {
+        iubvec[i] = 1.05;
+        IFSET(dbglvl, DBG_INFO, printf("WARNING: bad value for ubvec[%"PRIDX"]: %.3"PRREAL".  Setting value to 1.05.[%"PRIDX"]\n", i, ubvec[i], *inparts));
+      }
+      else {
+        iubvec[i] = ubvec[i];
+      }
+    }
+  }
+  /**************************************/
+
+
+  /**************************************/
+  if (partType == ADAPTIVE_PARTITION) {
+    if (ipc2redist != NULL) {
+      if (*ipc2redist < SMALLFLOAT || *ipc2redist > 1000000.0) {
+        IFSET(dbglvl, DBG_INFO, printf("WARNING: bad value for ipc2redist %.3"PRREAL".  Using a value of 1000.\n", *ipc2redist));
+        *iipc2redist = 1000.0;
+      }
+      else {
+        *iipc2redist = *ipc2redist;
+      }
+    }
+    else {
+      IFSET(dbglvl, DBG_INFO, printf("WARNING: ipc2redist is NULL.  Using a value of 1000.\n"));
+      *iipc2redist = 1000.0;
+    }
+  }
+  /**************************************/
+
+
+  /**************************************/
+  if (options == NULL) {
+    ioptions[0] = 0;
+    IFSET(dbglvl, DBG_INFO, printf("WARNING: options is NULL.  Using defaults\n"));
+  }
+  else {
+    ioptions[0] = options[0];
+    ioptions[1] = options[1];
+    ioptions[2] = options[2];
+    if (partType == ADAPTIVE_PARTITION || partType == REFINE_PARTITION)
+      ioptions[3] = options[3];
+  }
+  /**************************************/
+
+
+  /**************************************/
+  if (comm == NULL) {
+    IFSET(dbglvl, DBG_INFO, printf("ERROR: comm is NULL.  Aborting\n"));
+    abort();
+  }
+  else {
+    gkMPI_Allreduce((void *)&doiabort, (void *)&doweabort, 1, IDX_T, MPI_MAX, *comm);
+    if (doweabort > 0)
+      abort();
+  }
+  /**************************************/
+
+}
+
 

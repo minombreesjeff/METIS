@@ -243,7 +243,7 @@ void TestParMetis_GPart(char *filename, char *xyzfile, MPI_Comm comm)
   }
 
 
-/*ADAPTIVE:*/
+ADAPTIVE:
   /*======================================================================
   / ParMETIS_V3_AdaptiveRepart
   /=======================================================================*/
@@ -414,37 +414,37 @@ idx_t ComputeRealCutFromMoved(idx_t *vtxdist, idx_t *mvtxdist, idx_t *part,
 void TestMoveGraph(graph_t *ograph, graph_t *omgraph, idx_t *part, MPI_Comm comm)
 {
   idx_t npes, mype;
-  ctrl_t *ctrl;
+  ctrl_t ctrl;
   graph_t *graph, *mgraph;
   idx_t options[5] = {0, 0, 1, 0, 0};
 
   gkMPI_Comm_size(comm, &npes);
-  ctrl = SetupCtrl(PARMETIS_OP_KMETIS, NULL, 1, npes, NULL, NULL, comm); 
-  mype = ctrl->mype;
+  gkMPI_Comm_rank(comm, &mype);
 
-  ctrl->CoarsenTo = 1;  /* Needed by SetUpGraph, otherwise we can FP errors */
-  graph = TestSetUpGraph(ctrl, ograph->vtxdist, ograph->xadj, NULL, ograph->adjncy, NULL, 0);
-  AllocateWSpace(ctrl, 0);
+  SetUpCtrl(&ctrl, npes, 0, comm); 
+  ctrl.CoarsenTo = 1;  /* Needed by SetUpGraph, otherwise we can FP errors */
+  graph = TestSetUpGraph(&ctrl, ograph->vtxdist, ograph->xadj, NULL, ograph->adjncy, NULL, 0);
+  AllocateWSpace(&ctrl, graph);
 
-  CommSetup(ctrl, graph);
+  CommSetup(&ctrl, graph);
   graph->where = part;
-  graph->ncon  = 1;
-  mgraph = MoveGraph(ctrl, graph);
+  graph->ncon = 1;
+  mgraph = MoveGraph(&ctrl, graph);
 
-  omgraph->gnvtxs  = mgraph->gnvtxs;
-  omgraph->nvtxs   = mgraph->nvtxs;
-  omgraph->nedges  = mgraph->nedges;
+  omgraph->gnvtxs = mgraph->gnvtxs;
+  omgraph->nvtxs = mgraph->nvtxs;
+  omgraph->nedges = mgraph->nedges;
   omgraph->vtxdist = mgraph->vtxdist;
-  omgraph->xadj    = mgraph->xadj;
-  omgraph->adjncy  = mgraph->adjncy;
-  mgraph->vtxdist  = NULL;
-  mgraph->xadj     = NULL;
-  mgraph->adjncy   = NULL;
+  omgraph->xadj = mgraph->xadj;
+  omgraph->adjncy = mgraph->adjncy;
+  mgraph->vtxdist = NULL;
+  mgraph->xadj = NULL;
+  mgraph->adjncy = NULL;
   FreeGraph(mgraph);
 
   graph->where = NULL;
-  FreeInitialGraphAndRemap(graph);
-  FreeCtrl(&ctrl);
+  FreeInitialGraphAndRemap(graph, 0, 1);
+  FreeWSpace(&ctrl);
 }  
 
 
@@ -454,7 +454,10 @@ void TestMoveGraph(graph_t *ograph, graph_t *omgraph, idx_t *part, MPI_Comm comm
 graph_t *TestSetUpGraph(ctrl_t *ctrl, idx_t *vtxdist, idx_t *xadj,
    idx_t *vwgt, idx_t *adjncy, idx_t *adjwgt, idx_t wgtflag)
 {
-  return SetupGraph(ctrl, 1, vtxdist, xadj, vwgt, NULL, adjncy, adjwgt, wgtflag);
+  idx_t mywgtflag;
+
+  mywgtflag = wgtflag;
+  return SetUpGraph(ctrl, 1, vtxdist, xadj, vwgt, adjncy, adjwgt, &mywgtflag);
 }
 
 

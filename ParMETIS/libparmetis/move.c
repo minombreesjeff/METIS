@@ -8,21 +8,20 @@
  * Started 11/22/96
  * George
  *
- * $Id: move.c 10657 2011-08-03 14:34:35Z karypis $
+ * $Id: move.c 10361 2011-06-21 19:16:22Z karypis $
  *
  */
 
 #include <parmetislib.h>
 
-/*************************************************************************/
-/*! This function moves the graph, and returns a new graph.
-    This routine can be called with or without performing refinement.
-    In the latter case it allocates and computes lpwgts itself.
-*/
-/*************************************************************************/
+/*************************************************************************
+* This function moves the graph, and returns a new graph.
+* This routine can be called with or without performing refinement.
+* In the latter case it allocates and computes lpwgts itself.
+**************************************************************************/
 graph_t *MoveGraph(ctrl_t *ctrl, graph_t *graph)
 {
-  idx_t h, i, ii, j, jj, nvtxs, ncon, npes, nsnbrs, nrnbrs;
+  idx_t h, i, ii, j, jj, nvtxs, ncon, npes;
   idx_t *xadj, *vwgt, *adjncy, *adjwgt, *mvtxdist;
   idx_t *where, *newlabel, *lpwgts, *gpwgts;
   idx_t *sgraph, *rgraph;
@@ -69,7 +68,7 @@ graph_t *MoveGraph(ctrl_t *ctrl, graph_t *graph)
   /* gpwgts[i] will store the label of the first vertex for each domain 
      in each processor */
   for (i=0; i<npes; i++) 
-    /* We were interested in an exclusive scan */
+    /* We were interested in an exclusive Scan */
     gpwgts[i] = mvtxdist[i] + gpwgts[i] - lpwgts[i];
 
   newlabel = iwspacemalloc(ctrl, nvtxs+graph->nrecv);
@@ -85,29 +84,23 @@ graph_t *MoveGraph(ctrl_t *ctrl, graph_t *graph)
   /* Use lpwgts and gpwgts as pointers to where data will be received and send */
   lpwgts[0] = 0;  /* Send part */
   gpwgts[0] = 0;  /* Received part */
-  for (nsnbrs=nrnbrs=0, i=0; i<npes; i++) {
+  for (i=0; i<npes; i++) {
     lpwgts[i+1] = lpwgts[i] + (1+ncon)*sinfo[i].key + 2*sinfo[i].val;
     gpwgts[i+1] = gpwgts[i] + (1+ncon)*rinfo[i].key + 2*rinfo[i].val;
-    if (rinfo[i].key > 0)
-      nrnbrs++;
-    if (sinfo[i].key > 0)
-      nsnbrs++;
   }
-
-  /* Update the max # of sreq/rreq/statuses */
-  CommUpdateNnbrs(ctrl, gk_max(nsnbrs, nrnbrs));
 
   rgraph = iwspacemalloc(ctrl, gpwgts[npes]);
   WCOREPUSH;  /* for freeing the send part early */
   sgraph = iwspacemalloc(ctrl, lpwgts[npes]);
 
   /* Issue the receives first */
-  for (j=0, i=0; i<npes; i++) {
+  for (i=0; i<npes; i++) {
     if (rinfo[i].key > 0) 
       gkMPI_Irecv((void *)(rgraph+gpwgts[i]), gpwgts[i+1]-gpwgts[i], IDX_T, 
-          i, 1, ctrl->comm, ctrl->rreq+j++);
-    else 
+          i, 1, ctrl->comm, ctrl->rreq+i);
+    else {
       PASSERT(ctrl, gpwgts[i+1]-gpwgts[i] == 0);
+    }
   }
 
   /* Assemble the graph to be sent and send it */
@@ -126,17 +119,24 @@ graph_t *MoveGraph(ctrl_t *ctrl, graph_t *graph)
 
   SHIFTCSR(i, npes, lpwgts);
 
-  for (j=0, i=0; i<npes; i++) {
+  for (i=0; i<npes; i++) {
     if (sinfo[i].key > 0)
       gkMPI_Isend((void *)(sgraph+lpwgts[i]), lpwgts[i+1]-lpwgts[i], IDX_T, 
-          i, 1, ctrl->comm, ctrl->sreq+j++);
-    else 
+          i, 1, ctrl->comm, ctrl->sreq+i);
+    else {
       PASSERT(ctrl, lpwgts[i+1]-lpwgts[i] == 0);
+    }
   }
 
   /* Wait for the send/recv to finish */
-  gkMPI_Waitall(nrnbrs, ctrl->rreq, ctrl->statuses);
-  gkMPI_Waitall(nsnbrs, ctrl->sreq, ctrl->statuses);
+  for (i=0; i<npes; i++) {
+    if (sinfo[i].key > 0) 
+      gkMPI_Wait(ctrl->sreq+i, &ctrl->status);
+  }
+  for (i=0; i<npes; i++) {
+    if (rinfo[i].key > 0) 
+      gkMPI_Wait(ctrl->rreq+i, &ctrl->status); 
+  }
 
   WCOREPOP;  /* frees sgraph */
 
@@ -162,9 +162,9 @@ graph_t *MoveGraph(ctrl_t *ctrl, graph_t *graph)
     xadj[i] = rgraph[ii++];
     for (h=0; h<ncon; h++)
       vwgt[i*ncon+h] = rgraph[ii++]; 
-    for (j=0; j<xadj[i]; j++, jj++) {
+    for (j=0; j<xadj[i]; j++) {
       adjncy[jj] = rgraph[ii++];
-      adjwgt[jj] = rgraph[ii++];
+      adjwgt[jj++] = rgraph[ii++];
     }
   }
   MAKECSR(i, nvtxs, xadj);
@@ -197,7 +197,7 @@ graph_t *MoveGraph(ctrl_t *ctrl, graph_t *graph)
 **************************************************************************/
 void ProjectInfoBack(ctrl_t *ctrl, graph_t *graph, idx_t *info, idx_t *minfo)
 {
-  idx_t i, nvtxs, nparts, nrecvs, nsends;
+  idx_t i, nvtxs, nparts;
   idx_t *where, *auxinfo, *sinfo, *rinfo;
 
   WCOREPUSH;
@@ -227,23 +227,27 @@ void ProjectInfoBack(ctrl_t *ctrl, graph_t *graph, idx_t *info, idx_t *minfo)
   /*-----------------------------------------------------------------
    * Now, go and send back the minfo
    -----------------------------------------------------------------*/
-  for (nrecvs=0, i=0; i<nparts; i++) {
+  for (i=0; i<nparts; i++) {
     if (rinfo[i+1]-rinfo[i] > 0)
       gkMPI_Irecv((void *)(auxinfo+rinfo[i]), rinfo[i+1]-rinfo[i], IDX_T, 
-          i, 1, ctrl->comm, ctrl->rreq+nrecvs++);
+          i, 1, ctrl->comm, ctrl->rreq+i);
   }
 
-  for (nsends=0, i=0; i<nparts; i++) {
-    if (sinfo[i+1]-sinfo[i] > 0) 
+  for (i=0; i<nparts; i++) {
+    if (sinfo[i+1]-sinfo[i] > 0)
       gkMPI_Isend((void *)(minfo+sinfo[i]), sinfo[i+1]-sinfo[i], IDX_T, 
-          i, 1, ctrl->comm, ctrl->sreq+nsends++);
+          i, 1, ctrl->comm, ctrl->sreq+i);
   }
-  PASSERT(ctrl, nrecvs <= ctrl->ncommpes);
-  PASSERT(ctrl, nsends <= ctrl->ncommpes);
 
   /* Wait for the send/recv to finish */
-  gkMPI_Waitall(nrecvs, ctrl->rreq, ctrl->statuses);
-  gkMPI_Waitall(nsends, ctrl->sreq, ctrl->statuses);
+  for (i=0; i<nparts; i++) {
+    if (rinfo[i+1]-rinfo[i] > 0)
+      gkMPI_Wait(ctrl->rreq+i, &ctrl->status);
+  }
+  for (i=0; i<nparts; i++) {
+    if (sinfo[i+1]-sinfo[i] > 0)
+      gkMPI_Wait(ctrl->sreq+i, &ctrl->status);
+  }
 
   /* Scatter the info received in auxinfo back to info. */
   for (i=0; i<nvtxs; i++)

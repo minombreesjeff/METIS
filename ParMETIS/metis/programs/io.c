@@ -8,7 +8,7 @@
  * Started 8/28/94
  * George
  *
- * $Id: io.c 10569 2011-07-13 16:25:38Z karypis $
+ * $Id: io.c 10154 2011-06-09 21:27:35Z karypis $
  *
  */
 
@@ -139,8 +139,7 @@ graph_t *ReadGraph(params_t *params)
       }
 
       if (k == graph->nedges)
-        errexit("There are more edges in the file than the %"PRIDX" specified.\n", 
-            graph->nedges/2);
+        errexit("There are more edges in the file than the %"PRIDX" specified\n", graph->nedges);
 
       adjncy[k] = edge-1;
       adjwgt[k] = ewgt;
@@ -153,9 +152,7 @@ graph_t *ReadGraph(params_t *params)
   if (k != graph->nedges) {
     printf("------------------------------------------------------------------------------\n");
     printf("***  I detected an error in your input file  ***\n\n");
-    printf("In the first line of the file, you specified that the graph contained\n"
-           "%"PRIDX" edges. However, I only found %"PRIDX" edges in the file.\n", 
-           graph->nedges/2, k/2);
+    printf("In the first line of the file, you specified that the graph contained\n%"PRIDX" edges. However, I only found %"PRIDX" edges in the file.\n", graph->nedges/2, k/2);
     if (2*k == graph->nedges) {
       printf("\n *> I detected that you specified twice the number of edges that you have in\n");
       printf("    the file. Remember that the number of edges specified in the first line\n");
@@ -394,6 +391,38 @@ void ReadTPwgts(params_t *params, idx_t ncon)
   }
 
   gk_free((void *)&line, LTERM);
+}
+
+
+/*************************************************************************/
+/*! Read the coordinates of the graph vertices */
+/*************************************************************************/
+void ReadCoordinates(graph_t *graph, char *filename)
+{
+  idx_t i, j, k;
+  FILE *fpin;
+  char *line;
+
+  fpin = gk_fopen(filename, "r", __func__);
+
+  graph->coords = rsmalloc(3*graph->nvtxs, 0.0, "ReadCoordinates: coords");
+
+  line = gk_cmalloc(MAXLINE+1, "ReadCoordinates: line");
+
+  for (i=0; i<graph->nvtxs; i++) {
+    if (fgets(line, MAXLINE, fpin)) {
+      k = sscanf(line, "%"SCREAL" %"SCREAL" %"SCREAL, graph->coords+3*i+0, 
+                 graph->coords+3*i+1, graph->coords+3*i+2);
+    }
+    else {
+      errexit("[%s] Premature end of coordinate file %s at line %d [nvtxs: %d]\n",
+          __func__, filename, i, graph->nvtxs);
+    }
+  }
+    
+  gk_fclose(fpin);
+
+  gk_free((void **)&line, LTERM);
 }
 
 

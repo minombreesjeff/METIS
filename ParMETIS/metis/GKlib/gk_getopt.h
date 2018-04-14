@@ -4,7 +4,7 @@
 
 \date   Started 3/27/2007
 \author George
-\version\verbatim $Id: gk_getopt.h 10562 2011-07-13 13:20:14Z karypis $ \endverbatim
+\version\verbatim $Id: gk_getopt.h 1277 2007-03-27 21:17:33Z karypis $ \endverbatim
 */
 
 #ifndef _GK_GETOPT_H_
@@ -26,10 +26,13 @@ of these structures, one for each long option. Terminate the array with
 an element containing all zeros.
 */
 struct gk_option {
-  char *name;       /*!< This field is the name of the option. */
+  const char *name; /*!< This field is the name of the option. */
   int has_arg;      /*!< This field says whether the option takes an argument. 
                          It is an integer, and there are three legitimate values: 
                          no_argument, required_argument and optional_argument. 
+                         
+                         \todo Need to better define/use the constants for this member
+                               variable.
                          */
   int *flag;        /*!< See the discussion on ::gk_option#val */
   int val;          /*!< These fields control how to report or act on the option 
@@ -52,11 +55,11 @@ struct gk_option {
 
 
 /* Function prototypes */
-extern int gk_getopt(int __argc, char **__argv, char *__shortopts);
-extern int gk_getopt_long(int __argc, char **__argv, char *__shortopts,
-              struct gk_option *__longopts, int *__longind);
-extern int gk_getopt_long_only (int __argc, char **__argv,
-              char *__shortopts, struct gk_option *__longopts, int *__longind);
+extern int gk_getopt(int __argc, char **__argv, const char *__shortopts);
+extern int gk_getopt_long(int __argc, char *const *__argv, const char *__shortopts,
+              const struct gk_option *__longopts, int *__longind);
+extern int gk_getopt_long_only (int __argc, char *const *__argv,
+              const char *__shortopts, const struct gk_option *__longopts, int *__longind);
 
 
 

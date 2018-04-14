@@ -8,7 +8,7 @@
  * Started 9/25/94
  * George
  *
- * $Id: macros.h 10578 2011-07-14 18:10:15Z karypis $
+ * $Id: macros.h 10413 2011-06-25 23:20:33Z karypis $
  *
  */
 
@@ -21,8 +21,8 @@
 #define HASHFCT(key, size) ((key)%(size))
 
 /* set/reset the current workspace core */
-#define WCOREPUSH    do {PASSERT(ctrl,ctrl->mcore!=NULL); gk_mcorePush(ctrl->mcore);}while(0)
-#define WCOREPOP     do {PASSERT(ctrl,ctrl->mcore!=NULL); gk_mcorePop(ctrl->mcore);}while(0)
+#define WCOREPUSH    do {PASSERT(ctrl, ctrl->mcore != NULL); gk_mcorePush(ctrl->mcore);}while(0)
+#define WCOREPOP     do {PASSERT(ctrl, ctrl->mcore != NULL); gk_mcorePop(ctrl->mcore);}while(0)
 
 
 /* Timer macros */
@@ -30,17 +30,6 @@
 #define starttimer(tmr) (tmr -= MPI_Wtime())
 #define stoptimer(tmr) (tmr += MPI_Wtime())
 #define gettimer(tmr) (tmr)
-#define STARTTIMER(ctrl, tmr) \
-   do { \
-     IFSET((ctrl)->dbglvl, DBG_TIME, gkMPI_Barrier((ctrl)->gcomm));\
-     IFSET((ctrl)->dbglvl, DBG_TIME, starttimer((tmr))); \
-   } while (0)
-#define STOPTIMER(ctrl, tmr) \
-   do { \
-     IFSET((ctrl)->dbglvl, DBG_TIME, gkMPI_Barrier((ctrl)->gcomm));\
-     IFSET((ctrl)->dbglvl, DBG_TIME, stoptimer((tmr))); \
-   } while (0)
-
 
 
 /* Debugging macros */

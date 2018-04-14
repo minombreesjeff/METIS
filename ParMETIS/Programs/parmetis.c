@@ -25,7 +25,6 @@ int main(int argc, char *argv[])
   real_t ipc2redist, *xyz=NULL, *tpwgts=NULL, ubvec[MAXNCON];
   MPI_Comm comm;
   idx_t numflag=0, wgtflag=0, ndims, edgecut;
-  char xyzfilename[8192];
 
   MPI_Init(&argc, &argv);
   MPI_Comm_dup(MPI_COMM_WORLD, &comm);
@@ -70,10 +69,8 @@ int main(int argc, char *argv[])
   */
 
 
-  if (optype >= 20) { 
-    sprintf(xyzfilename, "%s.xyz", argv[1]);
-    xyz = ReadTestCoordinates(&graph, xyzfilename, &ndims, comm);
-  }
+  if (optype >= 20)  
+    xyz = ReadTestCoordinates(&graph, argv[1], &ndims, comm);
 
   if (mype == 0) 
     printf("finished reading file: %s\n", argv[1]);

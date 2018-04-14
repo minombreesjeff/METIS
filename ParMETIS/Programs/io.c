@@ -52,7 +52,7 @@ void ParallelReadGraph(graph_t *graph, char *filename, MPI_Comm comm)
       exit(0);
     }
 
-    line = gk_cmalloc(MAXLINE+1, "line");
+    line = (char *)gk_malloc(sizeof(char)*(MAXLINE+1), "line");
 
     while (fgets(line, MAXLINE, fpin) && line[0] == '%');
 
@@ -378,7 +378,7 @@ void ReadTestGraph(graph_t *graph, char *filename, MPI_Comm comm)
       else
         gkMPI_Send((void *)sxadj, snvtxs+1, IDX_T, penum, 1, comm); 
 
-      gk_free((void **)&sxadj, LTERM);
+      free(sxadj);
     }
   }
   else 
@@ -396,7 +396,7 @@ void ReadTestGraph(graph_t *graph, char *filename, MPI_Comm comm)
         gkMPI_Send((void *)(gadjncy+gxadj[vtxdist[penum]]), ssize[penum], IDX_T, penum, 1, comm); 
     }
 
-    gk_free((void **)&ssize, LTERM);
+    free(ssize);
   }
   else 
     gkMPI_Recv((void *)graph->adjncy, graph->nedges, IDX_T, 0, 1, comm, &status);
@@ -415,8 +415,7 @@ void ReadTestGraph(graph_t *graph, char *filename, MPI_Comm comm)
 /*************************************************************************/
 /*! Reads the coordinates associated with the vertices of a graph */
 /*************************************************************************/
-real_t *ReadTestCoordinates(graph_t *graph, char *filename, idx_t *r_ndims, 
-            MPI_Comm comm)
+real_t *ReadTestCoordinates(graph_t *graph, char *filename, idx_t *r_ndims, MPI_Comm comm)
 {
   idx_t i, j, k, npes, mype, penum, ndims;
   real_t *xyz, *txyz;
@@ -445,6 +444,7 @@ real_t *ReadTestCoordinates(graph_t *graph, char *filename, idx_t *r_ndims,
   }
   gkMPI_Bcast((void *)&ndims, 1, IDX_T, 0, comm);
   *r_ndims = ndims;
+
 
   xyz = rmalloc(graph->nvtxs*ndims, "ReadTestCoordinates");
   if (mype == 0) {
@@ -482,7 +482,7 @@ void ReadMetisGraph(char *filename, idx_t *r_nvtxs, idx_t **r_xadj, idx_t **r_ad
   char *line, *oldstr, *newstr;
   FILE *fpin;
 
-  line = gk_cmalloc(MAXLINE+1, "ReadMetisGraph: line");
+  line = (char *)malloc(sizeof(char)*(MAXLINE+1));
 
   if ((fpin = fopen(filename, "r")) == NULL) {
     printf("Failed to open file %s\n", filename);
@@ -516,7 +516,7 @@ void ReadMetisGraph(char *filename, idx_t *r_nvtxs, idx_t **r_xadj, idx_t **r_ad
 
   fclose(fpin);
 
-  gk_free((void **)&line, LTERM);
+  free(line);
 
   *r_nvtxs = nvtxs;
   *r_xadj = xadj;
@@ -586,7 +586,7 @@ void Mc_SerialReadGraph(graph_t *graph, char *filename, idx_t *wgtflag, MPI_Comm
       else
         MPI_Send((void *)sxadj, snvtxs+1, IDX_T, penum, 1, comm); 
 
-      gk_free((void **)&sxadj, LTERM);
+      free(sxadj);
     }
   }
   else 
@@ -655,7 +655,7 @@ void Mc_SerialReadGraph(graph_t *graph, char *filename, idx_t *wgtflag, MPI_Comm
 		IDX_T, penum, 1, comm);
       }
 
-      gk_free((void **)&ssize, LTERM);
+      free(ssize);
     }
     else
       gkMPI_Recv((void *)graph->vwgt, graph->nvtxs*ncon, IDX_T, 0, 1,
@@ -687,10 +687,10 @@ void Mc_SerialReadMetisGraph(char *filename, idx_t *r_nvtxs, idx_t *r_ncon,
   idx_t *xadj, *adjncy, *vwgt, *adjwgt;
   char *line, *oldstr, *newstr;
   idx_t fmt, readew, readvw;
-  idx_t ewgt[1024];
+  idx_t ewgt[MAXNOBJ];
   FILE *fpin;
 
-  line = gk_cmalloc(MAXLINE+1, "line");
+  line = (char *)gk_malloc(sizeof(char)*(MAXLINE+1), "line");
 
   if ((fpin = fopen(filename, "r")) == NULL) {
     printf("Failed to open file %s\n", filename);
@@ -761,7 +761,7 @@ void Mc_SerialReadMetisGraph(char *filename, idx_t *r_nvtxs, idx_t *r_ncon,
 
   fclose(fpin);
 
-  gk_free((void **)&line, LTERM);
+  free(line);
 
   *r_nvtxs = nvtxs;
   *r_ncon = ncon;
@@ -805,7 +805,7 @@ void WritePVector(char *gname, idx_t *vtxdist, idx_t *part, MPI_Comm comm)
       for (i=0; i<rnvtxs; i++)
         fprintf(fpin, "%"PRIDX"\n", rpart[i]);
 
-      gk_free((void **)&rpart, LTERM);
+      free(rpart);
     }
     fclose(fpin);
   }
@@ -906,7 +906,7 @@ void ParallelReadMesh(mesh_t *mesh, char *filename, MPI_Comm comm)
       exit(0);
     }
 
-    line = gk_cmalloc(MAXLINE+1, "line");
+    line = (char *)gk_malloc(sizeof(char)*(MAXLINE+1), "line");
 
     while (fgets(line, MAXLINE, fpin) && line[0] == '%');
     sscanf(line, "%"PRIDX" %"PRIDX"", &gnelms, &etype);
@@ -977,7 +977,7 @@ void ParallelReadMesh(mesh_t *mesh, char *filename, MPI_Comm comm)
       }
     }
     fclose(fpin);
-    gk_free((void **)&your_elements, LTERM);
+    free(your_elements);
   }
   else {
     MPI_Recv((void *)elements, nelms*esize, IDX_T, npes-1, 0, comm, &stat);
@@ -986,18 +986,16 @@ void ParallelReadMesh(mesh_t *mesh, char *filename, MPI_Comm comm)
   /*********************************/
   /* now check for number of nodes */
   /*********************************/
-  minnode = imin(nelms*esize, elements);
+  minnode = elements[imin(nelms*esize, elements)];
   MPI_Allreduce((void *)&minnode, (void *)&gminnode, 1, IDX_T, MPI_MIN, comm);
   for (i=0; i<nelms*esize; i++)
     elements[i] -= gminnode;
 
-  maxnode = imax(nelms*esize, elements);
+  maxnode = elements[imax(nelms*esize, elements)];
   MPI_Allreduce((void *)&maxnode, (void *)&gmaxnode, 1, IDX_T, MPI_MAX, comm);
   mesh->gnns = gmaxnode+1;
 
-  if (mype==0) 
-    printf("Nelements: %"PRIDX", Nnodes: %"PRIDX", EType: %"PRIDX"\n", 
-        gnelms, mesh->gnns, etype);
+  if (mype==0) printf("Nelements: %"PRIDX", Nnodes: %"PRIDX", EType: %"PRIDX"\n", gnelms, mesh->gnns, etype);
 }
 
 

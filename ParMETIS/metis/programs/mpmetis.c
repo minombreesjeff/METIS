@@ -8,7 +8,7 @@
  * Started 8/28/94
  * George
  *
- * $Id: mpmetis.c 10567 2011-07-13 16:17:07Z karypis $
+ * $Id: mpmetis.c 10409 2011-06-25 16:58:34Z karypis $
  *
  */
 
@@ -26,7 +26,6 @@ int main(int argc, char *argv[])
   idx_t *epart, *npart;
   idx_t objval;
   params_t *params;
-  int status=0;
 
   params = parse_cmdline(argc, argv);
 
@@ -66,15 +65,14 @@ int main(int argc, char *argv[])
 
   switch (params->gtype) {
     case METIS_GTYPE_DUAL:
-      status = METIS_PartMeshDual(&mesh->ne, &mesh->nn, mesh->eptr, mesh->eind, 
-                   mesh->ewgt, NULL, &params->ncommon, &params->nparts, 
-                   params->tpwgts, options, &objval, epart, npart);
+      METIS_PartMeshDual(&mesh->ne, &mesh->nn, mesh->eptr, mesh->eind, mesh->ewgt,
+            NULL, &params->ncommon, &params->nparts, params->tpwgts, options, 
+            &objval, epart, npart);
       break;
 
     case METIS_GTYPE_NODAL:
-      status = METIS_PartMeshNodal(&mesh->ne, &mesh->nn, mesh->eptr, mesh->eind, 
-                   NULL, NULL, &params->nparts, params->tpwgts, options, &objval, 
-                   epart, npart);
+      METIS_PartMeshNodal(&mesh->ne, &mesh->nn, mesh->eptr, mesh->eind, NULL, NULL,
+            &params->nparts, params->tpwgts, options, &objval, epart, npart);
       break;
   }
 
@@ -84,19 +82,15 @@ int main(int argc, char *argv[])
   params->maxmemory = gk_GetMaxMemoryUsed();
   gk_malloc_cleanup(0);
 
-  if (status != METIS_OK) {
-    printf("\n***Metis returned with an error.\n");
-  }
-  else {
-    if (!params->nooutput) {
-      /* Write the solution */
-      gk_startcputimer(params->iotimer);
-      WriteMeshPartition(params->filename, params->nparts, mesh->ne, epart, mesh->nn, npart);
-      gk_stopcputimer(params->iotimer);
-    }
 
-    MPReportResults(params, mesh, epart, npart, objval);
+  if (!params->nooutput) {
+    /* Write the solution */
+    gk_startcputimer(params->iotimer);
+    WriteMeshPartition(params->filename, params->nparts, mesh->ne, epart, mesh->nn, npart);
+    gk_stopcputimer(params->iotimer);
   }
+
+  MPReportResults(params, mesh, epart, npart, objval);
 
   FreeMesh(&mesh);
   gk_free((void **)&epart, &npart, LTERM);

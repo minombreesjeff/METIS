@@ -5,7 +5,7 @@
 \date Started 7/15/98
 \author George
 \author Copyright 1997-2009, Regents of the University of Minnesota 
-\version $Id: minconn.c 10513 2011-07-07 22:06:03Z karypis $
+\version $Id: minconn.c 10399 2011-06-24 12:45:46Z karypis $
 */
 
 #include "metislib.h"
@@ -76,7 +76,7 @@ void ComputeSubDomainGraph(ctrl_t *ctrl, graph_t *graph)
             i = pind[ii];
             ASSERT(pid == where[i]);
       
-            if (rinfo[i].ned > 0) {
+            if (rinfo[i].ed > 0) {
               nnbrs = rinfo[i].nnbrs;
               nbrs  = ctrl->vnbrpool + rinfo[i].inbr;
       
@@ -84,7 +84,7 @@ void ComputeSubDomainGraph(ctrl_t *ctrl, graph_t *graph)
                 other = nbrs[j].pid;
                 if (vadwgts[other] == 0)
                   vadids[nads++] = other;
-                vadwgts[other] += nbrs[j].ned;
+                vadwgts[other] += nbrs[j].ed;
               }
             }
           }
@@ -92,7 +92,7 @@ void ComputeSubDomainGraph(ctrl_t *ctrl, graph_t *graph)
         break;
 
       default:
-        gk_errexit(SIGERR, "Unknown objtype: %d\n", ctrl->objtype);
+        errexit("Unknown objtype: %d\n", ctrl->objtype);
     }
 
     /* See if you have enough memory to store the adjacent info for that subdomain */
@@ -211,7 +211,7 @@ void EliminateSubDomainEdges(ctrl_t *ctrl, graph_t *graph)
   xadj   = graph->xadj;
   adjncy = graph->adjncy;
   vwgt   = graph->vwgt;
-  adjwgt = (ctrl->objtype == METIS_OBJTYPE_VOL ? NULL : graph->adjwgt);
+  adjwgt = graph->adjwgt;
 
   where = graph->where;
   pwgts = graph->pwgts;  /* We assume that this is properly initialized */
@@ -348,7 +348,7 @@ void EliminateSubDomainEdges(ctrl_t *ctrl, graph_t *graph)
                 continue;
               if (otherpmat[k] == 0)
                 cand[ncand++].val = k;
-              otherpmat[k] += (adjwgt ? adjwgt[j] : 1);
+              otherpmat[k] += adjwgt[j];
             }
           }
     
@@ -453,7 +453,7 @@ void EliminateSubDomainEdges(ctrl_t *ctrl, graph_t *graph)
                 pmarker, modind);
             break;
           default:
-            gk_errexit(SIGERR, "Unknown objtype of %d\n", ctrl->objtype);
+            errexit("Unknown objtype of %d\n", ctrl->objtype);
         }
 
         /* Update the csr representation of the partitioning vector */
@@ -562,7 +562,7 @@ void MoveGroupMinConnForVol(ctrl_t *ctrl, graph_t *graph, idx_t to, idx_t nind,
          idx_t *ind, idx_t *vmarker, idx_t *pmarker, idx_t *modind)
 {
   idx_t i, ii, j, jj, k, l, nvtxs, from, me, other, xgain, ewgt;
-  idx_t *xadj, *vsize, *adjncy, *where;
+  idx_t *xadj, *vsize, *adjncy, *adjwgt, *where;
   vkrinfo_t *myrinfo, *orinfo;
   vnbr_t *mynbrs, *onbrs;
 
@@ -570,6 +570,7 @@ void MoveGroupMinConnForVol(ctrl_t *ctrl, graph_t *graph, idx_t to, idx_t nind,
   xadj   = graph->xadj;
   vsize  = graph->vsize;
   adjncy = graph->adjncy;
+  adjwgt = graph->adjwgt;
   where  = graph->where;
 
   while (--nind>=0) {
@@ -583,7 +584,7 @@ void MoveGroupMinConnForVol(ctrl_t *ctrl, graph_t *graph, idx_t to, idx_t nind,
     }
     mynbrs = ctrl->vnbrpool + myrinfo->inbr;
 
-    xgain = (myrinfo->nid == 0 && myrinfo->ned > 0 ? vsize[i] : 0);
+    xgain = (myrinfo->id == 0 && myrinfo->ed > 0 ? vsize[i] : 0);
 
     //printf("Moving %"PRIDX" from %"PRIDX" to %"PRIDX" [vsize: %"PRIDX"] [xgain: %"PRIDX"]\n", 
     //    i, from, to, vsize[i], xgain);
@@ -597,7 +598,7 @@ void MoveGroupMinConnForVol(ctrl_t *ctrl, graph_t *graph, idx_t to, idx_t nind,
     if (k == myrinfo->nnbrs) {
       //printf("Missing neighbor\n");
 
-      if (myrinfo->nid > 0)
+      if (myrinfo->id > 0)
         xgain -= vsize[i];
 
       /* determine the volume gain resulting from that move */
@@ -638,13 +639,13 @@ void MoveGroupMinConnForVol(ctrl_t *ctrl, graph_t *graph, idx_t to, idx_t nind,
         }
       }
       graph->minvol -= xgain;
-      graph->mincut -= -myrinfo->nid;
-      ewgt = myrinfo->nid;
+      graph->mincut -= -myrinfo->id;
+      ewgt = myrinfo->id;
     }
     else {
       graph->minvol -= (xgain + mynbrs[k].gv);
-      graph->mincut -= mynbrs[k].ned-myrinfo->nid;
-      ewgt = myrinfo->nid-mynbrs[k].ned;
+      graph->mincut -= mynbrs[k].ed-myrinfo->id;
+      ewgt = myrinfo->id-mynbrs[k].ed;
     }
 
     /* Update where and pwgts */
@@ -659,8 +660,8 @@ void MoveGroupMinConnForVol(ctrl_t *ctrl, graph_t *graph, idx_t to, idx_t nind,
     for (j=xadj[i]; j<xadj[i+1]; j++) {
       me = where[adjncy[j]];
       if (me != from && me != to) {
-        UpdateEdgeSubDomainGraph(ctrl, from, me, -1, NULL);
-        UpdateEdgeSubDomainGraph(ctrl, to, me, 1, NULL);
+        UpdateEdgeSubDomainGraph(ctrl, from, me, -adjwgt[j], NULL);
+        UpdateEdgeSubDomainGraph(ctrl, to, me, adjwgt[j], NULL);
       }
     }
 

@@ -4,7 +4,7 @@
 
 \date 12/24/2008
 \author George
-\version\verbatim $Id: cmdline_gpmetis.c 10482 2011-07-05 20:10:55Z karypis $\endverbatim
+\version\verbatim $Id: cmdline_gpmetis.c 10237 2011-06-14 15:22:13Z karypis $\endverbatim
 */
 
 #include "metisbin.h"
@@ -110,8 +110,8 @@ static char helpstr[][100] =
 "     Specifies the scheme to be used to compute the initial partitioning",
 "     of the graph.",
 "     The possible values are:",
-"        grow     - Grow a bisection using a greedy scheme [default for ncon=1]",
-"        random   - Compute a bisection at random [default for ncon>1]",
+"        grow     - Grow a bisection using a greedy strategy [default]",
+"        random   - Compute a bisection at random",
 " ",
 "  -objtype=string [applies only when -ptype=kway]",
 "     Specifies the objective that the partitioning routines will optimize.",
@@ -222,7 +222,7 @@ params_t *parse_cmdline(int argc, char *argv[])
   params->ptype         = METIS_PTYPE_KWAY;
   params->objtype       = METIS_OBJTYPE_CUT;
   params->ctype         = METIS_CTYPE_SHEM;
-  params->iptype        = -1;
+  params->iptype        = METIS_IPTYPE_GROW;
   params->rtype         = -1;
 
   params->minconn       = 0;

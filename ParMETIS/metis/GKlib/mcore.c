@@ -5,7 +5,7 @@
 \date Started 5/30/11
 \author George
 \author Copyright 1997-2011, Regents of the University of Minnesota 
-\version $Id: mcore.c 10494 2011-07-06 14:53:45Z karypis $
+\version $Id: mcore.c 10408 2011-06-25 16:25:17Z karypis $
 */
 
 #include <GKlib.h>
@@ -19,7 +19,9 @@ gk_mcore_t *gk_mcoreCreate(size_t coresize)
 {
   gk_mcore_t *mcore;
 
-  mcore = (gk_mcore_t *)gk_malloc(sizeof(gk_mcore_t), "gk_mcoreCreate: mcore");
+  mcore = (gk_mcore_t *)malloc(sizeof(gk_mcore_t));
+  if (mcore == NULL)
+    gk_errexit(SIGERR, "Memory allocation for mcore failed.\n");
   memset(mcore, 0, sizeof(gk_mcore_t));
 
   mcore->coresize = coresize;
@@ -30,46 +32,21 @@ gk_mcore_t *gk_mcoreCreate(size_t coresize)
   /* allocate the memory for keeping track of malloc ops */
   mcore->nmops = 2048;
   mcore->cmop  = 0;
-  mcore->mops  = (gk_mop_t *)gk_malloc(mcore->nmops*sizeof(gk_mop_t), "gk_mcoreCreate: mcore->mops");
+  mcore->mops  = (gk_mop_t *)malloc(mcore->nmops*sizeof(gk_mop_t));
+  if (mcore->mops == NULL)
+    gk_errexit(SIGERR, "Memory allocation for mcore->mops failed.\n");
 
   return mcore;
 }
 
 
 /*************************************************************************/
-/*! This function creates an mcore. This version is used for gkmcore.
- */
-/*************************************************************************/
-gk_mcore_t *gk_gkmcoreCreate()
-{
-  gk_mcore_t *mcore;
-
-  if ((mcore = (gk_mcore_t *)malloc(sizeof(gk_mcore_t))) == NULL)
-    return NULL;
-  memset(mcore, 0, sizeof(gk_mcore_t));
-
-  /* allocate the memory for keeping track of malloc ops */
-  mcore->nmops = 2048;
-  mcore->cmop  = 0;
-  if ((mcore->mops = (gk_mop_t *)malloc(mcore->nmops*sizeof(gk_mop_t))) == NULL) {
-    free(mcore);
-    return NULL;
-  }
-
-  return mcore;
-}
-
-
-/*************************************************************************/
-/*! This function destroys an mcore.
+/*! This function destroyes an mcore 
  */
 /*************************************************************************/
 void gk_mcoreDestroy(gk_mcore_t **r_mcore, int showstats)
 {
   gk_mcore_t *mcore = *r_mcore;
-
-  if (mcore == NULL)
-    return;
 
   if (showstats)
     printf("\n gk_mcore statistics\n" 
@@ -90,42 +67,7 @@ void gk_mcoreDestroy(gk_mcore_t **r_mcore, int showstats)
            mcore->cur_callocs,  mcore->cur_hallocs, mcore->cmop);
   }
 
-  gk_free((void **)&mcore->core, &mcore->mops, &mcore, LTERM);
-
-  *r_mcore = NULL;
-}
-
-
-/*************************************************************************/
-/*! This function destroys an mcore. This version is for gkmcore.
- */
-/*************************************************************************/
-void gk_gkmcoreDestroy(gk_mcore_t **r_mcore, int showstats)
-{
-  gk_mcore_t *mcore = *r_mcore;
-
-  if (mcore == NULL)
-    return;
-
-  if (showstats)
-    printf("\n gk_mcore statistics\n" 
-           "         nmops: %12zu  cmop: %6zu\n"
-           "   num_hallocs: %12zu\n"
-           "  size_hallocs: %12zu\n"
-           "   cur_hallocs: %12zu\n"
-           "   max_hallocs: %12zu\n",
-           mcore->nmops, mcore->cmop,
-           mcore->num_hallocs,
-           mcore->size_hallocs,
-           mcore->cur_hallocs,
-           mcore->max_hallocs);
-
-  if (mcore->cur_hallocs != 0 || mcore->cmop != 0) {
-    printf("***Warning: mcore memory was not fully freed when destroyed.\n"
-           " cur_hallocs: %6zu cmop: %6zu\n",
-           mcore->cur_hallocs, mcore->cmop);
-  }
-
+  gk_free((void **)&mcore->core, LTERM);
   free(mcore->mops);
   free(mcore);
 
@@ -180,18 +122,6 @@ void gk_mcorePush(gk_mcore_t *mcore)
 
 
 /*************************************************************************/
-/*! This function sets a marker in the stack of malloc ops to be used
-    subsequently for freeing purposes. This is the gkmcore version.
- */
-/*************************************************************************/
-void gk_gkmcorePush(gk_mcore_t *mcore)
-{
-  gk_gkmcoreAdd(mcore, GK_MOPT_MARK, 0, NULL);
-  /* printf("MCPPUSH:   %zu\n", mcore->cmop-1); */
-}
-
-
-/*************************************************************************/
 /*! This function frees all mops since the last push 
  */
 /*************************************************************************/
@@ -218,42 +148,13 @@ void gk_mcorePop(gk_mcore_t *mcore)
         break;
 
       default:
-        gk_errexit(SIGMEM, "Unknown mop type of %d\n", mcore->mops[mcore->cmop].type);
+        gk_errexit(SIGERR, "Unknown mop type of %d\n", mcore->mops[mcore->cmop].type);
     }
   }
 
 DONE:
   ;
   /*printf("MCPPOP:    %zu\n", mcore->cmop); */
-}
-
-
-/*************************************************************************/
-/*! This function frees all mops since the last push. This version is
-    for poping the gkmcore and it uses free instead of gk_free.
- */
-/*************************************************************************/
-void gk_gkmcorePop(gk_mcore_t *mcore)
-{
-  while (mcore->cmop > 0) {
-    mcore->cmop--;
-    switch (mcore->mops[mcore->cmop].type) {
-      case GK_MOPT_MARK: /* push marker */
-        goto DONE;
-        break; 
-
-      case GK_MOPT_HEAP: /* heap free */
-        free(mcore->mops[mcore->cmop].ptr);
-        mcore->cur_hallocs -= mcore->mops[mcore->cmop].nbytes;
-        break;
-
-      default:
-        gk_errexit(SIGMEM, "Unknown mop type of %d\n", mcore->mops[mcore->cmop].type);
-    }
-  }
-
-DONE:
-  ;
 }
 
 
@@ -267,7 +168,7 @@ void gk_mcoreAdd(gk_mcore_t *mcore, int type, size_t nbytes, void *ptr)
     mcore->nmops *= 2;
     mcore->mops = realloc(mcore->mops, mcore->nmops*sizeof(gk_mop_t));
     if (mcore->mops == NULL) 
-      gk_errexit(SIGMEM, "***Memory allocation for gkmcore failed.\n");
+      gk_errexit(SIGERR, "***Memory allocation for gkmcore failed.\n");
   }
 
   mcore->mops[mcore->cmop].type   = type;
@@ -295,43 +196,7 @@ void gk_mcoreAdd(gk_mcore_t *mcore, int type, size_t nbytes, void *ptr)
         mcore->max_hallocs = mcore->cur_hallocs;
       break;
     default:
-      gk_errexit(SIGMEM, "Incorrect mcore type operation.\n");
-  }
-}
-
-
-/*************************************************************************/
-/*! Adds a memory allocation at the end of the list. This is the gkmcore
-    version.
- */
-/*************************************************************************/
-void gk_gkmcoreAdd(gk_mcore_t *mcore, int type, size_t nbytes, void *ptr)
-{
-  if (mcore->cmop == mcore->nmops) {
-    mcore->nmops *= 2;
-    mcore->mops = realloc(mcore->mops, mcore->nmops*sizeof(gk_mop_t));
-    if (mcore->mops == NULL) 
-      gk_errexit(SIGMEM, "***Memory allocation for gkmcore failed.\n");
-  }
-
-  mcore->mops[mcore->cmop].type   = type;
-  mcore->mops[mcore->cmop].nbytes = nbytes;
-  mcore->mops[mcore->cmop].ptr    = ptr;
-  mcore->cmop++;
-
-  switch (type) {
-    case GK_MOPT_MARK:
-      break;
-
-    case GK_MOPT_HEAP:
-      mcore->num_hallocs++;
-      mcore->size_hallocs += nbytes;
-      mcore->cur_hallocs  += nbytes;
-      if (mcore->max_hallocs < mcore->cur_hallocs)
-        mcore->max_hallocs = mcore->cur_hallocs;
-      break;
-    default:
-      gk_errexit(SIGMEM, "Incorrect mcore type operation.\n");
+      gk_errexit(SIGERR, "Incorrect mcore type operation.\n");
   }
 }
 
@@ -347,11 +212,11 @@ void gk_mcoreDel(gk_mcore_t *mcore, void *ptr)
 
   for (i=mcore->cmop-1; i>=0; i--) {
     if (mcore->mops[i].type == GK_MOPT_MARK)
-      gk_errexit(SIGMEM, "Could not find pointer %p in mcore\n", ptr);
+      gk_errexit(SIGERR, "Could not find pointer %p in mcore\n", ptr);
 
     if (mcore->mops[i].ptr == ptr) {
       if (mcore->mops[i].type != GK_MOPT_HEAP)
-        gk_errexit(SIGMEM, "Trying to delete a non-HEAP mop.\n");
+        gk_errexit(SIGERR, "Trying to delete a non-HEAP mop.\n");
 
       mcore->cur_hallocs -= mcore->mops[i].nbytes;
       mcore->mops[i] = mcore->mops[--mcore->cmop];
@@ -359,34 +224,5 @@ void gk_mcoreDel(gk_mcore_t *mcore, void *ptr)
     }
   }
 
-  gk_errexit(SIGMEM, "mcoreDel should never have been here!\n");
+  gk_errexit(SIGERR, "mcoreDel should never have been here!\n");
 }
-
-
-/*************************************************************************/
-/*! This function deletes the mop associated with the supplied pointer.
-    The mop has to be a heap allocation, otherwise it fails violently.
-    This is the gkmcore version.
- */
-/*************************************************************************/
-void gk_gkmcoreDel(gk_mcore_t *mcore, void *ptr)
-{
-  int i;
-
-  for (i=mcore->cmop-1; i>=0; i--) {
-    if (mcore->mops[i].type == GK_MOPT_MARK)
-      gk_errexit(SIGMEM, "Could not find pointer %p in mcore\n", ptr);
-
-    if (mcore->mops[i].ptr == ptr) {
-      if (mcore->mops[i].type != GK_MOPT_HEAP)
-        gk_errexit(SIGMEM, "Trying to delete a non-HEAP mop.\n");
-
-      mcore->cur_hallocs -= mcore->mops[i].nbytes;
-      mcore->mops[i] = mcore->mops[--mcore->cmop];
-      return;
-    }
-  }
-
-  gk_errexit(SIGMEM, "gkmcoreDel should never have been here!\n");
-}
-

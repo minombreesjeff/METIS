@@ -8,7 +8,7 @@
  * Started 9/26/95
  * George
  *
- * $Id: struct.h 10592 2011-07-16 21:17:53Z karypis $
+ * $Id: struct.h 10385 2011-06-22 23:07:13Z karypis $
  */
 
 
@@ -76,17 +76,12 @@ typedef struct graph_t {
   idx_t gnvtxs, nvtxs, nedges, ncon, nobj;
   idx_t *xadj;		/* Pointers to the locally stored vertices */
   idx_t *vwgt;		/* Vertex weights */
-  real_t *nvwgt;        /* Vertex weights */
+  real_t   *nvwgt;		/* Vertex weights */
   idx_t *vsize;		/* Vertex size */
-  idx_t *adjncy;	/* Array that stores the adjacency lists of nvtxs */
-  idx_t *adjwgt;	/* Array that stores the weights of the adjacency lists */
-  idx_t *vtxdist;	/* Distribution of vertices */
+  idx_t *adjncy;		/* Array that stores the adjacency lists of nvtxs */
+  idx_t *adjwgt;		/* Array that stores the weights of the adjacency lists */
+  idx_t *vtxdist;		/* Distribution of vertices */
   idx_t *home;		/* The initial partition of the vertex */
-
-  /* used for not freeing application supplied arrays */
-  idx_t free_vwgt;
-  idx_t free_adjwgt;
-  idx_t free_vsize;
 
   /* Coarsening structures */
   idx_t *match;
@@ -158,9 +153,7 @@ typedef double timer;
 * The following structure stores information used by parallel kmetis
 **************************************************************************/
 typedef struct ctrl_t {
-  pmoptype_et optype;           /*!< The operation being performed */
   idx_t mype, npes;		/* Info about the parallel system */
-  idx_t ncon;                   /*!< The number of balancing constraints */ 
   idx_t CoarsenTo;		/* The # of vertices in the coarsest graph */
   idx_t dbglvl;			/* Controls the debuging output of the program */
   idx_t nparts;			/* The number of partitions */
@@ -168,6 +161,7 @@ typedef struct ctrl_t {
   idx_t mtype;                  /* The matching type */
   idx_t ipart;			/* The initial partitioning type */
   idx_t rtype;                  /* The refinement type */
+  idx_t xyztype;		/* The coordinate indexing type */
   idx_t p_nseps;                /* The number of separators to compute at each 
                                    parallel bisection */
   idx_t s_nseps;                /* The number of separators to compute at each 
@@ -176,28 +170,21 @@ typedef struct ctrl_t {
   idx_t seed;			/* Random number seed */
   idx_t sync;			/* Random number seed */
   real_t *tpwgts;		/* Target subdomain weights */
-  real_t *invtvwgts;            /* Per-constraint 1/total vertex weight */
-  real_t *ubvec;                /* Per-constraint unbalance factor */
-
+  idx_t tvwgts[MAXNCON];
+  real_t invtvwgts[MAXNCON];
+  real_t ubvec[MAXNCON];
   idx_t partType;
   idx_t ps_relation;
 
-  real_t redist_factor;
-  real_t redist_base;
-  real_t ipc_factor;
+  real_t redist_factor, redist_base, ipc_factor;
   real_t edge_size_ratio;
   matrix_t *matrix;
 
-  idx_t free_comm;       /*!< Used to indicate if gcomm needs to be freed */
-  MPI_Comm gcomm;        /*!< A copy of the application supplied communicator */
-  MPI_Comm comm;	 /*!< The current communicator */
-  idx_t ncommpes;        /*!< The maximum number of processors that a processor 
-                              may need to communicate with. This determines the
-                              size of the sreq/rreq/statuses arrays and is 
-                              updated after every call to CommSetup() */
-  MPI_Request *sreq;     /*!< MPI send requests */
-  MPI_Request *rreq;     /*!< MPI receive requests */
-  MPI_Status *statuses;  /*!< MPI status for p2p i-messages */
+  MPI_Comm gcomm;
+  MPI_Comm comm;		/* MPI Communicator */
+  MPI_Request sreq[MAX_PES], 
+              rreq[MAX_PES];    /* MPI send and receive requests */
+  MPI_Status statuses[MAX_PES];
   MPI_Status status;
 
   /* workspace variables */
@@ -215,8 +202,9 @@ typedef struct ctrl_t {
 
   /* Various Timers */
   timer TotalTmr, InitPartTmr, MatchTmr, ContractTmr, CoarsenTmr, RefTmr,
-        SetupTmr, ProjectTmr, KWayInitTmr, KWayTmr, MoveTmr, RemapTmr, 
-        SerialTmr, AuxTmr1, AuxTmr2, AuxTmr3, AuxTmr4, AuxTmr5, AuxTmr6;
+        SetupTmr, ColorTmr, ProjectTmr, KWayInitTmr, KWayTmr, MoveTmr,
+        RemapTmr, SerialTmr, AuxTmr1, AuxTmr2, AuxTmr3, AuxTmr4, AuxTmr5, 
+        AuxTmr6;
 } ctrl_t;
 
 

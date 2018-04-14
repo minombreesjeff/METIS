@@ -8,7 +8,7 @@
  * Started 10/19/96
  * George
  *
- * $Id: kmetis.c 10612 2011-07-21 20:09:05Z karypis $
+ * $Id: kmetis.c 10391 2011-06-23 19:00:08Z karypis $
  *
  */
 
@@ -19,131 +19,170 @@
 * This function assumes nothing about the graph distribution.
 * It is the general case.
 ************************************************************************************/
-int ParMETIS_V3_PartKway(idx_t *vtxdist, idx_t *xadj, idx_t *adjncy, idx_t *vwgt,
-        idx_t *adjwgt, idx_t *wgtflag, idx_t *numflag, idx_t *ncon, idx_t *nparts, 
-	real_t *tpwgts, real_t *ubvec, idx_t *options, idx_t *edgecut, idx_t *part, 
-	MPI_Comm *comm)
+void ParMETIS_V3_PartKway(idx_t *vtxdist, idx_t *xadj, idx_t *adjncy, idx_t *vwgt,
+              idx_t *adjwgt, idx_t *wgtflag, idx_t *numflag, idx_t *ncon, idx_t *nparts, 
+	      real_t *tpwgts, real_t *ubvec, idx_t *options, idx_t *edgecut, idx_t *part, 
+	      MPI_Comm *comm)
 {
-  idx_t h, i, status, nvtxs, npes, mype, seed, dbglvl;
-  ctrl_t *ctrl;
+  idx_t h, i;
+  idx_t nvtxs = -1, npes, mype;
+  ctrl_t ctrl;
   graph_t *graph;
-  idx_t moptions[METIS_NOPTIONS];
-  size_t curmem;
+  real_t avg, maximb;
+  idx_t seed, dbglvl = 0;
+  idx_t iwgtflag, inumflag, incon, inparts, ioptions[10], moptions[METIS_NOPTIONS];
+  real_t *itpwgts, iubvec[MAXNCON];
 
+  gkMPI_Comm_size(*comm, &npes);
+  gkMPI_Comm_rank(*comm, &mype);
 
-  /* Check the input parameters and return if an error */
-  status = CheckInputsPartKway(vtxdist, xadj, adjncy, vwgt, adjwgt, wgtflag, 
-               numflag, ncon, nparts, tpwgts, ubvec, options, edgecut, part, 
-               comm);
-  if (GlobalSEMinComm(*comm, status) == 0) 
-    return METIS_ERROR;
-
-  status = METIS_OK;
-  gk_malloc_init();
-  curmem = gk_GetCurMemoryUsed();
-
-  /* Set up the control */
-  ctrl = SetupCtrl(PARMETIS_OP_KMETIS, options, *ncon, *nparts, tpwgts, ubvec, *comm);
-  npes = ctrl->npes;
-  mype = ctrl->mype;
-
-
-  /* Take care the nparts == 1 case */
-  if (*nparts == 1) {
-    iset(vtxdist[mype+1]-vtxdist[mype], (*numflag == 0 ? 0 : 1), part); 
-    *edgecut = 0;
-    goto DONE;
+  /* Deal with poor vertex distributions */
+  ctrl.comm = *comm;
+  if (GlobalSEMin(&ctrl, vtxdist[mype+1]-vtxdist[mype]) < 1) {
+    if (mype == 0)
+      printf("Error: Poor vertex distribution (processor with no vertices).\n");
+    return;
   }
 
 
+  /********************************/
+  /* Try and take care bad inputs */
+  /********************************/
+  if (options != NULL && options[0] == 1)
+    dbglvl = options[PMV3_OPTION_DBGLVL];
+
+  CheckInputs(STATIC_PARTITION, npes, dbglvl, wgtflag, &iwgtflag, numflag, &inumflag, 
+              ncon, &incon, nparts, &inparts, tpwgts, &itpwgts, ubvec, iubvec, NULL, 
+              NULL, options, ioptions, part, comm);
+
+
+  /**********************************/
+  /* Take care the nparts == 1 case */
+  /**********************************/
+  if (inparts <= 1) {
+    iset(vtxdist[mype+1]-vtxdist[mype], 0, part); 
+    *edgecut = 0;
+    return;
+  }
+
+  /*******************************/
   /* Take care of npes == 1 case */
+  /*******************************/
   if (npes == 1) {
     nvtxs = vtxdist[1] - vtxdist[0];
     METIS_SetDefaultOptions(moptions);
-    moptions[METIS_OPTION_NUMBERING] = *numflag;
+    moptions[METIS_OPTION_NUMBERING] = inumflag;
 
-    status = METIS_PartGraphKway(&nvtxs, ncon, xadj, adjncy, vwgt, NULL, 
-                 adjwgt, nparts, tpwgts, ubvec, moptions, edgecut, part);
+    METIS_PartGraphKway(&nvtxs, &incon, xadj, adjncy, vwgt, NULL, adjwgt, 
+          &inparts, itpwgts, iubvec, moptions, edgecut, part);
  
-    goto DONE;
+    return;
   }
 
 
-  /* Setup the graph */
-  if (*numflag > 0) 
+  if (inumflag == 1) 
     ChangeNumbering(vtxdist, xadj, adjncy, part, npes, mype, 1);
 
-  graph = SetupGraph(ctrl, *ncon, vtxdist, xadj, vwgt, NULL, adjncy, adjwgt, *wgtflag);
-
-  /* Setup the workspace */
-  AllocateWSpace(ctrl, 10*graph->nvtxs);
-
-
-  /* Partition the graph */
-  STARTTIMER(ctrl, ctrl->TotalTmr);
-
-  ctrl->CoarsenTo = gk_min(vtxdist[npes]+1, 25*(*ncon)*gk_max(npes, *nparts));
-  if (vtxdist[npes] < SMALLGRAPH 
-      || vtxdist[npes] < npes*20 
-      || GlobalSESum(ctrl, graph->nedges) == 0) { /* serially */
-    IFSET(ctrl->dbglvl, DBG_INFO, 
-        rprintf(ctrl, "Partitioning a graph of size %"PRIDX" serially\n", vtxdist[npes]));
-    PartitionSmallGraph(ctrl, graph);
+  /*****************************/
+  /* Set up control structures */
+  /*****************************/
+  if (ioptions[0] == 1) {
+    dbglvl = ioptions[PMV3_OPTION_DBGLVL];
+    seed   = ioptions[PMV3_OPTION_SEED];
   }
-  else { /* in parallel */
-    Global_Partition(ctrl, graph);
+  else {
+    dbglvl = GLOBAL_DBGLVL;
+    seed   = GLOBAL_SEED;
   }
-  ParallelReMapGraph(ctrl, graph);
+  SetUpCtrl(&ctrl, inparts, dbglvl, *comm);
+  ctrl.CoarsenTo   = gk_min(vtxdist[npes]+1, 25*incon*gk_max(npes, inparts));
+  ctrl.seed        = (seed == 0) ? mype : seed*mype;
+  ctrl.sync        = GlobalSEMax(&ctrl, seed);
+  ctrl.partType    = STATIC_PARTITION;
+  ctrl.ps_relation = -1;
+  ctrl.tpwgts      = itpwgts;
+  rcopy(incon, iubvec, ctrl.ubvec);
+
+  graph = SetUpGraph(&ctrl, incon, vtxdist, xadj, vwgt, adjncy, adjwgt, &iwgtflag);
+
+  IFSET(ctrl.dbglvl, DBG_TIME, InitTimers(&ctrl));
+  IFSET(ctrl.dbglvl, DBG_TIME, gkMPI_Barrier(ctrl.gcomm));
+  IFSET(ctrl.dbglvl, DBG_TIME, starttimer(ctrl.TotalTmr));
+
+  AllocateWSpace(&ctrl, graph);
+
+  /*******************************************/
+  /* Check for funny cases                   */
+  /* 	-graph with no edges                 */
+  /* 	-graph with self edges               */
+  /* 	-graph with less than 20*npe nodes   */
+  /*******************************************/
+  if (vtxdist[npes] < SMALLGRAPH || 
+      vtxdist[npes] < npes*20 || 
+      GlobalSESum(&ctrl, graph->nedges) == 0) {
+    IFSET(ctrl.dbglvl, DBG_INFO, 
+        rprintf(&ctrl, "Partitioning a graph of size %"PRIDX" serially\n", vtxdist[npes]));
+    PartitionSmallGraph(&ctrl, graph);
+    rprintf(&ctrl, "Small graph\n");
+  }
+  else {
+    /***********************/
+    /* Partition the graph */
+    /***********************/
+    Global_Partition(&ctrl, graph);
+  }
+  ParallelReMapGraph(&ctrl, graph);
+
+  IFSET(ctrl.dbglvl, DBG_TIME, gkMPI_Barrier(ctrl.gcomm));
+  IFSET(ctrl.dbglvl, DBG_TIME, stoptimer(ctrl.TotalTmr));
 
   icopy(graph->nvtxs, graph->where, part);
   *edgecut = graph->mincut;
 
-  STOPTIMER(ctrl, ctrl->TotalTmr);
-
-
+  /*******************/
   /* Print out stats */
-  IFSET(ctrl->dbglvl, DBG_TIME, PrintTimingInfo(ctrl));
-  IFSET(ctrl->dbglvl, DBG_TIME, gkMPI_Barrier(ctrl->gcomm));
-  IFSET(ctrl->dbglvl, DBG_INFO, PrintPostPartInfo(ctrl, graph, 0));
+  /*******************/
+  IFSET(ctrl.dbglvl, DBG_TIME, PrintTimingInfo(&ctrl));
+  IFSET(ctrl.dbglvl, DBG_TIME, gkMPI_Barrier(ctrl.gcomm));
 
-  FreeInitialGraphAndRemap(graph);
+  if (ctrl.dbglvl&DBG_INFO) {
+    rprintf(&ctrl, "Final %"PRIDX"-way CUT: %6"PRIDX" \tBalance: ", inparts, graph->mincut);
+    avg = 0.0;
+    for (h=0; h<incon; h++) {
+      maximb = 0.0;
+      for (i=0; i<inparts; i++)
+        maximb =gk_max(maximb, graph->gnpwgts[i*incon+h]/itpwgts[i*incon+h]);
+      avg += maximb;
+      rprintf(&ctrl, "%.3"PRREAL" ", maximb);
+    }
+    rprintf(&ctrl, "  avg: %.3"PRREAL"\n", avg/(real_t)incon);
+  }
 
-  if (*numflag > 0) 
+  gk_free((void **)&itpwgts, (void **)&graph->lnpwgts, (void **)&graph->gnpwgts, 
+         (void **)&graph->nvwgt, LTERM);
+  FreeInitialGraphAndRemap(graph, iwgtflag, 1);
+  FreeCtrl(&ctrl);
+
+  if (inumflag == 1) 
     ChangeNumbering(vtxdist, xadj, adjncy, part, npes, mype, 0);
 
-
-DONE:
-  FreeCtrl(&ctrl);
-  if (gk_GetCurMemoryUsed() - curmem > 0) {
-    printf("ParMETIS appears to have a memory leak of %zdbytes. Report this.\n", 
-        (ssize_t)(gk_GetCurMemoryUsed() - curmem));
-  }
-  gk_malloc_cleanup(0);
-
-  return (int)status;
 }
 
 
 
-/*************************************************************************/
-/*! This function is the driver to the multi-constraint partitioning 
-    algorithm.
-*/
-/*************************************************************************/
+/*************************************************************************
+* This function is the driver to the multi-constraint partitioning algorithm.
+**************************************************************************/
 void Global_Partition(ctrl_t *ctrl, graph_t *graph)
 {
   idx_t i, ncon, nparts;
-  real_t ftmp, ubavg, lbavg, *lbvec;
-
-  WCOREPUSH;
+  real_t ftmp, ubavg, lbavg, lbvec[MAXNCON];
  
   ncon   = graph->ncon;
   nparts = ctrl->nparts;
   ubavg  = ravg(graph->ncon, ctrl->ubvec);
 
   CommSetup(ctrl, graph);
-
-  lbvec = rwspacemalloc(ctrl, ncon);
 
   if (ctrl->dbglvl&DBG_PROGRESS) {
     rprintf(ctrl, "[%6"PRIDX" %8"PRIDX" %5"PRIDX" %5"PRIDX"] [%"PRIDX"] [", graph->gnvtxs, GlobalSESum(ctrl, graph->nedges),
@@ -231,8 +270,7 @@ void Global_Partition(ctrl_t *ctrl, graph_t *graph)
       gk_free((void **)&graph->lnpwgts, (void **)&graph->gnpwgts, LTERM);
   }
 
-  WCOREPOP;
-
+  return;
 }
 
 

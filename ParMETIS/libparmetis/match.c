@@ -8,7 +8,7 @@
  * Started 2/22/96
  * George
  *
- * $Id: match.c 10592 2011-07-16 21:17:53Z karypis $
+ * $Id: match.c 10361 2011-06-21 19:16:22Z karypis $
  *
  */
 
@@ -506,7 +506,7 @@ void CreateCoarseGraph_Global(ctrl_t *ctrl, graph_t *graph, idx_t cnvtxs)
   firstvtx = vtxdist[mype];
   lastvtx  = vtxdist[mype+1];
 
-  cmap = graph->cmap = ismalloc(nvtxs+graph->nrecv, -1, "Global_CreateCoarseGraph: cmap");
+  cmap = graph->cmap = imalloc(nvtxs+graph->nrecv, "Global_CreateCoarseGraph: cmap");
 
   nnbrs   = graph->nnbrs;
   peind   = graph->peind;
@@ -573,14 +573,6 @@ void CreateCoarseGraph_Global(ctrl_t *ctrl, graph_t *graph, idx_t cnvtxs)
   }
 
   CommInterfaceData(ctrl, graph, cmap, cmap+nvtxs);
-
-
-#ifndef NDEBUG
-  for (i=0; i<nvtxs+graph->nrecv; i++) {
-    if (cmap[i] == -1) 
-      errexit("cmap[%"PRIDX"] == -1\n", i);
-  }
-#endif
 
 
 #ifdef DEBUG_CONTRACT
@@ -819,8 +811,6 @@ void CreateCoarseGraph_Global(ctrl_t *ctrl, graph_t *graph, idx_t cnvtxs)
       /* Collapse the v (i) vertex first */
       for (j=xadj[i]; j<xadj[i+1]; j++) {
         k = cmap[adjncy[j]];
-        if (k < 0)
-          printf("k=%d\n", (int)k);
         if (k != cfirstvtx+cnvtxs) {  /* If this is not an internal edge */
           l = k&MASK;
           if (htable[l] == -1) { /* Seeing this for first time */
@@ -996,7 +986,7 @@ void CreateCoarseGraph_Local(ctrl_t *ctrl, graph_t *graph, idx_t cnvtxs)
   vtxdist  = graph->vtxdist;
   firstvtx = vtxdist[mype];
 
-  cmap = graph->cmap = ismalloc(nvtxs+graph->nrecv, -1, "CreateCoarseGraph: cmap");
+  cmap = graph->cmap = imalloc(nvtxs+graph->nrecv, "CreateCoarseGraph: cmap");
 
   /* Initialize the coarser graph */
   cgraph = CreateGraph();
@@ -1170,10 +1160,9 @@ void CreateCoarseGraph_Local(ctrl_t *ctrl, graph_t *graph, idx_t cnvtxs)
 
   cgraph->nedges = cnedges;
 
-  for (j=0; j<cnvtxs; j++) {
-    for (h=0; h<ncon; h++) 
-      cgraph->nvwgt[j*ncon+h] = ctrl->invtvwgts[h]*cvwgt[j*ncon+h];
-  }
+  for (j=0; j<cnvtxs; j++)
+    for (h=0; h<ncon; h++)
+      cgraph->nvwgt[j*ncon+h] = (real_t)(cvwgt[j*ncon+h])/(real_t)(ctrl->tvwgts[h]);
 
   cgraph->adjncy = imalloc(cnedges, "CreateCoarserGraph: cadjncy");
   cgraph->adjwgt = imalloc(cnedges, "CreateCoarserGraph: cadjwgt");

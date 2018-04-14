@@ -8,7 +8,7 @@
  * Started 9/26/95
  * George
  *
- * $Id: struct.h 10513 2011-07-07 22:06:03Z karypis $
+ * $Id: struct.h 10399 2011-06-24 12:45:46Z karypis $
  */
 
 #ifndef _LIBMETIS_STRUCT_H_
@@ -46,8 +46,10 @@ typedef struct ckrinfo_t {
 /*************************************************************************/
 typedef struct vnbr_t {
   idx_t pid;            /*!< The partition ID */
-  idx_t ned;            /*!< The number of the adjacent edges
+  idx_t ed;             /*!< The sum of the weights of the adjacent edges
                              that are incident on pid */
+  idx_t ned;            /*!< The number of the adjacent edges that are 
+                             incident on pid */
   idx_t gv;             /*!< The gain in volume achieved by moving the
                              vertex to pid */
 } vnbr_t;
@@ -58,8 +60,9 @@ typedef struct vnbr_t {
     vol-based partition */
 /*************************************************************************/
 typedef struct vkrinfo_t {
+ idx_t id;              /*!< The internal degree of a vertex (sum of weights) */
+ idx_t ed;            	/*!< The total external degree of a vertex */
  idx_t nid;             /*!< The internal degree of a vertex (count of edges) */
- idx_t ned;            	/*!< The total external degree of a vertex (count of edges) */
  idx_t gv;            	/*!< The volume gain of moving that vertex */
  idx_t nnbrs;          	/*!< The number of neighboring subdomains */
  idx_t inbr;            /*!< The index in the vnbr_t array where the nnbrs list 
@@ -95,6 +98,10 @@ typedef struct graph_t {
   /* These are to keep track control if the corresponding fields correspond to
      application or library memory */
   int free_xadj, free_vwgt, free_vsize, free_adjncy, free_adjwgt;
+
+  real_t *coords;                /* the x, y, and z coordinates */
+
+  idx_t *adjrsum;		/* The sum of the adjacency weight of each vertex */
 
   idx_t *label;
 
@@ -166,14 +173,15 @@ typedef struct ctrl_t {
   real_t *ubfactors;            /*!< The per-constraint ubfactors */
   
   real_t *tpwgts;               /*!< The target partition weights */
+  real_t *invtpwgts;            /*!< The 1.0/target partition weights */
   real_t *pijbm;                /*!< The nparts*ncon multiplies for the ith partition
                                      and jth constraint for obtaining the balance */
 
-  real_t cfactor;               /*!< The achieved compression factor */
-
   /* Various Timers */
   double TotalTmr, InitPartTmr, MatchTmr, ContractTmr, CoarsenTmr, UncoarsenTmr, 
-         RefTmr, ProjectTmr, SplitTmr;
+         SepTmr, RefTmr, ProjectTmr, SplitTmr;
+  double AuxTmr1, AuxTmr2, AuxTmr3;
+
 
   /* Workspace information */
   gk_mcore_t *mcore;    /*!< The persistent memory core for within function 

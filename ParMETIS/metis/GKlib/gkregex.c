@@ -1,3 +1,5 @@
+#ifdef USE_GKREGEX
+
 /* Extended regular expression matching and search library.
    Copyright (C) 2002, 2003, 2005 Free Software Foundation, Inc.
    This file is part of the GNU C Library.
@@ -17,11 +19,6 @@
    License along with the GNU C Library; if not, write to the Free
    Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
    02111-1307 USA.  */
-
-/* this is for removing a compiler warning */
-void gkfooo() { return; }
-
-#ifdef USE_GKREGEX
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"

@@ -4,7 +4,7 @@
 
 \date   Started 3/27/2007
 \author George
-\version\verbatim $Id: gk_arch.h 10522 2011-07-08 21:05:23Z benjamin $ \endverbatim
+\version\verbatim $Id: gk_arch.h 10394 2011-06-23 23:15:22Z karypis $ \endverbatim
 */
 
 #ifndef _GK_ARCH_H_

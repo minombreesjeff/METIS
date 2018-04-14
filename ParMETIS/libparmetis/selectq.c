@@ -8,37 +8,28 @@
  * Started 7/28/97
  * George
  *
- * $Id: selectq.c 10542 2011-07-11 16:56:22Z karypis $
+ * $Id: selectq.c 10416 2011-06-27 15:48:33Z karypis $
  */
 
 #include <parmetislib.h>
 
-/*************************************************************************/
-/*! This stuff is hardcoded for up to four constraints 
-*/
-/*************************************************************************/
-void Mc_DynamicSelectQueue(ctrl_t *ctrl, idx_t nqueues, idx_t ncon, idx_t subdomain1, 
-         idx_t subdomain2, idx_t *currentq, real_t *flows, idx_t *from, idx_t *qnum, 
-         idx_t minval, real_t avgvwgt, real_t maxdiff)
+/*************************************************************************
+*  This stuff is hardcoded for up to four constraints
+**************************************************************************/
+void Mc_DynamicSelectQueue(idx_t nqueues, idx_t ncon, idx_t subdomain1, idx_t subdomain2,
+     idx_t *currentq, real_t *flows, idx_t *from, idx_t *qnum, idx_t minval, real_t avgvwgt,
+     real_t maxdiff)
 {
   idx_t i, j;
   idx_t hash, index = -1, current;
-  idx_t *cand, *rank, *dont_cares;
+  idx_t cand[MAXNCON], rank[MAXNCON], dont_cares[MAXNCON];
   idx_t nperms, perm[24][5];
   real_t sign = 0.0;
-  rkv_t *array;
+  rkv_t array[MAXNCON];
   idx_t mype;
   gkMPI_Comm_rank(MPI_COMM_WORLD, &mype);
 
-  WCOREPUSH;
-
   *qnum = -1;
-
-  /* allocate memory */
-  cand       = iwspacemalloc(ctrl, ncon);
-  rank       = iwspacemalloc(ctrl, ncon);
-  dont_cares = iwspacemalloc(ctrl, ncon);
-  array      = rkvwspacemalloc(ctrl, ncon);
 
   if (*from == -1) {
     for (i=0; i<ncon; i++) {
@@ -66,7 +57,7 @@ void Mc_DynamicSelectQueue(ctrl_t *ctrl, idx_t nqueues, idx_t ncon, idx_t subdom
     }
 
     if (*from == -1) 
-      goto DONE;
+      return;
   }
   else {
     ASSERT(*from == subdomain1 || *from == subdomain2);
@@ -276,7 +267,7 @@ void Mc_DynamicSelectQueue(ctrl_t *ctrl, idx_t nqueues, idx_t ncon, idx_t subdom
       break;
     /***********************/
     default:
-      goto DONE;
+      return;
   }
 
   for (i=0; i<nperms; i++) {
@@ -289,30 +280,23 @@ void Mc_DynamicSelectQueue(ctrl_t *ctrl, idx_t nqueues, idx_t ncon, idx_t subdom
     hash = Mc_HashVRank(ncon, rank) - minval;
     if (currentq[hash+index] > 0) {
       *qnum = hash;
-      goto DONE;
+      return;
     }
   }
 
-DONE:
-  WCOREPOP;
+  return;
 }
 
 
-/*************************************************************************/
-/*! This function sorts the nvwgts of a vertex and returns a hashed value 
-*/
-/*************************************************************************/
-idx_t Mc_HashVwgts(ctrl_t *ctrl, idx_t ncon, real_t *nvwgt)
+/*************************************************************************
+*  This function sorts the nvwgts of a vertex and returns a hashed value
+**************************************************************************/
+idx_t Mc_HashVwgts(idx_t ncon, real_t *nvwgt)
 {
   idx_t i;
   idx_t multiplier, retval;
-  idx_t *rank;
-  rkv_t *array;
-
-  WCOREPUSH;
-
-  rank  = iwspacemalloc(ctrl, ncon);
-  array = rkvwspacemalloc(ctrl, ncon);
+  idx_t rank[MAXNCON];
+  rkv_t array[MAXNCON];
 
   for (i=0; i<ncon; i++) {
     array[i].key = nvwgt[i];
@@ -331,16 +315,13 @@ idx_t Mc_HashVwgts(ctrl_t *ctrl, idx_t ncon, real_t *nvwgt)
     retval += rank[ncon-i-1] * multiplier;
   }
 
-  WCOREPOP;
-
   return retval;
 }
 
 
-/*************************************************************************/
-/*! This function sorts the vwgts of a vertex and returns a hashed value 
-*/
-/*************************************************************************/
+/*************************************************************************
+*  This function sorts the vwgts of a vertex and returns a hashed value
+**************************************************************************/
 idx_t Mc_HashVRank(idx_t ncon, idx_t *vwgt)
 {
   idx_t i, multiplier, retval;

@@ -27,5 +27,3 @@
 #include "../libparmetis/proto.h"
 #include "proto.h"
 
-
-#define MAXNCON         32

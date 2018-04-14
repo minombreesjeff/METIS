@@ -8,7 +8,7 @@
  * Started 3/4/96
  * George
  *
- * $Id: initbalance.c 10592 2011-07-16 21:17:53Z karypis $
+ * $Id: initbalance.c 10412 2011-06-25 23:12:57Z karypis $
  */
 
 #include <parmetislib.h>
@@ -31,9 +31,9 @@ void Balance_Partition(ctrl_t *ctrl, graph_t *graph)
   idx_t sr_pe, gd_pe, sr, gd, who_wins;
   real_t my_cut, my_totalv, my_cost = -1.0, my_balance = -1.0, wsum;
   real_t rating, max_rating, your_cost = -1.0, your_balance = -1.0;
-  real_t lbsum, min_lbsum, *lbvec, *tpwgts, *tpwgts2, buffer[2];
+  real_t lbvec[MAXNCON], lbsum, min_lbsum, *tpwgts, *tpwgts2, buffer[2];
   graph_t *agraph, cgraph;
-  ctrl_t *myctrl;
+  ctrl_t myctrl;
   MPI_Status status;
   MPI_Comm ipcomm, srcomm;
   struct {
@@ -58,7 +58,6 @@ void Balance_Partition(ctrl_t *ctrl, graph_t *graph)
 
   lwhere = iwspacemalloc(ctrl, nvtxs);
   home   = iwspacemalloc(ctrl, nvtxs);
-  lbvec  = rwspacemalloc(ctrl, graph->ncon);
 
 
   /****************************************/
@@ -230,35 +229,29 @@ void Balance_Partition(ctrl_t *ctrl, graph_t *graph)
   }
   else { /* The other half do global diffusion */
     /* setup a ctrl for the diffusion */
-    myctrl = (ctrl_t *)gk_malloc(sizeof(ctrl_t), "myctrl");
-    memset(myctrl, 0, sizeof(ctrl_t));
-    myctrl->mype          = mype;
-    myctrl->npes          = npes;
-    myctrl->comm          = ipcomm;
-    myctrl->sync          = ctrl->sync;
-    myctrl->seed          = ctrl->seed;
-    myctrl->nparts        = ctrl->nparts;
-    myctrl->ncon          = ctrl->ncon;
-    myctrl->ipc_factor    = ctrl->ipc_factor;
-    myctrl->redist_factor = ctrl->redist_base;
-    myctrl->partType      = ADAPTIVE_PARTITION;
-    myctrl->ps_relation   = PARMETIS_PSR_UNCOUPLED;
-    myctrl->tpwgts        = rmalloc(myctrl->nparts*myctrl->ncon, "myctrl->tpwgts");
-    myctrl->ubvec         = rmalloc(myctrl->ncon, "myctrl->ubvec");
-    myctrl->invtvwgts     = rmalloc(myctrl->ncon, "myctrl->invtvwgts");
+    memset(&myctrl, 0, sizeof(ctrl_t));
+    myctrl.mype          = mype;
+    myctrl.npes          = npes;
+    myctrl.comm          = ipcomm;
+    myctrl.sync          = ctrl->sync;
+    myctrl.seed          = ctrl->seed;
+    myctrl.nparts        = ctrl->nparts;
+    myctrl.ipc_factor    = ctrl->ipc_factor;
+    myctrl.redist_factor = ctrl->redist_base;
+    myctrl.partType      = ADAPTIVE_PARTITION;
+    myctrl.ps_relation   = PARMETIS_PSR_UNCOUPLED;
+    myctrl.tpwgts        = ctrl->tpwgts;
+    icopy(ncon, ctrl->tvwgts, myctrl.tvwgts);
+    rcopy(ncon, ctrl->ubvec, myctrl.ubvec);
 
-    rcopy(myctrl->nparts*myctrl->ncon, ctrl->tpwgts, myctrl->tpwgts);
-    rcopy(myctrl->ncon, ctrl->ubvec, myctrl->ubvec);
-    rcopy(myctrl->ncon, ctrl->invtvwgts, myctrl->invtvwgts);
-
-    AllocateWSpace(myctrl, 10*agraph->nvtxs);
-    AllocateRefinementWorkSpace(myctrl, agraph->nvtxs);
+    AllocateWSpace(&myctrl, agraph);
+    AllocateRefinementWorkSpace(&myctrl, agraph->nvtxs);
 
     /* This stmt is required to balance out the sr gkMPI_Comm_split */
     gkMPI_Comm_split(ipcomm, MPI_UNDEFINED, 0, &srcomm);
 
     if (ncon == 1) {
-      rating = WavefrontDiffusion(myctrl, agraph, home);
+      rating = WavefrontDiffusion(&myctrl, agraph, home);
       ComputeSerialBalance(ctrl, &cgraph, part, lbvec);
       lbsum = rsum(ncon, lbvec, 1);
 
@@ -291,11 +284,11 @@ void Balance_Partition(ctrl_t *ctrl, graph_t *graph)
       }
     }
     else {
-      Mc_Diffusion(myctrl, agraph, graph->vtxdist, agraph->where, home, 
+      Mc_Diffusion(&myctrl, agraph, graph->vtxdist, agraph->where, home, 
           N_MOC_GD_PASSES);
     }
 
-    FreeCtrl(&myctrl);
+    FreeWSpace(&myctrl);
   }
 
 

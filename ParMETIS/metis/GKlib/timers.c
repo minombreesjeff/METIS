@@ -4,7 +4,7 @@
 
 \date   Started 4/12/2007
 \author George
-\version\verbatim $Id: timers.c 10643 2011-07-28 16:39:31Z benjamin $ \endverbatim
+\version\verbatim $Id: timers.c 9509 2011-03-06 14:04:38Z karypis $ \endverbatim
 */
 
 
@@ -39,7 +39,7 @@ double gk_CPUSeconds(void)
 #ifdef __OPENMPXXXX__
   return omp_get_wtime();
 #else
-  #if defined(WIN32) || defined(__MINGW32__)
+  #ifdef WIN32
     return((double) clock()/CLOCKS_PER_SEC);
   #else
     struct rusage r;

@@ -5,7 +5,7 @@
  *
  * This function provides various high level communication functions 
  *
- * $Id: comm.c 10592 2011-07-16 21:17:53Z karypis $
+ * $Id: comm.c 10385 2011-06-22 23:07:13Z karypis $
  */
 
 #include <parmetislib.h>
@@ -32,7 +32,8 @@ void CommSetup(ctrl_t *ctrl, graph_t *graph)
   if (graph->lperm != NULL)
     return; /* The communication structure has already been setup */
 
-  STARTTIMER(ctrl, ctrl->SetupTmr);
+  IFSET(ctrl->dbglvl, DBG_TIME, gkMPI_Barrier(ctrl->comm));
+  IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->SetupTmr));
 
   gnvtxs  = graph->gnvtxs;
   nvtxs   = graph->nvtxs;
@@ -118,8 +119,6 @@ void CommSetup(ctrl_t *ctrl, graph_t *graph)
   }
   graph->nnbrs = nnbrs;
 
-  /* Update the ctrl arrays that have to do with p2p communication */
-  CommUpdateNnbrs(ctrl, nnbrs);
 
   /* allocate space for peind/recvptr part of the recvinfo */
   peind   = graph->peind   = imalloc(nnbrs, "CommSetup: peind");
@@ -229,7 +228,7 @@ void CommSetup(ctrl_t *ctrl, graph_t *graph)
   for (i=0; i<nrecv; i++)
     imap[nvtxs+i] = recvind[i];
 
-  STOPTIMER(ctrl, ctrl->SetupTmr);
+  IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->SetupTmr));
 
 #ifdef DEBUG_SETUPINFO
   rprintf(ctrl, "[%5"PRIDX" %5"PRIDX"] \tl:[%5"PRIDX" %5"PRIDX"] \ts:[%5"PRIDX", %5"PRIDX"] \tr:[%5"PRIDX", %5"PRIDX"]\n", 
@@ -244,28 +243,10 @@ void CommSetup(ctrl_t *ctrl, graph_t *graph)
 }
 
 
-/*************************************************************************/
-/*! This function updates the sreq/rreq/statuses arrays in ctrl based on
-    the new number of neighbors.
-*/
-/*************************************************************************/
-void CommUpdateNnbrs(ctrl_t *ctrl, idx_t nnbrs)
-{
-  if (ctrl->ncommpes >= nnbrs)
-    return;
 
-  ctrl->ncommpes = nnbrs;
-  ctrl->sreq = (MPI_Request *)gk_realloc(ctrl->sreq, sizeof(MPI_Request)*nnbrs, "sreq");
-  ctrl->rreq = (MPI_Request *)gk_realloc(ctrl->rreq, sizeof(MPI_Request)*nnbrs, "rreq");
-  ctrl->statuses = (MPI_Status *)gk_realloc(ctrl->statuses, sizeof(MPI_Status)*nnbrs, "statuses");
-
-}
-
-
-/*************************************************************************/
-/*! This function performs the gather/scatter for the boundary vertices 
-*/
-/*************************************************************************/
+/*************************************************************************
+* This function performs the gather/scatter for the boundary vertices
+**************************************************************************/
 void CommInterfaceData(ctrl_t *ctrl, graph_t *graph, idx_t *data, 
          idx_t *recvvector)
 {
@@ -340,7 +321,7 @@ void CommChangedInterfaceData(ctrl_t *ctrl, graph_t *graph, idx_t nchanged,
   if (nchanged != 0) {
     WCOREPUSH;
 
-    psendptr = icopy(nnbrs, sendptr, iwspacemalloc(ctrl, nnbrs));
+    psendptr = icopy(ctrl->npes, sendptr, iwspacemalloc(ctrl, ctrl->npes));
 
     /* Copy the changed values into the sendvector */
     for (i=0; i<nchanged; i++) {
@@ -395,17 +376,6 @@ idx_t GlobalSEMax(ctrl_t *ctrl, idx_t value)
   return max;
 }
 
-/*************************************************************************
-* This function computes the max of a single element
-**************************************************************************/
-idx_t GlobalSEMaxComm(MPI_Comm comm, idx_t value)
-{
-  idx_t max;
-
-  gkMPI_Allreduce((void *)&value, (void *)&max, 1, IDX_T, MPI_MAX, comm);
-
-  return max;
-}
 
 /*************************************************************************
 * This function computes the max of a single element
@@ -422,19 +392,6 @@ idx_t GlobalSEMin(ctrl_t *ctrl, idx_t value)
 /*************************************************************************
 * This function computes the max of a single element
 **************************************************************************/
-idx_t GlobalSEMinComm(MPI_Comm comm, idx_t value)
-{
-  idx_t min;
-
-  gkMPI_Allreduce((void *)&value, (void *)&min, 1, IDX_T, MPI_MIN, comm);
-
-  return min;
-}
-
-
-/*************************************************************************
-* This function computes the max of a single element
-**************************************************************************/
 idx_t GlobalSESum(ctrl_t *ctrl, idx_t value)
 {
   idx_t sum;
@@ -443,19 +400,6 @@ idx_t GlobalSESum(ctrl_t *ctrl, idx_t value)
 
   return sum;
 }
-
-/*************************************************************************
-* This function computes the max of a single element
-**************************************************************************/
-idx_t GlobalSESumComm(MPI_Comm comm, idx_t value)
-{
-  idx_t min;
-
-  gkMPI_Allreduce((void *)&value, (void *)&min, 1, IDX_T, MPI_SUM, comm);
-
-  return min;
-}
-
 
 
 /*************************************************************************

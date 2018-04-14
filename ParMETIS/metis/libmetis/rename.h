@@ -8,7 +8,7 @@
  * Started 10/2/97
  * George
  *
- * $Id: rename.h 10565 2011-07-13 16:07:36Z karypis $
+ * $Id: rename.h 10402 2011-06-24 15:33:59Z karypis $
  *
  */
 
@@ -28,7 +28,6 @@
 
 /* checkgraph.c */
 #define CheckGraph                      libmetis__CheckGraph
-#define CheckInputGraphWeights          libmetis__CheckInputGraphWeights
 #define FixGraph                        libmetis__FixGraph
 
 /* coarsen.c */
@@ -105,7 +104,6 @@
 
 /* kmetis.c */
 #define MlevelKWayPartitioning		libmetis__MlevelKWayPartitioning
-#define InitKWayPartitioning            libmetis__InitKWayPartitioning
 
 /* kwayfm.c */
 #define Greedy_KWayOptimize		libmetis__Greedy_KWayOptimize
@@ -180,8 +178,7 @@
 #define MlevelNestedDissection		libmetis__MlevelNestedDissection
 #define MlevelNestedDissectionCC	libmetis__MlevelNestedDissectionCC
 #define MlevelNodeBisectionMultiple	libmetis__MlevelNodeBisectionMultiple
-#define MlevelNodeBisectionL2		libmetis__MlevelNodeBisectionL2
-#define MlevelNodeBisectionL1		libmetis__MlevelNodeBisectionL1
+#define MlevelNodeBisection		libmetis__MlevelNodeBisection
 #define SplitGraphOrder			libmetis__SplitGraphOrder
 #define SplitGraphOrderCC		libmetis__SplitGraphOrderCC
 #define MMDOrder			libmetis__MMDOrder
@@ -240,7 +237,6 @@
 #define iargmax2_nrm                    libmetis__iargmax2_nrm
 #define rargmax2                        libmetis__rargmax2
 #define InitRandom                      libmetis__InitRandom
-#define metis_rcode                     libmetis__metis_rcode
 
 /* wspace.c */
 #define AllocateWorkSpace               libmetis__AllocateWorkSpace                  

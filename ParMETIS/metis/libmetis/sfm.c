@@ -8,7 +8,7 @@
  * Started 8/1/97
  * George
  *
- * $Id: sfm.c 10515 2011-07-08 15:46:18Z karypis $
+ * $Id: sfm.c 9994 2011-05-28 13:15:20Z karypis $
  *
  */
 
@@ -22,14 +22,13 @@ void FM_2WayNodeRefine2Sided(ctrl_t *ctrl, graph_t *graph, idx_t niter)
 {
   idx_t i, ii, j, k, jj, kk, nvtxs, nbnd, nswaps, nmind;
   idx_t *xadj, *vwgt, *adjncy, *where, *pwgts, *edegrees, *bndind, *bndptr;
-  idx_t *mptr, *mind, *moved, *swaps;
+  idx_t *mptr, *mind, *moved, *swaps, *perm;
   rpq_t *queues[2]; 
   nrinfo_t *rinfo;
   idx_t higain, oldgain, mincut, initcut, mincutorder;	
   idx_t pass, to, other, limit;
   idx_t badmaxpwgt, mindiff, newdiff;
   idx_t u[2], g[2];
-  real_t mult;   
 
   WCOREPUSH;
 
@@ -50,13 +49,13 @@ void FM_2WayNodeRefine2Sided(ctrl_t *ctrl, graph_t *graph, idx_t niter)
   moved = iwspacemalloc(ctrl, nvtxs);
   swaps = iwspacemalloc(ctrl, nvtxs);
   mptr  = iwspacemalloc(ctrl, nvtxs+1);
-  mind  = iwspacemalloc(ctrl, 2*nvtxs);
-
-  mult = 0.5*ctrl->ubfactors[0];
-  badmaxpwgt = (idx_t)(mult*(pwgts[0]+pwgts[1]+pwgts[2]));
+  mind  = iwspacemalloc(ctrl, nvtxs);
+  perm  = iwspacemalloc(ctrl, nvtxs);
 
   IFSET(ctrl->dbglvl, METIS_DBG_REFINE,
     printf("Partitions-N2: [%6"PRIDX" %6"PRIDX"] Nv-Nb[%6"PRIDX" %6"PRIDX"]. ISep: %6"PRIDX"\n", pwgts[0], pwgts[1], graph->nvtxs, graph->nbnd, graph->mincut));
+
+  badmaxpwgt = (int)(0.5*ctrl->ubfactors[0]*graph->tvwgt[0]);
 
   for (pass=0; pass<niter; pass++) {
     iset(nvtxs, -1, moved);
@@ -67,10 +66,9 @@ void FM_2WayNodeRefine2Sided(ctrl_t *ctrl, graph_t *graph, idx_t niter)
     initcut = mincut = graph->mincut;
     nbnd = graph->nbnd;
 
-    /* use the swaps array in place of the traditional perm array to save memory */
-    irandArrayPermute(nbnd, swaps, nbnd, 1);
+    irandArrayPermute(nbnd, perm, nbnd, 1);
     for (ii=0; ii<nbnd; ii++) {
-      i = bndind[swaps[ii]];
+      i = bndind[perm[ii]];
       ASSERT(where[i] == 2);
       rpqInsert(queues[0], i, vwgt[i]-rinfo[i].edegrees[1]);
       rpqInsert(queues[1], i, vwgt[i]-rinfo[i].edegrees[0]);
@@ -121,7 +119,7 @@ void FM_2WayNodeRefine2Sided(ctrl_t *ctrl, graph_t *graph, idx_t niter)
 
       /* The following check is to ensure we break out if there is a posibility
          of over-running the mind array.  */
-      if (nmind + xadj[higain+1]-xadj[higain] >= 2*nvtxs-1) 
+      if (nmind + xadj[higain+1]-xadj[higain] >= nvtxs-1) 
         break;
 
       pwgts[2] -= (vwgt[higain]-rinfo[higain].edegrees[other]);
@@ -133,8 +131,7 @@ void FM_2WayNodeRefine2Sided(ctrl_t *ctrl, graph_t *graph, idx_t niter)
         mindiff = newdiff;
       }
       else {
-        if (nswaps - mincutorder > 2*limit || 
-            (nswaps - mincutorder > limit && pwgts[2] > 1.10*mincut)) {
+        if (nswaps - mincutorder > limit) {
           pwgts[2] += (vwgt[higain]-rinfo[higain].edegrees[other]);
           break; /* No further improvement, break out */
         }
@@ -262,15 +259,14 @@ void FM_2WayNodeRefine2Sided(ctrl_t *ctrl, graph_t *graph, idx_t niter)
 /**************************************************************************/
 void FM_2WayNodeRefine1Sided(ctrl_t *ctrl, graph_t *graph, idx_t niter)
 {
-  idx_t i, ii, j, k, jj, kk, nvtxs, nbnd, nswaps, nmind, iend;
+  idx_t i, ii, j, k, jj, kk, nvtxs, nbnd, nswaps, nmind;
   idx_t *xadj, *vwgt, *adjncy, *where, *pwgts, *edegrees, *bndind, *bndptr;
-  idx_t *mptr, *mind, *swaps;
+  idx_t *mptr, *mind, *swaps, *perm;
   rpq_t *queue; 
   nrinfo_t *rinfo;
   idx_t higain, oldgain, mincut, initcut, mincutorder;	
   idx_t pass, to, other, limit;
   idx_t badmaxpwgt, mindiff, newdiff;
-  real_t mult;
 
   WCOREPUSH;
 
@@ -287,20 +283,20 @@ void FM_2WayNodeRefine1Sided(ctrl_t *ctrl, graph_t *graph, idx_t niter)
 
   queue = rpqCreate(nvtxs);
 
+  perm  = iwspacemalloc(ctrl, nvtxs);
   swaps = iwspacemalloc(ctrl, nvtxs);
   mptr  = iwspacemalloc(ctrl, nvtxs+1);
-  mind  = iwspacemalloc(ctrl, 2*nvtxs);
-
-  mult = 0.5*ctrl->ubfactors[0];
-  badmaxpwgt = (idx_t)(mult*(pwgts[0]+pwgts[1]+pwgts[2]));
+  mind  = iwspacemalloc(ctrl, nvtxs);
 
   IFSET(ctrl->dbglvl, METIS_DBG_REFINE,
     printf("Partitions-N1: [%6"PRIDX" %6"PRIDX"] Nv-Nb[%6"PRIDX" %6"PRIDX"]. ISep: %6"PRIDX"\n", pwgts[0], pwgts[1], graph->nvtxs, graph->nbnd, graph->mincut));
 
+  badmaxpwgt = (int)(0.5*ctrl->ubfactors[0]*graph->tvwgt[0]);
+
   to = (pwgts[0] < pwgts[1] ? 1 : 0);
   for (pass=0; pass<2*niter; pass++) {  /* the 2*niter is for the two sides */
     other = to; 
-    to    = (to+1)%2;
+    to = (to+1)%2;
 
     rpqReset(queue);
 
@@ -308,10 +304,9 @@ void FM_2WayNodeRefine1Sided(ctrl_t *ctrl, graph_t *graph, idx_t niter)
     initcut = mincut = graph->mincut;
     nbnd = graph->nbnd;
 
-    /* use the swaps array in place of the traditional perm array to save memory */
-    irandArrayPermute(nbnd, swaps, nbnd, 1);
+    irandArrayPermute(nbnd, perm, nbnd, 1);
     for (ii=0; ii<nbnd; ii++) {
-      i = bndind[swaps[ii]];
+      i = bndind[perm[ii]];
       ASSERT(where[i] == 2);
       rpqInsert(queue, i, vwgt[i]-rinfo[i].edegrees[other]);
     }
@@ -319,7 +314,7 @@ void FM_2WayNodeRefine1Sided(ctrl_t *ctrl, graph_t *graph, idx_t niter)
     ASSERT(CheckNodeBnd(graph, nbnd));
     ASSERT(CheckNodePartitionParams(graph));
 
-    limit = (ctrl->compress ? gk_min(5*nbnd, 500) : gk_min(3*nbnd, 300));
+    limit = (ctrl->compress ? gk_min(5*nbnd, 400) : gk_min(2*nbnd, 300));
 
     /******************************************************
     * Get into the FM loop
@@ -334,10 +329,10 @@ void FM_2WayNodeRefine1Sided(ctrl_t *ctrl, graph_t *graph, idx_t niter)
 
       /* The following check is to ensure we break out if there is a posibility
          of over-running the mind array.  */
-      if (nmind + xadj[higain+1]-xadj[higain] >= 2*nvtxs-1) 
+      if (nmind + xadj[higain+1]-xadj[higain] >= nvtxs-1) 
         break;
 
-      if (pwgts[to]+vwgt[higain] > badmaxpwgt) 
+      if (pwgts[to]+vwgt[higain] > badmaxpwgt)
         break;  /* No point going any further. Balance will be bad */
 
       pwgts[2] -= (vwgt[higain]-rinfo[higain].edegrees[other]);
@@ -349,8 +344,7 @@ void FM_2WayNodeRefine1Sided(ctrl_t *ctrl, graph_t *graph, idx_t niter)
         mindiff     = newdiff;
       }
       else {
-        if (nswaps - mincutorder > 3*limit || 
-            (nswaps - mincutorder > limit && pwgts[2] > 1.10*mincut)) {
+        if (nswaps - mincutorder > limit) {
           pwgts[2] += (vwgt[higain]-rinfo[higain].edegrees[other]);
           break; /* No further improvement, break out */
         }
@@ -381,7 +375,7 @@ void FM_2WayNodeRefine1Sided(ctrl_t *ctrl, graph_t *graph, idx_t niter)
 
           edegrees = rinfo[k].edegrees;
           edegrees[0] = edegrees[1] = 0;
-          for (jj=xadj[k], iend=xadj[k+1]; jj<iend; jj++) {
+          for (jj=xadj[k]; jj<xadj[k+1]; jj++) {
             kk = adjncy[jj];
             if (where[kk] != 2) 
               edegrees[where[kk]] += vwgt[kk];
@@ -438,7 +432,7 @@ void FM_2WayNodeRefine1Sided(ctrl_t *ctrl, graph_t *graph, idx_t niter)
         where[k] = other;
         INC_DEC(pwgts[other], pwgts[2], vwgt[k]);
         BNDDelete(nbnd, bndind, bndptr, k);
-        for (jj=xadj[k], iend=xadj[k+1]; jj<iend; jj++) {
+        for (jj=xadj[k]; jj<xadj[k+1]; jj++) {
           kk = adjncy[jj];
           if (where[kk] == 2) 
             rinfo[kk].edegrees[other] += vwgt[k];
@@ -470,13 +464,13 @@ void FM_2WayNodeRefine1Sided(ctrl_t *ctrl, graph_t *graph, idx_t niter)
 /*************************************************************************/
 void FM_2WayNodeBalance(ctrl_t *ctrl, graph_t *graph)
 {
-  idx_t i, ii, j, k, jj, kk, nvtxs, nbnd, nswaps, gain;
-  idx_t badmaxpwgt, higain, oldgain, pass, to, other;
+  idx_t i, ii, j, k, jj, kk, nvtxs, nbnd, nswaps;
   idx_t *xadj, *vwgt, *adjncy, *where, *pwgts, *edegrees, *bndind, *bndptr;
   idx_t *perm, *moved;
   rpq_t *queue; 
   nrinfo_t *rinfo;
-  real_t mult;
+  idx_t higain, oldgain;	
+  idx_t pass, to, other;
 
   nvtxs  = graph->nvtxs;
   xadj   = graph->xadj;
@@ -489,10 +483,7 @@ void FM_2WayNodeBalance(ctrl_t *ctrl, graph_t *graph)
   pwgts  = graph->pwgts;
   rinfo  = graph->nrinfo;
 
-  mult = 0.5*ctrl->ubfactors[0];
-
-  badmaxpwgt = (idx_t)(mult*(pwgts[0]+pwgts[1]));
-  if (gk_max(pwgts[0], pwgts[1]) < badmaxpwgt)
+  if (gk_max(pwgts[0],pwgts[1]) < (int)(0.5*ctrl->ubfactors[0]*(pwgts[0]+pwgts[1])))
     return;
   if (iabs(pwgts[0]-pwgts[1]) < 3*graph->tvwgt[0]/nvtxs)
     return;
@@ -530,24 +521,16 @@ void FM_2WayNodeBalance(ctrl_t *ctrl, graph_t *graph)
 
     moved[higain] = 1;
 
-    gain = vwgt[higain]-rinfo[higain].edegrees[other];
-    badmaxpwgt = (idx_t)(mult*(pwgts[0]+pwgts[1]));
-
-    /* break if other is now underwight */
-    if (pwgts[to] > pwgts[other])
-      break;
-
-    /* break if balance is achieved and no +ve or zero gain */
-    if (gain < 0 && pwgts[other] < badmaxpwgt) 
-      break;
-
-    /* skip this vertex if it will violate balance on the other side */
-    if (pwgts[to]+vwgt[higain] > badmaxpwgt) 
+    if (pwgts[other] - rinfo[higain].edegrees[other] < (pwgts[0]+pwgts[1])/2) 
       continue;
+#ifdef XXX
+    if (pwgts[other] - rinfo[higain].edegrees[other] < pwgts[to]+vwgt[higain]) 
+      break;
+#endif
 
     ASSERT(bndptr[higain] != -1);
 
-    pwgts[2] -= gain;
+    pwgts[2] -= (vwgt[higain]-rinfo[higain].edegrees[other]);
 
     BNDDelete(nbnd, bndind, bndptr, higain);
     pwgts[to] += vwgt[higain];
@@ -592,6 +575,9 @@ void FM_2WayNodeBalance(ctrl_t *ctrl, graph_t *graph)
         rpqInsert(queue, k, vwgt[k]-edegrees[other]);
       }
     }
+
+    if (pwgts[to] > pwgts[other])
+      break;
   }
 
   IFSET(ctrl->dbglvl, METIS_DBG_REFINE,
@@ -604,4 +590,6 @@ void FM_2WayNodeBalance(ctrl_t *ctrl, graph_t *graph)
 
   WCOREPOP;
 }
+
+
 

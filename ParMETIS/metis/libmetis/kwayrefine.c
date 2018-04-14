@@ -5,7 +5,7 @@
 \date   Started 7/28/1997
 \author George 
 \author  Copyright 1997-2009, Regents of the University of Minnesota 
-\version $Id: kwayrefine.c 10513 2011-07-07 22:06:03Z karypis $ 
+\version $Id: kwayrefine.c 10187 2011-06-13 13:46:57Z karypis $ 
 */
 
 #include "metislib.h"
@@ -137,7 +137,7 @@ void AllocateKWayPartitionMemory(ctrl_t *ctrl, graph_t *graph)
       break;
 
     default:
-      gk_errexit(SIGERR, "Unknown objtype of %d\n", ctrl->objtype);
+      errexit("Unknown objtype of %d\n", ctrl->objtype);
   }
 
 }
@@ -197,11 +197,10 @@ void ComputeKWayPartitionParams(ctrl_t *ctrl, graph_t *graph)
           myrinfo = graph->ckrinfo+i;
 
           for (j=xadj[i]; j<xadj[i+1]; j++) {
-            if (me == where[adjncy[j]])
-              myrinfo->id += adjwgt[j];
-            else
+            if (me != where[adjncy[j]])
               myrinfo->ed += adjwgt[j];
           }
+          myrinfo->id = graph->adjrsum[i] - myrinfo->ed;
 
           /* Only ed-id>=0 nodes are considered to be in the boundary */
           if (myrinfo->ed-myrinfo->id >= 0)
@@ -255,19 +254,20 @@ void ComputeKWayPartitionParams(ctrl_t *ctrl, graph_t *graph)
 
         /* Compute now the id/ed degrees */
         for (i=0; i<nvtxs; i++) {
-          me      = where[i];
+          me = where[i];
           myrinfo = graph->vkrinfo+i;
       
           for (j=xadj[i]; j<xadj[i+1]; j++) {
-            if (me == where[adjncy[j]]) 
+            if (me == where[adjncy[j]]) {
+              myrinfo->id += adjwgt[j];
               myrinfo->nid++;
-            else 
-              myrinfo->ned++;
+            }
           }
+          myrinfo->ed = graph->adjrsum[i] - myrinfo->id;
       
           /* Time to compute the particular external degrees */
-          if (myrinfo->ned > 0) { 
-            mincut += myrinfo->ned;
+          if (myrinfo->ed > 0) { 
+            mincut += myrinfo->ed;
 
             myrinfo->inbr = vnbrpoolGetNext(ctrl, xadj[i+1]-xadj[i]+1);
             mynbrs        = ctrl->vnbrpool + myrinfo->inbr;
@@ -277,13 +277,15 @@ void ComputeKWayPartitionParams(ctrl_t *ctrl, graph_t *graph)
               if (me != other) {
                 for (k=0; k<myrinfo->nnbrs; k++) {
                   if (mynbrs[k].pid == other) {
-                    mynbrs[k].ned++;
+                    mynbrs[k].ed  += adjwgt[j];
+                    mynbrs[k].ned += 1;
                     break;
                   }
                 }
                 if (k == myrinfo->nnbrs) {
                   mynbrs[k].gv  = 0;
                   mynbrs[k].pid = other;
+                  mynbrs[k].ed  = adjwgt[j];
                   mynbrs[k].ned = 1;
                   myrinfo->nnbrs++;
                 }
@@ -302,7 +304,7 @@ void ComputeKWayPartitionParams(ctrl_t *ctrl, graph_t *graph)
       ASSERT(graph->minvol == ComputeVolume(graph, graph->where));
       break;
     default:
-      gk_errexit(SIGERR, "Unknown objtype of %d\n", ctrl->objtype);
+      errexit("Unknown objtype of %d\n", ctrl->objtype);
   }
 
 }
@@ -314,8 +316,8 @@ void ComputeKWayPartitionParams(ctrl_t *ctrl, graph_t *graph)
 /*************************************************************************/
 void ProjectKWayPartition(ctrl_t *ctrl, graph_t *graph)
 {
-  idx_t i, j, k, nvtxs, nbnd, nparts, me, other, istart, iend, tid, ted;
-  idx_t *xadj, *adjncy, *adjwgt;
+  idx_t i, j, k, nvtxs, nbnd, nparts, me, other, istart, iend;
+  idx_t *xadj, *adjncy, *adjwgt, *adjrsum;
   idx_t *cmap, *where, *bndptr, *bndind, *cwhere, *htable;
   graph_t *cgraph;
 
@@ -331,6 +333,7 @@ void ProjectKWayPartition(ctrl_t *ctrl, graph_t *graph)
   xadj    = graph->xadj;
   adjncy  = graph->adjncy;
   adjwgt  = graph->adjwgt;
+  adjrsum = graph->adjrsum;
 
   AllocateKWayPartitionMemory(ctrl, graph);
 
@@ -340,6 +343,7 @@ void ProjectKWayPartition(ctrl_t *ctrl, graph_t *graph)
 
   htable = iset(nparts, -1, iwspacemalloc(ctrl, nparts));
 
+
   /* Compute the required info for refinement */
   switch (ctrl->objtype) {
     case METIS_OBJTYPE_CUT:
@@ -348,9 +352,10 @@ void ProjectKWayPartition(ctrl_t *ctrl, graph_t *graph)
         ckrinfo_t *myrinfo;
         cnbr_t *mynbrs;
 
+
         /* go through and project partition and compute id/ed for the nodes */
         for (i=0; i<nvtxs; i++) {
-          k        = cmap[i];
+          k = cmap[i];
           where[i] = cwhere[k];
           cmap[i]  = cgraph->ckrinfo[k].ed;  /* For optimization */
         }
@@ -359,30 +364,21 @@ void ProjectKWayPartition(ctrl_t *ctrl, graph_t *graph)
         cnbrpoolReset(ctrl);
 
         for (nbnd=0, i=0; i<nvtxs; i++) {
-          istart = xadj[i];
-          iend   = xadj[i+1];
-
           myrinfo = graph->ckrinfo+i;
-
-          if (cmap[i] == 0) { /* Interior node. Note that cmap[i] = crinfo[cmap[i]].ed */
-            for (tid=0, j=istart; j<iend; j++) 
-              tid += adjwgt[j];
-
-            myrinfo->id   = tid;
-            myrinfo->inbr = -1;
-          }
-          else { /* Potentially an interface node */
+          myrinfo->id = adjrsum[i];
+      
+          if (cmap[i] > 0) { /* If it is an interface node. Note cmap[i] = crinfo[cmap[i]].ed */
+            istart = xadj[i];
+            iend   = xadj[i+1];
+      
             myrinfo->inbr = cnbrpoolGetNext(ctrl, iend-istart+1);
             mynbrs        = ctrl->cnbrpool + myrinfo->inbr;
 
             me = where[i];
-            for (tid=0, ted=0, j=istart; j<iend; j++) {
+            for (j=istart; j<iend; j++) {
               other = where[adjncy[j]];
-              if (me == other) {
-                tid += adjwgt[j];
-              }
-              else {
-                ted += adjwgt[j];
+              if (me != other) {
+                myrinfo->ed += adjwgt[j];
                 if ((k = htable[other]) == -1) {
                   htable[other]               = myrinfo->nnbrs;
                   mynbrs[myrinfo->nnbrs].pid  = other;
@@ -393,21 +389,23 @@ void ProjectKWayPartition(ctrl_t *ctrl, graph_t *graph)
                 }
               }
             }
-            myrinfo->id = tid;
-            myrinfo->ed = ted;
+            myrinfo->id -= myrinfo->ed;
       
             /* Remove space for edegrees if it was interior */
-            if (ted == 0) { 
+            if (myrinfo->ed == 0) { 
               ctrl->nbrpoolcpos -= iend-istart+1;
-              myrinfo->inbr      = -1;
+              myrinfo->inbr = -1;
             }
             else {
-              if (ted-tid >= 0) 
+              if (myrinfo->ed-myrinfo->id >= 0) 
                 BNDInsert(nbnd, bndind, bndptr, i); 
       
               for (j=0; j<myrinfo->nnbrs; j++)
                 htable[mynbrs[j].pid] = -1;
             }
+          }
+          else {
+            myrinfo->inbr = -1;
           }
         }
       
@@ -426,51 +424,49 @@ void ProjectKWayPartition(ctrl_t *ctrl, graph_t *graph)
 
         /* go through and project partition and compute id/ed for the nodes */
         for (i=0; i<nvtxs; i++) {
-          k        = cmap[i];
+          k = cmap[i];
           where[i] = cwhere[k];
-          cmap[i]  = cgraph->vkrinfo[k].ned;  /* For optimization */
+          cmap[i]  = cgraph->vkrinfo[k].ed;  /* For optimization */
         }
 
         memset(graph->vkrinfo, 0, sizeof(vkrinfo_t)*nvtxs);
         vnbrpoolReset(ctrl);
 
         for (i=0; i<nvtxs; i++) {
-          istart = xadj[i];
-          iend   = xadj[i+1];
           myrinfo = graph->vkrinfo+i;
-
-          if (cmap[i] == 0) { /* Note that cmap[i] = crinfo[cmap[i]].ed */
-            myrinfo->nid  = iend-istart;
-            myrinfo->inbr = -1;
-          }
-          else { /* Potentially an interface node */
+          myrinfo->id  = adjrsum[i];
+          myrinfo->nid = xadj[i+1]-xadj[i];
+      
+          if (cmap[i] > 0) { /* If it is an interface node. Note cmap[i] = crinfo[cmap[i]].ed */
+            istart = xadj[i];
+            iend   = xadj[i+1];
+      
             myrinfo->inbr = vnbrpoolGetNext(ctrl, iend-istart+1);
             mynbrs        = ctrl->vnbrpool + myrinfo->inbr;
 
             me = where[i];
-            for (tid=0, ted=0, j=istart; j<iend; j++) {
+            for (j=istart; j<iend; j++) {
               other = where[adjncy[j]];
-              if (me == other) {
-                tid++;
-              }
-              else {
-                ted++;
+              if (me != other) {
+                myrinfo->ed += adjwgt[j];
+                myrinfo->nid--;
                 if ((k = htable[other]) == -1) {
                   htable[other]                = myrinfo->nnbrs;
                   mynbrs[myrinfo->nnbrs].gv    = 0;
                   mynbrs[myrinfo->nnbrs].pid   = other;
+                  mynbrs[myrinfo->nnbrs].ed    = adjwgt[j];
                   mynbrs[myrinfo->nnbrs++].ned = 1;
                 }
                 else {
+                  mynbrs[k].ed += adjwgt[j];
                   mynbrs[k].ned++;
                 }
               }
             }
-            myrinfo->nid = tid;
-            myrinfo->ned = ted;
+            myrinfo->id -= myrinfo->ed;
       
             /* Remove space for edegrees if it was interior */
-            if (ted == 0) { 
+            if (myrinfo->ed == 0) { 
               ctrl->nbrpoolcpos -= iend-istart+1;
               myrinfo->inbr = -1;
             }
@@ -478,6 +474,9 @@ void ProjectKWayPartition(ctrl_t *ctrl, graph_t *graph)
               for (j=0; j<myrinfo->nnbrs; j++)
                 htable[mynbrs[j].pid] = -1;
             }
+          }
+          else {
+            myrinfo->inbr = -1;
           }
         }
       
@@ -488,7 +487,7 @@ void ProjectKWayPartition(ctrl_t *ctrl, graph_t *graph)
       break;
 
     default:
-      gk_errexit(SIGERR, "Unknown objtype of %d\n", ctrl->objtype);
+      errexit("Unknown objtype of %d\n", ctrl->objtype);
   }
 
   graph->mincut = cgraph->mincut;
@@ -542,14 +541,14 @@ void ComputeKWayBoundary(ctrl_t *ctrl, graph_t *graph, idx_t bndtype)
       }
       else { /* BNDTYPE_BALANCE */
         for (i=0; i<nvtxs; i++) {
-          if (graph->vkrinfo[i].ned > 0) 
+          if (graph->vkrinfo[i].ed > 0) 
             BNDInsert(nbnd, bndind, bndptr, i);
         }
       }
       break;
 
     default:
-      gk_errexit(SIGERR, "Unknown objtype of %d\n", ctrl->objtype);
+      errexit("Unknown objtype of %d\n", ctrl->objtype);
   }
 
   graph->nbnd = nbnd;
@@ -647,7 +646,7 @@ void ComputeKWayVolGains(ctrl_t *ctrl, graph_t *graph)
       }
 
       /* Add the extra gain due to id == 0 */
-      if (myrinfo->ned > 0 && myrinfo->nid == 0)
+      if (myrinfo->ed > 0 && myrinfo->id == 0)
         myrinfo->gv += vsize[i];
     }
 

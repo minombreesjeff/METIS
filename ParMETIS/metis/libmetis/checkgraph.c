@@ -104,55 +104,12 @@ int CheckGraph(graph_t *graph, int numflag, int verbose)
 
  
   if (err > 0 && verbose) { 
-    printf("A total of %"PRIDX" errors exist in the input file. "
-           "Correct them, and run again!\n", err);
+    printf("A total of %"PRIDX" errors exist in the input file. Correct them, and run again!\n", err);
   }
 
   gk_free((void **)&htable, LTERM);
 
   return (err == 0 ? 1 : 0);
-}
-
-
-/*************************************************************************/
-/*! This function performs a quick check of the weights of the graph */
-/*************************************************************************/
-int CheckInputGraphWeights(idx_t nvtxs, idx_t ncon, idx_t *xadj, idx_t *adjncy, 
-        idx_t *vwgt, idx_t *vsize, idx_t *adjwgt) 
-{
-  idx_t i;
-
-  if (ncon <= 0) {
-    printf("Input Error: ncon must be >= 1.\n");
-    return 0;
-  }
-
-  if (vwgt) {
-    for (i=ncon*nvtxs; i>=0; i--) {
-      if (vwgt[i] < 0) {
-        printf("Input Error: negative vertex weight(s).\n");
-        return 0;
-      }
-    }
-  }
-  if (vsize) {
-    for (i=nvtxs; i>=0; i--) {
-      if (vsize[i] < 0) {
-        printf("Input Error: negative vertex sizes(s).\n");
-        return 0;
-      }
-    }
-  }
-  if (adjwgt) {
-    for (i=xadj[nvtxs]-1; i>=0; i--) {
-      if (adjwgt[i] < 0) {
-        printf("Input Error: non-positive edge weight(s).\n");
-        return 0;
-      }
-    }
-  }
-
-  return 1;
 }
 
 
