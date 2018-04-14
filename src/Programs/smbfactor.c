@@ -8,11 +8,11 @@
  * Started 8/1/97
  * George
  *
- * $Id: smbfactor.c,v 1.1 1998/11/27 17:59:40 karypis Exp $
+ * $Id: smbfactor.c,v 1.2 2002/08/10 06:02:55 karypis Exp $
  *
  */
 
-#include <metis.h>
+#include <metisbin.h>
 
 
 /*************************************************************************
@@ -20,7 +20,7 @@
 **************************************************************************/
 void ComputeFillIn(GraphType *graph, idxtype *iperm)
 {
-  int i, j, k, nvtxs, maxlnz, maxsub;
+  idxtype i, j, k, nvtxs, maxlnz, maxsub;
   idxtype *xadj, *adjncy;
   idxtype *perm, *xlnz, *xnzsub, *nzsub;
   double opc;
@@ -60,7 +60,7 @@ void ComputeFillIn(GraphType *graph, idxtype *iperm)
    * Call sparspak routine.
    */
   if (smbfct(nvtxs, xadj, adjncy, perm, iperm, xlnz, &maxlnz, xnzsub, nzsub, &maxsub)) {
-    free(nzsub);
+    GKfree((void *)&nzsub, LTERM);
 
     maxsub = 4*maxsub; 
     nzsub = idxmalloc(maxsub, "ComputeFillIn: nzsub");
@@ -77,7 +77,7 @@ void ComputeFillIn(GraphType *graph, idxtype *iperm)
   printf("  Nonzeros: %d, \tOperation Count: %6.4le\n", maxlnz, opc);
 
 
-  GKfree(&perm, &xlnz, &xnzsub, &nzsub, LTERM);
+  GKfree((void *)&perm, &xlnz, &xnzsub, &nzsub, LTERM);
 
 
   /* Relabel the vertices so that it starts from 0 */
@@ -98,7 +98,7 @@ void ComputeFillIn(GraphType *graph, idxtype *iperm)
 **************************************************************************/
 idxtype ComputeFillIn2(GraphType *graph, idxtype *iperm)
 {
-  int i, j, k, nvtxs, maxlnz, maxsub;
+  idxtype i, j, k, nvtxs, maxlnz, maxsub;
   idxtype *xadj, *adjncy;
   idxtype *perm, *xlnz, *xnzsub, *nzsub;
   double opc;
@@ -134,7 +134,7 @@ idxtype ComputeFillIn2(GraphType *graph, idxtype *iperm)
    * Call sparspak routine.
    */
   if (smbfct(nvtxs, xadj, adjncy, perm, iperm, xlnz, &maxlnz, xnzsub, nzsub, &maxsub)) {
-    free(nzsub);
+    GKfree((void *)&nzsub, LTERM);
 
     maxsub = 4*maxsub; 
     nzsub = idxmalloc(maxsub, "ComputeFillIn: nzsub");
@@ -149,7 +149,7 @@ idxtype ComputeFillIn2(GraphType *graph, idxtype *iperm)
     opc += (xlnz[i+1]-xlnz[i])*(xlnz[i+1]-xlnz[i]) - (xlnz[i+1]-xlnz[i]);
 
 
-  GKfree(&perm, &xlnz, &xnzsub, &nzsub, LTERM);
+  GKfree((void *)&perm, &xlnz, &xnzsub, &nzsub, LTERM);
 
 
   /* Relabel the vertices so that it starts from 0 */
@@ -188,12 +188,12 @@ idxtype ComputeFillIn2(GraphType *graph, idxtype *iperm)
 *      MAXLNZ - THE NUMBER OF NONZEROS FOUND.             
 *
 *******************************************************************/
-int smbfct(int neqns, idxtype *xadj, idxtype *adjncy, idxtype *perm, idxtype *invp, idxtype *xlnz, 
-           int *maxlnz, idxtype *xnzsub, idxtype *nzsub, int *maxsub)
+int smbfct(idxtype neqns, idxtype *xadj, idxtype *adjncy, idxtype *perm, idxtype *invp, idxtype *xlnz, 
+           idxtype *maxlnz, idxtype *xnzsub, idxtype *nzsub, idxtype *maxsub)
 {
   /* Local variables */
-  int node, rchm, mrgk, lmax, i, j, k, m, nabor, nzbeg, nzend;
-  int kxsub, jstop, jstrt, mrkflg, inz, knz, flag;
+  idxtype node, rchm, mrgk, lmax, i, j, k, m, nabor, nzbeg, nzend;
+  idxtype kxsub, jstop, jstrt, mrkflg, inz, knz, flag;
   idxtype *mrglnk, *marker, *rchlnk;
 
   rchlnk = idxmalloc(neqns+1, "smbfct: rchlnk");
@@ -377,7 +377,7 @@ L1400:
   perm++;
   adjncy++;
   xadj++;
-  GKfree(&rchlnk, &mrglnk, &marker, LTERM);
+  GKfree((void *)&rchlnk, &mrglnk, &marker, LTERM);
 
   return flag;
   

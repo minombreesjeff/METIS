@@ -1,31 +1,44 @@
 include ../Makefile.in
 
-BINDIR = ../Graphs
-
-INCLUDES = -I../Lib 
-CFLAGS = $(COPTIONS) $(OPTFLAGS) $(INCLUDES)
-
-LIBS = -lmetis -lm
-LD = $(CC) $(LDOPTIONS) -L. -L..
-METISLIB = ../libmetis.a
+CURBUILDDIR = $(TSTBUILDDIR)
 
 
+MTESTSRC   = mtest.c 
 
-MTESTOBJS = mtest.o ../Programs/io.o 
+MTESTOBJS  = $(patsubst %.c, $(CURBUILDDIR)/%$(OBJEXT), $(MTESTSRC))
+EXTRAOBJS  = $(PRGBUILDDIR)/io$(OBJEXT)
+
+ALLOBJS  = $(patsubst %.c, $(CURBUILDDIR)/%$(OBJEXT), $(wildcard *.c))
+HEADERS  = $(wildcard *.h) $(TOPDIR)/include/metis.h 
+
+LIBRARIES = $(BUILDDIR)/libmetis$(LIBEXT)
+
+INCLUDES += -I$(TOPDIR)/libmetis
+
+TARGETS = $(BUILDDIR)/mtest$(VERNUM)$(EXEEXT) 
 
 
-.c.o:
-	$(CC) $(CFLAGS) -c $*.c
+default: $(TARGETS)
 
-default: $(BINDIR)/mtest
 
-$(BINDIR)/mtest: $(MTESTOBJS) $(METISLIB)
-	$(LD)  -o $@ $(MTESTOBJS) $(LIBS)
-	chmod 755 $@
+$(BUILDDIR)/mtest$(VERNUM)$(EXEEXT): $(MTESTOBJS) $(LIBRARIES)
+	$(LD) $(LDOPTIONS) $(EXEOUTPUTFILE) $(MTESTOBJS) $(EXTRAOBJS) $(LIBSDIR) $(LIBS)
+	chmod 744 $@
+	@if [ "$(BINDIR)" ]; then cp $@* $(BINDIR); fi
+
 
 clean:
-	rm -f *.o
+	rm -f $(ALLOBJS) 
 
 realclean:
-	rm -f *.o ;\
-        rm -f $(BINDIR)/mtest 
+	rm -f $(ALLOBJS) $(TARGETS)
+	rm -fr $(BUILDDIR) 
+
+
+
+$(ALLOBJS) : $(HEADERS) ../Makefile.in Makefile
+
+$(CURBUILDDIR)/%$(OBJEXT) : %.c
+	$(CC) $(CFLAGS) $(SOURCEFILE) $(OUTPUTFILE)
+
+

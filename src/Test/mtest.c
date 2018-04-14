@@ -9,24 +9,25 @@
  * Started 9/18/98
  * George
  *
- * $Id: mtest.c,v 1.8 1998/09/20 17:36:14 karypis Exp $
+ * $Id: mtest.c,v 1.1 2002/08/10 04:34:53 karypis Exp $
  *
  */
 
 #include <metis.h>
+#include <metislib.h>
 
 
 
 /*************************************************************************
 * Let the game begin
 **************************************************************************/
-main(int argc, char *argv[])
+int main(idxtype argc, char *argv[])
 {
-  int i, nparts, options[10];
+  idxtype i, nparts, options[10];
   idxtype *part;
   float lbvec[MAXNCON], rubvec[MAXNCON];
   GraphType graph;
-  int numflag = 0, wgtflag = 0, edgecut;
+  idxtype numflag = 0, wgtflag = 0, edgecut;
 
 
   if (argc != 2) {
@@ -53,7 +54,7 @@ main(int argc, char *argv[])
   printf(" Testing completed.\n");
   printf("**********************************************************************\n");
 
-  GKfree(&graph.xadj, &graph.adjncy, &graph.vwgt, &graph.adjwgt, LTERM);
+  GKfree((void *)&graph.xadj, &graph.adjncy, &graph.vwgt, &graph.adjwgt, LTERM);
 }  
 
 
@@ -61,10 +62,10 @@ main(int argc, char *argv[])
 /*************************************************************************
 * This function tests the regular graph partitioning routines
 **************************************************************************/
-void Test_PartGraph(int nvtxs, idxtype *xadj, idxtype *adjncy)
+void Test_PartGraph(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
 {
-  int i, j, jj, k, tstnum, rcode;
-  int nparts, numflag, wgtflag, edgecut, options[10];
+  idxtype i, j, jj, k, tstnum, rcode;
+  idxtype nparts, numflag, wgtflag, edgecut, options[10];
   idxtype *part, *vwgt, *adjwgt;
   float tpwgts[256];
 
@@ -491,7 +492,7 @@ void Test_PartGraph(int nvtxs, idxtype *xadj, idxtype *adjncy)
 
   printf("\n");
 
-  GKfree(&vwgt, &adjwgt, &part, LTERM);
+  GKfree((void *)&vwgt, &adjwgt, &part, LTERM);
 }
 
 
@@ -499,10 +500,10 @@ void Test_PartGraph(int nvtxs, idxtype *xadj, idxtype *adjncy)
 /*************************************************************************
 * This function verifies that the partitioning was computed correctly
 **************************************************************************/
-int VerifyPart(int nvtxs, idxtype *xadj, idxtype *adjncy, idxtype *vwgt, 
-               idxtype *adjwgt, int nparts, int edgecut, idxtype *part)
+int VerifyPart(idxtype nvtxs, idxtype *xadj, idxtype *adjncy, idxtype *vwgt, 
+               idxtype *adjwgt, idxtype nparts, idxtype edgecut, idxtype *part)
 {
-  int i, j, k, cut, vfree=0, efree=0, rcode=0;
+  idxtype i, j, k, cut, vfree=0, efree=0, rcode=0;
   idxtype *pwgts;
 
   if (part[idxamax(nvtxs, part)] != nparts-1)
@@ -532,12 +533,12 @@ int VerifyPart(int nvtxs, idxtype *xadj, idxtype *adjncy, idxtype *vwgt,
     rcode = 3;
 
   if (vfree)
-    free(vwgt);
+    GKfree((void *)&vwgt, LTERM);
 
   if (efree)
-    free(adjwgt);
+    GKfree((void *)&adjwgt, LTERM);
 
-  free(pwgts);
+  GKfree((void *)&pwgts, LTERM);
 
   MALLOC_CHECK(NULL);
 
@@ -548,10 +549,10 @@ int VerifyPart(int nvtxs, idxtype *xadj, idxtype *adjncy, idxtype *vwgt,
 /*************************************************************************
 * This function verifies that the partitioning was computed correctly
 **************************************************************************/
-int VerifyWPart(int nvtxs, idxtype *xadj, idxtype *adjncy, idxtype *vwgt, 
-                idxtype *adjwgt, int nparts, float *tpwgts, int edgecut, idxtype *part)
+int VerifyWPart(idxtype nvtxs, idxtype *xadj, idxtype *adjncy, idxtype *vwgt, 
+                idxtype *adjwgt, idxtype nparts, float *tpwgts, idxtype edgecut, idxtype *part)
 {
-  int i, j, k, tvwgt, cut, vfree=0, efree=0, rcode=0;
+  idxtype i, j, k, tvwgt, cut, vfree=0, efree=0, rcode=0;
   idxtype *pwgts;
 
   if (part[idxamax(nvtxs, part)] != nparts-1) 
@@ -586,12 +587,12 @@ int VerifyWPart(int nvtxs, idxtype *xadj, idxtype *adjncy, idxtype *vwgt,
   }
 
   if (vfree)
-    free(vwgt);
+    GKfree((void *)&vwgt, LTERM);
 
   if (efree)
-    free(adjwgt);
+    GKfree((void *)&adjwgt, LTERM);
 
-  free(pwgts);
+  GKfree((void *)&pwgts, LTERM);
 
   MALLOC_CHECK(NULL);
 
@@ -603,10 +604,10 @@ int VerifyWPart(int nvtxs, idxtype *xadj, idxtype *adjncy, idxtype *vwgt,
 /*************************************************************************
 * This function tests the regular graph partitioning routines
 **************************************************************************/
-void Test_PartGraphV(int nvtxs, idxtype *xadj, idxtype *adjncy)
+void Test_PartGraphV(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
 {
-  int i, j, jj, k, tstnum, rcode;
-  int nparts, numflag, wgtflag, totalv, options[10];
+  idxtype i, j, jj, k, tstnum, rcode;
+  idxtype nparts, numflag, wgtflag, totalv, options[10];
   idxtype *part, *vwgt, *vsize;
   float tpwgts[256];
 
@@ -824,17 +825,17 @@ void Test_PartGraphV(int nvtxs, idxtype *xadj, idxtype *adjncy)
   printf("\n");
 
 
-  GKfree(&vwgt, &vsize, &part, LTERM);
+  GKfree((void *)&vwgt, &vsize, &part, LTERM);
 }
 
 
 /*************************************************************************
 * This function verifies that the partitioning was computed correctly
 **************************************************************************/
-int VerifyPartV(int nvtxs, idxtype *xadj, idxtype *adjncy, idxtype *vwgt, 
-               idxtype *vsize, int nparts, int totalv, idxtype *part)
+int VerifyPartV(idxtype nvtxs, idxtype *xadj, idxtype *adjncy, idxtype *vwgt, 
+               idxtype *vsize, idxtype nparts, idxtype totalv, idxtype *part)
 {
-  int i, j, k, ttlv, vfree=0, efree=0, rcode=0;
+  idxtype i, j, k, ttlv, vfree=0, efree=0, rcode=0;
   idxtype *pwgts, *marker;
 
   if (part[idxamax(nvtxs, part)] != nparts-1)
@@ -870,13 +871,12 @@ int VerifyPartV(int nvtxs, idxtype *xadj, idxtype *adjncy, idxtype *vwgt,
     rcode = 3;
 
   if (vfree)
-    free(vwgt);
+    GKfree((void *)&vwgt, LTERM);
 
   if (efree)
-    free(vsize);
+    GKfree((void *)&vsize, LTERM);
 
-  free(pwgts);
-  free(marker);
+  GKfree((void *)&pwgts, &marker, LTERM);
 
   MALLOC_CHECK(NULL);
 
@@ -887,10 +887,10 @@ int VerifyPartV(int nvtxs, idxtype *xadj, idxtype *adjncy, idxtype *vwgt,
 /*************************************************************************
 * This function verifies that the partitioning was computed correctly
 **************************************************************************/
-int VerifyWPartV(int nvtxs, idxtype *xadj, idxtype *adjncy, idxtype *vwgt, 
-                idxtype *vsize, int nparts, float *tpwgts, int totalv, idxtype *part)
+int VerifyWPartV(idxtype nvtxs, idxtype *xadj, idxtype *adjncy, idxtype *vwgt, 
+                idxtype *vsize, idxtype nparts, float *tpwgts, idxtype totalv, idxtype *part)
 {
-  int i, j, k, tvwgt, ttlv, vfree=0, efree=0, rcode=0;
+  idxtype i, j, k, tvwgt, ttlv, vfree=0, efree=0, rcode=0;
   idxtype *pwgts, *marker;
 
   if (part[idxamax(nvtxs, part)] != nparts-1) 
@@ -931,13 +931,12 @@ int VerifyWPartV(int nvtxs, idxtype *xadj, idxtype *adjncy, idxtype *vwgt,
   }
 
   if (vfree)
-    free(vwgt);
+    GKfree((void *)&vwgt, LTERM);
 
   if (efree)
-    free(vsize);
+    GKfree((void *)&vsize, LTERM);
 
-  free(pwgts);
-  free(marker);
+  GKfree((void *)&pwgts, &marker, LTERM);
 
   MALLOC_CHECK(NULL);
 
@@ -949,10 +948,10 @@ int VerifyWPartV(int nvtxs, idxtype *xadj, idxtype *adjncy, idxtype *vwgt,
 /*************************************************************************
 * This function tests the regular graph partitioning routines
 **************************************************************************/
-void Test_PartGraphmC(int nvtxs, idxtype *xadj, idxtype *adjncy)
+void Test_PartGraphmC(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
 {
-  int i, j, jj, k, tstnum, rcode;
-  int nparts, ncon, numflag, wgtflag, edgecut, options[10];
+  idxtype i, j, jj, k, tstnum, rcode;
+  idxtype nparts, ncon, numflag, wgtflag, edgecut, options[10];
   idxtype *part, *vwgt, *adjwgt;
   float ubvec[MAXNCON];
 
@@ -1361,7 +1360,7 @@ void Test_PartGraphmC(int nvtxs, idxtype *xadj, idxtype *adjncy)
 
   printf("\n");
 
-  GKfree(&vwgt, &adjwgt, &part, LTERM);
+  GKfree((void *)&vwgt, &adjwgt, &part, LTERM);
 }
 
 
@@ -1369,10 +1368,10 @@ void Test_PartGraphmC(int nvtxs, idxtype *xadj, idxtype *adjncy)
 /*************************************************************************
 * This function verifies that the partitioning was computed correctly
 **************************************************************************/
-int VerifyPartmC(int nvtxs, int ncon, idxtype *xadj, idxtype *adjncy, idxtype *vwgt, 
-               idxtype *adjwgt, int nparts, float *ubvec, int edgecut, idxtype *part)
+int VerifyPartmC(idxtype nvtxs, idxtype ncon, idxtype *xadj, idxtype *adjncy, idxtype *vwgt, 
+               idxtype *adjwgt, idxtype nparts, float *ubvec, idxtype edgecut, idxtype *part)
 {
-  int i, j, k, cut, efree=0, rcode=0;
+  idxtype i, j, k, cut, efree=0, rcode=0;
   idxtype *pwgts;
   float lb;
 
@@ -1420,9 +1419,9 @@ printf("\n%d %d\n", idxsum(ncon*nvtxs, vwgt), idxsum(ncon*nparts, pwgts));
 
 
   if (efree)
-    free(adjwgt);
+    GKfree((void *)&adjwgt, LTERM);
 
-  free(pwgts);
+  GKfree((void *)&pwgts, LTERM);
 
   MALLOC_CHECK(NULL);
 
@@ -1433,10 +1432,10 @@ printf("\n%d %d\n", idxsum(ncon*nvtxs, vwgt), idxsum(ncon*nparts, pwgts));
 /*************************************************************************
 * This function tests the regular graph partitioning routines
 **************************************************************************/
-void Test_ND(int nvtxs, idxtype *xadj, idxtype *adjncy)
+void Test_ND(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
 {
-  int i, j, jj, k, tstnum, rcode;
-  int numflag, wgtflag, options[10];
+  idxtype i, j, jj, k, tstnum, rcode;
+  idxtype numflag, wgtflag, options[10];
   idxtype *perm, *iperm, *vwgt;
 
   vwgt = idxmalloc(nvtxs, "vwgt");
@@ -1746,7 +1745,7 @@ void Test_ND(int nvtxs, idxtype *xadj, idxtype *adjncy)
   printf("\n");
 
 
-  GKfree(&vwgt, &perm, &iperm, LTERM);
+  GKfree((void *)&vwgt, &perm, &iperm, LTERM);
 }
 
 
@@ -1754,9 +1753,9 @@ void Test_ND(int nvtxs, idxtype *xadj, idxtype *adjncy)
 /*************************************************************************
 * This function verifies that the partitioning was computed correctly
 **************************************************************************/
-int VerifyND(int nvtxs, idxtype *perm, idxtype *iperm)
+int VerifyND(idxtype nvtxs, idxtype *perm, idxtype *iperm)
 {
-  int i, j, k, rcode=0;
+  idxtype i, j, k, rcode=0;
 
   for (i=0; i<nvtxs; i++) {
     if (i != perm[iperm[i]])

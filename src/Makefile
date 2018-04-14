@@ -1,16 +1,21 @@
 
-
 default:
-	(cd Lib ; make ) 
-	(cd Programs ; make ) 
-	(cd Test ; make ) 
+	more Makefile.help
+
+all:
+	$(MAKE) -C libmetis
+	$(MAKE) -C programs
+	$(MAKE) -C test
 
 clean:
-	(cd Lib ; make clean )
-	(cd Programs ; make clean )
-	(cd Test ; make clean )
+	$(MAKE) -C libmetis clean
+	$(MAKE) -C programs clean
+	$(MAKE) -C test clean
 
 realclean:
-	(cd Lib ; make realclean )
-	(cd Programs ; make realclean )
-	(cd Test ; make realclean )
+	$(MAKE) -C libmetis realclean
+	$(MAKE) -C programs realclean
+	$(MAKE) -C test realclean
+
+dist:
+	$(MAKE) -C libmetis dist

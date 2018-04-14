@@ -8,22 +8,22 @@
  * Started 8/28/94
  * George
  *
- * $Id: graphchk.c,v 1.1 1998/11/27 17:59:33 karypis Exp $
+ * $Id: graphchk.c,v 1.2 2002/08/10 06:02:53 karypis Exp $
  *
  */
 
-#include <metis.h>
+#include <metisbin.h>
 
 
 
 /*************************************************************************
 * Let the game begin
 **************************************************************************/
-main(int argc, char *argv[])
+int main(idxtype argc, char *argv[])
 {
   GraphType graph;
   char filename[256];
-  int wgtflag;
+  idxtype wgtflag;
 
   if (argc != 2) {
     printf("Usage: %s <GraphFile>\n", argv[0]);
@@ -52,7 +52,7 @@ main(int argc, char *argv[])
   printf("\n**********************************************************************\n");
 
 
-  GKfree(&graph.xadj, &graph.adjncy, &graph.vwgt, &graph.adjwgt, LTERM);
+  GKfree((void *)&graph.xadj, &graph.adjncy, &graph.vwgt, &graph.adjwgt, LTERM);
 }  
 
 

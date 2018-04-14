@@ -1,83 +1,151 @@
 include ../Makefile.in
 
-BINDIR = ..
-
-INCLUDES = -I../Lib 
-CFLAGS = $(COPTIONS) $(OPTFLAGS) $(INCLUDES)
-
-LIBS = -lmetis -lm
-LD = $(CC) $(LDOPTIONS) -L. -L..
-METISLIB = ../libmetis.a
+CURBUILDDIR = $(PRGBUILDDIR)
 
 
+METISSRC       = metis.c io.c smbfactor.c getopt.c getopt1.c
+PMETISSRC      = pmetis.c io.c getopt.c getopt1.c cmdline_pmetis.c string.c
+KMETISSRC      = kmetis.c io.c getopt.c getopt1.c
+OEMETISSRC     = oemetis.c io.c smbfactor.c getopt.c getopt1.c
+ONMETISSRC     = onmetis.c io.c smbfactor.c getopt.c getopt1.c
+MESH2DUALSRC   = mesh2dual.c io.c getopt.c getopt1.c
+MESH2NODALSRC  = mesh2nodal.c io.c getopt.c getopt1.c
+PARTDMESHSRC   = partdmesh.c io.c getopt.c getopt1.c
+PARTNMESHSRC   = partnmesh.c io.c getopt.c getopt1.c
+GRAPHCHKSRC    = graphchk.c io.c getopt.c getopt1.c
+KFMETISSRC     = kfmetis.c io.c getopt.c getopt1.c cmdline_kfmetis.c string.c smbfactor.c
+CMETISSRC      = cmetis.c io.c getopt.c getopt1.c cmdline_cmetis.c string.c 
 
-PMETISOBJS = pmetis.o io.o 
-KMETISOBJS = kmetis.o io.o 
-OEMETISOBJS = oemetis.o io.o smbfactor.o
-ONMETISOBJS = onmetis.o io.o smbfactor.o
-MESH2DUALOBJ = mesh2dual.o io.o 
-MESH2NODALOBJ = mesh2nodal.o io.o 
-PARTDMESHOBJ = partdmesh.o io.o 
-PARTNMESHOBJ = partnmesh.o io.o 
-GRAPHCHKOBJ = graphchk.o io.o 
+#CEPICSRC       = cepic.c io.c string.c 
+#CEPICRCBSRC    = cepic-rcb.c io.c string.c 
+#MMETISSRC      = mmetis.c io.c smbfactor.c getopt.c getopt1.c
+
+METISOBJS      = $(patsubst %.c, $(CURBUILDDIR)/%$(OBJEXT), $(METISSRC))
+PMETISOBJS     = $(patsubst %.c, $(CURBUILDDIR)/%$(OBJEXT), $(PMETISSRC))
+KMETISOBJS     = $(patsubst %.c, $(CURBUILDDIR)/%$(OBJEXT), $(KMETISSRC))
+OEMETISOBJS    = $(patsubst %.c, $(CURBUILDDIR)/%$(OBJEXT), $(OEMETISSRC))
+ONMETISOBJS    = $(patsubst %.c, $(CURBUILDDIR)/%$(OBJEXT), $(ONMETISSRC))
+MESH2DUALOBJS  = $(patsubst %.c, $(CURBUILDDIR)/%$(OBJEXT), $(MESH2DUALSRC))
+MESH2NODALOBJS = $(patsubst %.c, $(CURBUILDDIR)/%$(OBJEXT), $(MESH2NODALSRC))
+PARTDMESHOBJS  = $(patsubst %.c, $(CURBUILDDIR)/%$(OBJEXT), $(PARTDMESHSRC))
+PARTNMESHOBJS  = $(patsubst %.c, $(CURBUILDDIR)/%$(OBJEXT), $(PARTNMESHSRC))
+GRAPHCHKOBJS   = $(patsubst %.c, $(CURBUILDDIR)/%$(OBJEXT), $(GRAPHCHKSRC))
+KFMETISOBJS    = $(patsubst %.c, $(CURBUILDDIR)/%$(OBJEXT), $(KFMETISSRC))
+CMETISOBJS     = $(patsubst %.c, $(CURBUILDDIR)/%$(OBJEXT), $(CMETISSRC))
+
+ALLOBJS  = $(patsubst %.c, $(CURBUILDDIR)/%$(OBJEXT), $(wildcard *.c))
+HEADERS  = $(wildcard *.h) $(TOPDIR)/include/metis.h 
+
+LIBRARIES = $(BUILDDIR)/libmetis$(LIBEXT)
 
 
-.c.o:
-	$(CC) $(CFLAGS) -c $*.c
+TARGETS = $(BUILDDIR)/metis$(VERNUM)$(EXEEXT) \
+          $(BUILDDIR)/pmetis$(VERNUM)$(EXEEXT) \
+          $(BUILDDIR)/kmetis$(VERNUM)$(EXEEXT) \
+          $(BUILDDIR)/oemetis$(VERNUM)$(EXEEXT) \
+          $(BUILDDIR)/onmetis$(VERNUM)$(EXEEXT) \
+          $(BUILDDIR)/mesh2dual$(VERNUM)$(EXEEXT) \
+          $(BUILDDIR)/mesh2nodal$(VERNUM)$(EXEEXT) \
+          $(BUILDDIR)/partdmesh$(VERNUM)$(EXEEXT) \
+          $(BUILDDIR)/partnmesh$(VERNUM)$(EXEEXT) \
+          $(BUILDDIR)/graphchk$(VERNUM)$(EXEEXT) \
+          $(BUILDDIR)/kfmetis$(VERNUM)$(EXEEXT) \
+          $(BUILDDIR)/cmetis$(VERNUM)$(EXEEXT) 
 
-default: $(BINDIR)/pmetis$(VERNUM) $(BINDIR)/kmetis$(VERNUM) \
-         $(BINDIR)/oemetis$(VERNUM) $(BINDIR)/onmetis$(VERNUM) $(BINDIR)/mesh2dual$(VERNUM) \
-         $(BINDIR)/mesh2nodal$(VERNUM) $(BINDIR)/partdmesh$(VERNUM) $(BINDIR)/partnmesh$(VERNUM) \
-         $(BINDIR)/graphchk$(VERNUM)
 
-$(BINDIR)/pmetis$(VERNUM): $(PMETISOBJS) $(METISLIB)
-	$(LD)  -o $@ $(PMETISOBJS) $(LIBS)
-	chmod 755 $@
+default: $(TARGETS)
 
-$(BINDIR)/kmetis$(VERNUM): $(KMETISOBJS) $(METISLIB)
-	$(LD)  -o $@ $(KMETISOBJS) $(LIBS)
-	chmod 755 $@
 
-$(BINDIR)/oemetis$(VERNUM): $(OEMETISOBJS) $(METISLIB)
-	$(LD)  -o $@ $(OEMETISOBJS) $(LIBS)
-	chmod 755 $@
+$(BUILDDIR)/metis$(VERNUM)$(EXEEXT): $(METISOBJS) $(LIBRARIES)
+	$(LD) $(LDOPTIONS) $(EXEOUTPUTFILE) $(METISOBJS) $(LIBSDIR) $(LIBS)
+	chmod 744 $@
+	@if [ "$(BINDIR)" ]; then cp $@* $(BINDIR); fi
 
-$(BINDIR)/onmetis$(VERNUM): $(ONMETISOBJS) $(METISLIB)
-	$(LD)  -o $@ $(ONMETISOBJS) $(LIBS)
-	chmod 755 $@
+$(BUILDDIR)/pmetis$(VERNUM)$(EXEEXT): $(PMETISOBJS) $(LIBRARIES)
+	$(LD) $(LDOPTIONS) $(EXEOUTPUTFILE) $(PMETISOBJS) $(LIBSDIR) $(LIBS)
+	chmod 744 $@
+	@if [ "$(BINDIR)" ]; then cp $@* $(BINDIR); fi
 
-$(BINDIR)/mesh2dual$(VERNUM): $(MESH2DUALOBJ) $(METISLIB)
-	$(LD)  -o $@ $(MESH2DUALOBJ) $(LIBS)
-	chmod 755 $@
+$(BUILDDIR)/kmetis$(VERNUM)$(EXEEXT): $(KMETISOBJS) $(LIBRARIES)
+	$(LD) $(LDOPTIONS) $(EXEOUTPUTFILE) $(KMETISOBJS) $(LIBSDIR) $(LIBS)
+	chmod 744 $@
+	@if [ "$(BINDIR)" ]; then cp $@* $(BINDIR); fi
 
-$(BINDIR)/mesh2nodal$(VERNUM): $(MESH2NODALOBJ) $(METISLIB)
-	$(LD)  -o $@ $(MESH2NODALOBJ) $(LIBS)
-	chmod 755 $@
+$(BUILDDIR)/oemetis$(VERNUM)$(EXEEXT): $(OEMETISOBJS) $(LIBRARIES)
+	$(LD) $(LDOPTIONS) $(EXEOUTPUTFILE) $(OEMETISOBJS) $(LIBSDIR) $(LIBS)
+	chmod 744 $@
+	@if [ "$(BINDIR)" ]; then cp $@* $(BINDIR); fi
 
-$(BINDIR)/partdmesh$(VERNUM): $(PARTDMESHOBJ) $(METISLIB)
-	$(LD)  -o $@ $(PARTDMESHOBJ) $(LIBS)
-	chmod 755 $@
+$(BUILDDIR)/onmetis$(VERNUM)$(EXEEXT): $(ONMETISOBJS) $(LIBRARIES)
+	$(LD) $(LDOPTIONS) $(EXEOUTPUTFILE) $(ONMETISOBJS) $(LIBSDIR) $(LIBS)
+	chmod 744 $@
+	@if [ "$(BINDIR)" ]; then cp $@* $(BINDIR); fi
 
-$(BINDIR)/partnmesh$(VERNUM): $(PARTNMESHOBJ) $(METISLIB)
-	$(LD)  -o $@ $(PARTNMESHOBJ) $(LIBS)
-	chmod 755 $@
+$(BUILDDIR)/mesh2dual$(VERNUM)$(EXEEXT): $(MESH2DUALOBJS) $(LIBRARIES)
+	$(LD) $(LDOPTIONS) $(EXEOUTPUTFILE) $(MESH2DUALOBJS) $(LIBSDIR) $(LIBS)
+	chmod 744 $@
+	@if [ "$(BINDIR)" ]; then cp $@* $(BINDIR); fi
 
-$(BINDIR)/graphchk$(VERNUM): $(GRAPHCHKOBJ) $(METISLIB)
-	$(LD)  -o $@ $(GRAPHCHKOBJ) $(LIBS)
-	chmod 755 $@
+$(BUILDDIR)/mesh2nodal$(VERNUM)$(EXEEXT): $(MESH2NODALOBJS) $(LIBRARIES)
+	$(LD) $(LDOPTIONS) $(EXEOUTPUTFILE) $(MESH2NODALOBJS) $(LIBSDIR) $(LIBS)
+	chmod 744 $@
+	@if [ "$(BINDIR)" ]; then cp $@* $(BINDIR); fi
+
+$(BUILDDIR)/partdmesh$(VERNUM)$(EXEEXT): $(PARTDMESHOBJS) $(LIBRARIES)
+	$(LD) $(LDOPTIONS) $(EXEOUTPUTFILE) $(PARTDMESHOBJS) $(LIBSDIR) $(LIBS)
+	chmod 744 $@
+	@if [ "$(BINDIR)" ]; then cp $@* $(BINDIR); fi
+
+$(BUILDDIR)/partnmesh$(VERNUM)$(EXEEXT): $(PARTNMESHOBJS) $(LIBRARIES)
+	$(LD) $(LDOPTIONS) $(EXEOUTPUTFILE) $(PARTNMESHOBJS) $(LIBSDIR) $(LIBS)
+	chmod 744 $@
+	@if [ "$(BINDIR)" ]; then cp $@* $(BINDIR); fi
+
+$(BUILDDIR)/graphchk$(VERNUM)$(EXEEXT): $(GRAPHCHKOBJS) $(LIBRARIES)
+	$(LD) $(LDOPTIONS) $(EXEOUTPUTFILE) $(GRAPHCHKOBJS) $(LIBSDIR) $(LIBS)
+	chmod 744 $@
+	@if [ "$(BINDIR)" ]; then cp $@* $(BINDIR); fi
+
+$(BUILDDIR)/kfmetis$(VERNUM)$(EXEEXT): $(KFMETISOBJS) $(LIBRARIES)
+	$(LD) $(LDOPTIONS) $(EXEOUTPUTFILE) $(KFMETISOBJS) $(LIBSDIR) $(LIBS)
+	chmod 744 $@
+	@if [ "$(BINDIR)" ]; then cp $@* $(BINDIR); fi
+
+$(BUILDDIR)/cmetis$(VERNUM)$(EXEEXT): $(CMETISOBJS) $(LIBRARIES)
+	$(LD) $(LDOPTIONS) $(EXEOUTPUTFILE) $(CMETISOBJS) $(LIBSDIR) $(LIBS)
+	chmod 744 $@
+	@if [ "$(BINDIR)" ]; then cp $@* $(BINDIR); fi
+
+
+
+$(BUILDDIR)/cepic$(VERNUM)$(EXEEXT): $(CEPICOBJS) $(LIBRARIES)
+	$(LD)  -o $@ $(CEPICOBJ) $(LIBS)
+	chmod 744 $@
+	@if [ "$(BINDIR)" ]; then cp $@* $(BINDIR); fi
+
+$(BUILDDIR)/cepic-rcb$(VERNUM)$(EXEEXT): $(CEPICRCBOBJS) $(LIBRARIES)
+	$(LD)  -o $@ $(CEPICRCBOBJ) $(LIBS)
+	chmod 744 $@
+	@if [ "$(BINDIR)" ]; then cp $@* $(BINDIR); fi
+
+$(BUILDDIR)/mmetis$(VERNUM)$(EXEEXT): $(MMETISOBJS) $(LIBRARIES)
+	$(LD)  -o $@ $(MMETISOBJS) $(LIBS)
+	chmod 744 $@
+	@if [ "$(BINDIR)" ]; then cp $@* $(BINDIR); fi
+
 
 
 clean:
-	rm -f *.o
+	rm -f $(ALLOBJS) 
 
 realclean:
-	rm -f *.o ;\
-        rm -f $(BINDIR)/pmetis$(VERNUM) ;\
-        rm -f $(BINDIR)/kmetis$(VERNUM) ;\
-        rm -f $(BINDIR)/oemetis$(VERNUM) ;\
-        rm -f $(BINDIR)/onmetis$(VERNUM) ;\
-        rm -f $(BINDIR)/mesh2dual$(VERNUM) ;\
-        rm -f $(BINDIR)/mesh2nodal$(VERNUM) ;\
-        rm -f $(BINDIR)/partdmesh$(VERNUM) ;\
-        rm -f $(BINDIR)/partnmesh$(VERNUM) ;\
-        rm -f $(BINDIR)/graphchk$(VERNUM)
+	rm -f $(ALLOBJS) $(TARGETS)
+
+
+
+$(ALLOBJS) : $(HEADERS) ../Makefile.in Makefile
+
+$(CURBUILDDIR)/%$(OBJEXT) : %.c
+	$(CC) $(CFLAGS) $(SOURCEFILE) $(OUTPUTFILE)
+
+

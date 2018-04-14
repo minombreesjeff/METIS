@@ -8,25 +8,25 @@
  * Started 8/28/94
  * George
  *
- * $Id: kmetis.c,v 1.1 1998/11/27 17:59:35 karypis Exp $
+ * $Id: kmetis.c,v 1.6 2003/07/31 16:15:50 karypis Exp $
  *
  */
 
-#include <metis.h>
+#include <metisbin.h>
 
 
 
 /*************************************************************************
 * Let the game begin
 **************************************************************************/
-main(int argc, char *argv[])
+int main(idxtype argc, char *argv[])
 {
-  int i, nparts, options[10];
+  idxtype i, nparts, options[10];
   idxtype *part;
   float rubvec[MAXNCON], lbvec[MAXNCON];
   GraphType graph;
   char filename[256];
-  int numflag = 0, wgtflag = 0, edgecut;
+  idxtype numflag = 0, wgtflag = 0, edgecut;
   timer TOTALTmr, METISTmr, IOTmr;
 
   if (argc != 3) {
@@ -49,6 +49,12 @@ main(int argc, char *argv[])
   starttimer(TOTALTmr);
   starttimer(IOTmr);
   ReadGraph(&graph, filename, &wgtflag);
+
+  /* The following is for debuging empty graphs... 
+  graph.nedges = 0;
+  idxset(graph.nvtxs+1, 0, graph.xadj);
+  */
+
   if (graph.nvtxs <= 0) {
     printf("Empty graph. Nothing to do.\n");
     exit(0);
@@ -99,7 +105,7 @@ main(int argc, char *argv[])
   printf("**********************************************************************\n");
 
 
-  GKfree(&graph.xadj, &graph.adjncy, &graph.vwgt, &graph.adjwgt, &part, LTERM);
+  GKfree((void *)&graph.xadj, &graph.adjncy, &graph.vwgt, &graph.adjwgt, &part, LTERM);
 }  
 
 

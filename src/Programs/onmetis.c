@@ -8,24 +8,24 @@
  * Started 8/28/94
  * George
  *
- * $Id: onmetis.c,v 1.1 1998/11/27 17:59:38 karypis Exp $
+ * $Id: onmetis.c,v 1.2 2002/08/10 06:02:53 karypis Exp $
  *
  */
 
-#include <metis.h>
+#include <metisbin.h>
 
 
 
 /*************************************************************************
 * Let the game begin
 **************************************************************************/
-main(int argc, char *argv[])
+int main(idxtype argc, char *argv[])
 {
-  int i, options[10];
+  idxtype i, options[10];
   idxtype *perm, *iperm;
   GraphType graph;
   char filename[256];
-  int numflag = 0, wgtflag;
+  idxtype numflag = 0, wgtflag;
   timer TOTALTmr, METISTmr, IOTmr, SMBTmr;
 
 
@@ -55,7 +55,7 @@ main(int argc, char *argv[])
   stoptimer(IOTmr);
 
   /* Ordering does not use weights! */
-  GKfree(&graph.vwgt, &graph.adjwgt, LTERM);
+  GKfree((void *)&graph.vwgt, &graph.adjwgt, LTERM);
 
   printf("**********************************************************************\n");
   printf("%s", METISTITLE);
@@ -89,7 +89,7 @@ main(int argc, char *argv[])
   printf("**********************************************************************\n");
 
 
-  GKfree(&graph.xadj, &graph.adjncy, &perm, &iperm, LTERM);
+  GKfree((void *)&graph.xadj, &graph.adjncy, &perm, &iperm, LTERM);
 }  
 
 

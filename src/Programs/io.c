@@ -8,20 +8,20 @@
  * Started 8/28/94
  * George
  *
- * $Id: io.c,v 1.1 1998/11/27 17:59:34 karypis Exp $
+ * $Id: io.c,v 1.7 2003/04/13 04:45:14 karypis Exp $
  *
  */
 
-#include <metis.h>
+#include <metisbin.h>
 
 
 
 /*************************************************************************
 * This function reads the spd matrix
 **************************************************************************/
-void ReadGraph(GraphType *graph, char *filename, int *wgtflag)
+void ReadGraph(GraphType *graph, char *filename, idxtype *wgtflag)
 {
-  int i, j, k, l, fmt, readew, readvw, ncon, edge, ewgt;
+  idxtype i, j, k, l, fmt, readew, readvw, ncon, edge, ewgt;
   idxtype *xadj, *adjncy, *vwgt, *adjwgt;
   char *line, *oldstr, *newstr;
   FILE *fpin;
@@ -35,7 +35,9 @@ void ReadGraph(GraphType *graph, char *filename, int *wgtflag)
     exit(0);
   }
 
-  while (fgets(line, MAXLINE, fpin) && line[0] == '%');
+  do {
+    fgets(line, MAXLINE, fpin);
+  } while (line[0] == '%' && !feof(fpin));
 
   if (feof(fpin)) {
     graph->nvtxs = 0;
@@ -85,13 +87,9 @@ void ReadGraph(GraphType *graph, char *filename, int *wgtflag)
 
   /* Start reading the graph file */
   for (xadj[0]=0, k=0, i=0; i<graph->nvtxs; i++) {
-    while ((oldstr = fgets(line, MAXLINE, fpin)) && line[0] == '%'); /* skip lines with '#' */
-    if (oldstr == NULL && feof(fpin)) {
-      printf("------------------------------------------------------------------------------\n");
-      printf("Premature end of input file when reading the adjacency list for vertex %d\n", i+1);
-      printf("------------------------------------------------------------------------------\n");
-      exit(0);
-    }
+    do {
+      fgets(line, MAXLINE, fpin);
+    } while (line[0] == '%' && !feof(fpin));
     oldstr = line;
     newstr = NULL;
 
@@ -145,14 +143,45 @@ void ReadGraph(GraphType *graph, char *filename, int *wgtflag)
 }
 
 
+/*************************************************************************
+* This function reads the spd matrix
+**************************************************************************/
+void ReadCoordinates(GraphType *graph, char *filename)
+{
+  idxtype i, j, k, l, nvtxs, fmt, readew, readvw, ncon, edge, ewgt;
+  FILE *fpin;
+  char *line;
+
+
+  if ((fpin = fopen(filename, "r")) == NULL) {
+    printf("Failed to open file %s\n", filename);
+    exit(0);
+  }
+
+  nvtxs = graph->nvtxs;
+
+  graph->coords = dsmalloc(3*nvtxs, 0.0, "ReadCoordinates: coords");
+
+  line = (char *)malloc(sizeof(char)*(MAXLINE+1));
+
+  for (i=0; i<nvtxs; i++) {
+    fgets(line, MAXLINE, fpin);
+    sscanf(line, "%lf %lf %lf", graph->coords+3*i+0, graph->coords+3*i+1, graph->coords+3*i+2);
+  }
+    
+  fclose(fpin);
+
+  free(line);
+}
+
 
 /*************************************************************************
 * This function writes out the partition vector
 **************************************************************************/
-void WritePartition(char *fname, idxtype *part, int n, int nparts)
+void WritePartition(char *fname, idxtype *part, idxtype n, idxtype nparts)
 {
   FILE *fpout;
-  int i;
+  idxtype i;
   char filename[256];
 
   sprintf(filename,"%s.part.%d",fname, nparts);
@@ -171,10 +200,10 @@ void WritePartition(char *fname, idxtype *part, int n, int nparts)
 /*************************************************************************
 * This function writes out the partition vectors for a mesh
 **************************************************************************/
-void WriteMeshPartition(char *fname, int nparts, int ne, idxtype *epart, int nn, idxtype *npart)
+void WriteMeshPartition(char *fname, idxtype nparts, idxtype ne, idxtype *epart, idxtype nn, idxtype *npart)
 {
   FILE *fpout;
-  int i;
+  idxtype i;
   char filename[256];
 
   sprintf(filename,"%s.epart.%d",fname, nparts);
@@ -205,10 +234,10 @@ void WriteMeshPartition(char *fname, int nparts, int ne, idxtype *epart, int nn,
 /*************************************************************************
 * This function writes out the partition vector
 **************************************************************************/
-void WritePermutation(char *fname, idxtype *iperm, int n)
+void WritePermutation(char *fname, idxtype *iperm, idxtype n)
 {
   FILE *fpout;
-  int i;
+  idxtype i;
   char filename[256];
 
   sprintf(filename,"%s.iperm",fname);
@@ -230,7 +259,7 @@ void WritePermutation(char *fname, idxtype *iperm, int n)
 **************************************************************************/
 int CheckGraph(GraphType *graph)
 {
-  int i, j, k, l, nvtxs, err=0;
+  idxtype i, j, k, l, nvtxs, err=0;
   idxtype *xadj, *adjncy, *adjwgt;
 
   nvtxs = graph->nvtxs;
@@ -272,12 +301,65 @@ int CheckGraph(GraphType *graph)
 }
 
 
+/****************************************************************************
+* This function detect the input mesh type
+***************************************************************************/
+int MeshType(char *filename)
+{
+  idxtype i,j,k,l,len,cnt=0;
+  FILE *fpin;
+  char temp[40], inpt[80];
+  idxtype firstline[3];
+
+  if ((fpin = fopen(filename, "r")) == NULL) {
+    printf("Failed to open file %s\n", filename);
+    exit(0);
+  }
+
+  fscanf(fpin,"%[^\n]s",inpt );
+
+  fclose(fpin); 
+
+  len=0;
+  while (inpt[len]!='\0') len++;
+
+  i=0;k=0;
+  while (inpt[i]==' ') i++;
+  while (i<=len) {
+    if (inpt[i]==' ' || i==len)
+       {
+         l=0;
+         for (j=k; j<i;j++ )
+             temp[l++]=inpt[j];
+         temp[l]='\0';
+         firstline[cnt++]=atoi(temp);
+         while (inpt[i]==' ') i++;
+         k=i;
+         if (i==len) break;
+       }
+     else i++;
+  }
+
+
+  if (cnt==1) 
+    return 0;     /*Mixed element without weight */
+  else if (cnt==2 && firstline[1]>0) 
+    return 1;  /*Fixed element without weight*/
+  else if (cnt==2 && firstline[1]==-1) 
+    return 2; /*Mixed element with weight*/ 
+  else if (cnt==3 && firstline[2]==-1) 
+    return 3; /*Fixed element with weight*/ 
+
+}
+
+
+
 /*************************************************************************
 * This function reads the element node array of a mesh
 **************************************************************************/
-idxtype *ReadMesh(char *filename, int *ne, int *nn, int *etype)
+idxtype *ReadMesh(char *filename, idxtype *ne, idxtype *nn, idxtype *etype)
 {
-  int i, j, k, esize;
+  idxtype i, j, k, esize;
   idxtype *elmnts;
   FILE *fpin;
 
@@ -286,10 +368,7 @@ idxtype *ReadMesh(char *filename, int *ne, int *nn, int *etype)
     exit(0);
   }
 
-  if (fscanf(fpin, "%d %d", ne, etype) != 2) {
-    printf("Header line of input file does not contain two numbers.\n");
-    exit(0);
-  }
+  fscanf(fpin, "%d %d", ne, etype);
 
   switch (*etype) {
     case 1:
@@ -304,6 +383,9 @@ idxtype *ReadMesh(char *filename, int *ne, int *nn, int *etype)
     case 4:
       esize = 4;
       break;
+    case 5:
+      esize = 2;
+      break;
     default:
       errexit("Unknown mesh-element type: %d\n", *etype);
   }
@@ -311,10 +393,7 @@ idxtype *ReadMesh(char *filename, int *ne, int *nn, int *etype)
   elmnts = idxmalloc(esize*(*ne), "ReadMesh: elmnts");
 
   for (j=esize*(*ne), i=0; i<j; i++) {
-    if (fscanf(fpin, "%d", elmnts+i) != 1) {
-      printf("Missing node number %d for element %d\n", i%esize+1, i/esize);
-      exit(0);
-    }
+    fscanf(fpin, "%d", elmnts+i);
     elmnts[i]--;
   }
 
@@ -327,11 +406,253 @@ idxtype *ReadMesh(char *filename, int *ne, int *nn, int *etype)
 
 
 /*************************************************************************
+* This function reads the element node array of a mesh with weight
+**************************************************************************/
+idxtype *ReadMeshWgt(char *filename, idxtype *ne, idxtype *nn, idxtype *etype, idxtype *vwgt)
+{
+  idxtype i, j, k, esize;
+  idxtype *elmnts;
+  FILE *fpin;
+
+  if ((fpin = fopen(filename, "r")) == NULL) {
+    printf("Failed to open file %s\n", filename);
+    exit(0);
+  }
+
+  fscanf(fpin, "%d %d", ne, etype);
+  fscanf(fpin, "%d", &i);
+
+  switch (*etype) {
+    case 1:
+      esize = 3;
+      break;
+    case 2:
+      esize = 4;
+      break;
+    case 3:
+      esize = 8;
+      break;
+    case 4:
+      esize = 4;
+      break;
+    case 5:
+      esize = 2;
+      break;
+    default:
+      errexit("Unknown mesh-element type: %d\n", *etype);
+  }
+
+  elmnts = idxmalloc(esize*(*ne), "ReadMeshWgt: elmnts");
+
+  for (j=0, i=0; i<*ne; i++) {
+
+    fscanf(fpin, "%d", vwgt+i);
+      for (k=0;k<esize;k++) {
+          fscanf(fpin, "%d", elmnts+j);
+          elmnts[j++]--;
+      }
+   }
+
+  fclose(fpin);
+
+  *nn = elmnts[idxamax(j, elmnts)]+1;
+
+  return elmnts;
+}
+
+
+/*************************************************************************
+* This function reads the weights of each elements
+**************************************************************************/
+idxtype *ReadWgt(char *filename, idxtype *ne, idxtype *nn, idxtype *etype)
+{
+  idxtype i, j, k, l, esize;
+  idxtype *vwgt;
+  FILE *fpin;
+
+  if ((fpin = fopen(filename, "r")) == NULL) {
+    printf("Failed to open file %s\n", filename);
+    exit(0);
+  }
+
+  fscanf(fpin, "%d %d", ne, etype);
+  fscanf(fpin, "%d", &i);
+
+  switch (*etype) {
+    case 1:
+      esize = 3;
+      break;
+    case 2:
+      esize = 4;
+      break;
+    case 3:
+      esize = 8;
+      break;
+    case 4:
+      esize = 4;
+      break;
+    case 5:
+      esize = 2;
+      break;
+    default:
+      errexit("Unknown mesh-element type: %d\n", *etype);
+  }
+
+  vwgt = idxmalloc(*ne, "ReadWgt: vwgt");
+
+  for (j=0, i=0; i<*ne; i++) {
+
+    fscanf(fpin, "%d", vwgt+i);
+      for (k=0;k<esize;k++) {
+          fscanf(fpin, "%d", &l);
+          j++;
+      }
+   }
+
+  fclose(fpin);
+
+
+  return vwgt;
+}
+
+
+/*************************************************************************
+* This function reads # of  element of a i Mixed mesh
+**************************************************************************/
+int MixedElements(char *filename)
+{
+  idxtype ne;
+  FILE *fpin;
+
+  if ((fpin = fopen(filename, "r")) == NULL) {
+    printf("Failed to open file %s\n", filename);
+    exit(0);
+  }
+
+  fscanf(fpin, "%d", &ne);
+  fclose(fpin);
+
+  return ne;
+
+}
+
+/*************************************************************************
+* This function reads the element node array of a i Mixed mesh
+**************************************************************************/
+idxtype *ReadMixedMesh(char *filename, idxtype *ne, idxtype *nn, idxtype  *etype)
+{
+  idxtype i, j, k, esize;
+  idxtype *elmnts;
+  FILE *fpin;
+  idxtype sizes[]={-1,3,4,8,4,2};
+
+  if ((fpin = fopen(filename, "r")) == NULL) {
+    printf("Failed to open file %s\n", filename);
+    exit(0);
+  }
+
+  fscanf(fpin, "%d", ne);
+
+
+ elmnts = idxmalloc(8*(*ne), "ReadMixedMesh: elmnts");
+  
+ for (j=0, i=0; i<*ne; i++) {
+    
+    fscanf(fpin, "%d", etype+i);
+      for (k=0;k<sizes[etype[i]];k++) {
+          fscanf(fpin, "%d", elmnts+j);
+          elmnts[j++]--;
+      }
+  }
+
+
+  fclose(fpin);
+
+  *nn = elmnts[idxamax(j, elmnts)]+1;
+
+  return elmnts;
+}
+
+
+/*************************************************************************
+* This function reads the element node array of a  Mixed mesh with weight
+**************************************************************************/
+idxtype *ReadMixedMeshWgt(char *filename, idxtype *ne, idxtype *nn, idxtype  *etype, idxtype *vwgt)
+{
+  idxtype i, j, k, esize;
+  idxtype *elmnts;
+  FILE *fpin;
+  idxtype sizes[]={-1,3,4,8,4,2};
+
+  if ((fpin = fopen(filename, "r")) == NULL) {
+    printf("Failed to open file %s\n", filename);
+    exit(0);
+  }
+
+  fscanf(fpin, "%d", ne);
+
+  fscanf(fpin, "%d", nn);
+
+ elmnts = idxmalloc(8*(*ne), "ReadMixedMeshWgt: elmnts");
+
+ for (j=0, i=0; i<*ne; i++) {
+
+    fscanf(fpin, "%d",etype+i);
+    fscanf(fpin, "%d",vwgt+i);
+
+      for (k=0;k<sizes[etype[i]];k++) {
+          fscanf(fpin, "%d", elmnts+j);
+          elmnts[j++]--;
+      }
+  }
+
+
+  fclose(fpin);
+
+  *nn = elmnts[idxamax(j, elmnts)]+1;
+
+  return elmnts;
+}
+
+/************************************************************************
+* This function reads the element node array of a i Mixed mesh
+**************************************************************************/
+idxtype *ReadMgcnums(char *filename)
+{
+  idxtype i;
+  idxtype *mgc;
+  FILE *fpin;
+
+  if ((fpin = fopen(filename, "r")) == NULL) {
+    printf("Failed to open file %s\n", filename);
+    exit(0);
+  }
+
+ mgc = idxmalloc(36, "Readmgcnums: mgcnums");
+
+ for (i=0; i<36; i++) 
+    {
+      if (i<6 || i%6==0) mgc[i]=-1;
+      else 
+      fscanf(fpin, "%d", mgc+i);
+    }
+  fclose(fpin);
+
+
+  return mgc;
+}
+
+
+
+
+
+
+/*************************************************************************
 * This function writes a graphs into a file 
 **************************************************************************/
-void WriteGraph(char *filename, int nvtxs, idxtype *xadj, idxtype *adjncy)
+void WriteGraph(char *filename, idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
 {
-  int i, j;
+  idxtype i, j;
   FILE *fpout;
 
   if ((fpout = fopen(filename, "w")) == NULL) {
@@ -350,13 +671,39 @@ void WriteGraph(char *filename, int nvtxs, idxtype *xadj, idxtype *adjncy)
   fclose(fpout);
 }
 
+/*************************************************************************
+* This function writes weighted  graph into a file
+**************************************************************************/
+void WriteWgtGraph(char *filename, idxtype nvtxs, idxtype *xadj, idxtype *adjncy, idxtype *vwgt)
+{
+  idxtype i, j;
+  FILE *fpout;
+
+  if ((fpout = fopen(filename, "w")) == NULL) {
+    printf("Failed to open file %s\n", filename);
+    exit(0);
+  }
+
+  fprintf(fpout, "%d %d", nvtxs, xadj[nvtxs]/2);
+  fprintf(fpout, " %d", 10);
+
+  for (i=0; i<nvtxs; i++) {
+    fprintf(fpout, "\n");
+    fprintf(fpout, "%d", vwgt[i]);
+    
+    for (j=xadj[i]; j<xadj[i+1]; j++)
+      fprintf(fpout, " %d", adjncy[j]+1);
+  }
+
+  fclose(fpout);
+}
 
 /*************************************************************************
 * This function writes a graphs into a file 
 **************************************************************************/
 void WriteMocGraph(GraphType *graph)
 {
-  int i, j, nvtxs, ncon;
+  idxtype i, j, nvtxs, ncon;
   idxtype *xadj, *adjncy;
   float *nvwgt;
   char filename[256];
