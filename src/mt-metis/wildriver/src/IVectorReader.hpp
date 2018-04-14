@@ -1,8 +1,8 @@
 /**
  * @file IVectorReader.hpp
  * @brief Interface for reading in vectors.
- * @author Dominique LaSalle <dominique@domnet.org>
- * Copyright 2015
+ * @author Dominique LaSalle <wildriver@domnet.org>
+ * Copyright 2015-2016
  * @version 1
  * @date 2016-02-07
  */
@@ -15,8 +15,6 @@
 
 
 
-
-#include <vector>
 
 #include "base.h"
 
@@ -35,6 +33,7 @@ class IVectorReader
      */
     virtual ~IVectorReader()
     {
+      // do nothing
     }
 
 
@@ -44,25 +43,21 @@ class IVectorReader
      *
      * @return The size of the vector.
      */
-    virtual size_t getSize() = 0;
+    virtual ind_t getSize() = 0;
 
 
-    /**
+   /**
      * @brief Read the values of the vector. 
      *
      * @param vals The values in the vector (output).
+     * @param progress The variable to update as teh vector is loaded (can be
+     * null).
      */
     virtual void read(
-        val_t * vals) = 0;
+        val_t * vals,
+        double * progress) = 0;
 
 
-    /**
-     * @brief Read the values of the vector.
-     *
-     * @param vals The structure to fill with values.
-     */
-    virtual void read(
-        std::vector<val_t> & vals) = 0;
 
 
 };

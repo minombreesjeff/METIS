@@ -1,8 +1,8 @@
 /**
  * @file VectorFactory.cpp
  * @brief Implemnetation of class for 
- * @author Dominique LaSalle <dominique@domnet.org>
- * Copyright 2015
+ * @author Dominique LaSalle <wildriver@domnet.org>
+ * Copyright 2015-2016
  * @version 1
  * @date 2016-02-07
  */
@@ -12,6 +12,7 @@
 
 #include "Exception.hpp"
 #include "VectorFactory.hpp"
+#include "PlainVectorFile.hpp"
 
 
 
@@ -26,16 +27,19 @@ namespace WildRiver
 ******************************************************************************/
 
 
-std::shared_ptr<IVectorFile> OpenFile(
-    std::string const & fname)
+std::unique_ptr<IVectorFile> VectorFactory::make(
+    std::string const & name)
 {
-  std::shared_ptr<IVectorFile> file;
+  std::unique_ptr<IVectorFile> file;
 
   // determine what type of reader to instantiate based on extension
-  throw UnknownExtensionException(std::string("Unknown filetype: ") + fname);
+  if (PlainVectorFile::hasExtension(name)) {
+    file.reset(new PlainVectorFile(name));
+  } else {
+    throw UnknownExtensionException(std::string("Unknown filetype: ") + name);
+  }
  
   return file;
-
 }
 
 

@@ -1,7 +1,7 @@
 /**
  * @file CSRFile_test.cpp
  * @brief Test for reading and writing CSR formatted csrs.
- * @author Dominique LaSalle <lasalle@cs.umn.edu>
+ * @author Dominique LaSalle <wildriver@domnet.org>
  * Copyright 2015
  * @version 1
  *
@@ -71,7 +71,7 @@ static void readTest(
   std::unique_ptr<wildriver_dim_t[]> rowind(new wildriver_dim_t[nnz]);
   std::unique_ptr<wildriver_val_t[]> rowval(new wildriver_val_t[nnz]);
 
-  csr.read(rowptr.get(),rowind.get(),rowval.get());
+  csr.read(rowptr.get(),rowind.get(),rowval.get(),nullptr);
 
   // test rowptr
   testEquals(rowptr[0],0);

@@ -1,8 +1,8 @@
 /**
  * @file Exception.hpp
  * @brief Exceptions used within WildRiver
- * @author Dominique LaSalle <lasalle@cs.umn.edu>
- * Copyright 2015
+ * @author Dominique LaSalle <wildriver@domnet.org>
+ * Copyright 2015-2016
  * @version 1
  *
  */
@@ -10,8 +10,8 @@
 
 
 
-#ifndef SRC_EXCEPTION_HPP
-#define SRC_EXCEPTION_HPP
+#ifndef WILDRIVER_EXCEPTION_HPP
+#define WILDRIVER_EXCEPTION_HPP
 
 
 

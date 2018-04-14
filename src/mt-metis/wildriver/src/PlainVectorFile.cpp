@@ -1,8 +1,8 @@
 /**
  * @file PlainVectorFile.cpp
  * @brief Implemenation of PlainVectorFile class.
- * @author Dominique LaSalle <dominique@domnet.org>
- * Copyright 2015
+ * @author Dominique LaSalle <wildriver@domnet.org>
+ * Copyright 2015-2016
  * @version 1
  * @date 2016-02-08
  */
@@ -21,29 +21,31 @@ namespace WildRiver
 
 
 /******************************************************************************
-* PROTECTED FUNCTIONS *********************************************************
+* PUBLIC STATIC FUNCTIONS *****************************************************
 ******************************************************************************/
 
 
-val_t PlainVectorFile::getNextValue()
+bool PlainVectorFile::hasExtension(
+    std::string const & f)
 {
-  if (!nextNoncommentLine(buffer)) {
-    throw EOFException("Hit end of file before getting next value");
-  }
+  std::vector<std::string> extensions;
 
-  if (typeid(val_t) == typeid(double) || typeid(val_t) == typeid(float)) {
-    return static_cast<val_t>(std::stod(buffer));
-  } else {
-    return static_cast<val_t>(std::stoll(buffer));
-  }
+  extensions.push_back(".txt");
+  extensions.push_back(".vec");
+  extensions.push_back(".perm");
+  extensions.push_back(".part");
+  extensions.push_back(".cluster");
+
+  return TextFile::matchExtension(f,extensions);
 }
 
 
-void PlainVectorFile::setNextValue(
-    val_t val)
-{
-  getStream() << val << std::endl; 
-}
+
+
+/******************************************************************************
+* PROTECTED FUNCTIONS *********************************************************
+******************************************************************************/
+
 
 bool PlainVectorFile::isComment(
     std::string const & line) const noexcept
@@ -70,7 +72,8 @@ bool PlainVectorFile::isComment(
 
 PlainVectorFile::PlainVectorFile(
     std::string const & name) :
-  VectorTextFile(name)
+  VectorTextFile(name),
+  m_buffer()
 {
   // do nothing
 }
@@ -87,25 +90,81 @@ PlainVectorFile::~PlainVectorFile()
 ******************************************************************************/
 
 
-size_t PlainVectorFile::getSize()
+ind_t PlainVectorFile::getSize()
 {
   if (!isSizeSet()) {
     size_t nlines = 0;
-    std::string buffer;
+    std::string m_buffer;
 
     if (!isOpenRead()) {
       openRead();
     }
 
     // cout non-comment lines
-    while (nextNoncommentLine(buffer)) {
+    while (nextNoncommentLine(m_buffer)) {
       ++nlines;
     }
 
     VectorFile::setSize(nlines);
+
+    // go back to the beginning
+    resetStream();
   }
 
   return VectorFile::getSize();
+}
+
+
+void PlainVectorFile::read(
+    val_t * const vals,
+    double * progress)
+{
+  if (!isOpenRead()) {
+    openRead();
+  }
+
+  const size_t n = getSize();
+
+  resetStream();
+
+  ind_t const interval = n > 100 ? n / 100 : 1;
+  double const increment = 1.0 / 100.0;
+  
+  for (size_t i = 0; i < n; ++i) {
+    if (!nextNoncommentLine(m_buffer)) {
+      throw EOFException("Hit end of file before getting next value");
+    }
+
+    if (typeid(val_t) == typeid(double) || typeid(val_t) == typeid(float)) {
+      vals[i] = static_cast<val_t>(std::stod(m_buffer));
+    } else {
+      vals[i] = static_cast<val_t>(std::stoll(m_buffer));
+    }
+
+    if (progress != nullptr && i % interval == 0) {
+      *progress += increment;
+    }
+  }
+}
+
+
+void PlainVectorFile::write(
+    val_t const * const vals,
+    double  * progress)
+{
+  if (!isSizeSet()) {
+    throw UnsetInfoException("Size of vector is not set before call to " \
+        "write()");
+  }
+
+  if (!isOpenWrite()) {
+    openWrite();
+  }
+
+  const size_t n = getSize();
+  for (size_t i = 0; i < n; ++i) {
+	  getStream() << vals[i] << std::endl;	
+  }
 }
 
 

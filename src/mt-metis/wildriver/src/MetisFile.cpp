@@ -1,17 +1,11 @@
 /**
  * @file MetisFile.cpp
  * @brief Class functions for reading and writing metis graph files.
- * @author Dominique LaSalle <lasalle@cs.umn.edu>
- * Copyright 2015
+ * @author Dominique LaSalle <wildriver@domnet.org>
+ * Copyright 2015-2016
  * @version 1
  *
  */
-
-
-
-
-#ifndef SRC_METISFILE_CPP
-#define SRC_METISFILE_CPP
 
 
 
@@ -44,7 +38,37 @@ enum {
 ******************************************************************************/
 
 
-std::string const MetisFile::name = "Metis";
+namespace
+{
+
+
+static size_t const BUFFER_SIZE = 4096;
+
+
+}
+
+
+std::string const MetisFile::NAME = "Metis";
+
+
+
+
+/******************************************************************************
+* PUBLIC STATIC FUNCTIONS *****************************************************
+******************************************************************************/
+
+
+bool MetisFile::hasExtension(
+    std::string const & f)
+{
+  std::vector<std::string> extensions;
+
+  extensions.push_back(".graph");
+  extensions.push_back(".metis");
+  extensions.push_back(".chaco");
+
+  return TextFile::matchExtension(f,extensions);
+}
 
 
 
@@ -77,19 +101,6 @@ int MetisFile::getWeightFlags()
 ******************************************************************************/
 
 
-bool MetisFile::hasExtension(
-    std::string const & f)
-{
-  std::vector<std::string> extensions;
-
-  extensions.push_back(".graph");
-  extensions.push_back(".metis");
-  extensions.push_back(".chaco");
-
-  return TextFile::matchExtension(f,extensions);
-}
-
-
 bool MetisFile::isComment(
     std::string const & line) const noexcept
 {
@@ -101,7 +112,7 @@ bool MetisFile::isComment(
   comment_chars['"'] = true;
   comment_chars['/'] = true;
 
-  return line.size() > 0 && comment_chars[line[0]];
+  return line.size() > 0 && comment_chars[static_cast<uint8_t>(line[0])];
 }
 
 
@@ -187,7 +198,8 @@ void MetisFile::writeHeader()
 
 MetisFile::MetisFile(
     std::string const & fname) : 
-  GraphTextFile(fname)
+  GraphTextFile(fname),
+  m_line(BUFFER_SIZE,'\0')
 {
 }
 
@@ -221,93 +233,88 @@ void MetisFile::firstVertex()
 
 
 bool MetisFile::getNextRow(
-    std::vector<MatrixEntry> & row)
+    dim_t * const numNonZeros,
+    dim_t * const columns,
+    val_t * const values)
+
 {
-  std::string line;
-
-  // get my line
-  if (!nextNoncommentLine(line)) {
-    return false;
-  }
-
-  row.clear();
-
-  dim_t const nvtxs = getNumVertices();
-  bool ewgts = hasEdgeWeights();
-
-  // read in edges
-  while (!line.empty() && \
-      line.find_first_not_of(" \t\r\n") != std::string::npos) {
-    size_t offset;
-    MatrixEntry e;
-    e.ind = std::stoull(line,&offset,10) - 1;
-    line = line.substr(offset);
-
-    // make sure this is a valid edge
-    if (e.ind >= nvtxs) {
-      throw BadFileException(std::string("Edge with destination of ") + \
-          std::to_string(e.ind) + std::string("/") + \
-          std::to_string(nvtxs));
-    }
-
-    if (ewgts) {
-      e.val = std::stod(line,&offset);
-      line = line.substr(offset);
-    }
-    
-    row.push_back(e);
-  }
+  return getNextVertex(nullptr,numNonZeros,columns,values);
 }
 
 
 bool MetisFile::getNextVertex(
-    std::vector<val_t> & vwgts,
-    std::vector<MatrixEntry> & list)
+        val_t * vertexWeights,
+        dim_t * numEdges,
+        dim_t * edgeDests,
+        val_t * edgeWeights)
 {
-  int const ncon = getNumVertexWeights();
+  dim_t const ncon = getNumVertexWeights();
 
-  std::string line;
-
-  // get my line
-  if (!nextNoncommentLine(line)) {
+  // get my m_line
+  if (!nextNoncommentLine(m_line)) {
     return false;
   }
 
-  vwgts.clear();
-  list.clear();
+  char * sptr;
+  char * eptr = (char*)m_line.data();
 
   // read in vertex weights
   for (dim_t k=0; k<ncon; ++k) {
-    size_t offset;
-    vwgts.push_back(std::stod(line,&offset));
-    line = line.substr(offset);
+    sptr = eptr;
+    val_t val = std::strtod(sptr,&eptr);
+    if (sptr == eptr) {
+      throw BadFileException(std::string("Failed to read vertex weight on " \
+            "line ") + std::to_string(getCurrentLine()));
+    }
+    if (vertexWeights) {
+      vertexWeights[k] = val;
+    }
   }
 
   dim_t const nvtxs = getNumVertices();
   bool ewgts = hasEdgeWeights();
 
+  dim_t degree = 0;
   // read in edges
-  while (!line.empty() && \
-      line.find_first_not_of(" \t\r\n") != std::string::npos) {
-    size_t offset;
-    MatrixEntry e;
-    e.ind = std::stoull(line,&offset,10) - 1;
-    line = line.substr(offset);
+  while (true) {
+    dim_t dst;
+    val_t wgt;
+
+    sptr = eptr;
+    dst = static_cast<dim_t>(std::strtoull(sptr,&eptr,10))-1;
+    if (sptr == eptr) {
+      break;
+    }
 
     // make sure this is a valid edge
-    if (e.ind >= nvtxs) {
+    if (dst >= nvtxs) {
       throw BadFileException(std::string("Edge with destination of ") + \
-          std::to_string(e.ind) + std::string("/") + \
+          std::to_string(dst) + std::string("/") + \
           std::to_string(nvtxs));
     }
 
     if (ewgts) {
-      e.val = std::stod(line,&offset);
-      line = line.substr(offset);
+      sptr = eptr;
+      wgt = static_cast<val_t>(std::strtod(sptr,&eptr));
+      if (sptr == eptr) {
+        throw BadFileException(std::string("Could not read edge weight at "
+              "line ") + std::to_string(getCurrentLine()));
+      }
+    }
+
+    edgeDests[degree] = dst;
+    if (edgeWeights) {
+      if (ewgts) {
+        edgeWeights[degree] = wgt;
+      } else {
+        edgeWeights[degree] = static_cast<val_t>(1);
+      }
     }
     
-    list.push_back(e);
+    ++degree;
   }
+
+  *numEdges = degree;
 
   // indicate that we successfully found a vertex
   return true;
@@ -315,13 +322,13 @@ bool MetisFile::getNextVertex(
 
 
 void MetisFile::setNextRow(
-    std::vector<MatrixEntry> const & row)
+    std::vector<matrix_entry_struct> const & row)
 {
   dim_t const nadj = row.size();
   bool const ewgts = hasEdgeWeights();
 
   for (dim_t j=0; j<nadj; ++j) {
-    MatrixEntry e = row[j];
+    matrix_entry_struct e = row[j];
     getStream() << (e.ind+1);
     if (ewgts) {
       getStream() << " " << e.val;
@@ -339,9 +346,9 @@ void MetisFile::setNextRow(
 
 void MetisFile::setNextVertex(
     std::vector<val_t> const & vwgts,
-    std::vector<MatrixEntry> const & list)
+    std::vector<matrix_entry_struct> const & list)
 {
-  int const ncon = getNumVertexWeights();
+  dim_t const ncon = getNumVertexWeights();
   dim_t const nadj = list.size();
 
   // set vertex weights
@@ -360,8 +367,3 @@ void MetisFile::setNextVertex(
 
 
 }
-
-
-
-
-#endif

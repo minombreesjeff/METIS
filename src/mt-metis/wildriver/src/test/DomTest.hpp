@@ -1,7 +1,7 @@
 /**
  * @file DomTest.hpp
  * @brief Top level header for DomTest 
- * @author Dominique LaSalle <dominique@domnet.org>
+ * @author Dominique LaSalle <wildriver@domnet.org>
  * Copyright 2015
  * @version 1
  * @date 2015-08-22
@@ -89,6 +89,13 @@ class TestFailed : public std::logic_error
 /******************************************************************************
 * TEST CLASS ******************************************************************
 ******************************************************************************/
+
+
+static void removeFile(
+    std::string const & file)
+{
+  remove(file.c_str());
+}
 
 
 class Test

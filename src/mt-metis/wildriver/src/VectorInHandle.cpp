@@ -1,17 +1,17 @@
 /**
- * @file MatrixHandle.cpp
- * @brief Class for reading all matrix types. Uses PIMPL.
- * @author Dominique LaSalle <wildriver@domnet.org>
- * Copyright 2015-2016
+ * @file VectorInHandle.cpp
+ * @brief Implementation of the VectorInHandle class.
+ * @author Dominique LaSalle <dominique@domnet.org>
+ * Copyright 2016
  * @version 1
- *
+ * @date 2016-10-25
  */
 
 
 
 
-#include "MatrixInHandle.hpp"
-#include "MatrixFactory.hpp"
+#include "VectorInHandle.hpp"
+#include "VectorFactory.hpp"
 
 
 
@@ -25,16 +25,15 @@ namespace WildRiver
 ******************************************************************************/
 
 
-MatrixInHandle::MatrixInHandle(
+VectorInHandle::VectorInHandle(
     std::string const & name) :
-  m_reader(MatrixFactory::make(name))
-  
+  m_reader(VectorFactory::make(name))
 {
   // do nothing
 }
 
 
-MatrixInHandle::~MatrixInHandle()
+VectorInHandle::~VectorInHandle()
 {
   // do nothing
 }
@@ -47,22 +46,17 @@ MatrixInHandle::~MatrixInHandle()
 ******************************************************************************/
 
 
-void MatrixInHandle::getInfo(
-    dim_t & nrows,
-    dim_t & ncols,
-    ind_t & nnz)
+ind_t VectorInHandle::getSize()
 {
-  m_reader->getInfo(nrows,ncols,nnz);
+  return m_reader->getSize();
 }
 
 
-void MatrixInHandle::readSparse(
-    ind_t * rowptr,
-    dim_t * rowind,
-    val_t * rowval,
+void VectorInHandle::read(
+    val_t * const vals,
     double * progress)
 {
-  m_reader->read(rowptr,rowind,rowval,progress);
+  m_reader->read(vals,progress);
 }
 
 

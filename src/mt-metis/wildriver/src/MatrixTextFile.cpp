@@ -1,17 +1,11 @@
 /**
  * @file MatrixTextFile.cpp
  * @brief Abstract providing common code for matrix reading/writing classes.
- * @author Dominique LaSalle <lasalle@cs.umn.edu>
- * Copyright 2015
+ * @author Dominique LaSalle <wildriver@domnet.org>
+ * Copyright 2015-2016
  * @version 1
  *
  */
-
-
-
-
-#ifndef SRC_MATRIXFILE_CPP
-#define SRC_MATRIXFILE_CPP
 
 
 
@@ -23,7 +17,8 @@
 
 
 
-namespace WildRiver {
+namespace WildRiver
+{
 
 
 /******************************************************************************
@@ -55,8 +50,8 @@ MatrixTextFile::MatrixTextFile(
     std::string const & name) :
   TextFile(name),
   MatrixFile(),
-  current_row(0),
-  read_nnz(0)
+  read_nnz(0),
+  current_row(0)
 {
   // do nothing
 }
@@ -78,39 +73,39 @@ MatrixTextFile::~MatrixTextFile()
 void MatrixTextFile::read(
     ind_t * const rowptr,
     dim_t * const rowind,
-    val_t * const rowval)
+    val_t * const rowval,
+    double * const progress)
 {
-  std::vector<MatrixEntry> row;
+  std::vector<matrix_entry_struct> row;
 
   dim_t nrows = getNumRows();
+
+  dim_t const interval = nrows > 100 ? nrows / 100 : 1;
+  double const increment = 1.0/100.0;
 
   // read in the rows the matrix into our csr
   dim_t j = 0;
   rowptr[0] = j;
   for (dim_t i=0; i<nrows; ++i) {
-    if (!getNextRow(row)) {
+    dim_t degree;
+
+    dim_t * const rowindStart = rowind+rowptr[i];
+    val_t * const rowvalStart = rowval ? rowval+rowptr[i] : nullptr;
+
+    if (!getNextRow(&degree,rowindStart,rowvalStart)) {
       // fewer rows than expected
       throw EOFException(std::string("Failed to read row ") + \
           std::to_string(i) + std::string("/") + std::to_string(nrows)); 
     }
 
-    // populate the row
-    for (MatrixEntry entry : row) {
-      if (j >= getNNZ()) {
-        throw BadFileException(std::string("Found more than ") + \
-            std::to_string(getNNZ()) + std::string(" non-zeroes in file."));
-      }
+    rowptr[i+1] = rowptr[i]+degree;
 
-      rowind[j] = entry.ind;
-      if (rowval) {
-        rowval[j] = entry.val;
-      }
-      ++j;
+    if (progress != nullptr && i % interval == 0) {
+      *progress += increment;
     }
-    rowptr[i+1] = j;
   }
 
-  if (j != getNNZ()) {
+  if (rowptr[nrows] != getNNZ()) {
     // we read in the wrong number of non-zeroes
     throw EOFException(std::string("Only found ") + std::to_string(j) + \
         std::string("/") + std::to_string(getNNZ()) + \
@@ -124,7 +119,7 @@ void MatrixTextFile::write(
     dim_t const * const rowind,
     val_t const * const rowval)
 {
-  std::vector<MatrixEntry> row;
+  std::vector<matrix_entry_struct> row;
 
   dim_t const nrows = getNumRows();
 
@@ -132,7 +127,7 @@ void MatrixTextFile::write(
     // build and insert a new row
     row.clear();
     for (ind_t j=rowptr[i];j<rowptr[i+1];++j) {
-      MatrixEntry entry;
+      matrix_entry_struct entry;
 
       entry.ind = rowind[j];
       if (rowval) {
@@ -150,8 +145,3 @@ void MatrixTextFile::write(
 
 
 }
-
-
-
-
-#endif

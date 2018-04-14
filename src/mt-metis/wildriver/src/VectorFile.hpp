@@ -1,8 +1,8 @@
 /**
  * @file VectorFile.hpp
  * @brief Base abstract class for vector files.
- * @author Dominique LaSalle <dominique@domnet.org>
- * Copyright 2015
+ * @author Dominique LaSalle <wildriver@domnet.org>
+ * Copyright 2015-2016
  * @version 1
  * @date 2016-02-07
  */
@@ -33,12 +33,6 @@ class VectorFile :
   public IVectorFile
 
 {
-  private:
-    /**
-     * @brief Underlying vector structure.
-     */
-    Vector vector;
-
   public:
     /**
      * @brief Default constructor which intializes the vector properties. 
@@ -58,9 +52,9 @@ class VectorFile :
      *
      * @return The size of the vector.
      */
-    virtual size_t getSize() override
+    virtual ind_t getSize() override
     {
-      return vector.getSize();
+      return m_vector.getSize();
     }
 
 
@@ -70,9 +64,9 @@ class VectorFile :
      * @param size The new size of the vector.
      */
     virtual void setSize(
-        const size_t size) override
+        const ind_t size) override
     {
-      vector.setSize(size);
+      m_vector.setSize(size);
     }
 
 
@@ -83,8 +77,16 @@ class VectorFile :
      */
     bool isSizeSet() const noexcept
     {
-      return vector.isSizeSet();
+      return m_vector.isSizeSet();
     }
+
+
+  private:
+    /**
+     * @brief Underlying vector structure.
+     */
+    Vector m_vector;
+
 
 
 

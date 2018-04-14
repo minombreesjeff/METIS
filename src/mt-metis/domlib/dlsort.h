@@ -31,7 +31,7 @@
     } \
     size ## _prefixsum_exc(counts,size+1); \
     for (i=0;i<n;++i) { \
-      out[counts[keys[i]]++] = vals[i]; \
+      out[start[keys[i]]++] = vals[i]; \
     } \
     dl_free(counts); \
     return out; \

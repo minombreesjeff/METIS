@@ -1,8 +1,8 @@
 /**
  * @file IVectorWriter.hpp
  * @brief Interface for writing out vectors.
- * @author Dominique LaSalle <dominique@domnet.org>
- * Copyright 2015
+ * @author Dominique LaSalle <wildriver@domnet.org>
+ * Copyright 2015-2016
  * @version 1
  * @date 2016-02-07
  */
@@ -44,26 +44,20 @@ class IVectorWriter
      * @param size The new size of the vector.
      */
     virtual void setSize(
-        size_t size) = 0;
+        ind_t size) = 0;
 
 
     /**
      * @brief Write the vector to the underlying medium. 
      *
      * @param vals The dense array of values in the vector.
+     * @param progress The variable to update as teh vector is saved (can be
+     * null).
      */
     virtual void write(
-        val_t const * vals) = 0;
+        val_t const * vals,
+        double * progress) = 0;
 
-
-    /**
-     * @brief Write the vector to the underlying medium. This function ignores
-     * previous calls to setSize().
-     *
-     * @param vals The values to write as the vector.
-     */
-    virtual void write(
-        std::vector<val_t> const & vals) = 0;
 
 
 };

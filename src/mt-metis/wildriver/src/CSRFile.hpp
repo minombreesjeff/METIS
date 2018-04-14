@@ -1,8 +1,8 @@
 /**
  * @file CSRFile.hpp
  * @brief Class for reading/writing metis files.
- * @author Dominique LaSalle <lasalle@cs.umn.edu>
- * Copyright 2015
+ * @author Dominique LaSalle <wildriver@domnet.org>
+ * Copyright 2015-2016
  * @version 1
  *
  */
@@ -10,8 +10,8 @@
 
 
 
-#ifndef SRC_CSRFILE_HPP
-#define SRC_CSRFILE_HPP
+#ifndef WILDRIVER_CSRFILE_HPP
+#define WILDRIVER_CSRFILE_HPP
 
 
 
@@ -27,40 +27,13 @@ namespace WildRiver {
 class CSRFile : 
   public MatrixTextFile
 {
-  private:
+  public:
     /**
      * @brief Name of this filetype.
      */
-    static std::string const name;
+    static std::string const NAME;
 
 
-  protected:
-    /**
-     * @brief Read the header of this matrix file. Populates internal fields
-     * with the header information.
-     */
-    virtual void readHeader() override;
-
-
-    /**
-     * @brief Write the header of this matrix file. The header consists of
-     * internal fields set by "setInfo()".
-     */
-    virtual void writeHeader() override; 
-
-
-    /**
-     * @brief Determine the given line is a comment.
-     *
-     * @param line The line.
-     *
-     * @return True if the line is a comment.
-     */
-    virtual bool isComment(
-        std::string const & line) const noexcept override;
-
-
-  public:
     /**
      * @brief Check if the given filename matches an extension for this 
      * filetype.
@@ -95,14 +68,20 @@ class CSRFile :
 
 
     /**
-     * @brief Set the next row in the matrix file.
+     * @brief Get the next row in the matrix (adjacecny list in the graph).
      *
-     * @param next The row to set.
+     * @param numNonZeros The number of non-zeros in the row (output).
+     * @param columns The column of each non-zero entry (must be of length at
+     * least the number of non-zero entries).
+     * @param values The value of each non-zero entry (must be null or of 
+     * length at least the number of non-zero entries).
      *
-     * @return The true if the row was read, false if EOF was encountered. 
+     * @return True if another row was found in the file.
      */
     virtual bool getNextRow(
-        std::vector<MatrixEntry> & next) override;
+        dim_t * numNonZeros,
+        dim_t * columns,
+        val_t * values) override;
 
 
     /**
@@ -111,7 +90,7 @@ class CSRFile :
      * @param next The row to set.
      */
     virtual void setNextRow(
-        std::vector<MatrixEntry> const & next) override;
+        std::vector<matrix_entry_struct> const & next) override;
 
 
     /**
@@ -121,8 +100,40 @@ class CSRFile :
      */
     virtual std::string const & getName() const noexcept override
     {
-      return name;
+      return NAME;
     } 
+
+
+  protected:
+    /**
+     * @brief Read the header of this matrix file. Populates internal fields
+     * with the header information.
+     */
+    virtual void readHeader() override;
+
+
+    /**
+     * @brief Write the header of this matrix file. The header consists of
+     * internal fields set by "setInfo()".
+     */
+    virtual void writeHeader() override; 
+
+
+    /**
+     * @brief Determine the given line is a comment.
+     *
+     * @param line The line.
+     *
+     * @return True if the line is a comment.
+     */
+    virtual bool isComment(
+        std::string const & line) const noexcept override;
+
+
+  private:
+    std::string m_line;
+
+
 
 
 };

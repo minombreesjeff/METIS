@@ -1,7 +1,7 @@
 /**
  * @file IDenseMatrixWriter.hpp
  * @brief Interface for writing out dense matrices.
- * @author Dominique LaSalle <dominique@domnet.org>
+ * @author Dominique LaSalle <wildriver@domnet.org>
  * Copyright 2016
  * @version 1
  * @date 2016-02-06
@@ -15,10 +15,13 @@
 
 
 
+
 #include <string>
 #include <vector>
 
 #include "base.h"
+
+
 
 
 namespace WildRiver
@@ -33,6 +36,7 @@ class IDenseMatrixWriter
      */
     virtual ~IDenseMatrixWriter()
     {
+      // do nothing
     }
 
 
@@ -65,6 +69,8 @@ class IDenseMatrixWriter
      * @return The matrix writer type name.
      */
     virtual std::string const & getName() const noexcept = 0;
+
+
 
 
 };

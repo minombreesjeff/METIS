@@ -1,17 +1,11 @@
 /**
  * @file GraphHandle.cpp
  * @brief Class for reading all matrix types. Uses PIMPL.
- * @author Dominique LaSalle <lasalle@cs.umn.edu>
- * Copyright 2015
+ * @author Dominique LaSalle <wildriver@domnet.org>
+ * Copyright 2015-2016
  * @version 1
  *
  */
-
-
-
-
-#ifndef SRC_MATRIXINHANDLE_CPP
-#define SRC_MATRIXINHANDLE_CPP
 
 
 
@@ -32,9 +26,10 @@ namespace WildRiver
 
 
 GraphInHandle::GraphInHandle(
-    std::string const & fname)
+    std::string const & name) :
+  m_reader(GraphFactory::make(name))
 {
-  reader = GraphFactory::OpenFile(fname);
+  // do nothing
 }
 
 
@@ -57,7 +52,7 @@ void GraphInHandle::getInfo(
     int & nvwgt,
     bool & ewgts)
 {
-  reader->getInfo(nvtxs,nedges,nvwgt,ewgts);
+  m_reader->getInfo(nvtxs,nedges,nvwgt,ewgts);
 }
 
 
@@ -65,24 +60,13 @@ void GraphInHandle::readGraph(
     ind_t * const xadj,
     dim_t * const adjncy,
     val_t * const vwgt,
-    val_t * const adjwgt)
+    val_t * const adjwgt,
+    double * progress)
 {
-  reader->read(xadj,adjncy,vwgt,adjwgt);
-}
-
-
-dim_t GraphInHandle::getNextVertex(
-        std::vector<val_t> & vwgt,
-        std::vector<MatrixEntry> & list)
-{
-  return reader->getNextVertex(vwgt,list);
-}
-
-
+  m_reader->read(xadj,adjncy,vwgt,adjwgt,progress);
 }
 
 
 
 
-#endif
-
+}

@@ -1,8 +1,8 @@
 /**
  * @file IGraphFile.hpp
  * @brief Interface for graph files.
- * @author Dominique LaSalle <lasalle@cs.umn.edu>
- * Copyright 2015, Regents of the University of Minnesota
+ * @author Dominique LaSalle <wildriver@domnet.org>
+ * Copyright 2015-2016
  * @version 1
  *
  */

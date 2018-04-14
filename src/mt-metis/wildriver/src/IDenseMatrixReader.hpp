@@ -1,8 +1,8 @@
 /**
  * @file IDenseMatrixReader.hpp
  * @brief Interface for reading dense matrices.
- * @author Dominique LaSalle <dominique@domnet.org>
- * Copyright 2015
+ * @author Dominique LaSalle <wildriver@domnet.org>
+ * Copyright 2015-2016
  * @version 1
  * @date 2016-02-06
  */
@@ -12,6 +12,7 @@
 
 #ifndef WILDRIVER_IDENSEMATRIXREADER_HPP
 #define WILDRIVER_IDENSEMATRIXREADER_HPP
+
 
 
 
@@ -35,6 +36,7 @@ class IDenseMatrixReader
      */
     virtual ~IDenseMatrixReader()
     {
+      // do nothing
     }
 
 

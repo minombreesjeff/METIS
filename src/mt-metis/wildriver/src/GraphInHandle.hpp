@@ -1,8 +1,8 @@
 /**
  * @file GraphInHandle.hpp
  * @brief Class for reading all graph types. Uses PIMPL.
- * @author Dominique LaSalle <lasalle@cs.umn.edu>
- * Copyright 2015
+ * @author Dominique LaSalle <wildriver@domnet.org>
+ * Copyright 2015-2016
  * @version 1
  *
  */
@@ -30,33 +30,6 @@ namespace WildRiver
 
 class GraphInHandle
 {
-  private:
-    /**
-     * @brief A pointer to the underlying graph reader.
-     */
-    std::shared_ptr<IGraphReader> reader;
-
-
-    /**
-     * @brief Private copy constructor declared to disable copying.
-     *
-     * @param handle The handle to copy.
-     */
-    GraphInHandle(
-        GraphInHandle const & handle);
-
-
-    /**
-     * @brief Private assignment operator declared to disable copying.
-     *
-     * @param handle The handle to copy.
-     *
-     * @return The new handle.
-     */
-    GraphInHandle & operator=(
-        GraphInHandle const & handle);
-
-
   public:
     /**
      * @brief Create a new file handle for reading matrices.
@@ -84,12 +57,15 @@ class GraphInHandle
      * @param adjwgt The edge weights (length nedges). This may be NULL in
      * order to ignore edge weights. If it is specified and the file does not
      * contain edge weights, it will be filled with ones.
+     * @param progress The variable to update as the graph is loaded (may be
+     * null).
      */
     void readGraph(
         ind_t * xadj,
         dim_t * adjncy,
         val_t * vwgt,
-        val_t * adjwgt);
+        val_t * adjwgt,
+        double * progress = nullptr);
 
   
     /**
@@ -107,17 +83,33 @@ class GraphInHandle
         bool & ewgts);
 
 
+  private:
     /**
-     * @brief Get the information of the next vertex.
-     *
-     * @param vwgt The vertex weight(s).
-     * @param list The adjacency list of the vertex.
-     *
-     * @return The current vertex number.
+     * @brief A pointer to the underlying graph reader.
      */
-    dim_t getNextVertex(
-        std::vector<val_t> & vwgt,
-        std::vector<MatrixEntry> & list);
+    std::unique_ptr<IGraphReader> m_reader;
+
+
+    /**
+     * @brief Private copy constructor declared to disable copying.
+     *
+     * @param handle The handle to copy.
+     */
+    GraphInHandle(
+        GraphInHandle const & handle);
+
+
+    /**
+     * @brief Private assignment operator declared to disable copying.
+     *
+     * @param handle The handle to copy.
+     *
+     * @return The new handle.
+     */
+    GraphInHandle & operator=(
+        GraphInHandle const & handle);
+
+
 
 
 };

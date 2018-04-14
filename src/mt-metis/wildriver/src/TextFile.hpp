@@ -1,8 +1,8 @@
 /**
  * @file TextFile.hpp
  * @brief Abstract class for text files (both graphs and matrices).
- * @author Dominique LaSalle <lasalle@cs.umn.edu>
- * Copyright 2015, Regents of the University of Minnesota
+ * @author Dominique LaSalle <wildriver@domnet.org>
+ * Copyright 2015-2016
  * @version 1
  *
  */
@@ -32,29 +32,52 @@ namespace WildRiver
 
 class TextFile
 {
-  private:
+  public:
     /**
-     * @brief The current state of the file.
+     * @brief Create a new text file from the given filename/path.
+     *
+     * @param fname The filename/path.
      */
-    int state;
-
-
-    /**
-     * @brief The current line number of the filestream.
-     */
-    size_t current_line;
+    TextFile(
+        std::string const & fname);
 
 
     /**
-     * @brief The filename/path of this file.
+     * @brief Close the underlying filestream if opened.
      */
-    std::string fname;
+    virtual ~TextFile();
 
 
     /**
-     * @brief The I/O stream for this file.
+     * @brief Get the filename/path of this file.
+     *
+     * @return The filename/path.
      */
-    std::fstream stream;
+    virtual std::string const & getFilename() const noexcept
+    {
+      return m_name;
+    }
+
+
+    /**
+     * @brief Retrieve the next line in the file.
+     *
+     * @param line The string to populate with the contents of the next line.
+     *
+     * @return True if the line was successfully read, false otherwise.
+     */
+    bool nextLine(std::string & line);
+
+
+    /**
+     * @brief Retrieve the next non-comment line from the file.
+     *
+     * @param line The string to populate with the contents of the next
+     * non-comment line.
+     *
+     * @return True if the line was successfully read, false otherwise.
+     */
+    bool nextNoncommentLine(std::string & line);
 
 
   protected:
@@ -90,34 +113,13 @@ class TextFile
 
 
     /**
-     * @brief Retrieve the next line in the file.
-     *
-     * @param line The string to populate with the contents of the next line.
-     *
-     * @return True if the line was successfully read, false otherwise.
-     */
-    bool nextLine(std::string & line);
-
-
-    /**
-     * @brief Retrieve the next non-comment line from the file.
-     *
-     * @param line The string to populate with the contents of the next
-     * non-comment line.
-     *
-     * @return True if the line was successfully read, false otherwise.
-     */
-    bool nextNoncommentLine(std::string & line);
-
-
-    /**
      * @brief Get the current line in the file.
      *
      * @return The current line in the file.
      */
     inline size_t getCurrentLine() const
     {
-      return current_line;
+      return m_currentLine;
     }
 
 
@@ -128,7 +130,7 @@ class TextFile
      */
     inline std::iostream & getStream()
     {
-      return stream;
+      return m_stream;
     }
 
 
@@ -159,31 +161,31 @@ class TextFile
         std::string const & line) const noexcept = 0;
 
 
-  public:
+  private:
     /**
-     * @brief Create a new text file from the given filename/path.
-     *
-     * @param fname The filename/path.
+     * @brief The current state of the file.
      */
-    TextFile(
-        std::string const & fname);
+    int m_state;
 
 
     /**
-     * @brief Close the underlying filestream if opened.
+     * @brief The current line number of the filestream.
      */
-    ~TextFile();
+    size_t m_currentLine;
 
 
     /**
-     * @brief Get the filename/path of this file.
-     *
-     * @return The filename/path.
+     * @brief The filename/path of this file.
      */
-    virtual std::string const & getFilename() const noexcept
-    {
-      return fname;
-    }
+    std::string m_name;
+
+
+    /**
+     * @brief The I/O stream for this file.
+     */
+    std::fstream m_stream;
+
+
 
 
 };

@@ -1,17 +1,11 @@
 /**
  * @file GraphOutHandle.cpp
  * @brief Classfor writing all graph types.
- * @author Dominique LaSalle <dominique@domnet.org>
- * Copyright 2015
+ * @author Dominique LaSalle <wildriver@domnet.org>
+ * Copyright 2015-2016
  * @version 1
  *
  */
-
-
-
-
-#ifndef WILDRIVER_GRAPHOUTHANEL_CPP
-#define WILDRIVER_GRAPHOUTHANEL_CPP
 
 
 
@@ -33,9 +27,10 @@ namespace WildRiver
 
 
 GraphOutHandle::GraphOutHandle(
-    std::string const & fname)
+    std::string const & name) :
+  m_writer(GraphFactory::make(name))
 {
-  writer = GraphFactory::OpenFile(fname);
+  // do nothing
 }
 
 
@@ -58,7 +53,7 @@ void GraphOutHandle::writeGraph(
     val_t const * const vwgt,
     val_t const * const adjwgt)
 {
-  writer->write(xadj,adjncy,vwgt,adjwgt);
+  m_writer->write(xadj,adjncy,vwgt,adjwgt);
 }
 
 
@@ -68,23 +63,18 @@ void GraphOutHandle::setInfo(
     int const nvwgt,
     bool const ewgts)
 {
-  writer->setInfo(nvtxs,nedges,nvwgt,ewgts);
+  m_writer->setInfo(nvtxs,nedges,nvwgt,ewgts);
 }
 
 
 void GraphOutHandle::setNextVertex(
     std::vector<val_t> const & vwgts,
-    std::vector<MatrixEntry> const & list)
+    std::vector<matrix_entry_struct> const & list)
 {
-  writer->setNextVertex(vwgts,list);
+  m_writer->setNextVertex(vwgts,list);
 }
 
 
 
 
 }
-
-
-
-
-#endif

@@ -1,17 +1,11 @@
 /**
  * @file MatrixGraphFile.cpp
  * @brief An adapter class for treating matrices as graphs.
- * @author Dominique LaSalle <lasalle@cs.umn.edu>
- * Copyright 2015, Regents of the University of Minnesota
+ * @author Dominique LaSalle <wildriver@domnet.org>
+ * Copyright 2015-2016
  * @version 1
  *
  */
-
-
-
-
-#ifndef WILDRIVER_MATRIXGRAPHFILE_CPP
-#define WILDRIVER_MATRIXGRAPHFILE_CPP
 
 
 
@@ -31,15 +25,16 @@ namespace WildRiver
 
 
 MatrixGraphFile::MatrixGraphFile(
-    IMatrixFile * const mfile) :
-  file(mfile)
+    std::unique_ptr<IMatrixFile>& file) :
+  m_file(std::move(file))
 {
+  // do nothing
 }
 
 
 MatrixGraphFile::~MatrixGraphFile()
 {
-  delete file;
+  // do nothing
 }
 
 
@@ -58,7 +53,7 @@ void MatrixGraphFile::getInfo(
   dim_t nrows, ncols;
   ind_t nnz;
 
-  file->getInfo(nrows,ncols,nnz);
+  m_file->getInfo(nrows,ncols,nnz);
 
   nvtxs = nrows;
   nedges = nnz;
@@ -83,7 +78,7 @@ void MatrixGraphFile::setInfo(
   // TODO: add an internal state for edge weights, such that they can be
   // surpessed via this function.
 
-  file->setInfo(nvtxs,nvtxs,nedges);
+  m_file->setInfo(nvtxs,nvtxs,nedges);
 }
 
 
@@ -91,12 +86,13 @@ void MatrixGraphFile::read(
     ind_t * const xadj,
     dim_t * const adjncy,
     val_t * const vwgt,
-    val_t * const adjwgt)
+    val_t * const adjwgt,
+    double * progress)
 {
   dim_t nrows, ncols;
   ind_t nnz;
 
-  file->getInfo(nrows,ncols,nnz);
+  m_file->getInfo(nrows,ncols,nnz);
 
   // fill vertex weights with ones if requested
   if (vwgt) {
@@ -105,7 +101,7 @@ void MatrixGraphFile::read(
     }
   }
 
-  file->read(xadj,adjncy,adjwgt);
+  m_file->read(xadj,adjncy,adjwgt,progress);
 }
 
 
@@ -115,41 +111,40 @@ void MatrixGraphFile::write(
     val_t const * const vwgt,
     val_t const * const adjwgt)
 {
-  file->write(xadj,adjncy,adjwgt);
+  m_file->write(xadj,adjncy,adjwgt);
 }
 
 
 void MatrixGraphFile::firstVertex()
 {
-  file->firstRow();
+  m_file->firstRow();
 }
 
 
 bool MatrixGraphFile::getNextVertex(
-    std::vector<val_t> & vwgt,
-    std::vector<MatrixEntry> & list)
+    val_t *,
+    dim_t * const degree,
+    dim_t * const edgeDests,
+    val_t * const edgeWeights)
 {
-  return file->getNextRow(list);
+  return m_file->getNextRow(degree,edgeDests,edgeWeights);
 }
 
 
 void MatrixGraphFile::setNextVertex(
     std::vector<val_t> const & vwgts,
-    std::vector<MatrixEntry> const & list)
+    std::vector<matrix_entry_struct> const & list)
 {
-  file->setNextRow(list);
+  m_file->setNextRow(list);
 }
 
 
 std::string const & MatrixGraphFile::getName() const noexcept
 {
-  return file->getName();
+  return m_file->getName();
 }
 
 
+
+
 }
-
-
-
-
-#endif

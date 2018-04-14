@@ -1,17 +1,17 @@
 /**
- * @file MatrixHandle.cpp
- * @brief Class for reading all matrix types. Uses PIMPL.
- * @author Dominique LaSalle <wildriver@domnet.org>
- * Copyright 2015-2016
+ * @file VectorOutHandle.cpp
+ * @brief Implementation of VectorOutHandle class.
+ * @author Dominique LaSalle <dominique@domnet.org>
+ * Copyright 2016
  * @version 1
- *
+ * @date 2016-10-25
  */
 
 
 
 
-#include "MatrixInHandle.hpp"
-#include "MatrixFactory.hpp"
+#include "VectorOutHandle.hpp"
+#include "VectorFactory.hpp"
 
 
 
@@ -25,16 +25,15 @@ namespace WildRiver
 ******************************************************************************/
 
 
-MatrixInHandle::MatrixInHandle(
+VectorOutHandle::VectorOutHandle(
     std::string const & name) :
-  m_reader(MatrixFactory::make(name))
-  
+  m_writer(VectorFactory::make(name))
 {
   // do nothing
 }
 
 
-MatrixInHandle::~MatrixInHandle()
+VectorOutHandle::~VectorOutHandle()
 {
   // do nothing
 }
@@ -47,22 +46,13 @@ MatrixInHandle::~MatrixInHandle()
 ******************************************************************************/
 
 
-void MatrixInHandle::getInfo(
-    dim_t & nrows,
-    dim_t & ncols,
-    ind_t & nnz)
+void VectorOutHandle::write(
+    val_t const * const vals,
+    ind_t const size,
+    double * const progress)
 {
-  m_reader->getInfo(nrows,ncols,nnz);
-}
-
-
-void MatrixInHandle::readSparse(
-    ind_t * rowptr,
-    dim_t * rowind,
-    val_t * rowval,
-    double * progress)
-{
-  m_reader->read(rowptr,rowind,rowval,progress);
+  m_writer->setSize(size);
+  m_writer->write(vals,progress);
 }
 
 

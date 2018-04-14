@@ -1,8 +1,8 @@
 /**
  * @file IGraphWriter.hpp
  * @brief Interface for writing graphs.
- * @author Dominique LaSalle <lasalle@cs.umn.edu>
- * Copyright 2015, Regents of the University of Minnesota
+ * @author Dominique LaSalle <wildriver@domnet.org>
+ * Copyright 2015-2016
  * @version 1
  *
  */
@@ -88,7 +88,7 @@ class IGraphWriter
      */
     virtual void setNextVertex(
         std::vector<val_t> const & vwgts,
-        std::vector<MatrixEntry> const & list) = 0;
+        std::vector<matrix_entry_struct> const & list) = 0;
 
 
     /**

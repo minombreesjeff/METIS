@@ -1,8 +1,8 @@
 /**
  * @file GraphFile.hpp
  * @brief Base abstract class for graph files. 
- * @author Dominique LaSalle <dominique@domnet.org>
- * Copyright 2015
+ * @author Dominique LaSalle <wildriver@domnet.org>
+ * Copyright 2015-2016
  * @version 1
  * @date 2016-02-05
  */
@@ -15,8 +15,10 @@
 
 
 
+
 #include "IGraphFile.hpp"
 #include "MatrixFile.hpp"
+
 
 
 
@@ -28,17 +30,121 @@ class GraphFile :
   public MatrixFile,
   public IGraphFile
 {
-  private:
+  public:
     /**
-     * @brief Indicates whether edge weights are present in this graph file.
+     * @brief Default constructor which initializes a graph with an invalid
+     * number of vertices and edges.
      */
-    bool ewgts;
+    GraphFile();
 
 
     /**
-     * @brief The number of vertex weights associated with thsi graph file.
+     * @brief Destructor.
      */
-    int nvwgts;
+    virtual ~GraphFile();
+
+
+    /**
+     * @brief Get information about the graph.
+     *
+     * @param nvtxs The number of vertices.
+     * @param nedges The number of edges (directed).
+     * @param nvwgt The number of vertex weights (constraints).
+     * @param ewgts Whether or not edge weights are specified.
+     */
+    virtual void getInfo(
+        dim_t & nvtxs,
+        ind_t & nedges,
+        int & nvwgt,
+        bool & ewgts) override;
+
+
+    /**
+     * @brief Set the information for the graph. This must be called before
+     * writing the graph.
+     *
+     * @param nvtxs The number of vertices.
+     * @param nedges The number of edges (an undirected edge counts as two).
+     * @param nvwgt The number of vertex weights (constraints).
+     * @param ewgts Whether or not edge weights are present.
+     */
+    virtual void setInfo(
+        dim_t nvtxs,
+        ind_t nedges,
+        int nvwgt,
+        bool ewgts) override;
+
+
+    /**
+     * @brief Read the CSR structure of the graph.
+     *
+     * @param xadj The adjacency list pointer (length nvtxs+1).
+     * @param adjncy The adjacency list (length nedges).
+     * @param vwgt The vertex weights (length nvtxs*nvwgt). This may be NULL in
+     * order to ignore vertex weights. If it is specified and the file does not
+     * contain vertex weights, it will be filled with ones.
+     * @param adjwgt The edge weights (length nedges). This may be NULL in
+     * order to ignore edge weights. If it is specified and the file does not
+     * contain edge weights, it will be filled with ones.
+     * @param progress The variable to update as the graph is loaded (may be
+     * null).
+     */
+    virtual void read(
+        ind_t * xadj,
+        dim_t * adjncy,
+        val_t * vwgt,
+        val_t * adjwgt,
+        double * progress) override = 0;
+
+
+    /**
+     * @brief Write a graph file from the given CSR structure.
+     *
+     * @param xadj The adjacency list pointer (length nvtxs+1).
+     * @param adjncy The adjacency list (length nedges).
+     * @param vwgt The vertex weights. 
+     * @param adjwgt The edge weights.
+     */
+    virtual void write(
+        ind_t const * xadj,
+        dim_t const * adjncy,
+        val_t const * vwgt,
+        val_t const * adjwgt) override = 0;
+
+
+    /**
+     * @brief Get the graph in CSR form. The pointers must be
+     * pre-allocated to the sizes required by the info of the matrix 
+     *
+     * |rowptr| = nrows + 1
+     * |rowind| = nnz
+     * |rowval| = nnz
+     *
+     * @param rowptr The row pointer indicating the start of each row.
+     * @param rowind The row column indexs (i.e., for each element in a row,
+     * the column index corresponding to that element).
+     * @param rowval The row values.
+     * @param progress The variable to update as the matrix is loaded (may be
+     * null).
+     */
+    virtual void read(
+        ind_t * rowptr,
+        dim_t * rowind,
+        val_t * rowval,
+        double * progress) override;
+
+
+    /**
+     * @brief Write the CSR structure to the graph file.
+     *
+     * @param rowptr The row pointer / xadj.
+     * @param rowind The row index / adjncy.
+     * @param rowval The row val / adjwgt.
+     */
+    virtual void write(
+        ind_t const * rowptr,
+        dim_t const * rowind,
+        val_t const * rowval) override;
 
 
    protected:
@@ -96,7 +202,7 @@ class GraphFile :
      */
     inline bool hasEdgeWeights() const noexcept
     {
-      return ewgts;
+      return m_ewgts;
     }
 
 
@@ -108,7 +214,7 @@ class GraphFile :
     inline void hasEdgeWeights(
         bool const ewgts) noexcept
     {
-      this->ewgts = ewgts;
+      m_ewgts = ewgts;
     }
 
 
@@ -119,7 +225,7 @@ class GraphFile :
      */
     inline int getNumVertexWeights() const noexcept
     {
-      return nvwgts;
+      return m_nvwgts;
     }
 
 
@@ -131,7 +237,7 @@ class GraphFile :
     inline void setNumVertexWeights(
         int const nvwgts) noexcept
     {
-      this->nvwgts = nvwgts;
+      m_nvwgts = nvwgts;
     }
 
 
@@ -141,115 +247,19 @@ class GraphFile :
     virtual void resetStream() = 0;
 
 
-  public:
+  private:
     /**
-     * @brief Default constructor which initializes a graph with an invalid
-     * number of vertices and edges.
+     * @brief Indicates whether edge weights are present in this graph file.
      */
-    GraphFile();
-
-
-    /**
-     * @brief Destructor.
-     */
-    virtual ~GraphFile();
+    bool m_ewgts;
 
 
     /**
-     * @brief Get information about the graph.
-     *
-     * @param nvtxs The number of vertices.
-     * @param nedges The number of edges (directed).
-     * @param nvwgt The number of vertex weights (constraints).
-     * @param ewgts Whether or not edge weights are specified.
+     * @brief The number of vertex weights associated with thsi graph file.
      */
-    virtual void getInfo(
-        dim_t & nvtxs,
-        ind_t & nedges,
-        int & nvwgt,
-        bool & ewgts) override;
+    int m_nvwgts;
 
 
-    /**
-     * @brief Set the information for the graph. This must be called before
-     * writing the graph.
-     *
-     * @param nvtxs The number of vertices.
-     * @param nedges The number of edges (an undirected edge counts as two).
-     * @param nvwgt The number of vertex weights (constraints).
-     * @param ewgts Whether or not edge weights are present.
-     */
-    virtual void setInfo(
-        dim_t nvtxs,
-        ind_t nedges,
-        int nvwgt,
-        bool ewgts) override;
-
-
-    /**
-     * @brief Read the CSR structure of the graph.
-     *
-     * @param xadj The adjacency list pointer (length nvtxs+1).
-     * @param adjncy The adjacency list (length nedges).
-     * @param vwgt The vertex weights (length nvtxs*nvwgt). This may be NULL in
-     * order to ignore vertex weights. If it is specified and the file does not
-     * contain vertex weights, it will be filled with ones.
-     * @param adjwgt The edge weights (length nedges). This may be NULL in
-     * order to ignore edge weights. If it is specified and the file does not
-     * contain edge weights, it will be filled with ones.
-     */
-    virtual void read(
-        ind_t * xadj,
-        dim_t * adjncy,
-        val_t * vwgt,
-        val_t * adjwgt) override = 0;
-
-
-    /**
-     * @brief Write a graph file from the given CSR structure.
-     *
-     * @param xadj The adjacency list pointer (length nvtxs+1).
-     * @param adjncy The adjacency list (length nedges).
-     * @param vwgt The vertex weights. 
-     * @param adjwgt The edge weights.
-     */
-    virtual void write(
-        ind_t const * xadj,
-        dim_t const * adjncy,
-        val_t const * vwgt,
-        val_t const * adjwgt) override = 0;
-
-
-    /**
-     * @brief Get the graph in CSR form. The pointers must be
-     * pre-allocated to the sizes required by the info of the matrix 
-     *
-     * |rowptr| = nrows + 1
-     * |rowind| = nnz
-     * |rowval| = nnz
-     *
-     * @param rowptr The row pointer indicating the start of each row.
-     * @param rowind The row column indexs (i.e., for each element in a row,
-     * the column index corresponding to that element).
-     * @param rowval The row values.
-     */
-    virtual void read(
-        ind_t * rowptr,
-        dim_t * rowind,
-        val_t * rowval) override;
-
-
-    /**
-     * @brief Write the CSR structure to the graph file.
-     *
-     * @param rowptr The row pointer / xadj.
-     * @param rowind The row index / adjncy.
-     * @param rowval The row val / adjwgt.
-     */
-    virtual void write(
-        ind_t const * rowptr,
-        dim_t const * rowind,
-        val_t const * rowval) override;
 
 
 

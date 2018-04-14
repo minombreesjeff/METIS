@@ -1,8 +1,8 @@
 /**
  * @file MatrixInHandle.hpp
  * @brief Class for reading all matrix types. Uses PIMPL.
- * @author Dominique LaSalle <lasalle@cs.umn.edu>
- * Copyright 2015
+ * @author Dominique LaSalle <wildriver@domnet.org>
+ * Copyright 2015-2016
  * @version 1
  *
  */
@@ -10,13 +10,12 @@
 
 
 
-#ifndef SRC_MATRIXINHANDLE_HPP
-#define SRC_MATRIXINHANDLE_HPP
+#ifndef WILDRIVER_MATRIXINHANDLE_HPP
+#define WILDRIVER_MATRIXINHANDLE_HPP
 
 
 
 
-#include <vector>
 #include <memory>
 
 #include "IMatrixReader.hpp"
@@ -30,24 +29,20 @@ namespace WildRiver
 
 class MatrixInHandle
 {
-  private:
-    std::shared_ptr<IMatrixReader> reader;
-
-    // disable copying
-    MatrixInHandle(
-        MatrixInHandle const & handle);
-    MatrixInHandle & operator=(
-        MatrixInHandle const & handle);
-
-
   public:
     /**
      * @brief Create a new file handle for reading matrices.
      *
-     * @param fname The filename/path of the file to read.
+     * @param name The filename/path of the file to read.
      */
     MatrixInHandle(
-        std::string const & fname);
+        std::string const & name);
+
+
+    /**
+     * @brief Close the handle.
+     */
+    ~MatrixInHandle();
 
 
     /**
@@ -75,28 +70,29 @@ class MatrixInHandle
      * @param rowind The row column indexs (i.e., for each element in a row,
      * the column index corresponding to that element).
      * @param rowval The row values.
+     * @param progress The variable to update as the matrix is loaded from 0.0
+     * to 1.0 (can be null).
      */
     void readSparse(
         ind_t * rowptr,
         dim_t * rowind,
-        val_t * rowval);
+        val_t * rowval,
+        double * progress = nullptr);
 
 
-    /**
-     * @brief Set the next row in the matrix file.
-     *
-     * @param next The row to set.
-     *
-     * @return The number of rows in the matrix. 
-     */
-    dim_t getNextRow(
-        std::vector<MatrixEntry> & next);
+  private:
+    std::unique_ptr<IMatrixReader> m_reader;
 
 
-    /**
-     * @brief Close the handle.
-     */
-    ~MatrixInHandle();
+    // disable copying
+    MatrixInHandle(
+        MatrixInHandle const & handle);
+    MatrixInHandle & operator=(
+        MatrixInHandle const & handle);
+
+
+
+
 };
 
 

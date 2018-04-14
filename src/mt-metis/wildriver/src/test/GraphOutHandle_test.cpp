@@ -1,7 +1,7 @@
 /**
  * @file GraphOutHandle_test.cpp
  * @brief Test for reading matrices
- * @author Dominique LaSalle <lasalle@cs.umn.edu>
+ * @author Dominique LaSalle <wildriver@domnet.org>
  * Copyright 2015
  * @version 1
  *

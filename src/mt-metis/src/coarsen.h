@@ -1,5 +1,5 @@
 /**
- * @file coarse.h
+ * @file coarsen.h
  * @brief Functions for coarsening
  * @author Dominique LaSalle <lasalle@cs.umn.edu>
  * Copyright 2014, Regents of the University of Minnesota

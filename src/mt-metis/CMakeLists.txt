@@ -70,6 +70,7 @@ endif()
 set(REQ_LIBS ${REQ_LIBS} m)
 
 if (DEFINED DEVEL AND NOT DEVEL EQUAL 0)
+  message("Development warnings enabled")
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror") 
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall") 
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wextra") 
@@ -91,9 +92,6 @@ endif()
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-
-# make sure we get the POSIX things
-add_definitions(-D_POSIX_C_SOURCE=1)
 
 # handle graph utils wgts
 add_definitions(-DWILDRIVER_INT_WEIGHTS=1)

@@ -1,7 +1,7 @@
 /**
  * @file IMatrixWriter.hpp
  * @brief Interface for writing out sparse matrices.
- * @author Dominique LaSalle <lasalle@cs.umn.edu>
+ * @author Dominique LaSalle <wildriver@domnet.org>
  * Copyright 2015-2016
  * @version 1
  * @date 2015-09-02
@@ -39,6 +39,7 @@ class IMatrixWriter
      */
     virtual ~IMatrixWriter() 
     {
+      // do nothing
     }
 
 
@@ -82,7 +83,7 @@ class IMatrixWriter
      * @param next The row to set.
      */
     virtual void setNextRow(
-        std::vector<MatrixEntry> const & next) = 0;
+        std::vector<matrix_entry_struct> const & next) = 0;
 
 
     /**

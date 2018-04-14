@@ -1,8 +1,8 @@
 /**
  * @file PlainVectorFile.hpp
  * @brief Concrete class text vector files.
- * @author Dominique LaSalle <dominique@domnet.org>
- * Copyright 2015
+ * @author Dominique LaSalle <wildriver@domnet.org>
+ * Copyright 2015-2016
  * @version 1
  * @date 2016-02-08
  */
@@ -13,6 +13,7 @@
 
 #ifndef WILDIRVER_PLAINVECTORFILE_HPP
 #define WILDIRVER_PLAINVECTORFILE_HPP
+
 
 
 
@@ -28,42 +29,19 @@ namespace WildRiver
 class PlainVectorFile :
   public VectorTextFile
 {
-  private:
-    /**
-     * @brief The string for buffer read lines into.
-     */
-    std::string buffer;
-
-
-  protected:
-    /**
-     * @brief get the next value from the file.
-     *
-     * @return the next value.
-     */
-    val_t getNextValue() override;
-
-
-    /**
-     * @brief Set the next value in the file.
-     *
-     * @param val The next value.
-     */
-    void setNextValue(
-        val_t val) override;
-
-    /**
-     * @brief Determine the given line is a comment.
-     *
-     * @param line The line.
-     *
-     * @return True if the line is a comment.
-     */
-    virtual bool isComment(
-        std::string const & line) const noexcept override;
-
-
   public:
+    /**
+     * @brief Check if the given filename matches an extension for this 
+     * filetype.
+     *
+     * @param f The filename.
+     *
+     * @return True if the extension matches this filetype.
+     */
+    static bool hasExtension(
+        std::string const & f);
+
+
     /**
      * @brief Open a plain vector file for reading or writing.
      *
@@ -85,7 +63,52 @@ class PlainVectorFile :
      *
      * @return The size of the vector.
      */
-    virtual size_t getSize() override;
+    virtual ind_t getSize() override;
+
+
+    /**
+     * @brief Read the values of the vector. 
+     *
+     * @param vals The values in the vector (output).
+     * @param progress The variable to update as teh vector is loaded (can be
+     * null).
+     */
+    virtual void read(
+        val_t * vals,
+        double * progress) override;
+
+
+
+    /**
+     * @brief Save the values of the vector.
+     *
+     * @param vals The values in the vector.
+     * @param progress The variable to update as the vector is saved (can be
+     * null).
+     */
+    virtual void write(
+        val_t const * vals,
+        double * progress) override;
+
+
+
+  protected:
+    /**
+     * @brief Determine the given line is a comment.
+     *
+     * @param line The line.
+     *
+     * @return True if the line is a comment.
+     */
+    virtual bool isComment(
+        std::string const & line) const noexcept override;
+
+
+  private:
+    /**
+     * @brief The string for buffer read lines into.
+     */
+    std::string m_buffer;
 
 
 

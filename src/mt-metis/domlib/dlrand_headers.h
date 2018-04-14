@@ -1,6 +1,6 @@
 /**
  * @file dlrand_headers.h
- * @brief Function protoDLRAND_TYPE_Ts for generating random numbers and shuffling
+ * @brief Function prototypes for generating random numbers and shuffling
  * @author Dominique LaSalle <lasalle@cs.umn.edu>
  * Copyright (c) 2013-2015, Dominique LaSalle
  * @version 1

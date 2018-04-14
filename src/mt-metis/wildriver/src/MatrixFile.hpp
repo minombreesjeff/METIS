@@ -1,8 +1,8 @@
 /**
  * @file MatrixFile.hpp
  * @brief Base abstract class for matrix files.
- * @author Dominique LaSalle <dominique@domnet.org>
- * Copyright 2015
+ * @author Dominique LaSalle <wildriver@domnet.org>
+ * Copyright 2015-2016
  * @version 1
  * @date 2016-02-05
  */
@@ -31,69 +31,7 @@ class MatrixFile :
   public Matrix,
   public IMatrixFile
 {
-  private:
-    /**
-     * @brief The number of non-zeros in the matrix.
-     */
-    ind_t nnz;
-
-
-    /**
-     * @brief Indicating whether or not the matrix information has been set.
-     */
-    bool info_set;
-
-
-  protected:
-    /**
-     * @brief Get the number of non-zero elements in this matrix.
-     *
-     * @return The number of non-zero elements in this matrix.
-     */
-    inline ind_t getNNZ() const noexcept
-    {
-      return nnz;
-    }
-
-
-    /**
-     * @brief Set the number of non-zeroes in this matrix.
-     *
-     * @param n The new number of non-zeros.
-     */
-    inline void setNNZ(
-        ind_t const n) noexcept
-    {
-      nnz = n;
-    }
-
-
-    /**
-     * @brief Read the header of this matrix file. Populates internal fields
-     * with the header information.
-     */
-    virtual void readHeader() = 0;
-
-
-    /**
-     * @brief Write the header of this matrix file. The header consists of
-     * internal fields set by "setInfo()".
-     */
-    virtual void writeHeader() = 0; 
-
-
   public:
-    /**
-     * @brief Allocate a new matrix file subclass, based on the file extension.
-     *
-     * @param fname The filename/path.
-     *
-     * @return A pointer to the new matrix file instantion.
-     */
-    static std::shared_ptr<IMatrixFile> OpenFile(
-        std::string const & fname);
-
-
     /**
      * @brief Default constructor which initializes a matrix with invalid
      * nrows, ncols, and nnz.
@@ -145,11 +83,14 @@ class MatrixFile :
      * @param rowind The row column indexs (i.e., for each element in a row,
      * the column index corresponding to that element).
      * @param rowval The row values.
+     * @param progress The variable to update as the matrix is loaded (may be
+     * null).
      */
     virtual void read(
         ind_t * rowptr,
         dim_t * rowind,
-        val_t * rowval) override = 0;
+        val_t * rowval,
+        double * progress) override = 0;
 
 
     /**
@@ -165,6 +106,60 @@ class MatrixFile :
         ind_t const * rowptr,
         dim_t const * rowind,
         val_t const * rowval) override = 0;
+
+
+  protected:
+    /**
+     * @brief Get the number of non-zero elements in this matrix.
+     *
+     * @return The number of non-zero elements in this matrix.
+     */
+    inline ind_t getNNZ() const noexcept
+    {
+      return m_nnz;
+    }
+
+
+    /**
+     * @brief Set the number of non-zeroes in this matrix.
+     *
+     * @param n The new number of non-zeros.
+     */
+    inline void setNNZ(
+        ind_t const n) noexcept
+    {
+      m_nnz = n;
+    }
+
+
+    /**
+     * @brief Read the header of this matrix file. Populates internal fields
+     * with the header information.
+     */
+    virtual void readHeader() = 0;
+
+
+    /**
+     * @brief Write the header of this matrix file. The header consists of
+     * internal fields set by "setInfo()".
+     */
+    virtual void writeHeader() = 0; 
+
+
+  private:
+    /**
+     * @brief The number of non-zeros in the matrix.
+     */
+    ind_t m_nnz;
+
+
+    /**
+     * @brief Indicating whether or not the matrix information has been set.
+     */
+    bool m_infoSet;
+
+
+
 
 
 };

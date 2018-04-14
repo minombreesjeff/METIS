@@ -1,8 +1,8 @@
 /**
  * @file GraphTextFile.hpp
  * @brief Abstract class for reading and writing graphs.
- * @author Dominique LaSalle <lasalle@cs.umn.edu>
- * Copyright 2015, Regents of the University of Minnesota
+ * @author Dominique LaSalle <wildriver@domnet.org>
+ * Copyright 2015-2016
  * @version 1
  *
  */
@@ -34,28 +34,6 @@ class GraphTextFile :
   public TextFile,
   public GraphFile
 {
-  private:
-    dim_t current_vertex;
-
-
-  protected:
-    /**
-     * @brief Incremenet the current vertex in the stream.
-     *
-     * @return The new vertex number. 
-     */
-    dim_t incVertex();
-
-
-    /**
-     * @brief Go to the beginning of the filestream.
-     */
-    virtual void resetStream() override 
-    {
-      TextFile::resetStream();
-    }
-
-
   public:
     /**
      * @brief Create a new graph file.
@@ -83,12 +61,15 @@ class GraphTextFile :
      * @param adjwgt The edge weights (length nedges). This may be NULL in
      * order to ignore edge weights. If it is specified and the file does not
      * contain edge weights, it will be filled with ones.
+     * @param progress The variable to update as the graph is loaded (may be
+     * null).
      */
     virtual void read(
         ind_t * xadj,
         dim_t * adjncy,
         val_t * vwgt,
-        val_t * adjwgt) override;
+        val_t * adjwgt,
+        double * progress) override;
 
 
     /**
@@ -115,6 +96,34 @@ class GraphTextFile :
     {
       return TextFile::getFilename();
     }
+
+
+  protected:
+    /**
+     * @brief Incremenet the current vertex in the stream.
+     *
+     * @return The new vertex number. 
+     */
+    dim_t incVertex();
+
+
+    /**
+     * @brief Go to the beginning of the filestream.
+     */
+    virtual void resetStream() override 
+    {
+      TextFile::resetStream();
+    }
+
+
+
+
+
+  private:
+    dim_t m_currentVertex;
+
+
+
 
 
 };

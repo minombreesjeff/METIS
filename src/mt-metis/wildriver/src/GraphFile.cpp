@@ -1,8 +1,8 @@
 /**
  * @file GraphFile.cpp
  * @brief Implementation of the GraphFile base abstract class.
- * @author Dominique LaSalle <dominique@domnet.org>
- * Copyright 2015
+ * @author Dominique LaSalle <wildriver@domnet.org>
+ * Copyright 2015-2016
  * @version 1
  * @date 2016-02-05
  */
@@ -24,8 +24,8 @@ namespace WildRiver
 
 
 GraphFile::GraphFile() :
-  ewgts(false),
-  nvwgts(0)
+  m_ewgts(false),
+  m_nvwgts(0)
 {
   // do nothing
 }
@@ -83,9 +83,10 @@ void GraphFile::setInfo(
 void GraphFile::read(
     ind_t * rowptr,
     dim_t * rowind,
-    val_t * rowval)
+    val_t * rowval,
+    double * progress)
 {
-  read(rowptr,rowind,NULL,rowval);
+  read(rowptr,rowind,NULL,rowval,progress);
 }
 
 

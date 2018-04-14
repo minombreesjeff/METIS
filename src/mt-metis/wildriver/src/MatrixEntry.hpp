@@ -1,8 +1,8 @@
 /**
  * @file MatrixEntry.hpp
  * @brief Structure a matrix entry.
- * @author Dominique LaSalle <lasalle@cs.umn.edu>
- * Copyright 2015
+ * @author Dominique LaSalle <wildriver@domnet.org>
+ * Copyright 2015-2016
  * @version 1
  *
  */
@@ -10,8 +10,8 @@
 
 
 
-#ifndef SRC_MATRIXENTRY_HPP
-#define SRC_MATRIXENTRY_HPP
+#ifndef WILDRIVER_MATRIXENTRY_HPP
+#define WILDRIVER_MATRIXENTRY_HPP
 
 
 
@@ -29,7 +29,7 @@ namespace WildRiver
  * @brief Structure for holding the column index and value of an entry in a
  * sparse matrix.
  */
-struct MatrixEntry 
+struct matrix_entry_struct 
 {
   /**
    * @brief Column index of the entry.

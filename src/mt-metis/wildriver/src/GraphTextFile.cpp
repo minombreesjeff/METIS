@@ -1,17 +1,10 @@
 /**
  * @file GraphTextFile.cpp
  * @brief Abstract class for reading and writing graphs.
- * @author Dominique LaSalle <lasalle@cs.umn.edu>
- * Copyright 2015, Regents of the University of Minnesota
+ * @author Dominique LaSalle <wildriver@domnet.org>
+ * Copyright 2015-2016
  * @version 1
- *
  */
-
-
-
-
-#ifndef WILDRIVER_GRAPHFILE_CPP
-#define WILDRIVER_GRAPHFILE_CPP
 
 
 
@@ -20,6 +13,7 @@
 #include "MetisFile.hpp"
 #include "CSRFile.hpp"
 #include "MatrixGraphFile.hpp"
+
 
 
 
@@ -34,15 +28,15 @@ namespace WildRiver
 
 dim_t GraphTextFile::incVertex()
 {
-  if (current_vertex >= getNumVertices()) {
+  if (m_currentVertex >= getNumVertices()) {
     throw BadFileStateException(std::string("Attempt to increase current " \
         "vertex beyond the number of vertices: ") + \
         std::to_string(getNumRows()));
   }
 
-  ++current_vertex;
+  ++m_currentVertex;
 
-  return current_vertex;
+  return m_currentVertex;
 }
 
 
@@ -54,9 +48,9 @@ dim_t GraphTextFile::incVertex()
 
 
 GraphTextFile::GraphTextFile(
-    std::string const & fname) :
-  TextFile(fname),
-  current_vertex(0)
+    std::string const & name) :
+  TextFile(name),
+  m_currentVertex(0)
 {
   // do nothing
 }
@@ -79,46 +73,41 @@ void GraphTextFile::read(
     ind_t * const xadj,
     dim_t * const adjncy,
     val_t * const vwgt,
-    val_t * const adjwgt)
+    val_t * const adjwgt,
+    double * progress)
 {
   dim_t const nvtxs = getNumVertices();
-  int const ncon = getNumVertexWeights();
-  bool const ewgts = hasEdgeWeights();
+  dim_t const ncon = getNumVertexWeights();
+
+  dim_t const interval = nvtxs > 100 ? nvtxs / 100 : 1;
+  double const increment = 1/100.0;
 
   xadj[0] = 0;
   for (dim_t i=0; i<nvtxs; ++i) {
+    dim_t degree;
+
+    val_t * const vwgtStart = (ncon > 0 && vwgt) ? vwgt+(i*ncon) : nullptr;
+    dim_t * const adjncyStart = adjncy+xadj[i];
+    val_t * const adjwgtStart = adjwgt ? adjwgt+xadj[i] : nullptr;
+
     // retrieve row
-    std::vector<val_t> vwgts;
-    std::vector<MatrixEntry> list;
-    if (!getNextVertex(vwgts,list)) {
+    if (!getNextVertex(vwgtStart,&degree,adjncyStart,adjwgtStart)) {
       throw BadFileException(std::string("Premature end of file: ") + \
           std::to_string(i) + std::string("/") + std::to_string(nvtxs) + \
           std::string(" vertices found."));
     }
 
     // handle vertex weights
-    if (ncon > 0) {
-      for (dim_t k=0; k<ncon; ++k) {
-        vwgt[(i*ncon)+k] = vwgts[k];
-      }
-    } else if (vwgt) {
+    if (ncon == 0 && vwgt) {
       // set unit vertex weights
       vwgt[i] = 1;
     }
 
-    // handle edges 
-    ind_t const adjstart = xadj[i];
-    dim_t j;
-    for (j=0; j<list.size(); ++j) {
-      adjncy[adjstart+j] = list[j].ind; 
-      if (ewgts) {
-        adjwgt[adjstart+j] = list[j].val;
-      } else if (adjwgt) {
-        // set unit edge weights
-        adjwgt[adjstart+j] = 1;
-      }
+    xadj[i+1] = xadj[i]+degree;
+
+    if (progress != nullptr && i % interval == 0) {
+      *progress += increment;
     }
-    xadj[i+1] = adjstart+j;
   }
 }
 
@@ -130,12 +119,12 @@ void GraphTextFile::write(
     val_t const * const adjwgt)
 {
   dim_t const nvtxs = getNumVertices();
-  int const ncon = getNumVertexWeights();
+  dim_t const ncon = getNumVertexWeights();
   bool const ewgts = hasEdgeWeights();
 
   for (dim_t i=0; i<nvtxs; ++i) {
     std::vector<val_t> vwgts;
-    std::vector<MatrixEntry> list;
+    std::vector<matrix_entry_struct> list;
 
     // build vertex weight vector
     for (dim_t k=0; k<ncon; ++k) {
@@ -144,7 +133,7 @@ void GraphTextFile::write(
 
     // build edges
     for (ind_t j=xadj[i]; j<xadj[i+1]; ++j) {
-      MatrixEntry e;
+      matrix_entry_struct e;
       e.ind = adjncy[j];
       if (ewgts) {
         if (adjwgt) {
@@ -165,8 +154,3 @@ void GraphTextFile::write(
 
 
 }
-
-
-
-
-#endif

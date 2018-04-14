@@ -1,5 +1,5 @@
 /**
- * @file project.c
+ * @file project.h
  * @brief Projection functions. 
  * @author Dominique LaSalle <lasalle@cs.umn.edu>
  * Copyright 2015, Regents of the University of Minnesota

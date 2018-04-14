@@ -1,17 +1,10 @@
 /**
  * @file WildRiver.cpp
  * @brief Main function.
- * @author Dominique LaSalle <lasalle@cs.umn.edu>
- * Copyright 2015
+ * @author Dominique LaSalle <wildriver@domnet.org>
+ * Copyright 2015-2016
  * @version 1
- *
  */
-
-
-
-
-#ifndef SRC_WILDRIVER_CPP
-#define SRC_WILDRIVER_CPP
 
 
 
@@ -24,12 +17,15 @@
 #include "MatrixOutHandle.hpp"
 #include "GraphInHandle.hpp"
 #include "GraphOutHandle.hpp"
+#include "VectorInHandle.hpp"
+#include "VectorOutHandle.hpp"
 #include "Exception.hpp"
 
 
 
 
 using namespace WildRiver;
+
 
 
 
@@ -56,6 +52,318 @@ struct c_delete
 
 /******************************************************************************
 * API FUNCTIONS ***************************************************************
+******************************************************************************/
+
+
+extern "C" wildriver_matrix_handle * wildriver_open_matrix(
+    char const * const filename,
+    int const mode)
+{
+  try {
+    std::unique_ptr<wildriver_matrix_handle> handle(
+        new wildriver_matrix_handle);
+
+    // initialize handle
+    handle->mode = mode;
+    handle->nrows = NULL_DIM;
+    handle->ncols = NULL_DIM;
+    handle->nnz = NULL_IND;
+    handle->fd = nullptr;
+
+    switch (mode) {
+      case WILDRIVER_IN: {
+          std::unique_ptr<MatrixInHandle> ptr(new MatrixInHandle(filename));
+          ptr->getInfo(handle->nrows,handle->ncols,handle->nnz);
+          handle->fd = reinterpret_cast<void*>(ptr.release());
+        }
+        break;
+      case WILDRIVER_OUT: {
+          std::unique_ptr<MatrixOutHandle> ptr(new MatrixOutHandle(filename));
+          handle->fd = reinterpret_cast<void*>(ptr.release());
+        }
+        break;
+      default:
+        throw BadParameterException(std::string("Unknown matrix mode: ") + \
+            std::to_string(mode));
+    }
+
+    return handle.release();
+  } catch (std::exception const & e) {
+    std::cerr << "ERROR: failed to open matrix due to: " << e.what() \
+        << std::endl;
+    return nullptr;
+  }
+}
+
+
+extern "C" int wildriver_load_matrix(
+    wildriver_matrix_handle * const handle,
+    ind_t * const rowptr,
+    dim_t * const rowind,
+    val_t * const rowval,
+    double * progress)
+{
+  if (progress != nullptr) {
+    *progress = 0.0;
+  }
+
+  try {
+    if (handle->mode != WILDRIVER_IN) {
+      throw BadParameterException( \
+          std::string("Cannot load matrix in mode: ") + \
+          std::to_string(handle->mode));
+    }
+
+    // check input
+    if (handle->nrows == NULL_DIM) {
+      throw BadParameterException("Number of rows has not been set.");
+    }
+    if (handle->ncols == NULL_DIM) {
+      throw BadParameterException("Number of columns has not been set.");
+    }
+    if (handle->nnz == NULL_IND) {
+      throw BadParameterException("Number of non-zeros has not been set.");
+    }
+    if (handle->fd == nullptr) {
+      throw BadParameterException("The file descriptor has not been set.");
+    }
+
+    MatrixInHandle * const inHandle = \
+        reinterpret_cast<MatrixInHandle*>(handle->fd);
+
+    // allocate matrix
+    inHandle->readSparse(rowptr,rowind,rowval,progress);
+  } catch (std::exception const & e) {
+    std::cerr << "ERROR: failed to read matrix due to: " << e.what() \
+        << std::endl;
+    return 0;
+  }
+
+  if (progress != nullptr) {
+    *progress = 1.0;
+  }
+
+  return 1;
+}
+
+
+extern "C" int wildriver_save_matrix(
+    wildriver_matrix_handle * const handle,
+    ind_t const * const rowptr,
+    dim_t const * const rowind,
+    val_t const * const rowval,
+    double * const progress)
+{
+  if (progress != nullptr) {
+    *progress = 0.0;
+  }
+
+  try {
+    if (handle->mode != WILDRIVER_OUT) {
+      throw BadParameterException( \
+          std::string("Cannot save matrix in mode: ") + \
+          std::to_string(handle->mode));
+    }
+
+    // check input
+    if (handle->nrows == NULL_DIM) {
+      throw BadParameterException("Number of rows has not been set.");
+    }
+    if (handle->ncols == NULL_DIM) {
+      throw BadParameterException("Number of columns has not been set.");
+    }
+    if (handle->nnz == NULL_IND) {
+      throw BadParameterException("Number of non-zeros has not been set.");
+    }
+    if (handle->fd == nullptr) {
+      throw BadParameterException("The file descriptor has not been set.");
+    }
+
+    MatrixOutHandle * const outHandle = \
+        reinterpret_cast<MatrixOutHandle*>(handle->fd);
+
+    // save matrix
+    outHandle->setInfo(handle->nrows,handle->ncols,handle->nnz);
+    outHandle->writeSparse(rowptr,rowind,rowval);
+  } catch (std::exception const & e) {
+    std::cerr << "ERROR: failed to save matrix due to: " << e.what() \
+        << std::endl;
+    return 0;
+  }
+
+  if (progress != nullptr) {
+    *progress = 1.0;
+  }
+
+  return 1;
+}
+
+
+extern "C" void wildriver_close_matrix(
+    wildriver_matrix_handle * handle)
+{
+  if (handle->fd != nullptr) {
+    if (handle->mode == WILDRIVER_IN) {
+      delete reinterpret_cast<MatrixInHandle*>(handle->fd);
+    } else if (handle->mode == WILDRIVER_OUT) {
+      delete reinterpret_cast<MatrixOutHandle*>(handle->fd);
+    } else {
+      std::cerr << "WARNING: unable to determine current mode" << \
+          handle->mode << std::endl;
+    }
+  }
+
+  delete handle;
+}
+
+
+extern "C" wildriver_vector_handle * wildriver_open_vector(
+    char const * const filename,
+    int const mode)
+{
+  try {
+    std::unique_ptr<wildriver_vector_handle> handle(
+        new wildriver_vector_handle);
+
+    // initialize handle
+    handle->mode = mode;
+    handle->size = NULL_IND;
+    handle->fd = nullptr;
+
+    switch (mode) {
+      case WILDRIVER_IN: {
+          std::unique_ptr<VectorInHandle> ptr(new VectorInHandle(filename));
+          handle->size = ptr->getSize();
+          handle->fd = reinterpret_cast<void*>(ptr.release());
+        }
+        break;
+      case WILDRIVER_OUT: {
+          std::unique_ptr<VectorOutHandle> ptr(new VectorOutHandle(filename));
+          handle->fd = reinterpret_cast<void*>(ptr.release());
+        }
+        break;
+      default:
+        throw BadParameterException(std::string("Unknown vector mode: ") + \
+            std::to_string(mode));
+    }
+
+    return handle.release();
+  } catch (std::exception const & e) {
+    std::cerr << "ERROR: failed to open vector due to: " << e.what() \
+        << std::endl;
+    return nullptr;
+  }
+}
+
+
+extern "C" int wildriver_load_vector(
+    wildriver_vector_handle * handle,
+    val_t * const vals,
+    double * progress)
+{
+  if (progress != nullptr) {
+    *progress = 0.0;
+  }
+
+  try {
+    if (handle->mode != WILDRIVER_IN) {
+      throw BadParameterException( \
+          std::string("Cannot load vector in mode: ") + \
+          std::to_string(handle->mode));
+    }
+
+    // check input
+    if (handle->size == NULL_IND) {
+      throw BadParameterException("The size of the vector has not been set.");
+    }
+    if (handle->fd == nullptr) {
+      throw BadParameterException("The file descriptor has not been set.");
+    }
+
+    VectorInHandle * const inHandle = \
+        reinterpret_cast<VectorInHandle*>(handle->fd);
+
+    // allocate vector
+    inHandle->read(vals,progress);
+  } catch (std::exception const & e) {
+    std::cerr << "ERROR: failed to read vector due to: " << e.what() \
+        << std::endl;
+    return 0;
+  }
+
+  if (progress != nullptr) {
+    *progress = 1.0;
+  }
+
+  return 1;
+}
+
+
+extern "C" int wildriver_save_vector(
+    wildriver_vector_handle * handle,
+    val_t const * const vals,
+    double * progress)
+{
+  if (progress != nullptr) {
+    *progress = 0.0;
+  }
+
+  try {
+    if (handle->mode != WILDRIVER_OUT) {
+      throw BadParameterException( \
+          std::string("Cannot save vector in mode: ") + \
+          std::to_string(handle->mode));
+    }
+
+    // check input
+    if (handle->size == NULL_IND) {
+      throw BadParameterException("Size of vector has not been set.");
+    }
+    if (handle->fd == nullptr) {
+      throw BadParameterException("The file descriptor has not been set.");
+    }
+
+    VectorOutHandle * const outHandle = \
+        reinterpret_cast<VectorOutHandle*>(handle->fd);
+
+    // save matrix
+    outHandle->write(vals,handle->size,progress);
+  } catch (std::exception const & e) {
+    std::cerr << "ERROR: failed to save vector due to: " << e.what() \
+        << std::endl;
+    return 0;
+  }
+
+  if (progress != nullptr) {
+    *progress = 1.0;
+  }
+
+  return 1;
+}
+
+
+extern "C" void wildriver_close_vector(
+    wildriver_vector_handle * handle)
+{
+  if (handle->fd != nullptr) {
+    if (handle->mode == WILDRIVER_IN) {
+      delete reinterpret_cast<VectorInHandle*>(handle->fd);
+    } else if (handle->mode == WILDRIVER_OUT) {
+      delete reinterpret_cast<VectorOutHandle*>(handle->fd);
+    } else {
+      std::cerr << "WARNING: unable to determine current mode" << \
+          handle->mode << std::endl;
+    }
+  }
+
+  delete handle;
+}
+
+
+
+
+/******************************************************************************
+* DEPRECATED FUNCTIONS ********************************************************
 ******************************************************************************/
 
 
@@ -250,7 +558,7 @@ extern "C" int wildriver_write_graph(
     val_t const * const vwgt,
     val_t const * const adjwgt)
 {
-  try{
+  try {
     GraphOutHandle handle(fname);
 
     bool const ewgts = adjwgt != NULL;
@@ -266,8 +574,3 @@ extern "C" int wildriver_write_graph(
 
   return 1;
 }
-
-
-
-
-#endif

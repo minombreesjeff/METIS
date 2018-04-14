@@ -1,8 +1,8 @@
 /**
  * @file IMatrixReader.hpp
  * @brief Interface for reading sparse matrices.
- * @author Dominique LaSalle <lasalle@cs.umn.edu>
- * Copyright 2015
+ * @author Dominique LaSalle <wildriver@domnet.org>
+ * Copyright 2015-2016
  * @version 1
  *
  */
@@ -53,11 +53,14 @@ class IMatrixReader
      * @param rowind The row column indexs (i.e., for each element in a row,
      * the column index corresponding to that element).
      * @param rowval The row values.
+     * @param progress The variable to update as the matrix is loaded (may be
+     * null).
      */
     virtual void read(
         ind_t * rowptr,
         dim_t * rowind,
-        val_t * rowval) = 0;
+        val_t * rowval,
+        double * progress) = 0;
 
 
     /**
@@ -80,15 +83,20 @@ class IMatrixReader
 
 
     /**
-     * @brief Get the next row in the matrix.
+     * @brief Get the next row in the matrix (adjacecny list in the graph).
      *
-     * @param next The row to set.
+     * @param numNonZeros The number of non-zeros in the row (output).
+     * @param columns The column of each non-zero entry (must be of length at
+     * least the number of non-zero entries).
+     * @param values The value of each non-zero entry (must be null or of 
+     * length at least the number of non-zero entries).
      *
-     * @return True if the row was successfully read, and false if EOF is 
-     * reached. 
+     * @return True if another row was found in the file.
      */
     virtual bool getNextRow(
-        std::vector<MatrixEntry> & next) = 0;
+        dim_t * numNonZeros,
+        dim_t * columns,
+        val_t * values) = 0;
 
 
     /**

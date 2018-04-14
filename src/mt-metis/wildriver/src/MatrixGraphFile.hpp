@@ -1,8 +1,8 @@
 /**
  * @file MatrixGraphFile.hpp
  * @brief An adapter class for treating matrices as graphs.
- * @author Dominique LaSalle <lasalle@cs.umn.edu>
- * Copyright 2015, Regents of the University of Minnesota
+ * @author Dominique LaSalle <wildriver@domnet.org>
+ * Copyright 2015-2016
  * @version 1
  *
  */
@@ -18,7 +18,7 @@
 
 #include <vector>
 #include <string>
-
+#include <memory>
 
 #include "IGraphFile.hpp"
 #include "IMatrixFile.hpp"
@@ -33,10 +33,6 @@ namespace WildRiver
 class MatrixGraphFile :
   public IGraphFile
 {
-  private:
-    IMatrixFile * file;
-
-
   public:
     /**
      * @brief Create an adapter so that a matrix can be treated as a graph. The
@@ -45,7 +41,7 @@ class MatrixGraphFile :
      * @param mfile A pointer the MatrixFile to adapt.
      */
     MatrixGraphFile(
-        IMatrixFile * mfile);
+        std::unique_ptr<IMatrixFile>& file);
 
 
     /**
@@ -96,12 +92,15 @@ class MatrixGraphFile :
      * @param adjwgt The edge weights (length nedges). This may be NULL in
      * order to ignore edge weights. If it is specified and the file does not
      * contain edge weights, it will be filled with ones.
+     * @param progress The variable to update as the graph is loaded (may be
+     * null).
      */
     void read(
         ind_t * xadj,
         dim_t * adjncy,
         val_t * vwgt,
-        val_t * adjwgt) override;
+        val_t * adjwgt,
+        double * progress) override;
 
 
     /**
@@ -128,14 +127,21 @@ class MatrixGraphFile :
     /**
      * @brief Get the information of the next vertex.
      *
-     * @param vwgt The vertex weight(s).
-     * @param list The adjacency list of the vertex.
+     * @param vertexWeights The vertex weight(s) (must be null or at least of
+     * length equal to the number of constraints).
+     * @param numEdges The number of edges incident to this vertex (output).
+     * @param edgeDests The destination of each edge leaving this vertex (must
+     * be of length equal to the number of edges of the vertex).
+     * @param edgeWeights The weight of each edge leaving this vertex (must
+     * null or be of length equal to the number of edges of the vertex).
      *
      * @return True if another vertex was found in the file.
      */
-    bool getNextVertex(
-        std::vector<val_t> & vwgt,
-        std::vector<MatrixEntry> & list) override;
+    virtual bool getNextVertex(
+        val_t * vertexWeights,
+        dim_t * numEdges,
+        dim_t * edgeDests,
+        val_t * edgeWeights) override;
 
 
     /**
@@ -146,7 +152,7 @@ class MatrixGraphFile :
      */
     void setNextVertex(
         std::vector<val_t> const & vwgts,
-        std::vector<MatrixEntry> const & list) override;
+        std::vector<matrix_entry_struct> const & list) override;
 
 
     /**
@@ -164,8 +170,20 @@ class MatrixGraphFile :
      */
     virtual std::string const & getFilename() const noexcept override
     {
-      return file->getFilename();
+      return m_file->getFilename();
     }
+
+
+  private:
+    std::unique_ptr<IMatrixFile> m_file;
+
+
+    // disable copying
+    MatrixGraphFile(
+        MatrixGraphFile const & rhs);
+    MatrixGraphFile& operator=(
+        MatrixGraphFile const & rhs);
+
 
 
 };

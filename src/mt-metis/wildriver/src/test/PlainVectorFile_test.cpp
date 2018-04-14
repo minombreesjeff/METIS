@@ -1,7 +1,7 @@
 /**
  * @file PlainVectorFile_test.cpp
  * @brief 
- * @author Dominique LaSalle <dominique@domnet.org>
+ * @author Dominique LaSalle <wildriver@domnet.org>
  * Copyright 2015
  * @version 1
  * @date 2016-02-14
@@ -30,13 +30,6 @@ namespace DomTest
 {
 
 
-static void removeFile(
-    std::string const & file)
-{
-  remove(file.c_str());
-}
-
-
 static void writeTest(
     std::string const & testFile)
 {
@@ -50,7 +43,7 @@ static void writeTest(
 
   wildriver_val_t vals[] = {1,2,3,4,5,6,7,8,9,0};
 
-  vec.write(vals);
+  vec.write(vals,nullptr);
 }
 
 
@@ -64,7 +57,7 @@ static void readTest(
 
   std::unique_ptr<wildriver_val_t[]> vals(new wildriver_val_t[n]);
 
-  vec.read(vals.get());
+  vec.read(vals.get(),nullptr);
 
   testEquals(vals[0],1);
   testEquals(vals[1],2);
@@ -76,8 +69,6 @@ static void readTest(
   testEquals(vals[7],8);
   testEquals(vals[8],9);
   testEquals(vals[9],0);
-
-  removeFile(testFile);
 }
 
 
@@ -87,6 +78,8 @@ void Test::run()
 
   writeTest(testFile);
   readTest(testFile);
+
+  removeFile(testFile);
 }
 
 

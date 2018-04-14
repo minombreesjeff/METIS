@@ -1,8 +1,8 @@
 /**
  * @file IMatrixFile.hpp
  * @brief Interface for matrix files.
- * @author Dominique LaSalle <dominique@domnet.org>
- * Copyright 2015
+ * @author Dominique LaSalle <wildriver@domnet.org>
+ * Copyright 2015-2016
  * @version 1
  *
  */
@@ -36,6 +36,7 @@ class IMatrixFile :
      */
     virtual ~IMatrixFile() 
     {
+      // do nothing
     }
 
 

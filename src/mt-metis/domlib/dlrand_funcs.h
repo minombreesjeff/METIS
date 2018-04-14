@@ -9,7 +9,17 @@
 
 
 
+#ifndef __USE_POSIX
+#define __USE_POSIX 1
+#endif
 
+
+#ifndef _XOPEN_SOURCE
+#define _XOPEN_SOURCE 1
+#endif
+
+
+#include <stdlib.h>
 #include "dlutil.h"
 
 
@@ -27,14 +37,32 @@
 static uint32_t DLRAND_PRI(rand_int_r)(
     unsigned int * const seed)
 {
-  return ((uint32_t)rand_r(seed));
+  uint16_t state[3];
+  state[0] = (uint16_t)(*seed);
+  state[1] = (uint16_t)((*seed) >> 16);
+  state[2] = (uint16_t)((*seed) >> 8);
+
+  uint32_t const r = ((uint32_t)nrand48(state));
+
+  *seed = state[0] + (state[1] << 16);
+
+  return r;
 }
 
 
 static uint64_t DLRAND_PRI(rand_long_r)(
     unsigned int * const seed)
 {
-  return ((uint64_t)rand_r(seed)) + (((uint64_t)rand_r(seed)) << 32);
+  uint16_t state[3];
+  state[0] = (uint16_t)(*seed);
+  state[1] = (uint16_t)((*seed) >> 16);
+  state[2] = (uint16_t)((*seed) >> 8);
+
+  uint64_t const r = ((uint64_t)nrand48(state)) + (((uint64_t)nrand48(state)) << 32);
+
+  *seed = state[0] + (state[1] << 16);
+
+  return r;
 }
 
 

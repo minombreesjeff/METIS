@@ -1,7 +1,7 @@
 /**
  * @file MetisFile_test.cpp
  * @brief Test for reading and writing Metis formatted graphs.
- * @author Dominique LaSalle <lasalle@cs.umn.edu>
+ * @author Dominique LaSalle <wildriver@domnet.org>
  * Copyright 2015
  * @version 1
  *
@@ -38,7 +38,7 @@ static void writeTest(
   wildriver_ind_t xadj[] = {0,2,4,7,10,12,14};
   wildriver_dim_t adjncy[] = {1,2,0,2,0,1,3,2,4,5,3,5,3,4};
 
-  graph.write(xadj,adjncy,NULL,NULL);
+  graph.write(xadj,adjncy,nullptr,nullptr);
 }
 
 
@@ -62,7 +62,7 @@ static void readTest(
   std::unique_ptr<wildriver_ind_t[]> xadj(new wildriver_ind_t[nvtxs+1]);
   std::unique_ptr<wildriver_dim_t[]> adjncy(new wildriver_dim_t[nedges]);
 
-  graph.read(xadj.get(),adjncy.get(),NULL,NULL);
+  graph.read(xadj.get(),adjncy.get(),nullptr,nullptr,nullptr);
 
   // test xadj
   testEquals(xadj[0],0);

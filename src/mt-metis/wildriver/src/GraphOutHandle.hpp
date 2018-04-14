@@ -1,8 +1,8 @@
 /**
  * @file GraphOutHandle.hpp
  * @brief Class for writing all graph types.
- * @author Dominique LaSalle <dominique@domnet.org>
- * Copyright 2015
+ * @author Dominique LaSalle <wildriver@domnet.org>
+ * Copyright 2015-2016
  * @version 1
  *
  */
@@ -30,33 +30,6 @@ namespace WildRiver
 
 class GraphOutHandle
 {
-  private:
-    /**
-     * @brief A pointer to the underlying graph writer.
-     */
-    std::shared_ptr<IGraphWriter> writer;
-
-
-    /**
-     * @brief Private copy constructor declared to disable copying.
-     *
-     * @param handle The handle to copy.
-     */
-    GraphOutHandle(
-        GraphOutHandle const & handle);
-
-
-    /**
-     * @brief Private assignment operator declared to disable copying.
-     *
-     * @param handle The handle to copy.
-     *
-     * @return The new handle.
-     */
-    GraphOutHandle & operator=(
-        GraphOutHandle const & handle);
-
-
   public:
     /**
      * @brief Create a new file handle for writing matrices.
@@ -112,7 +85,23 @@ class GraphOutHandle
      */
     void setNextVertex(
         std::vector<val_t> const & vwgts,
-        std::vector<MatrixEntry> const & list);
+        std::vector<matrix_entry_struct> const & list);
+
+
+  private:
+    /**
+     * @brief A pointer to the underlying graph writer.
+     */
+    std::unique_ptr<IGraphWriter> m_writer;
+
+
+    // disable copying
+    GraphOutHandle(
+        GraphOutHandle const & handle);
+    GraphOutHandle & operator=(
+        GraphOutHandle const & handle);
+
+
 
 
 };

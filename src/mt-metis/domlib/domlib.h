@@ -22,8 +22,17 @@
 
 
 #define _GNU_SOURCE 1
-#define _XOPEN_SOURCE 1
 #define _FILE_OFFSET_BITS 64
+
+
+#ifndef __USE_POSIX
+#define __USE_POSIX 1
+#endif
+
+
+#ifndef _XOPEN_SOURCE
+#define _XOPEN_SOURCE 1
+#endif
 
 
 

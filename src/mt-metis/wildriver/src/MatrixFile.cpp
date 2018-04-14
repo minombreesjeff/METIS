@@ -1,8 +1,8 @@
 /**
  * @file MatrixFile.cpp
  * @brief Implementation of the base abstract class for matrix files. 
- * @author Dominique LaSalle <dominique@domnet.org>
- * Copyright 2015
+ * @author Dominique LaSalle <wildriver@domnet.org>
+ * Copyright 2015-2016
  * @version 1
  * @date 2016-02-05
  */
@@ -25,8 +25,8 @@ namespace WildRiver
 
 
 MatrixFile::MatrixFile() :
-  nnz(NULL_IND),
-  info_set(false)
+  m_nnz(NULL_IND),
+  m_infoSet(false)
 {
   // do nothing
 }
@@ -51,7 +51,7 @@ void MatrixFile::getInfo(
     ind_t & nnz)
 {
   // see if need to read the header
-  if (!info_set) {
+  if (!m_infoSet) {
     readHeader();
   }
 
@@ -60,7 +60,7 @@ void MatrixFile::getInfo(
   ncols = getNumCols();
   nnz = getNNZ();
 
-  info_set = true;
+  m_infoSet = true;
 }
 
 
@@ -73,7 +73,7 @@ void MatrixFile::setInfo(
   setNumCols(ncols);
   setNNZ(nnz);
 
-  info_set = true;
+  m_infoSet = true;
 
   writeHeader();
 }

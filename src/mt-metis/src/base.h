@@ -20,8 +20,13 @@
 * EXTERNAL INCLUDES ***********************************************************
 ******************************************************************************/
 
+#ifndef __USE_POSIX
+#define __USE_POSIX 1
+#endif
 
-#define _POSIX_SOURCE 1
+#ifndef _XOPEN_SOURCE
+#define _XOPEN_SOURCE 1
+#endif
 
 #include <stdlib.h>
 #include <unistd.h>

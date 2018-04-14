@@ -1,8 +1,8 @@
 /**
  * @file IDenseMatrixFile.hpp
  * @brief Interface for dense matrix files.
- * @author Dominique LaSalle <dominique@domnet.org>
- * Copyright 2015
+ * @author Dominique LaSalle <wildriver@domnet.org>
+ * Copyright 2015-2016
  * @version 1
  * @date 2016-02-06
  */
@@ -12,7 +12,6 @@
 
 #ifndef WILDRIVER_IDENSEMATRIXFILE_HPP
 #define WILDRIVER_IDENSEMATRIXFILE_HPP
-
 
 
 
@@ -38,6 +37,7 @@ class IDenseMatrixFile :
      */
     virtual ~IDenseMatrixFile()
     {
+      // do nothing
     }
 
 
@@ -57,6 +57,8 @@ class IDenseMatrixFile :
      * @return The filename/path. 
      */
     virtual std::string const & getFilename() const noexcept = 0;
+
+
 
 
 };

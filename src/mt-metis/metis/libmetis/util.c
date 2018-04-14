@@ -15,14 +15,23 @@
  *
  */
 
-#define _POSIX_SOURCE
+#define _XOPEN_SOURCE
 #include <stdlib.h>
 
 #include "metislib.h"
 
 idx_t my_irandInRange_r(size_t range, idx_t * seed)
 {
-  return rand_r((unsigned int *)seed) % range;
+  uint16_t state[3];
+  state[0] = (uint16_t)(*seed);
+  state[1] = (uint16_t)((*seed) >> 16);
+  state[2] = (uint16_t)((*seed) >> 8);
+
+  uint32_t const r = ((uint32_t)nrand48(state));
+
+  *seed = state[0] + (state[1] << 16);
+
+  return r % range;
 }
 
 idx_t my_irandArrayPermute_r(size_t n, idx_t * p, size_t nshuffles,

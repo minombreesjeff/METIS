@@ -8,6 +8,12 @@
 \version\verbatim $Id: random.c 14330 2013-05-18 12:15:15Z karypis $ \endverbatim
 */
 
+#ifndef _XOPEN_SOURCE
+#define _XOPEN_SOURCE
+#endif
+
+#include <stdlib.h>
+
 #include <GKlib.h>
 
 
@@ -120,7 +126,16 @@ uint64_t gk_randint64(void)
 
   return x & 0x7FFFFFFFFFFFFFFF;
 #else
-  return (uint64_t)(((uint64_t) rand_r(&lseed)) << 32 | ((uint64_t) rand_r(&lseed)));
+  uint16_t state[3];
+  state[0] = (uint16_t)(lseed);
+  state[1] = (uint16_t)((lseed) >> 16);
+  state[2] = (uint16_t)((lseed) >> 8);
+
+  uint64_t const r = ((uint64_t)nrand48(state)) + (((uint64_t)nrand48(state)) << 32);
+
+  lseed = state[0] + (state[1] << 16);
+
+  return r;
 #endif
 }
 
@@ -130,7 +145,16 @@ uint32_t gk_randint32(void)
 #ifdef USE_GKRAND
   return (uint32_t)(gk_randint64() & 0x7FFFFFFF);
 #else
-  return (uint32_t)rand_r(&lseed);
+  uint16_t state[3];
+  state[0] = (uint16_t)(lseed);
+  state[1] = (uint16_t)((lseed) >> 16);
+  state[2] = (uint16_t)((lseed) >> 8);
+
+  uint32_t const r = ((uint32_t)nrand48(state));
+
+  lseed = state[0] + (state[1] << 16);
+
+  return r;
 #endif
 }
 

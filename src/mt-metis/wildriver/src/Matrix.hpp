@@ -1,8 +1,8 @@
 /**
  * @file Matrix.hpp
  * @brief Base abstract class for matrices.
- * @author Dominique LaSalle <dominique@domnet.org>
- * Copyright 2015
+ * @author Dominique LaSalle <wildriver@domnet.org>
+ * Copyright 2015-2016
  * @version 1
  * @date 2016-02-06
  */
@@ -27,28 +27,16 @@ namespace WildRiver
 
 class Matrix
 {
-  private:
-    /**
-     * @brief The number of rows in the matrix.
-     */
-    dim_t nrows;
-
-
-    /**
-     * @brief The number of columns in the matrix.
-     */
-    dim_t ncols;
-
-
   public:
     /**
      * @brief Default contructor. Initializes the number of rows and number of
      * columns to invalid values (NULL_DIM).
      */
     Matrix() :
-      nrows(NULL_DIM),
-      ncols(NULL_DIM)
+      m_numRows(NULL_DIM),
+      m_numCols(NULL_DIM)
     {
+      // do nothing
     }
 
 
@@ -57,6 +45,7 @@ class Matrix
      */
     virtual ~Matrix()
     {
+      // do nothing
     }
 
 
@@ -67,7 +56,7 @@ class Matrix
      */
     inline dim_t getNumRows() const noexcept
     {
-      return nrows;
+      return m_numRows;
     }
 
 
@@ -78,7 +67,7 @@ class Matrix
      */
     inline dim_t getNumCols() const noexcept
     {
-      return ncols;
+      return m_numCols;
     }
 
 
@@ -90,7 +79,7 @@ class Matrix
     inline void setNumRows(
         dim_t const n) noexcept
     {
-      nrows = n;
+      m_numRows = n;
     }
 
 
@@ -102,8 +91,23 @@ class Matrix
     inline void setNumCols(
         dim_t const n) noexcept
     {
-      ncols = n;
+      m_numCols = n;
     }
+
+
+  private:
+    /**
+     * @brief The number of rows in the matrix.
+     */
+    dim_t m_numRows;
+
+
+    /**
+     * @brief The number of columns in the matrix.
+     */
+    dim_t m_numCols;
+
+
 
 
 };

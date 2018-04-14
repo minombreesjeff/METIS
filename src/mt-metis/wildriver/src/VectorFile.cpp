@@ -1,8 +1,8 @@
 /**
  * @file VectorFile.cpp
  * @brief Implementation of the base abstract class for vector files.
- * @author Dominique LaSalle <dominique@domnet.org>
- * Copyright 2015
+ * @author Dominique LaSalle <wildriver@domnet.org>
+ * Copyright 2015-2016
  * @version 1
  * @date 2016-02-07
  */
@@ -24,7 +24,8 @@ namespace WildRiver
 ******************************************************************************/
 
 
-VectorFile::VectorFile()
+VectorFile::VectorFile() :
+  m_vector()
 {
   // do nothing
 }

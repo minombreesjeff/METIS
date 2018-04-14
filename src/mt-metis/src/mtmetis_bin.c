@@ -17,13 +17,13 @@
 
 
 
-#include <wildriver.h>
 #include "base.h"
 #include "partition.h"
 #include "order.h"
 #include "graph.h"
 #include "ctrl.h"
 
+#include <wildriver.h>
 
 
 
@@ -95,7 +95,7 @@ static const cmd_opt_pair_t VERBOSITY_CHOICES[] = {
 
 
 static const cmd_opt_pair_t DISTRIBUTION_CHOICES[] = {
-  {MTMETIS_STR_DISTRIBUTION_BLOCK,"Distribute the vertices in continous " \
+  {MTMETIS_STR_DISTRIBUTION_BLOCK,"Distribute the vertices in continuous " \
       "from the initial ordering.",MTMETIS_DISTRIBUTION_BLOCK},
   {MTMETIS_STR_DISTRIBUTION_CYCLIC,"Distribute the vertices in a cyclic " \
       "fashion.",MTMETIS_DISTRIBUTION_CYCLIC},
@@ -132,55 +132,63 @@ static const cmd_opt_pair_t SCANTYPE_CHOICES[] = {
 static const cmd_opt_t OPTS[] = {
   {MTMETIS_OPTION_HELP,'h',"help","Display this help page.",CMD_OPT_FLAG, \
       NULL,0},
-  {MTMETIS_OPTION_CTYPE,'c',"ctype","The type of coarsening.", \
+  {MTMETIS_OPTION_CTYPE,'c',"ctype","The type of coarsening (default=shem).", \
       CMD_OPT_CHOICE,CTYPE_CHOICES,S_ARRAY_SIZE(CTYPE_CHOICES)},
   {MTMETIS_OPTION_CONTYPE,'d',"contype","How to merge adjacency lists " \
-      "during contraction.",CMD_OPT_CHOICE,CONTYPE_CHOICES, \
+      "during contraction (default=ls).",CMD_OPT_CHOICE,CONTYPE_CHOICES, \
         S_ARRAY_SIZE(CONTYPE_CHOICES)},
-  {MTMETIS_OPTION_RTYPE,'r',"rtype","The type of refinement.", \
-      CMD_OPT_CHOICE,RTYPE_CHOICES,S_ARRAY_SIZE(RTYPE_CHOICES)},
+  {MTMETIS_OPTION_RTYPE,'r',"rtype","The type of refinement " \
+      "(default=greedy).",CMD_OPT_CHOICE,RTYPE_CHOICES, \
+      S_ARRAY_SIZE(RTYPE_CHOICES)},
   {MTMETIS_OPTION_SEED,'s',"seed","The random seed to use.",CMD_OPT_INT,NULL, \
       0},
   {MTMETIS_OPTION_NCUTS,'N',"cuts","The number of cuts to " \
-      "generate using succesive random seeds.",CMD_OPT_INT,NULL,0},
+      "generate using successive random seeds (default=1).",CMD_OPT_INT,NULL, \
+      0},
   {MTMETIS_OPTION_NRUNS,'n',"runs","The number of partitionings to " \
-      "generate using succesive random seeds.",CMD_OPT_INT,NULL,0},
+      "generate using successive random seeds (default=1).",CMD_OPT_INT,NULL, \
+      0},
   {MTMETIS_OPTION_NINITSOLUTIONS,'i',"initialcuts","The number of " \
-      "initial cuts to generate at the coarsest level.",CMD_OPT_INT,NULL,0},
+      "initial cuts to generate at the coarsest level (default=8).", \
+      CMD_OPT_INT,NULL,0},
   {MTMETIS_OPTION_NITER,'R',"nrefpass","The maximum number of refinement " \
-      "passes.",CMD_OPT_INT,NULL,0},
+      "passes (default=8).",CMD_OPT_INT,NULL,0},
   {MTMETIS_OPTION_TIME,'t',"times","Print timing information",CMD_OPT_FLAG, \
       NULL,0},
   {MTMETIS_OPTION_NTHREADS,'T',"threads","The number of threads to use.", \
       CMD_OPT_INT,NULL,0},
   {MTMETIS_OPTION_VERBOSITY,'v',"verbosity","The amount of information to " \
-      "print during partitioning.",CMD_OPT_CHOICE,VERBOSITY_CHOICES, \
-      S_ARRAY_SIZE(VERBOSITY_CHOICES)},
+      "print during partitioning (default=none).",CMD_OPT_CHOICE, \
+      VERBOSITY_CHOICES,S_ARRAY_SIZE(VERBOSITY_CHOICES)},
   {MTMETIS_OPTION_DISTRIBUTION,'D',"distribution","The distribution to use " \
-      "for assigning vertices to threads.",CMD_OPT_CHOICE, \
-      DISTRIBUTION_CHOICES,S_ARRAY_SIZE(DISTRIBUTION_CHOICES)},
-  {MTMETIS_OPTION_UBFACTOR,'b',"balance","The balance constraint (1.03 " \
-      "means allowing for a 3% imbalance).",CMD_OPT_FLOAT,NULL,0},
-  {MTMETIS_OPTION_PTYPE,'p',"ptype","The type of partition to compute", \
-      CMD_OPT_CHOICE,PTYPE_CHOICES,S_ARRAY_SIZE(PTYPE_CHOICES)},
-  {MTMETIS_OPTION_RUNSTATS,'C',"partstats","Statics on quality of " \
-      "partitions",CMD_OPT_FLAG,NULL,0},
+      "for assigning vertices to threads (default=blockcyclic).", \
+      CMD_OPT_CHOICE,DISTRIBUTION_CHOICES,S_ARRAY_SIZE(DISTRIBUTION_CHOICES)},
+  {MTMETIS_OPTION_UBFACTOR,'b',"balance","The balance constraint " \
+      "(default=1.03, which means allowing for a 3% imbalance).", \
+      CMD_OPT_FLOAT,NULL,0},
+  {MTMETIS_OPTION_PTYPE,'p',"ptype","The type of partition to compute " \
+      "(default=kway)",CMD_OPT_CHOICE,PTYPE_CHOICES, \
+      S_ARRAY_SIZE(PTYPE_CHOICES)},
+  {MTMETIS_OPTION_RUNSTATS,'C',"partstats","Print statics on quality of " \
+      "partitions.",CMD_OPT_FLAG,NULL,0},
   {MTMETIS_OPTION_METIS,'M',"metis","When run with one thread, call Metis " \
       "directly.",CMD_OPT_FLAG,NULL,0},
   {MTMETIS_OPTION_LEAFMATCH,'L',"leafmatch","Match leaf vertices together " \
-      "if there are too many unmatched vertices.",CMD_OPT_BOOL,NULL,0},
+      "if there are too many unmatched vertices (default=true).", \
+      CMD_OPT_BOOL,NULL,0},
   {MTMETIS_OPTION_REMOVEISLANDS,'I',"removeislands","Remove island vertices " \
-      "before partitioning.",CMD_OPT_BOOL,NULL,0},
+      "before partitioning (default=false).",CMD_OPT_BOOL,NULL,0},
   {MTMETIS_OPTION_VWGTDEGREE,'V',"vwgtdegree","Use the degree of each " \
-      "vertex as its weight.",CMD_OPT_FLAG,NULL,0},
+      "vertex as its weight (default=false).",CMD_OPT_FLAG,NULL,0},
   {MTMETIS_OPTION_IGNORE,'W',"ignoreweights","Ignore input weights " \
-      "on a graph file.",CMD_OPT_CHOICE,IGNOREWEIGHTS_CHOICES, \
+      "on a graph file (default=none).",CMD_OPT_CHOICE,IGNOREWEIGHTS_CHOICES, \
       S_ARRAY_SIZE(IGNOREWEIGHTS_CHOICES)},
   {MTMETIS_OPTION_HILLSIZE,'H',"hillsize","The limit to use when searching " \
-      "for hills (only applies to hill climbing refinement types).", \
-      CMD_OPT_INT,NULL,0},
+      "for hills (default=16). This only applies to hill climbing " \
+      "refinement types.",CMD_OPT_INT,NULL,0},
   {MTMETIS_OPTION_HS_SCANTYPE,'S',"scantype","The how many hills to scan " \
-      "before terminating (only applies to HS refinement).",CMD_OPT_CHOICE, \
+      "before terminating (default=sqrt). This only applies to HS " \
+      "refinement.",CMD_OPT_CHOICE, \
       SCANTYPE_CHOICES,S_ARRAY_SIZE(SCANTYPE_CHOICES)},
   {MTMETIS_OPTION_VERSION,'\0',"version","Display the current version.", \
       CMD_OPT_FLAG,NULL,0}
@@ -206,6 +214,8 @@ static int S_usage(
 {
   fprintf(fout,"USAGE:\n");
   fprintf(fout,"%s [options] <graphfile> <nparts> [ <partfile> | - ]\n", \
+      name);
+  fprintf(fout,"%s -p nd [options] <graphfile> [ <permfile> | - ]\n", \
       name);
   fprintf(fout,"\n");
   fprintf(fout,"Options:\n");
@@ -366,18 +376,17 @@ int main(
   /* start timers */
   dl_start_timer(&timer_input);
 
+  /* read the input graph */
   rv = wildriver_read_graph(input_file,&nvtxs,NULL,NULL,NULL,&xadj,&adjncy, \
       &vwgt,&adjwgt);
 
-  /* read the input graph */
-  vprintf(verbosity,MTMETIS_VERBOSITY_LOW,"Read '%s' with %"PF_VTX_T \
-      " vertices and %"PF_ADJ_T" edges.\n",input_file,nvtxs,xadj[nvtxs]/2);
-
   if (rv != 1) {
-    eprintf("Error reading from input file '%s'\n",input_file);
     rv = 4;
     goto CLEANUP;
   }
+
+  vprintf(verbosity,MTMETIS_VERBOSITY_LOW,"Read '%s' with %"PF_VTX_T \
+      " vertices and %"PF_ADJ_T" edges.\n",input_file,nvtxs,xadj[nvtxs]/2);
 
   dl_stop_timer(&timer_input);
 

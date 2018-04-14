@@ -1,8 +1,8 @@
 /**
  * @file IGraphReader.hpp
  * @brief Interface for reading graphs.
- * @author Dominique LaSalle <dominique@domnet.org>
- * Copyright 2015
+ * @author Dominique LaSalle <wildriver@domnet.org>
+ * Copyright 2015-2016
  * @version 1
  *
  */
@@ -60,12 +60,15 @@ class IGraphReader
      * @param adjwgt The edge weights (length nedges). This may be NULL in
      * order to ignore edge weights. If it is specified and the file does not
      * contain edge weights, it will be filled with ones.
+     * @param progress The variable to update as the graph is loaded (may be
+     * null).
      */
     virtual void read(
         ind_t * xadj,
         dim_t * adjncy,
         val_t * vwgt,
-        val_t * adjwgt) = 0;
+        val_t * adjwgt,
+        double * progress) = 0;
 
   
     /**
@@ -92,14 +95,21 @@ class IGraphReader
     /**
      * @brief Get the information of the next vertex.
      *
-     * @param vwgt The vertex weight(s).
-     * @param list The adjacency list of the vertex.
+     * @param vertexWeights The vertex weight(s) (must be null or at least of
+     * length equal to the number of constraints).
+     * @param numEdges The number of edges incident to this vertex (output).
+     * @param edgeDests The destination of each edge leaving this vertex (must
+     * be of length equal to the number of edges of the vertex).
+     * @param edgeWeights The weight of each edge leaving this vertex (must
+     * null or be of length equal to the number of edges of the vertex).
      *
      * @return True if another vertex was found in the file.
      */
     virtual bool getNextVertex(
-        std::vector<val_t> & vwgt,
-        std::vector<MatrixEntry> & list) = 0;
+        val_t * vertexWeights,
+        dim_t * numEdges,
+        dim_t * edgeDests,
+        val_t * edgeWeights) = 0;
 
 
     /**
