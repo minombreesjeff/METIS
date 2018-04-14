@@ -14,7 +14,7 @@ cxx        = mpicxx
 
 # Basically proxies everything to the builddir cmake.
 
-PKGNAME = parmetis-4.0.2
+PKGNAME = parmetis-4.0.3
 
 cputype = $(shell uname -m | sed "s/\\ /_/g")
 systype = $(shell uname -s)

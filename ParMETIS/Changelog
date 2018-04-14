@@ -1,4 +1,13 @@
 
+Changes in version 4.0.3
+r13947; 2013-03-30 10:55:56 -0500 (Sat, 30 Mar 2013) 
+
+- Fixed various issues related to wavefront diffusion (flyspray #43).
+- Fixed issue related to the serial code for adaptive repartitioning
+  (flyspray #95).
+- Incorporated the latest version of Metis.
+
+
 Changes in version 4.0.2
 r10987; 2011-10-31 09:42:33 -0500 (Mon, 31 Oct 2011)
 

@@ -1,10 +1,10 @@
 Copyright & License Notice
 --------------------------
 
-The ParMETIS/METIS package is copyrighted by the Regents of the 
+The ParMETIS package is copyrighted by the Regents of the 
 University of Minnesota. It can be freely used for educational and 
 research purposes by non-profit institutions and US government 
-agencies only. Other organizations are allowed to use ParMETIS/METIS 
+agencies only. Other organizations are allowed to use ParMETIS 
 only for evaluation purposes, and any further uses will require prior 
 approval. The software may not be sold or redistributed without prior 
 approval. One may make copies of the software for their use provided 
