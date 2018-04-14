@@ -8,7 +8,7 @@
  * Started 8/28/94
  * George
  *
- * $Id: ndmetis.c 10472 2011-07-02 22:40:05Z karypis $
+ * $Id: ndmetis.c 10567 2011-07-13 16:17:07Z karypis $
  *
  */
 
@@ -25,7 +25,7 @@ int main(int argc, char *argv[])
   graph_t *graph;
   idx_t *perm, *iperm;
   params_t *params;
-  int status;
+  int status=0;
 
   params = parse_cmdline(argc, argv);
 

@@ -52,7 +52,7 @@ ifneq ($(cc), not-set)
     CONFIG_FLAGS += -DCMAKE_C_COMPILER=$(cc)
 endif
 
-VERNUM=5.0rc2
+VERNUM=5.0rc3
 PKGNAME=metis-$(VERNUM)
 
 define run-config

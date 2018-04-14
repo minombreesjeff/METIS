@@ -8,7 +8,7 @@
  * Started 8/28/94
  * George
  *
- * $Id: gpmetis.c 10482 2011-07-05 20:10:55Z karypis $
+ * $Id: gpmetis.c 10567 2011-07-13 16:17:07Z karypis $
  *
  */
 
@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
   idx_t *part;
   idx_t objval;
   params_t *params;
-  int status;
+  int status=0;
 
   params = parse_cmdline(argc, argv);
 
@@ -204,25 +204,7 @@ void GPPrintInfo(params_t *params, graph_t *graph)
 /*************************************************************************/
 void GPReportResults(params_t *params, graph_t *graph, idx_t *part, idx_t objval)
 { 
-  idx_t i;
-  real_t lbvec[MAXNCON];
-
   gk_startcputimer(params->reporttimer);
-#ifdef XXX
-  ComputePartitionBalance(graph, params->nparts, part, lbvec);
-
-  printf("  %"PRIDX"-way %s: %7"PRIDX", Balance: ", 
-      params->nparts, 
-      (params->objtype == METIS_OBJTYPE_CUT ? "Edgecut" : "Volume"),
-      objval);
-
-  for (i=0; i<graph->ncon; i++)
-    printf("%5.2"PRREAL" ", lbvec[i]);
-  printf("\n");
-
-  printf("\nPartitioning Information ----------------------------------------------------\n");
-#endif
-
   ComputePartitionInfo(params, graph, part);
 
   gk_stopcputimer(params->reporttimer);

@@ -8,7 +8,7 @@
  * Started 8/1/97
  * George
  *
- * $Id: srefine.c 10492 2011-07-06 09:28:42Z karypis $
+ * $Id: srefine.c 10515 2011-07-08 15:46:18Z karypis $
  *
  */
 
@@ -82,8 +82,8 @@ void Allocate2WayNodePartitionMemory(ctrl_t *ctrl, graph_t *graph)
 /*************************************************************************/
 void Compute2WayNodePartitionParams(ctrl_t *ctrl, graph_t *graph)
 {
-  idx_t i, j, k, l, nvtxs, nbnd;
-  idx_t *xadj, *adjncy, *adjwgt, *vwgt;
+  idx_t i, j, nvtxs, nbnd;
+  idx_t *xadj, *adjncy, *vwgt;
   idx_t *where, *pwgts, *bndind, *bndptr, *edegrees;
   nrinfo_t *rinfo;
   idx_t me, other;
@@ -92,7 +92,6 @@ void Compute2WayNodePartitionParams(ctrl_t *ctrl, graph_t *graph)
   xadj   = graph->xadj;
   vwgt   = graph->vwgt;
   adjncy = graph->adjncy;
-  adjwgt = graph->adjwgt;
 
   where  = graph->where;
   rinfo  = graph->nrinfo;

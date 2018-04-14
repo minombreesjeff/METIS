@@ -15,7 +15,8 @@
 
 
 /*************************************************************************/
-/*! This function computes the total edgecut */
+/*! This function computes the total edgecut 
+ */
 /*************************************************************************/
 idx_t ComputeCut(graph_t *graph, idx_t *where)
 {
@@ -39,8 +40,10 @@ idx_t ComputeCut(graph_t *graph, idx_t *where)
   return cut/2;
 }
 
+
 /*************************************************************************/
-/*! This function computes the total volume */
+/*! This function computes the total volume 
+ */
 /*************************************************************************/
 idx_t ComputeVolume(graph_t *graph, idx_t *where)
 {
@@ -51,7 +54,7 @@ idx_t ComputeVolume(graph_t *graph, idx_t *where)
   nvtxs  = graph->nvtxs;
   xadj   = graph->xadj;
   adjncy = graph->adjncy;
-  vsize  = (graph->vsize == NULL ? graph->vwgt : graph->vsize);
+  vsize  = graph->vsize;
 
   nparts = where[iargmax(nvtxs, where)]+1;
   marker = ismalloc(nparts, -1, "ComputeVolume: marker");
@@ -64,7 +67,7 @@ idx_t ComputeVolume(graph_t *graph, idx_t *where)
       k = where[adjncy[j]];
       if (marker[k] != i) {
         marker[k] = i;
-        totalv += vsize[i];
+        totalv += (vsize ? vsize[i] : 1);
       }
     }
   }
@@ -75,9 +78,10 @@ idx_t ComputeVolume(graph_t *graph, idx_t *where)
 }
 
 
-/*************************************************************************
-* This function computes the cut given the graph and a where vector
-**************************************************************************/
+/*************************************************************************/
+/*! This function computes the cut given the graph and a where vector 
+ */
+/*************************************************************************/
 idx_t ComputeMaxCut(graph_t *graph, idx_t nparts, idx_t *where)
 {
   idx_t i, j, maxcut;
@@ -110,9 +114,10 @@ idx_t ComputeMaxCut(graph_t *graph, idx_t nparts, idx_t *where)
 }
 
 
-/*************************************************************************
-* This function checks whether or not the boundary information is correct
-**************************************************************************/
+/*************************************************************************/
+/*! This function checks whether or not the boundary information is correct 
+ */
+/*************************************************************************/
 idx_t CheckBnd(graph_t *graph) 
 {
   idx_t i, j, nvtxs, nbnd;
@@ -146,9 +151,10 @@ idx_t CheckBnd(graph_t *graph)
 
 
 
-/*************************************************************************
-* This function checks whether or not the boundary information is correct
-**************************************************************************/
+/*************************************************************************/
+/*! This function checks whether or not the boundary information is correct 
+ */
+/*************************************************************************/
 idx_t CheckBnd2(graph_t *graph) 
 {
   idx_t i, j, nvtxs, nbnd, id, ed;
@@ -182,9 +188,10 @@ idx_t CheckBnd2(graph_t *graph)
 }
 
 
-/*************************************************************************
-* This function checks whether or not the boundary information is correct
-**************************************************************************/
+/*************************************************************************/
+/*! This function checks whether or not the boundary information is correct 
+ */
+/*************************************************************************/
 idx_t CheckNodeBnd(graph_t *graph, idx_t onbnd) 
 {
   idx_t i, j, nvtxs, nbnd;
@@ -218,9 +225,10 @@ idx_t CheckNodeBnd(graph_t *graph, idx_t onbnd)
 
 
 
-/*************************************************************************
-* This function checks whether or not the rinfo of a vertex is consistent
-**************************************************************************/
+/*************************************************************************/
+/*! This function checks whether or not the rinfo of a vertex is consistent 
+ */
+/*************************************************************************/
 idx_t CheckRInfo(ctrl_t *ctrl, ckrinfo_t *rinfo)
 {
   idx_t i, j;
@@ -241,7 +249,8 @@ idx_t CheckRInfo(ctrl_t *ctrl, ckrinfo_t *rinfo)
 
 
 /*************************************************************************/
-/*! This function checks the correctness of the NodeFM data structures */
+/*! This function checks the correctness of the NodeFM data structures 
+ */
 /*************************************************************************/
 idx_t CheckNodePartitionParams(graph_t *graph)
 {
@@ -293,9 +302,10 @@ idx_t CheckNodePartitionParams(graph_t *graph)
 }
 
 
-/*************************************************************************
-* This function checks if the separator is indeed a separator
-**************************************************************************/
+/*************************************************************************/
+/*! This function checks if the separator is indeed a separator 
+ */
+/*************************************************************************/
 idx_t IsSeparable(graph_t *graph)
 {
   idx_t i, j, nvtxs, other;
@@ -329,7 +339,7 @@ idx_t IsSeparable(graph_t *graph)
 void CheckKWayVolPartitionParams(ctrl_t *ctrl, graph_t *graph)
 {
   idx_t i, ii, j, k, kk, l, nvtxs, nbnd, mincut, minvol, me, other, pid;
-  idx_t *xadj, *vsize, *adjncy, *adjwgt, *pwgts, *where, *bndind, *bndptr;
+  idx_t *xadj, *vsize, *adjncy, *pwgts, *where, *bndind, *bndptr;
   vkrinfo_t *rinfo, *myrinfo, *orinfo, tmprinfo;
   vnbr_t *mynbrs, *onbrs, *tmpnbrs;
 
@@ -339,7 +349,6 @@ void CheckKWayVolPartitionParams(ctrl_t *ctrl, graph_t *graph)
   xadj   = graph->xadj;
   vsize  = graph->vsize;
   adjncy = graph->adjncy;
-  adjwgt = graph->adjwgt;
   where  = graph->where;
   rinfo  = graph->vkrinfo;
 
@@ -358,8 +367,8 @@ void CheckKWayVolPartitionParams(ctrl_t *ctrl, graph_t *graph)
       tmpnbrs[k] = mynbrs[k];
 
     tmprinfo.nnbrs = myrinfo->nnbrs;
-    tmprinfo.id    = myrinfo->id;
-    tmprinfo.ed    = myrinfo->ed;
+    tmprinfo.nid    = myrinfo->nid;
+    tmprinfo.ned    = myrinfo->ned;
 
     myrinfo = &tmprinfo;
     mynbrs  = tmpnbrs;

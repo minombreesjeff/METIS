@@ -5,7 +5,7 @@
 \date Started 7/23/97
 \author George  
 \author Copyright 1997-2011, Regents of the University of Minnesota 
-\version\verbatim $Id: coarsen.c 10492 2011-07-06 09:28:42Z karypis $ \endverbatim
+\version\verbatim $Id: coarsen.c 10513 2011-07-07 22:06:03Z karypis $ \endverbatim
 */
 
 
@@ -167,7 +167,7 @@ idx_t Match_RM(ctrl_t *ctrl, graph_t *graph)
   match = iset(nvtxs, UNMATCHED, iwspacemalloc(ctrl, nvtxs));
   perm  = iwspacemalloc(ctrl, nvtxs);
 
-  irandArrayPermute(nvtxs, perm, nvtxs/12, 1);
+  irandArrayPermute(nvtxs, perm, nvtxs/8, 1);
 
   for (cnvtxs=0, last_unmatched=0, ii=0; ii<nvtxs; ii++) {
     i = perm[ii];
@@ -359,7 +359,7 @@ void PrintCGraphStats(ctrl_t *ctrl, graph_t *graph)
   idx_t i;
 
   printf("%6"PRIDX" %7"PRIDX" %10"PRIDX" [%"PRIDX"] [", 
-      graph->nvtxs, graph->nedges, isum(graph->nvtxs, graph->adjrsum, 1), ctrl->CoarsenTo);
+      graph->nvtxs, graph->nedges, isum(graph->nedges, graph->adjwgt, 1), ctrl->CoarsenTo);
 
   for (i=0; i<graph->ncon; i++)
     printf(" %6"PRIDX":%6"PRIDX, ctrl->maxvwgt[i], graph->tvwgt[i]);
@@ -379,9 +379,9 @@ void CreateCoarseGraph(ctrl_t *ctrl, graph_t *graph, idx_t cnvtxs,
 {
   idx_t j, jj, k, kk, l, m, istart, iend, nvtxs, nedges, ncon, cnedges, 
         v, u, mask, dovsize;
-  idx_t *xadj, *vwgt, *vsize, *adjncy, *adjwgt, *adjrsum;
+  idx_t *xadj, *vwgt, *vsize, *adjncy, *adjwgt;
   idx_t *cmap, *htable;
-  idx_t *cxadj, *cvwgt, *cvsize, *cadjncy, *cadjwgt, *cadjrsum;
+  idx_t *cxadj, *cvwgt, *cvsize, *cadjncy, *cadjwgt;
   graph_t *cgraph;
 
   dovsize = (ctrl->objtype == METIS_OBJTYPE_VOL ? 1 : 0);
@@ -403,7 +403,6 @@ void CreateCoarseGraph(ctrl_t *ctrl, graph_t *graph, idx_t cnvtxs,
   vsize   = graph->vsize;
   adjncy  = graph->adjncy;
   adjwgt  = graph->adjwgt;
-  adjrsum = graph->adjrsum;
   cmap    = graph->cmap;
 
   /* Initialize the coarser graph */
@@ -411,7 +410,6 @@ void CreateCoarseGraph(ctrl_t *ctrl, graph_t *graph, idx_t cnvtxs,
   cxadj    = cgraph->xadj;
   cvwgt    = cgraph->vwgt;
   cvsize   = cgraph->vsize;
-  cadjrsum = cgraph->adjrsum;
   cadjncy  = cgraph->adjncy;
   cadjwgt  = cgraph->adjwgt;
 
@@ -433,7 +431,6 @@ void CreateCoarseGraph(ctrl_t *ctrl, graph_t *graph, idx_t cnvtxs,
     if (dovsize)
       cvsize[cnvtxs] = vsize[v];
 
-    cadjrsum[cnvtxs] = adjrsum[v];
     nedges = 0;
 
     istart = xadj[v];
@@ -472,8 +469,6 @@ void CreateCoarseGraph(ctrl_t *ctrl, graph_t *graph, idx_t cnvtxs,
       if (dovsize)
         cvsize[cnvtxs] += vsize[u];
 
-      cadjrsum[cnvtxs] += adjrsum[u];
-
       istart = xadj[u];
       iend   = xadj[u+1];
       for (j=istart; j<iend; j++) {
@@ -511,15 +506,10 @@ void CreateCoarseGraph(ctrl_t *ctrl, graph_t *graph, idx_t cnvtxs,
       }
       /* This 2nd check is needed for non-adjacent matchings */
       if (jj >= 0 && jj < nedges && cadjncy[jj] == cnvtxs) { 
-        cadjrsum[cnvtxs] -= cadjwgt[jj];
         cadjncy[jj] = cadjncy[--nedges];
         cadjwgt[jj] = cadjwgt[nedges];
       }
     }
-
-    ASSERTP(cadjrsum[cnvtxs] == isum(nedges, cadjwgt, 1), 
-        ("%"PRIDX" %"PRIDX" %"PRIDX" %"PRIDX" %"PRIDX"\n", 
-         cnvtxs, cadjrsum[cnvtxs], isum(nedges, cadjwgt, 1), adjrsum[u], adjrsum[v]));
 
     /* Zero out the htable */
     for (j=0; j<nedges; j++)
@@ -540,7 +530,7 @@ void CreateCoarseGraph(ctrl_t *ctrl, graph_t *graph, idx_t cnvtxs,
   }
 
 
-  ReAdjustMemory(graph, cgraph, dovsize);
+  ReAdjustMemory(ctrl, graph, cgraph);
 
   IFSET(ctrl->dbglvl, METIS_DBG_TIME, gk_stopcputimer(ctrl->ContractTmr));
 
@@ -558,9 +548,9 @@ void CreateCoarseGraphNoMask(ctrl_t *ctrl, graph_t *graph, idx_t cnvtxs,
          idx_t *match)
 {
   idx_t j, k, m, istart, iend, nvtxs, nedges, ncon, cnedges, v, u, dovsize;
-  idx_t *xadj, *vwgt, *vsize, *adjncy, *adjwgt, *adjrsum;
+  idx_t *xadj, *vwgt, *vsize, *adjncy, *adjwgt;
   idx_t *cmap, *htable;
-  idx_t *cxadj, *cvwgt, *cvsize, *cadjncy, *cadjwgt, *cadjrsum;
+  idx_t *cxadj, *cvwgt, *cvsize, *cadjncy, *cadjwgt;
   graph_t *cgraph;
 
   WCOREPUSH;
@@ -576,7 +566,6 @@ void CreateCoarseGraphNoMask(ctrl_t *ctrl, graph_t *graph, idx_t cnvtxs,
   vsize   = graph->vsize;
   adjncy  = graph->adjncy;
   adjwgt  = graph->adjwgt;
-  adjrsum = graph->adjrsum;
   cmap    = graph->cmap;
 
 
@@ -585,7 +574,6 @@ void CreateCoarseGraphNoMask(ctrl_t *ctrl, graph_t *graph, idx_t cnvtxs,
   cxadj    = cgraph->xadj;
   cvwgt    = cgraph->vwgt;
   cvsize   = cgraph->vsize;
-  cadjrsum = cgraph->adjrsum;
   cadjncy  = cgraph->adjncy;
   cadjwgt  = cgraph->adjwgt;
 
@@ -607,7 +595,6 @@ void CreateCoarseGraphNoMask(ctrl_t *ctrl, graph_t *graph, idx_t cnvtxs,
     if (dovsize)
       cvsize[cnvtxs] = vsize[v];
 
-    cadjrsum[cnvtxs] = adjrsum[v];
     nedges = 0;
 
     istart = xadj[v];
@@ -633,8 +620,6 @@ void CreateCoarseGraphNoMask(ctrl_t *ctrl, graph_t *graph, idx_t cnvtxs,
       if (dovsize)
         cvsize[cnvtxs] += vsize[u];
 
-      cadjrsum[cnvtxs] += adjrsum[u];
-
       istart = xadj[u];
       iend   = xadj[u+1];
       for (j=istart; j<iend; j++) {
@@ -652,15 +637,11 @@ void CreateCoarseGraphNoMask(ctrl_t *ctrl, graph_t *graph, idx_t cnvtxs,
       /* Remove the contracted adjacency weight */
       if ((j = htable[cnvtxs]) != -1) {
         ASSERT(cadjncy[j] == cnvtxs);
-        cadjrsum[cnvtxs] -= cadjwgt[j];
         cadjncy[j]        = cadjncy[--nedges];
         cadjwgt[j]        = cadjwgt[nedges];
         htable[cnvtxs] = -1;
       }
     }
-
-    ASSERTP(cadjrsum[cnvtxs] == isum(nedges, cadjwgt, 1), 
-        ("%"PRIDX" %"PRIDX"\n", cadjrsum[cnvtxs], isum(nedges, cadjwgt, 1)));
 
     /* Zero out the htable */
     for (j=0; j<nedges; j++)
@@ -679,7 +660,7 @@ void CreateCoarseGraphNoMask(ctrl_t *ctrl, graph_t *graph, idx_t cnvtxs,
     cgraph->invtvwgt[j] = 1.0/(cgraph->tvwgt[j] > 0 ? cgraph->tvwgt[j] : 1);
   }
 
-  ReAdjustMemory(graph, cgraph, dovsize);
+  ReAdjustMemory(ctrl, graph, cgraph);
 
   IFSET(ctrl->dbglvl, METIS_DBG_TIME, gk_stopcputimer(ctrl->ContractTmr));
 
@@ -700,9 +681,9 @@ void CreateCoarseGraphPerm(ctrl_t *ctrl, graph_t *graph, idx_t cnvtxs,
 {
   idx_t i, j, jj, k, kk, l, m, istart, iend, nvtxs, nedges, ncon, cnedges, 
         v, u, mask, dovsize;
-  idx_t *xadj, *vwgt, *vsize, *adjncy, *adjwgt, *adjrsum;
+  idx_t *xadj, *vwgt, *vsize, *adjncy, *adjwgt;
   idx_t *cmap, *htable;
-  idx_t *cxadj, *cvwgt, *cvsize, *cadjncy, *cadjwgt, *cadjrsum;
+  idx_t *cxadj, *cvwgt, *cvsize, *cadjncy, *cadjwgt;
   graph_t *cgraph;
 
   WCOREPUSH;
@@ -720,7 +701,6 @@ void CreateCoarseGraphPerm(ctrl_t *ctrl, graph_t *graph, idx_t cnvtxs,
   vsize   = graph->vsize;
   adjncy  = graph->adjncy;
   adjwgt  = graph->adjwgt;
-  adjrsum = graph->adjrsum;
   cmap    = graph->cmap;
 
   /* Initialize the coarser graph */
@@ -728,7 +708,6 @@ void CreateCoarseGraphPerm(ctrl_t *ctrl, graph_t *graph, idx_t cnvtxs,
   cxadj    = cgraph->xadj;
   cvwgt    = cgraph->vwgt;
   cvsize   = cgraph->vsize;
-  cadjrsum = cgraph->adjrsum;
   cadjncy  = cgraph->adjncy;
   cadjwgt  = cgraph->adjwgt;
 
@@ -749,7 +728,6 @@ void CreateCoarseGraphPerm(ctrl_t *ctrl, graph_t *graph, idx_t cnvtxs,
     if (dovsize)
       cvsize[cnvtxs] = vsize[v];
 
-    cadjrsum[cnvtxs] = adjrsum[v];
     nedges = 0;
 
     istart = xadj[v];
@@ -788,8 +766,6 @@ void CreateCoarseGraphPerm(ctrl_t *ctrl, graph_t *graph, idx_t cnvtxs,
       if (dovsize)
         cvsize[cnvtxs] += vsize[u];
 
-      cadjrsum[cnvtxs] += adjrsum[u];
-
       istart = xadj[u];
       iend = xadj[u+1];
       for (j=istart; j<iend; j++) {
@@ -826,15 +802,10 @@ void CreateCoarseGraphPerm(ctrl_t *ctrl, graph_t *graph, idx_t cnvtxs,
         }
       }
       if (jj >= 0 && cadjncy[jj] == cnvtxs) { /* This 2nd check is needed for non-adjacent matchings */
-        cadjrsum[cnvtxs] -= cadjwgt[jj];
         cadjncy[jj] = cadjncy[--nedges];
         cadjwgt[jj] = cadjwgt[nedges];
       }
     }
-
-    ASSERTP(cadjrsum[cnvtxs] == isum(nedges, cadjwgt, 1), 
-        ("%"PRIDX" %"PRIDX" %"PRIDX" %"PRIDX" %"PRIDX"\n", 
-         cnvtxs, cadjrsum[cnvtxs], isum(nedges, cadjwgt, 1), adjrsum[u], adjrsum[v]));
 
     for (j=0; j<nedges; j++)
       htable[cadjncy[j]&mask] = -1;  /* Zero out the htable */
@@ -854,7 +825,7 @@ void CreateCoarseGraphPerm(ctrl_t *ctrl, graph_t *graph, idx_t cnvtxs,
   }
 
 
-  ReAdjustMemory(graph, cgraph, dovsize);
+  ReAdjustMemory(ctrl, graph, cgraph);
 
   IFSET(ctrl->dbglvl, METIS_DBG_TIME, gk_stopcputimer(ctrl->ContractTmr));
 
@@ -881,7 +852,6 @@ graph_t *SetupCoarseGraph(graph_t *graph, idx_t cnvtxs, idx_t dovsize)
 
   /* Allocate memory for the coarser graph */
   cgraph->xadj     = imalloc(cnvtxs+1, "SetupCoarseGraph: xadj");
-  cgraph->adjrsum  = imalloc(cnvtxs,   "SetupCoarseGraph: adjrsum");
   cgraph->adjncy   = imalloc(graph->nedges,   "SetupCoarseGraph: adjncy");
   cgraph->adjwgt   = imalloc(graph->nedges,   "SetupCoarseGraph: adjwgt");
   cgraph->vwgt     = imalloc(cgraph->ncon*cnvtxs, "SetupCoarseGraph: vwgt");
@@ -900,7 +870,7 @@ graph_t *SetupCoarseGraph(graph_t *graph, idx_t cnvtxs, idx_t dovsize)
     it will lead to significant savings 
  */
 /*************************************************************************/
-void ReAdjustMemory(graph_t *graph, graph_t *cgraph, idx_t dovsize) 
+void ReAdjustMemory(ctrl_t *ctrl, graph_t *graph, graph_t *cgraph) 
 {
   if (cgraph->nedges > 10000 && cgraph->nedges < 0.9*graph->nedges) {
     cgraph->adjncy = irealloc(cgraph->adjncy, cgraph->nedges, "ReAdjustMemory: adjncy");

@@ -6,7 +6,7 @@ This file contains functions dealing with error reporting and termination
 
 \author George
 \date 1/1/2007
-\version\verbatim $Id: error.c 10494 2011-07-06 14:53:45Z karypis $ \endverbatim
+\version\verbatim $Id: error.c 10522 2011-07-08 21:05:23Z benjamin $ \endverbatim
 */
 
 
@@ -23,23 +23,13 @@ __thread int gk_cur_jbufs=-1;
 __thread jmp_buf gk_jbufs[MAX_JBUFS];
 __thread jmp_buf gk_jbuf;
 
+typedef void (*gksighandler_t)(int);
+
 /* These are the holders of the old singal handlers for the trapped signals */
-static __thread sighandler_t old_SIGFPE_handler;
-static __thread sighandler_t old_SIGILL_handler;
-static __thread sighandler_t old_SIGSEGV_handler;
-static __thread sighandler_t old_SIGFPE_handlers[MAX_JBUFS];
-static __thread sighandler_t old_SIGILL_handlers[MAX_JBUFS];
-static __thread sighandler_t old_SIGSEGV_handlers[MAX_JBUFS];
-#ifndef WIN32
-static __thread sighandler_t old_SIGBUS_handler;
-static __thread sighandler_t old_SIGBUS_handlers[MAX_JBUFS];
-#endif
-static __thread sighandler_t old_SIGABRT_handler;
-static __thread sighandler_t old_SIGMEM_handler;  /* Custom signal */
-static __thread sighandler_t old_SIGERR_handler;  /* Custom signal */
-static __thread sighandler_t old_SIGABRT_handlers[MAX_JBUFS];
-static __thread sighandler_t old_SIGMEM_handlers[MAX_JBUFS];  /* Custom signal */
-static __thread sighandler_t old_SIGERR_handlers[MAX_JBUFS];  /* Custom signal */
+static __thread gksighandler_t old_SIGMEM_handler;  /* Custom signal */
+static __thread gksighandler_t old_SIGERR_handler;  /* Custom signal */
+static __thread gksighandler_t old_SIGMEM_handlers[MAX_JBUFS];  /* Custom signal */
+static __thread gksighandler_t old_SIGERR_handlers[MAX_JBUFS];  /* Custom signal */
 
 /* The following is used to control if the gk_errexit() will actually abort or not.
    There is always a single copy of this variable */
@@ -112,20 +102,8 @@ int gk_sigtrap()
 
   gk_cur_jbufs++;
 
-#ifdef FULLSIGNALS
-  old_SIGFPE_handlers[gk_cur_jbufs]    = signal(SIGFPE,  gk_sigthrow);
-  old_SIGILL_handlers[gk_cur_jbufs]    = signal(SIGILL,  gk_sigthrow);
-  old_SIGSEGV_handlers[gk_cur_jbufs]   = signal(SIGSEGV, gk_sigthrow);
-#ifndef WIN32
-  old_SIGBUS_handlers[gk_cur_jbufs]    = signal(SIGBUS,  gk_sigthrow);
-#endif
-#endif
-
-  old_SIGABRT_handlers[gk_cur_jbufs]   = signal(SIGABRT, gk_sigthrow);
-  if (SIGMEM != SIGABRT) 
-    old_SIGMEM_handlers[gk_cur_jbufs]  = signal(SIGMEM,  gk_sigthrow);
-  if (SIGERR != SIGABRT) 
-    old_SIGERR_handlers[gk_cur_jbufs]  = signal(SIGERR,  gk_sigthrow);
+  old_SIGMEM_handlers[gk_cur_jbufs]  = signal(SIGMEM,  gk_sigthrow);
+  old_SIGERR_handlers[gk_cur_jbufs]  = signal(SIGERR,  gk_sigthrow);
 
   return 1;
 }
@@ -140,20 +118,8 @@ int gk_siguntrap()
   if (gk_cur_jbufs == -1)
     return 0;
 
-#ifdef FULLSIGNALS
-  signal(SIGFPE,  old_SIGFPE_handlers[gk_cur_jbufs]);
-  signal(SIGILL,  old_SIGILL_handlers[gk_cur_jbufs]);
-  signal(SIGSEGV, old_SIGSEGV_handlers[gk_cur_jbufs]);
-#ifndef WIN32
-  signal(SIGBUS,  old_SIGBUS_handlers[gk_cur_jbufs]);
-#endif
-#endif
-
-  signal(SIGABRT, old_SIGABRT_handlers[gk_cur_jbufs]);
-  if (SIGMEM != SIGABRT) 
-    signal(SIGMEM,  old_SIGMEM_handlers[gk_cur_jbufs]);
-  if (SIGERR != SIGABRT) 
-    signal(SIGERR,  old_SIGERR_handlers[gk_cur_jbufs]);
+  signal(SIGMEM,  old_SIGMEM_handlers[gk_cur_jbufs]);
+  signal(SIGERR,  old_SIGERR_handlers[gk_cur_jbufs]);
 
   gk_cur_jbufs--;
 
@@ -166,9 +132,8 @@ int gk_siguntrap()
     perform a longjump to the most recent saved environment 
  */
 /*************************************************************************/
-sighandler_t gk_sigthrow(int signum)
+void gk_sigthrow(int signum)
 {
-  printf("Inside signal handler! %d\n", signum);
   longjmp(gk_jbufs[gk_cur_jbufs], signum);
 }
   
@@ -179,17 +144,8 @@ sighandler_t gk_sigthrow(int signum)
 ****************************************************************************/
 void gk_SetSignalHandlers() 
 {
-  old_SIGFPE_handler  = signal(SIGFPE,  gk_NonLocalExit_Handler);
-  old_SIGILL_handler  = signal(SIGILL,  gk_NonLocalExit_Handler);
-  old_SIGSEGV_handler = signal(SIGSEGV, gk_NonLocalExit_Handler);
-#ifndef WIN32
-  old_SIGBUS_handler  = signal(SIGBUS,  gk_NonLocalExit_Handler);
-#endif
-  old_SIGABRT_handler = signal(SIGABRT, gk_NonLocalExit_Handler);
-  if (SIGMEM != SIGABRT) 
-    old_SIGMEM_handler  = signal(SIGMEM,  gk_NonLocalExit_Handler);
-  if (SIGERR != SIGABRT) 
-    old_SIGERR_handler  = signal(SIGERR,  gk_NonLocalExit_Handler);
+  old_SIGMEM_handler = signal(SIGMEM,  gk_NonLocalExit_Handler);
+  old_SIGERR_handler = signal(SIGERR,  gk_NonLocalExit_Handler);
 }
   
 
@@ -198,17 +154,8 @@ void gk_SetSignalHandlers()
 ****************************************************************************/
 void gk_UnsetSignalHandlers() 
 {
-  signal(SIGFPE,  old_SIGFPE_handler);
-  signal(SIGILL,  old_SIGILL_handler);
-  signal(SIGSEGV, old_SIGSEGV_handler);
-#ifndef WIN32
-  signal(SIGBUS,  old_SIGBUS_handler);
-#endif
-  signal(SIGABRT, old_SIGABRT_handler);
-  if (SIGMEM != SIGABRT) 
-    signal(SIGMEM,  old_SIGMEM_handler);
-  if (SIGERR != SIGABRT) 
-    signal(SIGERR,  old_SIGERR_handler);
+  signal(SIGMEM,  old_SIGMEM_handler);
+  signal(SIGERR,  old_SIGERR_handler);
 }
   
 
@@ -218,9 +165,6 @@ void gk_UnsetSignalHandlers()
 **************************************************************************/
 void gk_NonLocalExit_Handler(int signum)
 {
-  gk_malloc_cleanup(0);
-
-  //printf("Calling longjmp...\n");
   longjmp(gk_jbuf, signum);
 }
   

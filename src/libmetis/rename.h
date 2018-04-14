@@ -8,7 +8,7 @@
  * Started 10/2/97
  * George
  *
- * $Id: rename.h 10495 2011-07-06 16:04:45Z karypis $
+ * $Id: rename.h 10565 2011-07-13 16:07:36Z karypis $
  *
  */
 
@@ -105,6 +105,7 @@
 
 /* kmetis.c */
 #define MlevelKWayPartitioning		libmetis__MlevelKWayPartitioning
+#define InitKWayPartitioning            libmetis__InitKWayPartitioning
 
 /* kwayfm.c */
 #define Greedy_KWayOptimize		libmetis__Greedy_KWayOptimize

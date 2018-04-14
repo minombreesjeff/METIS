@@ -9,7 +9,7 @@ can be used to define other memory allocation routines.
 
 \date   Started 4/3/2007
 \author George
-\version\verbatim $Id: memory.c 10494 2011-07-06 14:53:45Z karypis $ \endverbatim
+\version\verbatim $Id: memory.c 10561 2011-07-13 13:19:54Z karypis $ \endverbatim
 */
 
 
@@ -175,7 +175,7 @@ void *gk_realloc(void *oldptr, size_t nbytes, char *msg)
     nbytes++;  /* Force mallocs to actually allocate some memory */
 
   /* remove this memory de-allocation */
-  if (gkmcore != NULL) gk_gkmcoreDel(gkmcore, oldptr);
+  if (gkmcore != NULL && oldptr != NULL) gk_gkmcoreDel(gkmcore, oldptr);
 
   ptr = (void *)realloc(oldptr, nbytes);
 

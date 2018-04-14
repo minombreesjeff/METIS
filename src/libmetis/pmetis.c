@@ -6,7 +6,7 @@
 \date   Started 7/24/1997
 \author George  
 \author Copyright 1997-2009, Regents of the University of Minnesota 
-\version\verbatim $Id: pmetis.c 10495 2011-07-06 16:04:45Z karypis $ \endverbatim
+\version\verbatim $Id: pmetis.c 10513 2011-07-07 22:06:03Z karypis $ \endverbatim
 */
 
 
@@ -280,10 +280,9 @@ idx_t MultilevelBisect(ctrl_t *ctrl, graph_t *graph, real_t *tpwgts)
 void SplitGraphPart(ctrl_t *ctrl, graph_t *graph, graph_t **r_lgraph, 
          graph_t **r_rgraph)
 {
-  idx_t i, j, k, l, istart, iend, mypart, nvtxs, ncon, snvtxs[2], snedges[2], sum;
-  idx_t *xadj, *vwgt, *adjncy, *adjwgt, *adjrsum, *label, *where, *bndptr;
-  idx_t *sxadj[2], *svwgt[2], *sadjncy[2], *sadjwgt[2], *sadjrsum[2], 
-        *slabel[2];
+  idx_t i, j, k, l, istart, iend, mypart, nvtxs, ncon, snvtxs[2], snedges[2];
+  idx_t *xadj, *vwgt, *adjncy, *adjwgt, *label, *where, *bndptr;
+  idx_t *sxadj[2], *svwgt[2], *sadjncy[2], *sadjwgt[2], *slabel[2];
   idx_t *rename;
   idx_t *auxadjncy, *auxadjwgt;
   graph_t *lgraph, *rgraph;
@@ -298,7 +297,6 @@ void SplitGraphPart(ctrl_t *ctrl, graph_t *graph, graph_t **r_lgraph,
   vwgt    = graph->vwgt;
   adjncy  = graph->adjncy;
   adjwgt  = graph->adjwgt;
-  adjrsum = graph->adjrsum;
   label   = graph->label;
   where   = graph->where;
   bndptr  = graph->bndptr;
@@ -317,7 +315,6 @@ void SplitGraphPart(ctrl_t *ctrl, graph_t *graph, graph_t **r_lgraph,
   lgraph      = SetupSplitGraph(graph, snvtxs[0], snedges[0]);
   sxadj[0]    = lgraph->xadj;
   svwgt[0]    = lgraph->vwgt;
-  sadjrsum[0] = lgraph->adjrsum;
   sadjncy[0]  = lgraph->adjncy; 	
   sadjwgt[0]  = lgraph->adjwgt; 
   slabel[0]   = lgraph->label;
@@ -325,7 +322,6 @@ void SplitGraphPart(ctrl_t *ctrl, graph_t *graph, graph_t **r_lgraph,
   rgraph      = SetupSplitGraph(graph, snvtxs[1], snedges[1]);
   sxadj[1]    = rgraph->xadj;
   svwgt[1]    = rgraph->vwgt;
-  sadjrsum[1] = rgraph->adjrsum;
   sadjncy[1]  = rgraph->adjncy; 	
   sadjwgt[1]  = rgraph->adjwgt; 
   slabel[1]   = rgraph->label;
@@ -334,7 +330,6 @@ void SplitGraphPart(ctrl_t *ctrl, graph_t *graph, graph_t **r_lgraph,
   sxadj[0][0] = sxadj[1][0] = 0;
   for (i=0; i<nvtxs; i++) {
     mypart = where[i];
-    sum = adjrsum[i];
 
     istart = xadj[i];
     iend = xadj[i+1];
@@ -357,9 +352,6 @@ void SplitGraphPart(ctrl_t *ctrl, graph_t *graph, graph_t **r_lgraph,
           auxadjncy[l] = k;
           auxadjwgt[l++] = adjwgt[j]; 
         }
-        else {
-          sum -= adjwgt[j];
-        }
       }
       snedges[mypart] = l;
     }
@@ -368,7 +360,6 @@ void SplitGraphPart(ctrl_t *ctrl, graph_t *graph, graph_t **r_lgraph,
     for (k=0; k<ncon; k++)
       svwgt[mypart][snvtxs[mypart]*ncon+k] = vwgt[i*ncon+k];
 
-    sadjrsum[mypart][snvtxs[mypart]] = sum;
     slabel[mypart][snvtxs[mypart]]   = label[i];
     sxadj[mypart][++snvtxs[mypart]]  = snedges[mypart];
   }

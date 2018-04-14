@@ -5,7 +5,7 @@
 \date Started 7/15/98
 \author George
 \author Copyright 1997-2009, Regents of the University of Minnesota 
-\version $Id: contig.c 10492 2011-07-06 09:28:42Z karypis $
+\version $Id: contig.c 10513 2011-07-07 22:06:03Z karypis $
 */
 
 #include "metislib.h"
@@ -352,7 +352,7 @@ void EliminateComponents(ctrl_t *ctrl, graph_t *graph)
   xadj   = graph->xadj;
   adjncy = graph->adjncy;
   vwgt   = graph->vwgt;
-  adjwgt = graph->adjwgt;
+  adjwgt = (ctrl->objtype == METIS_OBJTYPE_VOL ? NULL : graph->adjwgt);
 
   where = graph->where;
   pwgts = graph->pwgts;
@@ -446,7 +446,7 @@ void EliminateComponents(ctrl_t *ctrl, graph_t *graph)
           ii = cind[j];
           for (jj=xadj[ii]; jj<xadj[ii+1]; jj++) 
             if (cwhere[adjncy[jj]] != -1)
-              cpvec[cwhere[adjncy[jj]]] += adjwgt[jj];
+              cpvec[cwhere[adjncy[jj]]] += (adjwgt ? adjwgt[jj] : 1);
         }
 
         /* Put the neighbors into a cand[] array for sorting */
@@ -603,7 +603,7 @@ void MoveGroupContigForVol(ctrl_t *ctrl, graph_t *graph, idx_t to, idx_t gid,
          idx_t *modind)
 {
   idx_t i, ii, iii, j, jj, k, l, nvtxs, from, me, other, xgain;
-  idx_t *xadj, *vsize, *adjncy, *adjwgt, *where;
+  idx_t *xadj, *vsize, *adjncy, *where;
   vkrinfo_t *myrinfo, *orinfo;
   vnbr_t *mynbrs, *onbrs;
 
@@ -611,7 +611,6 @@ void MoveGroupContigForVol(ctrl_t *ctrl, graph_t *graph, idx_t to, idx_t gid,
   xadj   = graph->xadj;
   vsize  = graph->vsize;
   adjncy = graph->adjncy;
-  adjwgt = graph->adjwgt;
   where  = graph->where;
 
   for (iii=ptr[gid]; iii<ptr[gid+1]; iii++) {
@@ -625,7 +624,7 @@ void MoveGroupContigForVol(ctrl_t *ctrl, graph_t *graph, idx_t to, idx_t gid,
     }
     mynbrs = ctrl->vnbrpool + myrinfo->inbr; 
 
-    xgain = (myrinfo->id == 0 && myrinfo->ed > 0 ? vsize[i] : 0);
+    xgain = (myrinfo->nid == 0 && myrinfo->ned > 0 ? vsize[i] : 0);
 
     /* find the location of 'to' in myrinfo or create it if it is not there */
     for (k=0; k<myrinfo->nnbrs; k++) {
@@ -633,7 +632,7 @@ void MoveGroupContigForVol(ctrl_t *ctrl, graph_t *graph, idx_t to, idx_t gid,
         break;
     }
     if (k == myrinfo->nnbrs) {
-      if (myrinfo->id > 0)
+      if (myrinfo->nid > 0)
         xgain -= vsize[i];
 
       /* determine the volume gain resulting from that move */
@@ -672,11 +671,11 @@ void MoveGroupContigForVol(ctrl_t *ctrl, graph_t *graph, idx_t to, idx_t gid,
         }
       }
       graph->minvol -= xgain;
-      graph->mincut -= -myrinfo->id;
+      graph->mincut -= -myrinfo->nid;
     }
     else {
       graph->minvol -= (xgain + mynbrs[k].gv);
-      graph->mincut -= mynbrs[k].ed-myrinfo->id;
+      graph->mincut -= mynbrs[k].ned-myrinfo->nid;
     }
 
 

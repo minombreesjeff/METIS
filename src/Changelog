@@ -1,4 +1,13 @@
 
+metis-5.0rc3
+------------------------------------------------------------------------
+r10560 | karypis | 2011-07-13 08:19:10 -0500 (Wed, 13 Jul 2011)
+
+- Fixed various bugs that were identified by testers.
+- Some minor performance and quality improvements.
+- Addressed some build issues.
+
+
 metis-5.0rc2
 ------------------------------------------------------------------------
 r10496 | karypis | 2011-07-06 11:04:45 -0500 (Wed, 06 Jul 2011)

@@ -8,7 +8,7 @@
  * Started 8/1/97
  * George
  *
- * $Id: sfm.c 10481 2011-07-05 18:01:23Z karypis $
+ * $Id: sfm.c 10515 2011-07-08 15:46:18Z karypis $
  *
  */
 
@@ -262,7 +262,7 @@ void FM_2WayNodeRefine2Sided(ctrl_t *ctrl, graph_t *graph, idx_t niter)
 /**************************************************************************/
 void FM_2WayNodeRefine1Sided(ctrl_t *ctrl, graph_t *graph, idx_t niter)
 {
-  idx_t i, ii, j, k, jj, kk, nvtxs, nbnd, nswaps, nmind;
+  idx_t i, ii, j, k, jj, kk, nvtxs, nbnd, nswaps, nmind, iend;
   idx_t *xadj, *vwgt, *adjncy, *where, *pwgts, *edegrees, *bndind, *bndptr;
   idx_t *mptr, *mind, *swaps;
   rpq_t *queue; 
@@ -381,7 +381,7 @@ void FM_2WayNodeRefine1Sided(ctrl_t *ctrl, graph_t *graph, idx_t niter)
 
           edegrees = rinfo[k].edegrees;
           edegrees[0] = edegrees[1] = 0;
-          for (jj=xadj[k]; jj<xadj[k+1]; jj++) {
+          for (jj=xadj[k], iend=xadj[k+1]; jj<iend; jj++) {
             kk = adjncy[jj];
             if (where[kk] != 2) 
               edegrees[where[kk]] += vwgt[kk];
@@ -438,7 +438,7 @@ void FM_2WayNodeRefine1Sided(ctrl_t *ctrl, graph_t *graph, idx_t niter)
         where[k] = other;
         INC_DEC(pwgts[other], pwgts[2], vwgt[k]);
         BNDDelete(nbnd, bndind, bndptr, k);
-        for (jj=xadj[k]; jj<xadj[k+1]; jj++) {
+        for (jj=xadj[k], iend=xadj[k+1]; jj<iend; jj++) {
           kk = adjncy[jj];
           if (where[kk] == 2) 
             rinfo[kk].edegrees[other] += vwgt[k];

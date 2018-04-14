@@ -8,7 +8,7 @@
  * Started 8/27/94
  * George
  *
- * $Id: defs.h 10481 2011-07-05 18:01:23Z karypis $
+ * $Id: defs.h 10550 2011-07-12 12:37:37Z karypis $
  *
  */
 
@@ -19,9 +19,6 @@
 #define MAXLINE			1280000
 
 #define LTERM			(void **) 0	/* List terminator for gk_free() */
-
-#define MAXNCON			16		/* The maximum number of constrains */
-#define MAXNOBJ			16		/* The maximum number of objectives */
 
 #define HTLENGTH		((1<<11)-1)
 
@@ -44,8 +41,6 @@
                                           has not been extracted before */
 
 #define UNMATCHED		-1
-
-#define HTABLE_EMPTY    	-1
 
 #define LARGENIPARTS		6	/* Number of random initial partitions */
 #define SMALLNIPARTS		3	/* Number of random initial partitions */

@@ -4,7 +4,7 @@
 
 \date   Started 3/27/2007
 \author George
-\version\verbatim $Id: gk_arch.h 10494 2011-07-06 14:53:45Z karypis $ \endverbatim
+\version\verbatim $Id: gk_arch.h 10522 2011-07-08 21:05:23Z benjamin $ \endverbatim
 */
 
 #ifndef _GK_ARCH_H_
@@ -67,9 +67,5 @@ typedef ptrdiff_t ssize_t;
 #define INFINITY FLT_MAX
 #endif
 #endif
-
-
-/* this should be in signals.h, but is not there */
-typedef void (*sighandler_t)(int);  
 
 #endif

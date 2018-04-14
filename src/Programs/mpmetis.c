@@ -8,7 +8,7 @@
  * Started 8/28/94
  * George
  *
- * $Id: mpmetis.c 10454 2011-07-01 13:03:38Z karypis $
+ * $Id: mpmetis.c 10567 2011-07-13 16:17:07Z karypis $
  *
  */
 
@@ -26,7 +26,7 @@ int main(int argc, char *argv[])
   idx_t *epart, *npart;
   idx_t objval;
   params_t *params;
-  int status;
+  int status=0;
 
   params = parse_cmdline(argc, argv);
 

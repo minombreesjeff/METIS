@@ -4,7 +4,7 @@
 
 \date   Started 3/27/2007
 \author George
-\version\verbatim $Id: gk_proto.h 10494 2011-07-06 14:53:45Z karypis $ \endverbatim
+\version\verbatim $Id: gk_proto.h 10522 2011-07-08 21:05:23Z benjamin $ \endverbatim
 */
 
 #ifndef _GK_PROTO_H_
@@ -120,7 +120,7 @@ void errexit(char *,...);
 void gk_errexit(int signum, char *,...);
 int gk_sigtrap();
 int gk_siguntrap();
-sighandler_t gk_sigthrow(int signum);
+void gk_sigthrow(int signum);
 void gk_SetSignalHandlers();
 void gk_UnsetSignalHandlers();
 void gk_NonLocalExit_Handler(int signum);

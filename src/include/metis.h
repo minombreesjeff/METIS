@@ -10,7 +10,6 @@
 #ifndef _METIS_H_
 #define _METIS_H_ 
 
-
 /****************************************************************************
 * A set of defines that can be modified by the user
 *****************************************************************************/
@@ -31,7 +30,8 @@
  GCC does provides these definitions in stdint.h, but it may require some
  modifications on other architectures.
 --------------------------------------------------------------------------*/
-#define IDXTYPEWIDTH 32
+#define IDXTYPEWIDTH 64
+
 
 /*--------------------------------------------------------------------------
  Specifies the data type that will hold floating-point style information.
@@ -40,8 +40,7 @@
    32 : single precission floating point (float)
    64 : double precission floating point (double)
 --------------------------------------------------------------------------*/
-#define REALTYPEWIDTH 32
-
+#define REALTYPEWIDTH 64
 
 
 
@@ -49,7 +48,6 @@
 * In principle, nothing needs to be changed beyond this point, unless the
 * int32_t and int64_t cannot be found in the normal places.
 *****************************************************************************/
-
 
 /* Uniform definitions for various compilers */
 #if defined(_MSC_VER)
@@ -60,6 +58,27 @@
 #endif
 #if defined(__GNUC__)
   #define COMPILER_GCC
+#endif
+
+/* Include c99 int definitions and need constants. When building the library,
+ * these are already defined by GKlib; hence the test for _GKLIB_H_ */
+#ifndef _GKLIB_H_
+#ifdef COMPILER_MSC
+#include <limits.h>
+
+typedef __int32 int32_t;
+typedef __int64 int64_t;
+#define PRId32       "I32d"
+#define PRId64       "I64d"
+#define SCNd32       "ld"
+#define SCNd64       "I64d"
+#define INT32_MIN    ((int32_t)_I32_MIN)
+#define INT32_MAX    _I32_MAX
+#define INT64_MIN    ((int64_t)_I64_MIN)
+#define INT64_MAX    _I64_MAX
+#else
+#include <inttypes.h>
+#endif
 #endif
 
 

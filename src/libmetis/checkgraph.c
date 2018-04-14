@@ -104,7 +104,8 @@ int CheckGraph(graph_t *graph, int numflag, int verbose)
 
  
   if (err > 0 && verbose) { 
-    printf("A total of %"PRIDX" errors exist in the input file. Correct them, and run again!\n", err);
+    printf("A total of %"PRIDX" errors exist in the input file. "
+           "Correct them, and run again!\n", err);
   }
 
   gk_free((void **)&htable, LTERM);

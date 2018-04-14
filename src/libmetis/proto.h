@@ -8,7 +8,7 @@
  * Started 10/19/95
  * George
  *
- * $Id: proto.h 10495 2011-07-06 16:04:45Z karypis $
+ * $Id: proto.h 10565 2011-07-13 16:07:36Z karypis $
  *
  */
 
@@ -49,7 +49,7 @@ void CreateCoarseGraphNoMask(ctrl_t *ctrl, graph_t *graph, idx_t cnvtxs,
 void CreateCoarseGraphPerm(ctrl_t *ctrl, graph_t *graph, idx_t cnvtxs, 
          idx_t *match, idx_t *perm);
 graph_t *SetupCoarseGraph(graph_t *graph, idx_t cnvtxs, idx_t dovsize);
-void ReAdjustMemory(graph_t *graph, graph_t *cgraph, idx_t dovsize);
+void ReAdjustMemory(ctrl_t *ctrl, graph_t *graph, graph_t *cgraph);
 
 
 
@@ -76,7 +76,7 @@ void MoveGroupContigForVol(ctrl_t *ctrl, graph_t *graph, idx_t to, idx_t gid,
 
 
 /* debug.c */
-idx_t ComputeCut(graph_t *, idx_t *);
+idx_t ComputeCut(graph_t *graph, idx_t *where);
 idx_t ComputeVolume(graph_t *, idx_t *);
 idx_t ComputeMaxCut(graph_t *graph, idx_t nparts, idx_t *where);
 idx_t CheckBnd(graph_t *);
@@ -113,7 +113,6 @@ void ChangeMesh2FNumbering2(idx_t ne, idx_t nn, idx_t *ptr, idx_t *ind,
 /* graph.c */
 graph_t *SetupGraph(ctrl_t *ctrl, idx_t nvtxs, idx_t ncon, idx_t *xadj, 
              idx_t *adjncy, idx_t *vwgt, idx_t *vsize, idx_t *adjwgt);
-void SetupGraph_adjrsum(graph_t *graph);
 void SetupGraph_tvwgt(graph_t *graph);
 void SetupGraph_label(graph_t *graph);
 graph_t *SetupSplitGraph(graph_t *graph, idx_t snvtxs, idx_t snedges);
@@ -136,6 +135,7 @@ void GrowBisectionNode2(ctrl_t *ctrl, graph_t *graph, real_t *ntpwgts, idx_t nip
 
 /* kmetis.c */
 idx_t MlevelKWayPartitioning(ctrl_t *ctrl, graph_t *graph, idx_t *part);
+void InitKWayPartitioning(ctrl_t *ctrl, graph_t *graph);
 
 
 /* kwayfm.c */
