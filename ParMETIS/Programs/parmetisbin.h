@@ -16,16 +16,16 @@
 #define DMALLOC			1
 */
 
-#include <stdheaders.h>
-#include "../parmetis.h"
+#include <GKlib.h>
+#include <parmetis.h>
 
-#ifdef DMALLOC
-#include <dmalloc.h>
-#endif
+#include "../metis/libmetis/gklib_defs.h"
+#include "../libparmetis/rename.h"
+#include "../libparmetis/defs.h"
+#include "../libparmetis/struct.h"
+#include "../libparmetis/macros.h"
+#include "../libparmetis/proto.h"
+#include "proto.h"
 
-#include <rename.h>
-#include <defs.h>
-#include <struct.h>
-#include <macros.h>
-#include <proto.h>
 
+#define MAXNCON         32

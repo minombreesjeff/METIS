@@ -19,17 +19,18 @@
 **************************************************************************/
 int main(int argc, char *argv[])
 {
-  int i, j, npes, mype, optype, nparts, adptf, options[10];
-  idxtype *part=NULL, *sizes=NULL;
-  GraphType graph;
-  float ipc2redist, *xyz=NULL, *tpwgts=NULL, ubvec[MAXNCON];
+  idx_t i, j, npes, mype, optype, nparts, adptf, options[10];
+  idx_t *part=NULL, *sizes=NULL;
+  graph_t graph;
+  real_t ipc2redist, *xyz=NULL, *tpwgts=NULL, ubvec[MAXNCON];
   MPI_Comm comm;
-  int numflag=0, wgtflag=0, ndims, edgecut;
+  idx_t numflag=0, wgtflag=0, ndims, edgecut;
+  char xyzfilename[8192];
 
   MPI_Init(&argc, &argv);
   MPI_Comm_dup(MPI_COMM_WORLD, &comm);
-  MPI_Comm_size(comm, &npes);
-  MPI_Comm_rank(comm, &mype);
+  gkMPI_Comm_size(comm, &npes);
+  gkMPI_Comm_rank(comm, &mype);
 
   if (argc != 8) {
     if (mype == 0)
@@ -53,11 +54,11 @@ int main(int argc, char *argv[])
   ParallelReadGraph(&graph, argv[1], comm);
 
   /* Remove the edges for testing */
-  /*idxset(graph.vtxdist[mype+1]-graph.vtxdist[mype]+1, 0, graph.xadj); */
+  /*iset(graph.vtxdist[mype+1]-graph.vtxdist[mype]+1, 0, graph.xadj); */
 
-  sset(graph.ncon, 1.05, ubvec);
-  tpwgts = fmalloc(nparts*graph.ncon, "tpwgts");
-  sset(nparts*graph.ncon, 1.0/(float)nparts, tpwgts);
+  rset(graph.ncon, 1.05, ubvec);
+  tpwgts = rmalloc(nparts*graph.ncon, "tpwgts");
+  rset(nparts*graph.ncon, 1.0/(real_t)nparts, tpwgts);
 
   /*
   ChangeToFortranNumbering(graph.vtxdist, graph.xadj, graph.adjncy, mype, npes); 
@@ -65,18 +66,20 @@ int main(int argc, char *argv[])
 
   nvtxs = graph.vtxdist[mype+1]-graph.vtxdist[mype];
   nedges = graph.xadj[nvtxs];
-  printf("%d %d\n", idxsum(nvtxs, graph.xadj), idxsum(nedges, graph.adjncy));
+  printf("%"PRIDX" %"PRIDX"\n", isum(nvtxs, graph.xadj, 1), isum(nedges, graph.adjncy, 1));
   */
 
 
-  if (optype >= 20)  
-    xyz = ReadTestCoordinates(&graph, argv[1], &ndims, comm);
+  if (optype >= 20) { 
+    sprintf(xyzfilename, "%s.xyz", argv[1]);
+    xyz = ReadTestCoordinates(&graph, xyzfilename, &ndims, comm);
+  }
 
   if (mype == 0) 
     printf("finished reading file: %s\n", argv[1]);
   
-  part  = idxsmalloc(graph.nvtxs, mype%nparts, "main: part");
-  sizes = idxmalloc(2*npes, "main: sizes");
+  part  = ismalloc(graph.nvtxs, mype%nparts, "main: part");
+  sizes = imalloc(2*npes, "main: sizes");
 
   switch (optype) {
     case 1: 
@@ -92,10 +95,11 @@ int main(int argc, char *argv[])
       ParMETIS_V3_RefineKway(graph.vtxdist, graph.xadj, graph.adjncy, graph.vwgt, 
           graph.adjwgt, &wgtflag, &numflag, &graph.ncon, &nparts, tpwgts, ubvec, 
           options, &edgecut, part, &comm);
+      WritePVector(argv[1], graph.vtxdist, part, MPI_COMM_WORLD); 
       break;
     case 3:
       options[PMV3_OPTION_PSR] = PARMETIS_PSR_COUPLED;
-      graph.vwgt = idxsmalloc(graph.nvtxs, 1, "main: vwgt");
+      graph.vwgt = ismalloc(graph.nvtxs, 1, "main: vwgt");
       if (npes > 1) {
         AdaptGraph(&graph, adptf, comm);
       }
@@ -105,7 +109,7 @@ int main(int argc, char *argv[])
             graph.adjwgt, &wgtflag, &numflag, &graph.ncon, &nparts, tpwgts, 
             ubvec, options, &edgecut, part, &comm);
 
-        printf("Initial partitioning with edgecut of %d\n", edgecut);
+        printf("Initial partitioning with edgecut of %"PRIDX"\n", edgecut);
         for (i=0; i<graph.ncon; i++) {
           for (j=0; j<graph.nvtxs; j++) {
             if (part[j] == i)
@@ -131,7 +135,7 @@ int main(int argc, char *argv[])
       ParMETIS_SerialNodeND(graph.vtxdist, graph.xadj, graph.adjncy, &numflag, options, 
           part, sizes, &comm);
       /* WriteOVector(argv[1], graph.vtxdist, part, comm);  */ 
-      printf("%d %d %d %d %d %d %d\n", sizes[0], sizes[1], sizes[2], sizes[3], sizes[4], sizes[5], sizes[6]);
+      printf("%"PRIDX" %"PRIDX" %"PRIDX" %"PRIDX" %"PRIDX" %"PRIDX" %"PRIDX"\n", sizes[0], sizes[1], sizes[2], sizes[3], sizes[4], sizes[5], sizes[6]);
       break;
     case 11: 
       /* TestAdaptiveMETIS(graph.vtxdist, graph.xadj, graph.adjncy, part, options, adptf, comm); */
@@ -147,9 +151,9 @@ int main(int argc, char *argv[])
       break;
   }
 
-  /* printf("%d %d\n", idxsum(nvtxs, graph.xadj), idxsum(nedges, graph.adjncy)); */
+  /* printf("%"PRIDX" %"PRIDX"\n", isum(nvtxs, graph.xadj, 1), isum(nedges, graph.adjncy, 1)); */
 
-  GKfree((void **)&part, &sizes, &tpwgts, &graph.vtxdist, &graph.xadj, &graph.adjncy, 
+  gk_free((void **)&part, &sizes, &tpwgts, &graph.vtxdist, &graph.xadj, &graph.adjncy, 
          &graph.vwgt, &graph.adjwgt, &xyz, LTERM);
 
   MPI_Comm_free(&comm);
@@ -163,9 +167,9 @@ int main(int argc, char *argv[])
 /*************************************************************************
 * This function changes the numbering to be from 1 instead of 0
 **************************************************************************/
-void ChangeToFortranNumbering(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy, int mype, int npes)
+void ChangeToFortranNumbering(idx_t *vtxdist, idx_t *xadj, idx_t *adjncy, idx_t mype, idx_t npes)
 {
-  int i, nvtxs, nedges;
+  idx_t i, nvtxs, nedges;
 
   nvtxs = vtxdist[mype+1]-vtxdist[mype];
   nedges = xadj[nvtxs];

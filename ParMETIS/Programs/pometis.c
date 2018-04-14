@@ -19,27 +19,28 @@
 **************************************************************************/
 int main(int argc, char *argv[])
 {
-  int i, j, npes, mype, optype, nparts, adptf, options[10];
-  idxtype *order, *sizes;
-  GraphType graph;
+  idx_t i, j, npes, mype, optype, nparts, adptf, options[10];
+  idx_t *order, *sizes;
+  graph_t graph;
   MPI_Comm comm;
-  int numflag=0, wgtflag=0, ndims=3, edgecut;
-  int mtype, rtype, p_nseps, s_nseps, seed, dbglvl;
-  float ubfrac;
+  idx_t numflag=0, wgtflag=0, ndims=3, edgecut;
+  idx_t mtype, rtype, p_nseps, s_nseps, seed, dbglvl;
+  real_t ubfrac;
   size_t opc;
 
   MPI_Init(&argc, &argv);
   MPI_Comm_dup(MPI_COMM_WORLD, &comm);
-  MPI_Comm_size(comm, &npes);
-  MPI_Comm_rank(comm, &mype);
+  gkMPI_Comm_size(comm, &npes);
+  gkMPI_Comm_rank(comm, &mype);
 
   if (argc != 10) {
     if (mype == 0) {
       printf("Usage: %s <graph-file> <op-type> <seed> <dbglvl> <mtype> <rtype> <p_nseps> <s_nseps> <ubfrac>\n", argv[0]);
       printf("  op-type: 1=ParNodeND_V3, 2=ParNodeND_V32, 3=SerNodeND\n");
-      printf("  mtype: %d=LOCAL, %d=GLOBAL\n", PARMETIS_MTYPE_LOCAL, PARMETIS_MTYPE_GLOBAL);
-      printf("  rtype: %d=GREEDY, %d=2PHASE\n", 
-          PARMETIS_SRTYPE_GREEDY, PARMETIS_SRTYPE_2PHASE);
+      printf("  mtype: %"PRIDX"=LOCAL, %"PRIDX"=GLOBAL\n", 
+          (idx_t)PARMETIS_MTYPE_LOCAL, (idx_t)PARMETIS_MTYPE_GLOBAL);
+      printf("  rtype: %"PRIDX"=GREEDY, %"PRIDX"=2PHASE\n", 
+          (idx_t)PARMETIS_SRTYPE_GREEDY, (idx_t)PARMETIS_SRTYPE_2PHASE);
     }
 
     MPI_Finalize();
@@ -51,9 +52,11 @@ int main(int argc, char *argv[])
   if (mype == 0) 
     printf("reading file: %s\n", argv[1]);
   ParallelReadGraph(&graph, argv[1], comm);
+  if (mype == 0) 
+    printf("done\n");
 
-  order = idxsmalloc(graph.nvtxs, mype%nparts, "main: order");
-  sizes = idxmalloc(2*npes, "main: sizes");
+  order = ismalloc(graph.nvtxs, mype, "main: order");
+  sizes = imalloc(2*npes, "main: sizes");
 
   switch (optype) {
     case 1: 
@@ -82,7 +85,7 @@ int main(int argc, char *argv[])
       break;
     default:
       if (mype == 0) 
-        printf("Uknown optype of %d\n", optype);
+        printf("Uknown optype of %"PRIDX"\n", optype);
       MPI_Finalize();
       exit(0);
   }
@@ -94,7 +97,7 @@ int main(int argc, char *argv[])
     opc = 0;
     nparts = 1<<log2Int(npes);
     for (i=0; i<2*nparts-1; i++) {
-      printf(" %6d", sizes[i]);
+      printf(" %6"PRIDX"", sizes[i]);
       if (i >= nparts)
         opc += sizes[i]*(sizes[i]+1)/2;
     }
@@ -102,7 +105,7 @@ int main(int argc, char *argv[])
   }
 
 
-  GKfree((void **)&order, &sizes, &graph.vtxdist, &graph.xadj, &graph.adjncy, 
+  gk_free((void **)&order, &sizes, &graph.vtxdist, &graph.xadj, &graph.adjncy, 
          &graph.vwgt, &graph.adjwgt, LTERM);
 
   MPI_Comm_free(&comm);

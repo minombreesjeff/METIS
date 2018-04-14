@@ -18,14 +18,14 @@
 /*************************************************************************
 * This function implements a simple graph adaption strategy.
 **************************************************************************/
-void AdaptGraph(GraphType *graph, int afactor, MPI_Comm comm)
+void AdaptGraph(graph_t *graph, idx_t afactor, MPI_Comm comm)
 {
-  int i, nvtxs, nadapt, firstvtx, lastvtx;
-  int npes, mype, mypwgt, max, min, sum;
-  idxtype *vwgt, *xadj, *adjncy, *adjwgt, *perm;
+  idx_t i, nvtxs, nadapt, firstvtx, lastvtx;
+  idx_t npes, mype, mypwgt, max, min, sum;
+  idx_t *vwgt, *xadj, *adjncy, *adjwgt, *perm;
 
-  MPI_Comm_size(comm, &npes);
-  MPI_Comm_rank(comm, &mype);
+  gkMPI_Comm_size(comm, &npes);
+  gkMPI_Comm_rank(comm, &mype);
 
   srand(mype*afactor);
   srand48(mype*afactor);
@@ -34,7 +34,7 @@ void AdaptGraph(GraphType *graph, int afactor, MPI_Comm comm)
   xadj = graph->xadj;
   adjncy = graph->adjncy;
   if (graph->adjwgt == NULL)
-    adjwgt = graph->adjwgt = idxsmalloc(graph->nedges, 1, "AdaptGraph: adjwgt");
+    adjwgt = graph->adjwgt = ismalloc(graph->nedges, 1, "AdaptGraph: adjwgt");
   else
     adjwgt = graph->adjwgt;
   vwgt = graph->vwgt;
@@ -42,7 +42,7 @@ void AdaptGraph(GraphType *graph, int afactor, MPI_Comm comm)
   firstvtx = graph->vtxdist[mype];
   lastvtx = graph->vtxdist[mype+1];
 
-  perm = idxmalloc(nvtxs, "AdaptGraph: perm");
+  perm = imalloc(nvtxs, "AdaptGraph: perm");
   FastRandomPermute(nvtxs, perm, 1);
 
   nadapt = RandomInRange(nvtxs);
@@ -57,7 +57,7 @@ void AdaptGraph(GraphType *graph, int afactor, MPI_Comm comm)
     for (j=xadj[i]; j<xadj[i+1]; j++) {
       k = adjncy[j];
       if (k >= firstvtx && k < lastvtx) {
-	adjwgt[j] = (int)pow(1.0*(amin(vwgt[i],vwgt[k-firstvtx])), .6667);
+	adjwgt[j] = (int)pow(1.0*(gk_min(vwgt[i],vwgt[k-firstvtx])), .6667);
         if (adjwgt[j] == 0)
           adjwgt[j] = 1;
       }
@@ -65,14 +65,14 @@ void AdaptGraph(GraphType *graph, int afactor, MPI_Comm comm)
   }
 */
 
-  mypwgt = idxsum(nvtxs, vwgt);
+  mypwgt = isum(nvtxs, vwgt, 1);
 
-  MPI_Allreduce((void *)&mypwgt, (void *)&max, 1, MPI_INT, MPI_MAX, comm);
-  MPI_Allreduce((void *)&mypwgt, (void *)&min, 1, MPI_INT, MPI_MIN, comm);
-  MPI_Allreduce((void *)&mypwgt, (void *)&sum, 1, MPI_INT, MPI_SUM, comm);
+  MPI_Allreduce((void *)&mypwgt, (void *)&max, 1, IDX_T, MPI_MAX, comm);
+  MPI_Allreduce((void *)&mypwgt, (void *)&min, 1, IDX_T, MPI_MIN, comm);
+  MPI_Allreduce((void *)&mypwgt, (void *)&sum, 1, IDX_T, MPI_SUM, comm);
 
   if (mype == 0)
-    printf("Initial Load Imbalance: %5.4f, [%5d %5d %5d] for afactor: %d\n", (1.0*max*npes)/(1.0*sum), min, max, sum, afactor);
+    printf("Initial Load Imbalance: %5.4"PRREAL", [%5"PRIDX" %5"PRIDX" %5"PRIDX"] for afactor: %"PRIDX"\n", (1.0*max*npes)/(1.0*sum), min, max, sum, afactor);
 
   free(perm);
 }
@@ -81,14 +81,14 @@ void AdaptGraph(GraphType *graph, int afactor, MPI_Comm comm)
 /*************************************************************************
 * This function implements a simple graph adaption strategy.
 **************************************************************************/
-void AdaptGraph2(GraphType *graph, int afactor, MPI_Comm comm)
+void AdaptGraph2(graph_t *graph, idx_t afactor, MPI_Comm comm)
 {
-  int i, j, k, nvtxs, firstvtx, lastvtx;
-  int npes, mype, mypwgt, max, min, sum;
-  idxtype *vwgt, *xadj, *adjncy, *adjwgt;
+  idx_t i, j, k, nvtxs, firstvtx, lastvtx;
+  idx_t npes, mype, mypwgt, max, min, sum;
+  idx_t *vwgt, *xadj, *adjncy, *adjwgt;
 
-  MPI_Comm_size(comm, &npes);
-  MPI_Comm_rank(comm, &mype);
+  gkMPI_Comm_size(comm, &npes);
+  gkMPI_Comm_rank(comm, &mype);
 
   srand(mype*afactor);
   srand48(mype*afactor);
@@ -97,7 +97,7 @@ void AdaptGraph2(GraphType *graph, int afactor, MPI_Comm comm)
   xadj = graph->xadj;
   adjncy = graph->adjncy;
   if (graph->adjwgt == NULL)
-    adjwgt = graph->adjwgt = idxsmalloc(graph->nedges, 1, "AdaptGraph: adjwgt");
+    adjwgt = graph->adjwgt = ismalloc(graph->nedges, 1, "AdaptGraph: adjwgt");
   else
     adjwgt = graph->adjwgt;
   vwgt = graph->vwgt;
@@ -108,7 +108,7 @@ void AdaptGraph2(GraphType *graph, int afactor, MPI_Comm comm)
 
 /*  if (RandomInRange(npes+1) < .05*npes) { */ 
   if (RandomInRange(npes+1) < 2) { 
-    printf("[%d] is adapting\n", mype);
+    printf("[%"PRIDX"] is adapting\n", mype);
     for (i=0; i<nvtxs; i++)
       vwgt[i] = afactor*vwgt[i];
   }
@@ -117,21 +117,21 @@ void AdaptGraph2(GraphType *graph, int afactor, MPI_Comm comm)
     for (j=xadj[i]; j<xadj[i+1]; j++) {
       k = adjncy[j];
       if (k >= firstvtx && k < lastvtx) {
-	adjwgt[j] = (int)pow(1.0*(amin(vwgt[i],vwgt[k-firstvtx])), .6667);
+	adjwgt[j] = (int)pow(1.0*(gk_min(vwgt[i],vwgt[k-firstvtx])), .6667);
         if (adjwgt[j] == 0)
           adjwgt[j] = 1;
       }
     }
   }
       
-  mypwgt = idxsum(nvtxs, vwgt);
+  mypwgt = isum(nvtxs, vwgt, 1);
 
-  MPI_Allreduce((void *)&mypwgt, (void *)&max, 1, MPI_INT, MPI_MAX, comm);
-  MPI_Allreduce((void *)&mypwgt, (void *)&min, 1, MPI_INT, MPI_MIN, comm);
-  MPI_Allreduce((void *)&mypwgt, (void *)&sum, 1, MPI_INT, MPI_SUM, comm);
+  gkMPI_Allreduce((void *)&mypwgt, (void *)&max, 1, IDX_T, MPI_MAX, comm);
+  gkMPI_Allreduce((void *)&mypwgt, (void *)&min, 1, IDX_T, MPI_MIN, comm);
+  gkMPI_Allreduce((void *)&mypwgt, (void *)&sum, 1, IDX_T, MPI_SUM, comm);
 
   if (mype == 0)
-    printf("Initial Load Imbalance: %5.4f, [%5d %5d %5d]\n", (1.0*max*npes)/(1.0*sum), min, max, sum);
+    printf("Initial Load Imbalance: %5.4"PRREAL", [%5"PRIDX" %5"PRIDX" %5"PRIDX"]\n", (1.0*max*npes)/(1.0*sum), min, max, sum);
 
 }
 
@@ -139,18 +139,19 @@ void AdaptGraph2(GraphType *graph, int afactor, MPI_Comm comm)
 /*************************************************************************
 * This function implements a simple graph adaption strategy.
 **************************************************************************/
-void Mc_AdaptGraph(GraphType *graph, idxtype *part, int ncon, int nparts, MPI_Comm comm)
+void Mc_AdaptGraph(graph_t *graph, idx_t *part, idx_t ncon, idx_t nparts, MPI_Comm comm)
 {
-  int h, i;
-  int nvtxs;
-  int npes, mype;
-  idxtype *vwgt, *pwgts;
-  MPI_Comm_size(comm, &npes);
-  MPI_Comm_rank(comm, &mype);
+  idx_t h, i;
+  idx_t nvtxs;
+  idx_t npes, mype;
+  idx_t *vwgt, *pwgts;
+
+  gkMPI_Comm_size(comm, &npes);
+  gkMPI_Comm_rank(comm, &mype);
 
   nvtxs = graph->nvtxs;
   vwgt = graph->vwgt;
-  pwgts = idxsmalloc(nparts*ncon, 1, "pwgts");
+  pwgts = ismalloc(nparts*ncon, 1, "pwgts");
 
   if (mype == 0) {
     for (i=0; i<nparts; i++)
@@ -158,7 +159,7 @@ void Mc_AdaptGraph(GraphType *graph, idxtype *part, int ncon, int nparts, MPI_Co
         pwgts[i*ncon+h] = RandomInRange(20)+1;
   }
 
-  MPI_Bcast((void *)pwgts, nparts*ncon, IDX_DATATYPE, 0, comm);
+  MPI_Bcast((void *)pwgts, nparts*ncon, IDX_T, 0, comm);
 
   for (i=0; i<nvtxs; i++)
     for (h=0; h<ncon; h++)
