@@ -8,7 +8,7 @@
  * Started 9/25/94
  * George
  *
- * $Id: macros.h 10534 2011-07-10 19:48:52Z karypis $
+ * $Id: macros.h 10578 2011-07-14 18:10:15Z karypis $
  *
  */
 
@@ -21,8 +21,8 @@
 #define HASHFCT(key, size) ((key)%(size))
 
 /* set/reset the current workspace core */
-#define WCOREPUSH    do {PASSERT(ctrl, ctrl->mcore != NULL); gk_mcorePush(ctrl->mcore);}while(0)
-#define WCOREPOP     do {PASSERT(ctrl, ctrl->mcore != NULL); gk_mcorePop(ctrl->mcore);}while(0)
+#define WCOREPUSH    do {PASSERT(ctrl,ctrl->mcore!=NULL); gk_mcorePush(ctrl->mcore);}while(0)
+#define WCOREPOP     do {PASSERT(ctrl,ctrl->mcore!=NULL); gk_mcorePop(ctrl->mcore);}while(0)
 
 
 /* Timer macros */

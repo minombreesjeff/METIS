@@ -8,7 +8,7 @@
  * Started 9/26/95
  * George
  *
- * $Id: struct.h 10543 2011-07-11 19:32:24Z karypis $
+ * $Id: struct.h 10592 2011-07-16 21:17:53Z karypis $
  */
 
 
@@ -168,7 +168,6 @@ typedef struct ctrl_t {
   idx_t mtype;                  /* The matching type */
   idx_t ipart;			/* The initial partitioning type */
   idx_t rtype;                  /* The refinement type */
-  idx_t xyztype;		/* The coordinate indexing type */
   idx_t p_nseps;                /* The number of separators to compute at each 
                                    parallel bisection */
   idx_t s_nseps;                /* The number of separators to compute at each 
@@ -177,7 +176,6 @@ typedef struct ctrl_t {
   idx_t seed;			/* Random number seed */
   idx_t sync;			/* Random number seed */
   real_t *tpwgts;		/* Target subdomain weights */
-  idx_t *tvwgts;                /* Per-constraint total vertex weight */
   real_t *invtvwgts;            /* Per-constraint 1/total vertex weight */
   real_t *ubvec;                /* Per-constraint unbalance factor */
 

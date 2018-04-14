@@ -7,7 +7,7 @@
  *
  * \date Started 10/19/1996
  * \author George Karypis
- * \version\verbatim $Id: ctrl.c 10543 2011-07-11 19:32:24Z karypis $ \endverbatime
+ * \version\verbatim $Id: ctrl.c 10592 2011-07-16 21:17:53Z karypis $ \endverbatime
  */
 
 #include <parmetislib.h>
@@ -89,8 +89,6 @@ ctrl_t *SetupCtrl(pmoptype_et optype, idx_t *options, idx_t ncon, idx_t nparts,
   ctrl->nparts        = nparts;    
   ctrl->redist_factor = 1.0;
   ctrl->redist_base   = 1.0;
-  ctrl->xyztype       = XYZ_SPFILL;
-
 
   /* setup tpwgts */
   ctrl->tpwgts = rmalloc(nparts*ncon, "SetupCtrl: tpwgts");
@@ -120,43 +118,20 @@ ctrl_t *SetupCtrl(pmoptype_et optype, idx_t *options, idx_t ncon, idx_t nparts,
 
 
 /*************************************************************************/
-/*! This function computes the tvwgts/invtvwgts of a graph 
+/*! This function computes the invtvwgts of a graph and stores them in ctrl
 */
 /*************************************************************************/
-void SetupCtrl_tvwgts(ctrl_t *ctrl, graph_t *graph)
+void SetupCtrl_invtvwgts(ctrl_t *ctrl, graph_t *graph)
 {
-  idx_t i, j, nvtxs, ncon;
-  idx_t *vwgt, *ltvwgts;
+  idx_t j, ncon;
 
-  nvtxs = graph->nvtxs;
   ncon  = graph->ncon;
-  vwgt  = graph->vwgt;
 
-  ctrl->tvwgts    = imalloc(ncon, "SetupCtrl_tvwgts: tvwgts");
   ctrl->invtvwgts = rmalloc(ncon, "SetupCtrl_tvwgts: invtvwgts");
 
-  ltvwgts = ismalloc(ncon, 0, "SetupCtrl_tvwgts: ltvwgts");
-
-  for (i=0; i<nvtxs; i++) {
-    for (j=0; j<ncon; j++)
-      ltvwgts[j] += vwgt[i*ncon+j];
-  }
-
-  for (j=0; j<ncon; j++) {
-    ctrl->tvwgts[j] = GlobalSESum(ctrl, ltvwgts[j]);
-    ctrl->invtvwgts[j] = 1.0/ctrl->tvwgts[j];
-  }
-
-  gk_free((void **)&ltvwgts, LTERM);
-
-  /* check for zero wgt constraints */
-  for (i=0; i<ncon; i++) {
-    /* ADD: take care of the case in which tvwgts is zero */
-    if (ctrl->tvwgts[i] == 0) {
-      rprintf(ctrl, "PARMETIS ERROR: sum weight for constraint %"PRIDX" is zero\n", i);
-      raise(SIGERR);
-    } 
-  } 
+  for (j=0; j<ncon; j++) 
+    ctrl->invtvwgts[j] = 1.0/GlobalSESum(ctrl, isum(graph->nvtxs, graph->vwgt+j, ncon));
+    
 }
 
 
@@ -173,7 +148,7 @@ void FreeCtrl(ctrl_t **r_ctrl)
   if (ctrl->free_comm)
     gkMPI_Comm_free(&(ctrl->gcomm));
 
-  gk_free((void **)&ctrl->tvwgts, &ctrl->invtvwgts, 
+  gk_free((void **)&ctrl->invtvwgts, 
       &ctrl->ubvec, &ctrl->tpwgts, 
       &ctrl->sreq, &ctrl->rreq, &ctrl->statuses,
       &ctrl, 

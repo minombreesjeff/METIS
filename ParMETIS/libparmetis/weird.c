@@ -8,7 +8,7 @@
  * Started 10/19/96
  * George
  *
- * $Id: weird.c 10558 2011-07-13 13:12:44Z karypis $
+ * $Id: weird.c 10592 2011-07-16 21:17:53Z karypis $
  *
  */
 
@@ -44,6 +44,7 @@ int CheckInputsPartKway(idx_t *vtxdist, idx_t *xadj, idx_t *adjncy, idx_t *vwgt,
     printf("PARMETIS ERROR: comm is NULL. Aborting\n");
     abort();
   }
+  gkMPI_Comm_rank(*comm, &mype);
 
   RIFN(vtxdist);
   RIFN(xadj);
@@ -58,14 +59,20 @@ int CheckInputsPartKway(idx_t *vtxdist, idx_t *xadj, idx_t *adjncy, idx_t *vwgt,
   RIFN(edgecut);
   RIFN(part);
 
-  if (*wgtflag == 2 || *wgtflag == 3)
+  if (*wgtflag == 2 || *wgtflag == 3) {
     RIFN(vwgt);
-  if (*wgtflag == 1 || *wgtflag == 3)
+    for (j=0; j<*ncon; j++) {
+      if (GlobalSESumComm(*comm, isum(vtxdist[mype+1]-vtxdist[mype], vwgt+j, *ncon)) == 0) {
+        printf("PARMETIS ERROR: sum weight for constraint %"PRIDX" is zero.\n", j);
+        return 0;
+      }
+    }
+  }
+  if (*wgtflag == 1 || *wgtflag == 3) 
     RIFN(adjwgt);
 
 
   /* Check that the supplied information is actually valid/reasonable */
-  gkMPI_Comm_rank(*comm, &mype);
   if (vtxdist[mype+1]-vtxdist[mype] < 1) {
     printf("PARMETIS ERROR: Poor initial vertex distribution. "
            "Processor %"PRIDX" has no vertices assigned to it!\n", mype);
@@ -121,6 +128,7 @@ int CheckInputsPartGeomKway(idx_t *vtxdist, idx_t *xadj, idx_t *adjncy, idx_t *v
     printf("PARMETIS ERROR: comm is NULL. Aborting\n");
     abort();
   }
+  gkMPI_Comm_rank(*comm, &mype);
 
   RIFN(vtxdist);
   RIFN(xadj);
@@ -137,14 +145,20 @@ int CheckInputsPartGeomKway(idx_t *vtxdist, idx_t *xadj, idx_t *adjncy, idx_t *v
   RIFN(edgecut);
   RIFN(part);
 
-  if (*wgtflag == 2 || *wgtflag == 3)
+  if (*wgtflag == 2 || *wgtflag == 3) {
     RIFN(vwgt);
+    for (j=0; j<*ncon; j++) {
+      if (GlobalSESumComm(*comm, isum(vtxdist[mype+1]-vtxdist[mype], vwgt+j, *ncon)) == 0) {
+        printf("PARMETIS ERROR: sum weight for constraint %"PRIDX" is zero.\n", j);
+        return 0;
+      }
+    }
+  }
   if (*wgtflag == 1 || *wgtflag == 3)
     RIFN(adjwgt);
 
 
   /* Check that the supplied information is actually valid/reasonable */
-  gkMPI_Comm_rank(*comm, &mype);
   if (vtxdist[mype+1]-vtxdist[mype] < 1) {
     printf("PARMETIS ERROR: Poor initial vertex distribution. "
            "Processor %"PRIDX" has no vertices assigned to it!\n", mype);
@@ -245,6 +259,7 @@ int CheckInputsAdaptiveRepart(idx_t *vtxdist, idx_t *xadj, idx_t *adjncy,
     printf("PARMETIS ERROR: comm is NULL. Aborting\n");
     abort();
   }
+  gkMPI_Comm_rank(*comm, &mype);
 
   RIFN(vtxdist);
   RIFN(xadj);
@@ -260,14 +275,20 @@ int CheckInputsAdaptiveRepart(idx_t *vtxdist, idx_t *xadj, idx_t *adjncy,
   RIFN(edgecut);
   RIFN(part);
 
-  if (*wgtflag == 2 || *wgtflag == 3)
+  if (*wgtflag == 2 || *wgtflag == 3) {
     RIFN(vwgt);
+    for (j=0; j<*ncon; j++) {
+      if (GlobalSESumComm(*comm, isum(vtxdist[mype+1]-vtxdist[mype], vwgt+j, *ncon)) == 0) {
+        printf("PARMETIS ERROR: sum weight for constraint %"PRIDX" is zero.\n", j);
+        return 0;
+      }
+    }
+  }
   if (*wgtflag == 1 || *wgtflag == 3)
     RIFN(adjwgt);
 
 
   /* Check that the supplied information is actually valid/reasonable */
-  gkMPI_Comm_rank(*comm, &mype);
   if (vtxdist[mype+1]-vtxdist[mype] < 1) {
     printf("PARMETIS ERROR: Poor initial vertex distribution. "
            "Processor %"PRIDX" has no vertices assigned to it!\n", mype);

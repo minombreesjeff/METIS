@@ -5,7 +5,7 @@
  *
  * This function provides various high level communication functions 
  *
- * $Id: comm.c 10572 2011-07-14 13:31:34Z karypis $
+ * $Id: comm.c 10592 2011-07-16 21:17:53Z karypis $
  */
 
 #include <parmetislib.h>
@@ -443,6 +443,19 @@ idx_t GlobalSESum(ctrl_t *ctrl, idx_t value)
 
   return sum;
 }
+
+/*************************************************************************
+* This function computes the max of a single element
+**************************************************************************/
+idx_t GlobalSESumComm(MPI_Comm comm, idx_t value)
+{
+  idx_t min;
+
+  gkMPI_Allreduce((void *)&value, (void *)&min, 1, IDX_T, MPI_SUM, comm);
+
+  return min;
+}
+
 
 
 /*************************************************************************

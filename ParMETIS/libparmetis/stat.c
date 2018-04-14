@@ -8,7 +8,7 @@
  * Started 7/25/97
  * George
  *
- * $Id: stat.c 10558 2011-07-13 13:12:44Z karypis $
+ * $Id: stat.c 10578 2011-07-14 18:10:15Z karypis $
  *
  */
 
@@ -143,7 +143,7 @@ void PrintPostPartInfo(ctrl_t *ctrl, graph_t *graph, idx_t movestats)
   rprintf(ctrl, "Final %3"PRIDX"-way Cut: %6"PRIDX" \tBalance: ", nparts, graph->mincut);
 
   for (j=0; j<ncon; j++) {
-    for (maximb=0.0, i=0; i<nparts; i++)
+    for (maximb=0.0, i=0; i<nparts; i++) 
       maximb = gk_max(maximb, graph->gnpwgts[i*ncon+j]/tpwgts[i*ncon+j]);
     rprintf(ctrl, "%.3"PRREAL" ", maximb);
   }

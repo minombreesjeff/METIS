@@ -8,14 +8,14 @@
  * Started 10/19/95
  * George
  *
- * $Id: proto.h 10558 2011-07-13 13:12:44Z karypis $
+ * $Id: proto.h 10592 2011-07-16 21:17:53Z karypis $
  *
  */
 
 /* ctrl.c */
 ctrl_t *SetupCtrl(pmoptype_et optype, idx_t *options, idx_t ncon, idx_t nparts,
             real_t *tpwgts, real_t *ubvec, MPI_Comm comm);
-void SetupCtrl_tvwgts(ctrl_t *ctrl, graph_t *graph);
+void SetupCtrl_invtvwgts(ctrl_t *ctrl, graph_t *graph);
 void FreeCtrl(ctrl_t **r_ctrl);
 
 
@@ -193,7 +193,12 @@ void LocalNDOrder(ctrl_t *, graph_t *, idx_t *, idx_t);
 
 /* xyzpart.c */
 void Coordinate_Partition(ctrl_t *, graph_t *, idx_t, real_t *, idx_t);
-void PartSort(ctrl_t *, graph_t *, ikv_t *);
+void IRBinCoordinates(ctrl_t *ctrl, graph_t *graph, idx_t ndims, real_t *xyz, 
+         idx_t nbins, idx_t *bxyz);
+void RBBinCoordinates(ctrl_t *ctrl, graph_t *graph, idx_t ndims, real_t *xyz, 
+         idx_t nbins, idx_t *bxyz);
+void SampleSort(ctrl_t *, graph_t *, ikv_t *);
+void PseudoSampleSort(ctrl_t *, graph_t *, ikv_t *);
 
 
 /* stat.c */
@@ -225,6 +230,7 @@ idx_t GlobalSEMaxComm(MPI_Comm comm, idx_t value);
 idx_t GlobalSEMin(ctrl_t *, idx_t);
 idx_t GlobalSEMinComm(MPI_Comm comm, idx_t value);
 idx_t GlobalSESum(ctrl_t *, idx_t);
+idx_t GlobalSESumComm(MPI_Comm comm, idx_t value);
 real_t GlobalSEMaxFloat(ctrl_t *, real_t);
 real_t GlobalSEMinFloat(ctrl_t *, real_t);
 real_t GlobalSESumFloat(ctrl_t *, real_t);

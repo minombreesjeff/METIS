@@ -415,7 +415,8 @@ void ReadTestGraph(graph_t *graph, char *filename, MPI_Comm comm)
 /*************************************************************************/
 /*! Reads the coordinates associated with the vertices of a graph */
 /*************************************************************************/
-real_t *ReadTestCoordinates(graph_t *graph, char *filename, idx_t *r_ndims, MPI_Comm comm)
+real_t *ReadTestCoordinates(graph_t *graph, char *filename, idx_t *r_ndims, 
+            MPI_Comm comm)
 {
   idx_t i, j, k, npes, mype, penum, ndims;
   real_t *xyz, *txyz;
@@ -444,7 +445,6 @@ real_t *ReadTestCoordinates(graph_t *graph, char *filename, idx_t *r_ndims, MPI_
   }
   gkMPI_Bcast((void *)&ndims, 1, IDX_T, 0, comm);
   *r_ndims = ndims;
-
 
   xyz = rmalloc(graph->nvtxs*ndims, "ReadTestCoordinates");
   if (mype == 0) {

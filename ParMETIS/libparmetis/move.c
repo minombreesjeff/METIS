@@ -8,7 +8,7 @@
  * Started 11/22/96
  * George
  *
- * $Id: move.c 10547 2011-07-11 21:07:19Z karypis $
+ * $Id: move.c 10657 2011-08-03 14:34:35Z karypis $
  *
  */
 
@@ -106,9 +106,8 @@ graph_t *MoveGraph(ctrl_t *ctrl, graph_t *graph)
     if (rinfo[i].key > 0) 
       gkMPI_Irecv((void *)(rgraph+gpwgts[i]), gpwgts[i+1]-gpwgts[i], IDX_T, 
           i, 1, ctrl->comm, ctrl->rreq+j++);
-    else {
+    else 
       PASSERT(ctrl, gpwgts[i+1]-gpwgts[i] == 0);
-    }
   }
 
   /* Assemble the graph to be sent and send it */
@@ -131,9 +130,8 @@ graph_t *MoveGraph(ctrl_t *ctrl, graph_t *graph)
     if (sinfo[i].key > 0)
       gkMPI_Isend((void *)(sgraph+lpwgts[i]), lpwgts[i+1]-lpwgts[i], IDX_T, 
           i, 1, ctrl->comm, ctrl->sreq+j++);
-    else {
+    else 
       PASSERT(ctrl, lpwgts[i+1]-lpwgts[i] == 0);
-    }
   }
 
   /* Wait for the send/recv to finish */
@@ -199,7 +197,7 @@ graph_t *MoveGraph(ctrl_t *ctrl, graph_t *graph)
 **************************************************************************/
 void ProjectInfoBack(ctrl_t *ctrl, graph_t *graph, idx_t *info, idx_t *minfo)
 {
-  idx_t i, nvtxs, nparts;
+  idx_t i, nvtxs, nparts, nrecvs, nsends;
   idx_t *where, *auxinfo, *sinfo, *rinfo;
 
   WCOREPUSH;
@@ -229,27 +227,23 @@ void ProjectInfoBack(ctrl_t *ctrl, graph_t *graph, idx_t *info, idx_t *minfo)
   /*-----------------------------------------------------------------
    * Now, go and send back the minfo
    -----------------------------------------------------------------*/
-  for (i=0; i<nparts; i++) {
+  for (nrecvs=0, i=0; i<nparts; i++) {
     if (rinfo[i+1]-rinfo[i] > 0)
       gkMPI_Irecv((void *)(auxinfo+rinfo[i]), rinfo[i+1]-rinfo[i], IDX_T, 
-          i, 1, ctrl->comm, ctrl->rreq+i);
+          i, 1, ctrl->comm, ctrl->rreq+nrecvs++);
   }
 
-  for (i=0; i<nparts; i++) {
-    if (sinfo[i+1]-sinfo[i] > 0)
+  for (nsends=0, i=0; i<nparts; i++) {
+    if (sinfo[i+1]-sinfo[i] > 0) 
       gkMPI_Isend((void *)(minfo+sinfo[i]), sinfo[i+1]-sinfo[i], IDX_T, 
-          i, 1, ctrl->comm, ctrl->sreq+i);
+          i, 1, ctrl->comm, ctrl->sreq+nsends++);
   }
+  PASSERT(ctrl, nrecvs <= ctrl->ncommpes);
+  PASSERT(ctrl, nsends <= ctrl->ncommpes);
 
   /* Wait for the send/recv to finish */
-  for (i=0; i<nparts; i++) {
-    if (rinfo[i+1]-rinfo[i] > 0)
-      gkMPI_Wait(ctrl->rreq+i, &ctrl->status);
-  }
-  for (i=0; i<nparts; i++) {
-    if (sinfo[i+1]-sinfo[i] > 0)
-      gkMPI_Wait(ctrl->sreq+i, &ctrl->status);
-  }
+  gkMPI_Waitall(nrecvs, ctrl->rreq, ctrl->statuses);
+  gkMPI_Waitall(nsends, ctrl->sreq, ctrl->statuses);
 
   /* Scatter the info received in auxinfo back to info. */
   for (i=0; i<nvtxs; i++)

@@ -70,8 +70,9 @@ graph_t *SetupGraph(ctrl_t *ctrl, idx_t ncon, idx_t *vtxdist, idx_t *xadj,
   }
 
 
-  /* compute tvwgts */
-  SetupCtrl_tvwgts(ctrl, graph); 
+  /* compute invtvwgts */
+  SetupCtrl_invtvwgts(ctrl, graph); 
+
 
   /* compute nvwgts */
   SetupGraph_nvwgts(ctrl, graph); 

@@ -8,7 +8,7 @@
  * Started 3/4/96
  * George
  *
- * $Id: initbalance.c 10542 2011-07-11 16:56:22Z karypis $
+ * $Id: initbalance.c 10592 2011-07-16 21:17:53Z karypis $
  */
 
 #include <parmetislib.h>
@@ -245,12 +245,10 @@ void Balance_Partition(ctrl_t *ctrl, graph_t *graph)
     myctrl->ps_relation   = PARMETIS_PSR_UNCOUPLED;
     myctrl->tpwgts        = rmalloc(myctrl->nparts*myctrl->ncon, "myctrl->tpwgts");
     myctrl->ubvec         = rmalloc(myctrl->ncon, "myctrl->ubvec");
-    myctrl->tvwgts        = imalloc(myctrl->ncon, "myctrl->tvwgts");
     myctrl->invtvwgts     = rmalloc(myctrl->ncon, "myctrl->invtvwgts");
 
     rcopy(myctrl->nparts*myctrl->ncon, ctrl->tpwgts, myctrl->tpwgts);
     rcopy(myctrl->ncon, ctrl->ubvec, myctrl->ubvec);
-    icopy(myctrl->ncon, ctrl->tvwgts, myctrl->tvwgts);
     rcopy(myctrl->ncon, ctrl->invtvwgts, myctrl->invtvwgts);
 
     AllocateWSpace(myctrl, 10*agraph->nvtxs);
