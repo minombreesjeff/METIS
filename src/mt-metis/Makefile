@@ -1,40 +1,23 @@
-CC = /usr/bin/gcc
 RM = rm -rvf
 
-DEBUGOPTS = -g3 -O0 -DDEBUG
+cputype = $(shell uname -m | sed "s/\\ /_/g")
+systype = $(shell uname -s)
+METISBUILDDIR = build/$(systype)-$(cputype)
 
-ifdef ASSERT
-    COPTS = $(DEBUGOPTS)
-else
-  ifdef DEBUG
-      COPTS = -rdynamic $(DEBUGOPTS) -DNDEBUG 
-  else
-      COPTS = -O3 -DNDEBUG
-  endif
-endif
+all: metis/$(METISBUILDDIR)/libmetis.a
+	$(MAKE) $(MFLAGS) -C src
 
-METISROOT="metis"
-METISINC="$(METISROOT)/include"
-METISSOURCE="$(METISROOT)/libmetis"
-METISBIN="$(METISROOT)/build/Linux-x86_64"
+metis/$(METISBUILDDIR)/libmetis.a:
+	$(MAKE) $(MFLAGS) -C metis config
+	$(MAKE) $(MFLAGS) -C metis
 
-GKLIBSRC="$(METISROOT)/GKlib"
+pkg: distclean
+	./mkpkg.sh
 
-JUNK = -L"$(METISBIN)/libmetis/" -lmetis -I"$(METISSOURCE)" -I"$(METISINC)" \
-    -I"$(GKLIBSRC)" -lm -fopenmp
+clean:
+	$(MAKE) $(MFLAGS) -C src clean
+	$(MAKE) $(MFLAGS) -C metis clean
 
-HEADERS = includes.h proto.h defs.h macros.h struct.h
-SOURCE = io.c kpart.c coarsen.c kwayrefine.c kwayfm.c initpart.c mem.c \
-  graph.c check.c util.c
-
-EXE = mt-metis
-
-all: $(EXE)
-
-$(EXE): animikii.c $(SOURCE) $(HEADERS) 
-	$(CC) $(COPTS) animikii.c $(SOURCE) $(JUNK) -o $@
-
-clean: .PHONY
-	$(RM) animikii openmp_test *.o
-
-.PHONY:
+distclean:
+	$(MAKE) $(MFLAGS) -C src distclean
+	$(RM) mt-metis-*.tar.gz

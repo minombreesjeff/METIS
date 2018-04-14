@@ -1,0 +1,8 @@
+/home/grad03/lasalle/src/GKlib/build/Linux-x86_64/CMakeFiles/GKlib.dir
+/home/grad03/lasalle/src/GKlib/build/Linux-x86_64/test/CMakeFiles/csrcnv.dir
+/home/grad03/lasalle/src/GKlib/build/Linux-x86_64/test/CMakeFiles/fis.dir
+/home/grad03/lasalle/src/GKlib/build/Linux-x86_64/test/CMakeFiles/gkgraph.dir
+/home/grad03/lasalle/src/GKlib/build/Linux-x86_64/test/CMakeFiles/gksort.dir
+/home/grad03/lasalle/src/GKlib/build/Linux-x86_64/test/CMakeFiles/grKx.dir
+/home/grad03/lasalle/src/GKlib/build/Linux-x86_64/test/CMakeFiles/rw.dir
+/home/grad03/lasalle/src/GKlib/build/Linux-x86_64/test/CMakeFiles/strings.dir

@@ -7,6 +7,8 @@
  * @date 2013-05-20
  */
 
+#include "includes.h"
+
 
 /**
 * @brief Coarsen a graph to BSTART vertices
@@ -166,7 +168,6 @@ idx_t ParMatch_RM(dctrl_t * const dctrl, dgraph_t * const graph,
   for (pi=0; pi<mynvtxs;++pi) {
     /* request my matches */
     i = perm[pi];
-    i = pi;
 
     if (match[i] == UNMATCHED) {  /* Unmatched */
       gvtx = LVTX_2_GVTX(i,myid,dshift);

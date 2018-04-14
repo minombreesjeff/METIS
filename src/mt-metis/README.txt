@@ -1,9 +1,4 @@
-Before making the program you need to either create a symbolic link to the
-Metis source directory name 'metis':
-
-$ ln -s ../metis-5.10 metis
-
-Then simply type 'make':
+To build mt-metis, simply type 'make':
 
 $ make
 

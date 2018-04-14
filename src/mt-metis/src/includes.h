@@ -14,6 +14,7 @@
 #include <omp.h>
 
 #include <metislib.h>
+#include <mtmetis.h>
 
 #include "struct.h"
 #include "proto.h"
