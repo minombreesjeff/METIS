@@ -1,4 +1,13 @@
 
+metis-5.0.3
+------------------------------------------------------------------------
+r13822 | karypis | 2013-03-11 14:40:11 -0500 (Mon, 11 Mar 2013)
+
+- Fixed the bug that was introduced in 5.x for creating nodal graphs
+  from meshes (flyspray issue #107).
+- Changed the license to Apache Version 2.
+
+
 metis-5.0.2
 ------------------------------------------------------------------------
 r10974 | karypis | 2011-10-29 18:24:32 -0500 (Sat, 29 Oct 2011)

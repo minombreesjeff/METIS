@@ -8,7 +8,7 @@
  * Started 10/2/97
  * George
  *
- * $Id: rename.h 10565 2011-07-13 16:07:36Z karypis $
+ * $Id: rename.h 13804 2013-03-04 23:49:08Z karypis $
  *
  */
 
@@ -144,8 +144,9 @@
 
 /* mesh.c */
 #define CreateGraphDual                 libmetis__CreateGraphDual
-#define CreateGraphNodal                libmetis__CreateGraphNodal
 #define FindCommonElements              libmetis__FindCommonElements
+#define CreateGraphNodal                libmetis__CreateGraphNodal
+#define FindCommonNodes                 libmetis__FindCommonNodes
 #define CreateMesh                      libmetis__CreateMesh
 #define InitMesh                        libmetis__InitMesh
 #define FreeMesh                        libmetis__FreeMesh
