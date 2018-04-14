@@ -40,9 +40,9 @@ So, do read the documentation here.
 /* Local function prototypes */
 /*************************************************************************/
 static void exchange (char **);
-static char *gk_getopt_initialize (int, char **, char *);
-static int gk_getopt_internal(int argc, char **argv, char *optstring, 
-        struct gk_option *longopts, int *longind, int long_only);
+static const char *gk_getopt_initialize (int, char *const *, const char *);
+static int gk_getopt_internal(int argc, char *const *argv, const char *optstring, 
+        const struct gk_option *longopts, int *longind, int long_only);
 
 
 
@@ -242,7 +242,7 @@ static void exchange (char **argv)
 Initialize the internal data when the first call is made.  
 */
 /*************************************************************************/
-static char *gk_getopt_initialize (int argc, char **argv, char *optstring)
+static const char *gk_getopt_initialize (int argc, char *const *argv, const char *optstring)
 {
   /* Start processing options with ARGV-element 1 (since ARGV-element 0
      is the program name); the sequence of previously skipped
@@ -316,6 +316,10 @@ static char *gk_getopt_initialize (int argc, char **argv, char *optstring)
    `flag' field is nonzero, the value of the option's `val' field
    if the `flag' field is zero.
 
+   The elements of ARGV aren't really const, because we permute them.
+   But we pretend they're const in the prototype to be compatible
+   with other systems.
+
    LONGOPTS is a vector of `struct gk_option' terminated by an
    element containing a name which is zero.
 
@@ -327,8 +331,8 @@ static char *gk_getopt_initialize (int argc, char **argv, char *optstring)
    long-named options.  
 */
 /*************************************************************************/
-static int gk_getopt_internal(int argc, char **argv, char *optstring, 
-        struct gk_option *longopts, int *longind, int long_only)
+static int gk_getopt_internal(int argc, char *const *argv, const char *optstring, 
+        const struct gk_option *longopts, int *longind, int long_only)
 {
   int print_errors = gk_opterr;
   if (optstring[0] == ':')
@@ -441,8 +445,8 @@ static int gk_getopt_internal(int argc, char **argv, char *optstring,
 
   if (longopts != NULL && (argv[gk_optind][1] == '-' || (long_only && (argv[gk_optind][2] || !strchr(optstring, argv[gk_optind][1]))))) {
     char *nameend;
-    struct gk_option *p;
-    struct gk_option *pfound = NULL;
+    const struct gk_option *p;
+    const struct gk_option *pfound = NULL;
     int exact = 0;
     int ambig = 0;
     int indfound = -1;
@@ -569,8 +573,8 @@ static int gk_getopt_internal(int argc, char **argv, char *optstring,
     /* Convenience. Treat POSIX -W foo same as long option --foo */
     if (temp[0] == 'W' && temp[1] == ';') {
       char *nameend;
-      struct gk_option *p;
-      struct gk_option *pfound = NULL;
+      const struct gk_option *p;
+      const struct gk_option *pfound = NULL;
       int exact = 0;
       int ambig = 0;
       int indfound = 0;
@@ -766,7 +770,7 @@ the end of option scanning.
 
 */
 /*************************************************************************/
-int gk_getopt(int argc, char **argv, char *options)
+int gk_getopt(int argc, char **argv, const char *options)
 {
   return gk_getopt_internal(argc, argv, options, NULL, NULL, 0);
 }
@@ -830,8 +834,8 @@ and leaves in the variable #gk_optind the index in argv of the next
 remaining argument. 
 */
 /*************************************************************************/
-int gk_getopt_long( int argc, char **argv, char *options, 
-       struct gk_option *long_options, int *opt_index)
+int gk_getopt_long( int argc, char *const *argv, const char *options, 
+       const struct gk_option *long_options, int *opt_index)
 {
   return gk_getopt_internal (argc, argv, options, long_options, opt_index, 0);
 }
@@ -846,8 +850,8 @@ If an option that starts with '-' (not '--') doesn't match a long option,
 but does match a short option, it is parsed as a short option instead.  
 */
 /*************************************************************************/
-int gk_getopt_long_only(int argc, char **argv, char *options, 
-       struct gk_option *long_options, int *opt_index)
+int gk_getopt_long_only(int argc, char *const *argv, const char *options, 
+       const struct gk_option *long_options, int *opt_index)
 {
   return gk_getopt_internal(argc, argv, options, long_options, opt_index, 1);
 }

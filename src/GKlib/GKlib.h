@@ -3,7 +3,7 @@
  * 
  * George's library of most frequently used routines
  *
- * $Id: GKlib.h 10408 2011-06-25 16:25:17Z karypis $
+ * $Id: GKlib.h 7913 2010-02-01 20:14:08Z karypis $
  *
  */
 
@@ -61,6 +61,7 @@
 
 
 
+#include <gk_dlmalloc.h>
 #include <gk_types.h>
 #include <gk_struct.h>
 #include <gk_externs.h>

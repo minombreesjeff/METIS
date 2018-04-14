@@ -1,9 +1,7 @@
 cmake_minimum_required(VERSION 2.8)
 project(GKlib)
 
-get_filename_component(abs "." ABSOLUTE)
-set(GKLIB_PATH ${abs})
-unset(abs)
+set(GKLIB_PATH ".")
 include(GKlibSystem.cmake)
 
 include_directories(".")

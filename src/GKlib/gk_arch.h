@@ -4,7 +4,7 @@
 
 \date   Started 3/27/2007
 \author George
-\version\verbatim $Id: gk_arch.h 10522 2011-07-08 21:05:23Z benjamin $ \endverbatim
+\version\verbatim $Id: gk_arch.h 10199 2011-06-13 18:24:14Z benjamin $ \endverbatim
 */
 
 #ifndef _GK_ARCH_H_
@@ -21,10 +21,9 @@
 #define _XOPEN_SOURCE 600
 #endif
 #if !defined(__USE_XOPEN2K)
-#define __USE_XOPEN2K
+#define __USE_XOPEN2K 
 #endif
 #endif
-
 
 #ifdef HAVE_EXECINFO_H
 #include <execinfo.h>
@@ -44,6 +43,7 @@
   #include <sys/resource.h>
   #include <sys/time.h>
 #endif
+
 
 
 /*************************************************************************

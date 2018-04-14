@@ -10,6 +10,7 @@
 #ifndef _METIS_H_
 #define _METIS_H_ 
 
+
 /****************************************************************************
 * A set of defines that can be modified by the user
 *****************************************************************************/
@@ -30,8 +31,7 @@
  GCC does provides these definitions in stdint.h, but it may require some
  modifications on other architectures.
 --------------------------------------------------------------------------*/
-#define IDXTYPEWIDTH 32
-
+#define IDXTYPEWIDTH 64
 
 /*--------------------------------------------------------------------------
  Specifies the data type that will hold floating-point style information.
@@ -40,7 +40,8 @@
    32 : single precission floating point (float)
    64 : double precission floating point (double)
 --------------------------------------------------------------------------*/
-#define REALTYPEWIDTH 32
+#define REALTYPEWIDTH 64
+
 
 
 
@@ -48,6 +49,7 @@
 * In principle, nothing needs to be changed beyond this point, unless the
 * int32_t and int64_t cannot be found in the normal places.
 *****************************************************************************/
+
 
 /* Uniform definitions for various compilers */
 #if defined(_MSC_VER)
@@ -60,26 +62,20 @@
   #define COMPILER_GCC
 #endif
 
-/* Include c99 int definitions and need constants. When building the library,
- * these are already defined by GKlib; hence the test for _GKLIB_H_ */
-#ifndef _GKLIB_H_
-#ifdef COMPILER_MSC
-#include <limits.h>
 
-typedef __int32 int32_t;
-typedef __int64 int64_t;
-#define PRId32       "I32d"
-#define PRId64       "I64d"
-#define SCNd32       "ld"
-#define SCNd64       "I64d"
-#define INT32_MIN    ((int32_t)_I32_MIN)
-#define INT32_MAX    _I32_MAX
-#define INT64_MIN    ((int64_t)_I64_MIN)
-#define INT64_MAX    _I64_MAX
+
+#if defined(COMPILER_MSC)
+  typedef __int32                 int32_t;
+  typedef __int64                 int64_t;
+  typedef unsigned __int32        uint32_t;
+  typedef unsigned __int64        uint64_t;
 #else
-#include <inttypes.h>
+  #include <stdint.h>
+  #include <inttypes.h>
+  #include <sys/types.h>
+  #include <float.h>
 #endif
-#endif
+
 
 
 /*------------------------------------------------------------------------
@@ -217,15 +213,15 @@ METIS_API(int) METIS_SetDefaultOptions(idx_t *options);
 
 /* These functions are used by ParMETIS */
 
-METIS_API(int) METIS_NodeNDP(idx_t nvtxs, idx_t *xadj, idx_t *adjncy, idx_t *vwgt,
+METIS_API(void) METIS_NodeNDP(idx_t nvtxs, idx_t *xadj, idx_t *adjncy, idx_t *vwgt,
                    idx_t npes, idx_t *options, idx_t *perm, idx_t *iperm, 
                    idx_t *sizes);
 
-METIS_API(int) METIS_ComputeVertexSeparator(idx_t *nvtxs, idx_t *xadj, idx_t *adjncy, 
+METIS_API(void) METIS_ComputeVertexSeparator(idx_t *nvtxs, idx_t *xadj, idx_t *adjncy, 
                    idx_t *vwgt, idx_t *options, idx_t *sepsize, idx_t *part);
 
-METIS_API(int) METIS_NodeRefine(idx_t nvtxs, idx_t *xadj, idx_t *vwgt, idx_t *adjncy,
-                   idx_t *where, idx_t *hmarker, real_t ubfactor);
+METIS_API(void) METIS_NodeRefine(idx_t nvtxs, idx_t *xadj, idx_t *vwgt, idx_t *adjncy,
+                   idx_t *adjwgt, idx_t *where, idx_t *hmarker, real_t ubfactor);
 
 
 #ifdef __cplusplus
@@ -240,9 +236,8 @@ METIS_API(int) METIS_NodeRefine(idx_t nvtxs, idx_t *xadj, idx_t *vwgt, idx_t *ad
 /*! Return codes */
 typedef enum {
   METIS_OK              = 1,    /*!< Returned normally */
-  METIS_ERROR_INPUT     = -2,   /*!< Returned due to erroneous inputs and/or options */
-  METIS_ERROR_MEMORY    = -3,   /*!< Returned due to insufficient memory */
-  METIS_ERROR           = -4    /*!< Some other errors */
+  METIS_ERROR_INPUT     = -1,   /*!< Returned due to erroneous inputs and/or options */
+  METIS_ERROR_MEMORY    = -2    /*!< Returned due to insufficient memory */
 } rstatus_et; 
 
 

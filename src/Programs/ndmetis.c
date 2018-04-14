@@ -8,7 +8,7 @@
  * Started 8/28/94
  * George
  *
- * $Id: ndmetis.c 10567 2011-07-13 16:17:07Z karypis $
+ * $Id: ndmetis.c 10237 2011-06-14 15:22:13Z karypis $
  *
  */
 
@@ -25,7 +25,6 @@ int main(int argc, char *argv[])
   graph_t *graph;
   idx_t *perm, *iperm;
   params_t *params;
-  int status=0;
 
   params = parse_cmdline(argc, argv);
 
@@ -33,17 +32,6 @@ int main(int argc, char *argv[])
   graph = ReadGraph(params);
   gk_stopcputimer(params->iotimer);
 
-  /* This is just for internal use to clean up some files
-  {
-    char fileout[8192];
-
-    gk_free((void **)&graph->vwgt, &graph->adjwgt, &graph->vsize, LTERM);
-    sprintf(fileout, "ND/%s", params->filename);
-    if (graph->nvtxs > 25000)
-      WriteGraph(graph, fileout);
-    exit(0);
-  }
-  */
 
   /* Check if the graph is contiguous */
   if (graph->ncon != 1) {
@@ -70,32 +58,19 @@ int main(int argc, char *argv[])
   options[METIS_OPTION_NSEPS]    = params->nseps;
   options[METIS_OPTION_PFACTOR]  = params->pfactor;
 
-  gk_malloc_init();
   gk_startcputimer(params->parttimer);
-
-  status = METIS_NodeND(&graph->nvtxs, graph->xadj, graph->adjncy, graph->vwgt, 
-               options, perm, iperm);
-
+  METIS_NodeND(&graph->nvtxs, graph->xadj, graph->adjncy, graph->vwgt, 
+        options, perm, iperm);
   gk_stopcputimer(params->parttimer);
-  if (gk_GetCurMemoryUsed() != 0)
-    printf("***It seems that Metis did not free all of its memory! Report this.\n");
-  params->maxmemory = gk_GetMaxMemoryUsed();
-  gk_malloc_cleanup(0);
 
-
-  if (status != METIS_OK) {
-    printf("\n***Metis returned with an error.\n");
+  if (!params->nooutput) {
+    /* Write the solution */
+    gk_startcputimer(params->iotimer);
+    WritePermutation(params->filename, iperm, graph->nvtxs); 
+    gk_stopcputimer(params->iotimer);
   }
-  else {
-    if (!params->nooutput) {
-      /* Write the solution */
-      gk_startcputimer(params->iotimer);
-      WritePermutation(params->filename, iperm, graph->nvtxs); 
-      gk_stopcputimer(params->iotimer);
-    }
 
-    NDReportResults(params, graph, perm, iperm);
-  }
+  NDReportResults(params, graph, perm, iperm);
 
   FreeGraph(&graph);
   gk_free((void **)&perm, &iperm, LTERM);
@@ -157,11 +132,9 @@ void NDReportResults(params_t *params, graph_t *graph, idx_t *perm,
 
 
   printf("\nTiming Information ----------------------------------------------------------\n");
-  printf("  I/O:          \t\t %7.3"PRREAL" sec\n", gk_getcputimer(params->iotimer));
-  printf("  Ordering:     \t\t %7.3"PRREAL" sec   (METIS time)\n", gk_getcputimer(params->parttimer));
-  printf("  Reporting:    \t\t %7.3"PRREAL" sec\n", gk_getcputimer(params->reporttimer));
-  printf("\nMemory Information ----------------------------------------------------------\n");
-  printf("  Max memory used:\t\t %7.3"PRREAL" MB\n", (real_t)(params->maxmemory/(1024.0*1024.0)));
+  printf("  I/O:          \t\t %7.3"PRREAL"\n", gk_getcputimer(params->iotimer));
+  printf("  Ordering:     \t\t %7.3"PRREAL"   (METIS time)\n", gk_getcputimer(params->parttimer));
+  printf("  Reporting:    \t\t %7.3"PRREAL"\n", gk_getcputimer(params->reporttimer));
   printf("******************************************************************************\n");
 
 }

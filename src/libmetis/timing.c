@@ -8,7 +8,7 @@
  * Started 7/24/97
  * George
  *
- * $Id: timing.c 10467 2011-07-02 17:57:30Z karypis $
+ * $Id: timing.c 5993 2009-01-07 02:09:57Z karypis $
  *
  */
 
@@ -29,6 +29,7 @@ void InitTimers(ctrl_t *ctrl)
   gk_clearcputimer(ctrl->RefTmr);
   gk_clearcputimer(ctrl->ProjectTmr);
   gk_clearcputimer(ctrl->SplitTmr);
+  gk_clearcputimer(ctrl->SepTmr);
 }
 
 
@@ -44,6 +45,7 @@ void PrintTimers(ctrl_t *ctrl)
   printf("\n            Matching: \t\t\t %7.3"PRREAL"", gk_getcputimer(ctrl->MatchTmr));
   printf("\n            Contract: \t\t\t %7.3"PRREAL"", gk_getcputimer(ctrl->ContractTmr));
   printf("\n     Initial Partition: \t %7.3"PRREAL"", gk_getcputimer(ctrl->InitPartTmr));
+  printf("\n   Construct Separator: \t %7.3"PRREAL"", gk_getcputimer(ctrl->SepTmr));
   printf("\n     Uncoarsening: \t\t %7.3"PRREAL"", gk_getcputimer(ctrl->UncoarsenTmr));
   printf("\n          Refinement: \t\t\t %7.3"PRREAL"", gk_getcputimer(ctrl->RefTmr));
   printf("\n          Projection: \t\t\t %7.3"PRREAL"", gk_getcputimer(ctrl->ProjectTmr));

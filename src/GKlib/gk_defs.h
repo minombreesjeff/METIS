@@ -4,7 +4,7 @@
 
 \date   Started 3/27/2007
 \author George
-\version\verbatim $Id: gk_defs.h 10514 2011-07-07 22:27:16Z karypis $ \endverbatim
+\version\verbatim $Id: gk_defs.h 9080 2010-10-16 15:27:05Z karypis $ \endverbatim
 */
 
 #ifndef _GK_DEFS_H_
@@ -12,11 +12,6 @@
 
 
 #define LTERM                   (void **) 0     /* List terminator for GKfree() */
-
-/* mopt_t types */
-#define GK_MOPT_MARK            1
-#define GK_MOPT_CORE            2
-#define GK_MOPT_HEAP            3
 
 #define HTABLE_EMPTY            -1
 #define HTABLE_DELETED          -2
@@ -33,9 +28,9 @@
 
 #define MAXLINELEN 300000
 
-/* GKlib signals to standard signal mapping */
-#define SIGMEM  SIGABRT
-#define SIGERR  SIGTERM
+/* custom signals */
+#define SIGMEM                  SIGABRT
+#define SIGERR                  SIGABRT
 
 
 /* CSR-related defines */

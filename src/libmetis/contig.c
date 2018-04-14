@@ -5,7 +5,7 @@
 \date Started 7/15/98
 \author George
 \author Copyright 1997-2009, Regents of the University of Minnesota 
-\version $Id: contig.c 10513 2011-07-07 22:06:03Z karypis $
+\version $Id: contig.c 10187 2011-06-13 13:46:57Z karypis $
 */
 
 #include "metislib.h"
@@ -101,68 +101,7 @@ idx_t FindPartitionInducedComponents(graph_t *graph, idx_t *where,
 
 
 /*************************************************************************/
-/*! This function computes a permutation of the vertices based on a
-    breadth-first-traversal. It can be used for re-ordering the graph
-    to reduce its bandwidth for better cache locality.
-
-    \param ctrl is the control structure
-    \param graph is the graph structure
-    \param perm is the array that upon completion, perm[i] will store
-           the ID of the vertex that corresponds to the ith vertex in the
-           re-ordered graph.
-*/
-/*************************************************************************/
-void ComputeBFSOrdering(ctrl_t *ctrl, graph_t *graph, idx_t *bfsperm)
-{
-  idx_t i, j, k, nvtxs, first, last;
-  idx_t *xadj, *adjncy, *perm;
-
-  WCOREPUSH;
-
-  nvtxs  = graph->nvtxs;
-  xadj   = graph->xadj;
-  adjncy = graph->adjncy;
-
-  /* Allocate memory required for the BFS traversal */
-  perm = iincset(nvtxs, 0, iwspacemalloc(ctrl, nvtxs));
-
-  iincset(nvtxs, 0, bfsperm);  /* this array will also store the vertices
-                                  still to be processed */
-
-  /* Find the connected componends induced by the partition */
-  first = last = 0;
-  while (first < nvtxs) {
-    if (first == last) { /* Find another starting vertex */
-      k = bfsperm[last];
-      ASSERT(perm[k] != -1);
-      perm[k] = -1; /* mark node as being visited */
-      last++;
-    }
-
-    i = bfsperm[first++];
-    for (j=xadj[i]; j<xadj[i+1]; j++) {
-      k = adjncy[j];
-      /* if a node has been already been visited, its perm[] will be -1 */
-      if (perm[k] != -1) {
-        /* perm[k] is the location within bfsperm of where k resides; 
-           put in that location bfsperm[last] that we are about to
-           overwrite and update perm[bfsperm[last]] to reflect that. */
-        bfsperm[perm[k]]    = bfsperm[last];
-        perm[bfsperm[last]] = perm[k];
-
-        bfsperm[last++] = k;  /* put node at the end of the "queue" */
-        perm[k]         = -1; /* mark node as being visited */
-      }
-    }
-  }
-
-  WCOREPOP;
-}
-
-
-/*************************************************************************/
-/*! This function checks whether a graph is contiguous or not. 
- */
+/*! This function checks whether a graph is contiguous or not. */
 /**************************************************************************/
 idx_t IsConnected(graph_t *graph, idx_t report)
 {
@@ -177,20 +116,19 @@ idx_t IsConnected(graph_t *graph, idx_t report)
 }
 
 
-/*************************************************************************/
-/*! This function checks whether or not partition pid is contigous
-  */
-/*************************************************************************/
+/*************************************************************************
+* This function checks whether or not partition pid is contigous
+**************************************************************************/
 idx_t IsConnectedSubdomain(ctrl_t *ctrl, graph_t *graph, idx_t pid, idx_t report)
 {
   idx_t i, j, k, nvtxs, first, last, nleft, ncmps, wgt;
   idx_t *xadj, *adjncy, *where, *touched, *queue;
   idx_t *cptr;
 
-  nvtxs  = graph->nvtxs;
-  xadj   = graph->xadj;
+  nvtxs = graph->nvtxs;
+  xadj = graph->xadj;
   adjncy = graph->adjncy;
-  where  = graph->where;
+  where = graph->where;
 
   touched = ismalloc(nvtxs, 0, "IsConnected: touched");
   queue   = imalloc(nvtxs, "IsConnected: queue");
@@ -246,6 +184,69 @@ idx_t IsConnectedSubdomain(ctrl_t *ctrl, graph_t *graph, idx_t pid, idx_t report
       if (cptr[i+1]-cptr[i] == 1)
         printf("[%"PRIDX" %"PRIDX"] ", queue[cptr[i]], xadj[queue[cptr[i]]+1]-xadj[queue[cptr[i]]]);
       */
+    }
+    printf("\n");
+  }
+
+  gk_free((void **)&touched, &queue, &cptr, LTERM);
+
+  return (ncmps == 1 ? 1 : 0);
+}
+
+
+
+/*************************************************************************
+* This function checks whether or not partition pid is contigous
+**************************************************************************/
+idx_t IsConnected2(graph_t *graph, idx_t report)
+{
+  idx_t i, j, k, nvtxs, first, last, nleft, ncmps, wgt;
+  idx_t *xadj, *adjncy, *where, *touched, *queue;
+  idx_t *cptr;
+
+  nvtxs = graph->nvtxs;
+  xadj = graph->xadj;
+  adjncy = graph->adjncy;
+  where = graph->where;
+
+  touched = ismalloc(nvtxs, 0, "IsConnected: touched");
+  queue   = imalloc(nvtxs, "IsConnected: queue");
+  cptr    = imalloc(nvtxs+1, "IsConnected: cptr");
+
+  nleft = nvtxs;
+  touched[0] = 1;
+  queue[0] = 0;
+  first = 0; last = 1;
+
+  cptr[0] = 0;  /* This actually points to queue */
+  ncmps = 0;
+  while (first != nleft) {
+    if (first == last) { /* Find another starting vertex */
+      cptr[++ncmps] = first;
+      for (i=0; i<nvtxs; i++) {
+        if (!touched[i])
+          break;
+      }
+      queue[last++] = i;
+      touched[i] = 1;
+    }
+
+    i = queue[first++];
+    for (j=xadj[i]; j<xadj[i+1]; j++) {
+      k = adjncy[j];
+      if (!touched[k]) {
+        queue[last++] = k;
+        touched[k] = 1;
+      }
+    }
+  }
+  cptr[++ncmps] = first;
+
+  if (ncmps > 1 && report) {
+    printf("%"PRIDX" connected components:\t", ncmps);
+    for (i=0; i<ncmps; i++) {
+      if (cptr[i+1]-cptr[i] > 200)
+        printf("[%5"PRIDX"] ", cptr[i+1]-cptr[i]);
     }
     printf("\n");
   }
@@ -328,6 +329,7 @@ idx_t FindSepInducedComponents(ctrl_t *ctrl, graph_t *graph, idx_t *cptr,
 }
 
 
+
 /*************************************************************************/
 /*! This function finds all the connected components induced by the 
     partitioning vector in graph->where and tries to push them around to 
@@ -352,7 +354,7 @@ void EliminateComponents(ctrl_t *ctrl, graph_t *graph)
   xadj   = graph->xadj;
   adjncy = graph->adjncy;
   vwgt   = graph->vwgt;
-  adjwgt = (ctrl->objtype == METIS_OBJTYPE_VOL ? NULL : graph->adjwgt);
+  adjwgt = graph->adjwgt;
 
   where = graph->where;
   pwgts = graph->pwgts;
@@ -446,7 +448,7 @@ void EliminateComponents(ctrl_t *ctrl, graph_t *graph)
           ii = cind[j];
           for (jj=xadj[ii]; jj<xadj[ii+1]; jj++) 
             if (cwhere[adjncy[jj]] != -1)
-              cpvec[cwhere[adjncy[jj]]] += (adjwgt ? adjwgt[jj] : 1);
+              cpvec[cwhere[adjncy[jj]]] += adjwgt[jj];
         }
 
         /* Put the neighbors into a cand[] array for sorting */
@@ -499,7 +501,7 @@ void EliminateComponents(ctrl_t *ctrl, graph_t *graph)
               break;
 
             default:
-              gk_errexit(SIGERR, "Unknown objtype %d\n", ctrl->objtype);
+              errexit("Unknown objtype %d\n", ctrl->objtype);
           }
         }
 
@@ -524,9 +526,9 @@ void EliminateComponents(ctrl_t *ctrl, graph_t *graph)
 }
 
 
+
 /*************************************************************************/
-/*! This function moves a collection of vertices and updates their rinfo 
- */
+/*! This function moves a collection of vertices and updates their rinfo */
 /*************************************************************************/
 void MoveGroupContigForCut(ctrl_t *ctrl, graph_t *graph, idx_t to, idx_t gid, 
          idx_t *ptr, idx_t *ind)
@@ -595,15 +597,14 @@ void MoveGroupContigForCut(ctrl_t *ctrl, graph_t *graph, idx_t to, idx_t gid,
 
 
 /*************************************************************************/
-/*! This function moves a collection of vertices and updates their rinfo 
- */
+/*! This function moves a collection of vertices and updates their rinfo */
 /*************************************************************************/
 void MoveGroupContigForVol(ctrl_t *ctrl, graph_t *graph, idx_t to, idx_t gid, 
          idx_t *ptr, idx_t *ind, idx_t *vmarker, idx_t *pmarker, 
          idx_t *modind)
 {
   idx_t i, ii, iii, j, jj, k, l, nvtxs, from, me, other, xgain;
-  idx_t *xadj, *vsize, *adjncy, *where;
+  idx_t *xadj, *vsize, *adjncy, *adjwgt, *where;
   vkrinfo_t *myrinfo, *orinfo;
   vnbr_t *mynbrs, *onbrs;
 
@@ -611,6 +612,7 @@ void MoveGroupContigForVol(ctrl_t *ctrl, graph_t *graph, idx_t to, idx_t gid,
   xadj   = graph->xadj;
   vsize  = graph->vsize;
   adjncy = graph->adjncy;
+  adjwgt = graph->adjwgt;
   where  = graph->where;
 
   for (iii=ptr[gid]; iii<ptr[gid+1]; iii++) {
@@ -624,7 +626,7 @@ void MoveGroupContigForVol(ctrl_t *ctrl, graph_t *graph, idx_t to, idx_t gid,
     }
     mynbrs = ctrl->vnbrpool + myrinfo->inbr; 
 
-    xgain = (myrinfo->nid == 0 && myrinfo->ned > 0 ? vsize[i] : 0);
+    xgain = (myrinfo->id == 0 && myrinfo->ed > 0 ? vsize[i] : 0);
 
     /* find the location of 'to' in myrinfo or create it if it is not there */
     for (k=0; k<myrinfo->nnbrs; k++) {
@@ -632,7 +634,7 @@ void MoveGroupContigForVol(ctrl_t *ctrl, graph_t *graph, idx_t to, idx_t gid,
         break;
     }
     if (k == myrinfo->nnbrs) {
-      if (myrinfo->nid > 0)
+      if (myrinfo->id > 0)
         xgain -= vsize[i];
 
       /* determine the volume gain resulting from that move */
@@ -671,11 +673,11 @@ void MoveGroupContigForVol(ctrl_t *ctrl, graph_t *graph, idx_t to, idx_t gid,
         }
       }
       graph->minvol -= xgain;
-      graph->mincut -= -myrinfo->nid;
+      graph->mincut -= -myrinfo->id;
     }
     else {
       graph->minvol -= (xgain + mynbrs[k].gv);
-      graph->mincut -= mynbrs[k].ned-myrinfo->nid;
+      graph->mincut -= mynbrs[k].ed-myrinfo->id;
     }
 
 

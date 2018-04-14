@@ -9,7 +9,7 @@
  * Started 8/18/97
  * George
  *
- * $Id: mesh.c 10495 2011-07-06 16:04:45Z karypis $
+ * $Id: mesh.c 10103 2011-06-07 18:28:27Z karypis $
  *
  */
 
@@ -44,45 +44,15 @@
 int METIS_MeshToDual(idx_t *ne, idx_t *nn, idx_t *eptr, idx_t *eind, 
           idx_t *ncommon, idx_t *numflag,  idx_t **r_xadj, idx_t **r_adjncy)
 {
-  int sigrval=0, renumber=0;
-
-  /* set up malloc cleaning code and signal catchers */
-  if (!gk_malloc_init()) 
-    return METIS_ERROR_MEMORY;
-
-  gk_sigtrap();
-
-  if ((sigrval = gk_sigcatch()) != 0) 
-    goto SIGTHROW;
-
-
-  /* renumber the mesh */
-  if (*numflag == 1) {
+  if (*numflag == 1)
     ChangeMesh2CNumbering(*ne, eptr, eind);
-    renumber = 1;
-  }
 
-  /* create dual graph */
-  *r_xadj = *r_adjncy = NULL;
   CreateGraphDual(*ne, *nn, eptr, eind, *ncommon, r_xadj, r_adjncy);
 
-
-SIGTHROW:
-  if (renumber)
+  if (*numflag == 1)
     ChangeMesh2FNumbering(*ne, eptr, eind, *ne, *r_xadj, *r_adjncy);
 
-  gk_siguntrap();
-  gk_malloc_cleanup(0);
-
-  if (sigrval != 0) {
-    if (*r_xadj != NULL)
-      free(*r_xadj);
-    if (*r_adjncy != NULL)
-      free(*r_adjncy);
-    *r_xadj = *r_adjncy = NULL;
-  }
-
-  return metis_rcode(sigrval);
+  return METIS_OK;
 }
 
 
@@ -114,45 +84,15 @@ SIGTHROW:
 int METIS_MeshToNodal(idx_t *ne, idx_t *nn, idx_t *eptr, idx_t *eind, 
           idx_t *numflag,  idx_t **r_xadj, idx_t **r_adjncy)
 {
-  int sigrval=0, renumber=0;
-
-  /* set up malloc cleaning code and signal catchers */
-  if (!gk_malloc_init()) 
-    return METIS_ERROR_MEMORY;
-
-  gk_sigtrap();
-
-  if ((sigrval = gk_sigcatch()) != 0) 
-    goto SIGTHROW;
-
-
-  /* renumber the mesh */
-  if (*numflag == 1) {
+  if (*numflag == 1)
     ChangeMesh2CNumbering(*ne, eptr, eind);
-    renumber = 1;
-  }
 
-  /* create nodal graph */
-  *r_xadj = *r_adjncy = NULL;
   CreateGraphNodal(*ne, *nn, eptr, eind, r_xadj, r_adjncy);
 
-
-SIGTHROW:
-  if (renumber)
+  if (*numflag == 1)
     ChangeMesh2FNumbering(*ne, eptr, eind, *nn, *r_xadj, *r_adjncy);
 
-  gk_siguntrap();
-  gk_malloc_cleanup(0);
-
-  if (sigrval != 0) {
-    if (*r_xadj != NULL)
-      free(*r_xadj);
-    if (*r_adjncy != NULL)
-      free(*r_adjncy);
-    *r_xadj = *r_adjncy = NULL;
-  }
-
-  return metis_rcode(sigrval);
+  return METIS_OK;
 }
 
 
@@ -189,13 +129,8 @@ void CreateGraphDual(idx_t ne, idx_t nn, idx_t *eptr, idx_t *eind, idx_t ncommon
   SHIFTCSR(i, nn, nptr);
 
 
-  /* Allocate memory for xadj, since you know its size.
-     These are done using standard malloc as they are returned
-     to the calling function */
-  if ((xadj = (idx_t *)malloc((ne+1)*sizeof(idx_t))) == NULL) 
-    gk_errexit(SIGMEM, "***Failed to allocate memory for xadj.\n");
-  *r_xadj = xadj;
-  iset(ne+1, 0, xadj);
+  /* allocate memory for xadj, since you know its size */
+  xadj = ismalloc(ne+1, 0, "CreateGraphDual: xadj");
 
   /* allocate memory for working arrays used by FindCommonElements */
   marker = ismalloc(ne, 0, "CreateGraphDual: marker");
@@ -207,16 +142,8 @@ void CreateGraphDual(idx_t ne, idx_t nn, idx_t *eptr, idx_t *eind, idx_t ncommon
   }
   MAKECSR(i, ne, xadj);
 
-  /* Allocate memory for adjncy, since you now know its size.
-     These are done using standard malloc as they are returned
-     to the calling function */
-  if ((adjncy = (idx_t *)malloc(xadj[ne]*sizeof(idx_t))) == NULL) {
-    free(xadj);
-    *r_xadj = NULL;
-    gk_errexit(SIGMEM, "***Failed to allocate memory for adjncy.\n");
-  }
-  *r_adjncy = adjncy;
-
+  /* allocate memory for adjncy, since you now know its size */
+  adjncy = imalloc(xadj[ne], "CreateGraphDual: adjncy");
   for (i=0; i<ne; i++) {
     nnbrs = FindCommonElements(i, eptr[i+1]-eptr[i], eind+eptr[i], nptr, 
                 nind, eptr, ncommon, marker, nbrs);
@@ -225,7 +152,11 @@ void CreateGraphDual(idx_t ne, idx_t nn, idx_t *eptr, idx_t *eind, idx_t ncommon
   }
   SHIFTCSR(i, ne, xadj);
   
+  *r_xadj   = xadj;
+  *r_adjncy = adjncy;
+
   gk_free((void **)&nptr, &nind, &marker, &nbrs, LTERM);
+
 }
 
 
@@ -258,13 +189,8 @@ void CreateGraphNodal(idx_t ne, idx_t nn, idx_t *eptr, idx_t *eind,
   SHIFTCSR(i, nn, nptr);
 
 
-  /* Allocate memory for xadj, since you know its size.
-     These are done using standard malloc as they are returned
-     to the calling function */
-  if ((xadj = (idx_t *)malloc((nn+1)*sizeof(idx_t))) == NULL)
-    gk_errexit(SIGMEM, "***Failed to allocate memory for xadj.\n");
-  *r_xadj = xadj;
-  iset(nn+1, 0, xadj);
+  /* allocate memory for xadj, since you know its size */
+  xadj = ismalloc(nn+1, 0, "CreateGraphNodal: xadj");
 
   /* allocate memory for working arrays used by FindCommonElements */
   marker = ismalloc(nn, 0, "CreateGraphNodal: marker");
@@ -276,16 +202,8 @@ void CreateGraphNodal(idx_t ne, idx_t nn, idx_t *eptr, idx_t *eind,
   }
   MAKECSR(i, nn, xadj);
 
-  /* Allocate memory for adjncy, since you now know its size.
-     These are done using standard malloc as they are returned
-     to the calling function */
-  if ((adjncy = (idx_t *)malloc(xadj[nn]*sizeof(idx_t))) == NULL) {
-    free(xadj);
-    *r_xadj = NULL;
-    gk_errexit(SIGMEM, "***Failed to allocate memory for adjncy.\n");
-  }
-  *r_adjncy = adjncy;
-
+  /* allocate memory for adjncy, since you now know its size */
+  adjncy = imalloc(xadj[nn], "CreateGraphNodal: adjncy");
   for (i=0; i<nn; i++) {
     nnbrs = FindCommonElements(i, nptr[i+1]-nptr[i], nind+nptr[i], eptr, 
                 eind, eptr, 1, marker, nbrs);
@@ -294,7 +212,11 @@ void CreateGraphNodal(idx_t ne, idx_t nn, idx_t *eptr, idx_t *eind,
   }
   SHIFTCSR(i, nn, xadj);
   
+  *r_xadj   = xadj;
+  *r_adjncy = adjncy;
+
   gk_free((void **)&nptr, &nind, &marker, &nbrs, LTERM);
+
 }
 
 

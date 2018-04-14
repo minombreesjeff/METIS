@@ -3,7 +3,6 @@ gdb        = not-set
 assert     = not-set
 assert2    = not-set
 debug      = not-set
-gprof      = not-set
 openmp     = not-set
 prefix     = not-set
 gklib_path = not-set
@@ -35,9 +34,6 @@ ifneq ($(assert2), not-set)
 endif
 ifneq ($(debug), not-set)
     CONFIG_FLAGS += -DDEBUG=$(debug)
-endif
-ifneq ($(gprof), not-set)
-    CONFIG_FLAGS += -DGPROF=$(gprof)
 endif
 ifneq ($(openmp), not-set)
     CONFIG_FLAGS += -DOPENMP=$(openmp)
@@ -80,6 +76,18 @@ remake:
 	find . -name CMakeLists.txt -exec touch {} ';'
 
 dist:
-	utils/mkdist.sh $(PKGNAME)
+	rm -rf $(PKGNAME)
+	svn up
+	svn export http://dminers.dtc.umn.edu/svn/programs/karypis/metis/trunk $(PKGNAME)
+	mkdir $(PKGNAME)/manual
+	svn export http://dminers.dtc.umn.edu/svn/programs/karypis/metis/manual/r5.0/manual.pdf $(PKGNAME)/manual/manual.pdf
+	svn export http://dminers.dtc.umn.edu/svn/libs/GKlib/trunk $(PKGNAME)/GKlib
+	rm -rf $(PKGNAME)/TODO
+	rm -rf $(PKGNAME)/test
+	rm -rf $(PKGNAME)/utils
+	rm -rf $(PKGNAME)/doxygen
+	rm -rf $(PKGNAME)/CHANGES.v4
+	tar -czf $(PKGNAME).tar.gz $(PKGNAME)
+	rm -rf $(PKGNAME)
 
 .PHONY: config distclean all clean install uninstall remake dist

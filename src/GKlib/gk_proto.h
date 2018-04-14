@@ -4,7 +4,7 @@
 
 \date   Started 3/27/2007
 \author George
-\version\verbatim $Id: gk_proto.h 10522 2011-07-08 21:05:23Z benjamin $ \endverbatim
+\version\verbatim $Id: gk_proto.h 10017 2011-05-30 17:11:38Z karypis $ \endverbatim
 */
 
 #ifndef _GK_PROTO_H_
@@ -78,15 +78,14 @@ GK_MKALLOC_PROTO(gk_dkv,   gk_dkv_t)
 GK_MKALLOC_PROTO(gk_skv,   gk_skv_t)
 GK_MKALLOC_PROTO(gk_idxkv, gk_idxkv_t)
 
-void   gk_AllocMatrix(void ***, size_t, size_t , size_t);
-void   gk_FreeMatrix(void ***, size_t, size_t);
-int    gk_malloc_init();
-void   gk_malloc_cleanup(int showstats);
-void  *gk_malloc(size_t nbytes, char *msg);
-void  *gk_realloc(void *oldptr, size_t nbytes, char *msg);
-void   gk_free(void **ptr1,...);
-size_t gk_GetCurMemoryUsed();
-size_t gk_GetMaxMemoryUsed();
+void            gk_AllocMatrix(void ***, size_t, size_t , size_t);
+void            gk_FreeMatrix(void ***, size_t, size_t);
+void           *gk_malloc(size_t, char *);
+void           *gk_realloc(void *, size_t, char *);
+void            gk_free(void **ptr1,...);
+void            gk_malloc_cleanup();
+uintmax_t       gk_GetCurMemoryUsed();
+uintmax_t       gk_GetMaxMemoryUsed();
 
 
 
@@ -118,9 +117,6 @@ void gk_showcorruption(pdbf *p);
 void gk_set_exit_on_error(int value);
 void errexit(char *,...);
 void gk_errexit(int signum, char *,...);
-int gk_sigtrap();
-int gk_siguntrap();
-void gk_sigthrow(int signum);
 void gk_SetSignalHandlers();
 void gk_UnsetSignalHandlers();
 void gk_NonLocalExit_Handler(int signum);
@@ -242,17 +238,15 @@ void GKDecodeBase64(int nbytes, unsigned char *inbuffer, unsigned char *outbuffe
 
 
 /*-------------------------------------------------------------
- * random.c
+ * Random number generator functions 
  *-------------------------------------------------------------*/
 GK_MKRANDOM_PROTO(gk_c,   size_t, char)
 GK_MKRANDOM_PROTO(gk_i,   size_t, int)
+GK_MKRANDOM_PROTO(gk_i32, size_t, int32_t)
+GK_MKRANDOM_PROTO(gk_i64, size_t, int64_t)
 GK_MKRANDOM_PROTO(gk_f,   size_t, float)
 GK_MKRANDOM_PROTO(gk_d,   size_t, double)
 GK_MKRANDOM_PROTO(gk_idx, size_t, gk_idx_t)
-void gk_randinit(uint64_t);
-uint64_t gk_randint64(void);
-uint32_t gk_randint32(void);
-
 
 /*-------------------------------------------------------------
  * OpenMP fake functions
@@ -321,18 +315,11 @@ float ComputeStdDev(int  n, float *values);
 
 /* mcore.c */
 gk_mcore_t *gk_mcoreCreate(size_t coresize);
-gk_mcore_t *gk_gkmcoreCreate();
 void gk_mcoreDestroy(gk_mcore_t **r_mcore, int showstats);
-void gk_gkmcoreDestroy(gk_mcore_t **r_mcore, int showstats);
 void *gk_mcoreMalloc(gk_mcore_t *mcore, size_t nbytes);
 void gk_mcorePush(gk_mcore_t *mcore);
-void gk_gkmcorePush(gk_mcore_t *mcore);
 void gk_mcorePop(gk_mcore_t *mcore);
-void gk_gkmcorePop(gk_mcore_t *mcore);
-void gk_mcoreAdd(gk_mcore_t *mcore, int type, size_t nbytes, void *ptr);
-void gk_gkmcoreAdd(gk_mcore_t *mcore, int type, size_t nbytes, void *ptr);
-void gk_mcoreDel(gk_mcore_t *mcore, void *ptr);
-void gk_gkmcoreDel(gk_mcore_t *mcore, void *ptr);
+
 
 
 #ifdef __cplusplus

@@ -9,14 +9,21 @@ can be used to define other memory allocation routines.
 
 \date   Started 4/3/2007
 \author George
-\version\verbatim $Id: memory.c 10561 2011-07-13 13:19:54Z karypis $ \endverbatim
+\version\verbatim $Id: memory.c 7750 2009-12-22 15:02:25Z karypis $ \endverbatim
 */
 
 
 #include <GKlib.h>
 
-/* This is for the global mcore that tracks all heap allocations */
-static __thread gk_mcore_t *gkmcore = NULL;
+#ifdef USE_DLMALLOC
+#ifdef GKMSPACE
+/* This is the mspace for all the gk_malloc() calls. This is a thread local allocation */
+static __thread mspace gk_mspace = 0;
+
+/* This function is mostly for debugging */
+void gk_printmspaceaddr() { printf("mspace: %p\n", (void *)gk_mspace); }
+#endif
+#endif
 
 
 /*************************************************************************/
@@ -44,10 +51,9 @@ GK_MKALLOC(gk_idxkv, gk_idxkv_t)
 
 
 
-/*************************************************************************/
-/*! This function allocates a two-dimensional matrix.
-  */
-/*************************************************************************/
+/*************************************************************************
+* This function allocates a two-dimensional matrix 
+**************************************************************************/
 void gk_AllocMatrix(void ***r_matrix, size_t elmlen, size_t ndim1, size_t ndim2)
 {
   gk_idx_t i, j;
@@ -70,10 +76,9 @@ void gk_AllocMatrix(void ***r_matrix, size_t elmlen, size_t ndim1, size_t ndim2)
 }
 
 
-/*************************************************************************/
-/*! This function frees a two-dimensional matrix.
-  */
-/*************************************************************************/
+/*************************************************************************
+* This function frees a two-dimensional matrix 
+**************************************************************************/
 void gk_FreeMatrix(void ***r_matrix, size_t ndim1, size_t ndim2)
 {
   gk_idx_t i;
@@ -87,41 +92,6 @@ void gk_FreeMatrix(void ***r_matrix, size_t ndim1, size_t ndim2)
 
   gk_free((void **)r_matrix, LTERM); 
 
-}
-
-
-/*************************************************************************/
-/*! This function initializes tracking of heap allocations. 
-*/
-/*************************************************************************/
-int gk_malloc_init()
-{
-  if (gkmcore == NULL)
-    gkmcore = gk_gkmcoreCreate();
-
-  if (gkmcore == NULL)
-    return 0;
-
-  gk_gkmcorePush(gkmcore);
-
-  return 1;
-}
-
-
-/*************************************************************************/
-/*! This function frees the memory that has been allocated since the
-    last call to gk_malloc_init().
-*/
-/*************************************************************************/
-void gk_malloc_cleanup(int showstats)
-{
-  if (gkmcore != NULL) {
-    gk_gkmcorePop(gkmcore);
-    if (gkmcore->cmop == 0) {
-      gk_gkmcoreDestroy(&gkmcore, showstats);
-      gkmcore = NULL;
-    }
-  }
 }
 
 
@@ -140,25 +110,37 @@ void *gk_malloc(size_t nbytes, char *msg)
   void *ptr=NULL;
 
   if (nbytes == 0)
-    nbytes++;  /* Force mallocs to actually allocate some memory */
+    nbytes++;  /* This was added to make all the mallocs to actually allocate some memory */
 
-  ptr = (void *)malloc(nbytes);
+#ifdef USE_DLMALLOC
+#ifdef GKMSPACE
+  if (gk_mspace == 0)
+    gk_mspace = create_mspace(0, 0);
 
-  if (ptr == NULL) {
-    fprintf(stderr, "   Current memory used:  %10zu bytes\n", gk_GetCurMemoryUsed());
-    fprintf(stderr, "   Maximum memory used:  %10zu bytes\n", gk_GetMaxMemoryUsed());
-    gk_errexit(SIGMEM, "***Memory allocation failed for %s. Requested size: %zu bytes", 
-        msg, nbytes);
+  if (gk_mspace == NULL) {
+    gk_errexit(SIGMEM, "***Memory allocation failed for creating gk_mspace.");
     return NULL;
   }
 
-  /* add this memory allocation */
-  if (gkmcore != NULL) gk_gkmcoreAdd(gkmcore, GK_MOPT_HEAP, nbytes, ptr);
+  ptr = (void *)mspace_malloc(gk_mspace, nbytes);
+#else
+  ptr = (void *)dlmalloc(nbytes);
+#endif
+#else
+  ptr = (void *)malloc(nbytes);
+#endif
+
+  if (ptr == NULL) {
+    fprintf(stderr, "   Current memory used:  %10"PRId64" bytes\n", (int64_t)gk_GetCurMemoryUsed());
+    fprintf(stderr, "   Maximum memory used:  %10"PRId64" bytes\n", (int64_t)gk_GetMaxMemoryUsed());
+
+    gk_errexit(SIGMEM, "***Memory allocation failed for %s. Requested size: %"PRId64" bytes", 
+        msg, (int64_t)nbytes);
+    return NULL;
+  }
 
   /* zero-out the allocated space */
-#ifndef NDEBUG
   memset(ptr, 0, nbytes);
-#endif
 
   return ptr;
 }
@@ -171,24 +153,38 @@ void *gk_realloc(void *oldptr, size_t nbytes, char *msg)
 {
   void *ptr=NULL;
 
-  if (nbytes == 0)
-    nbytes++;  /* Force mallocs to actually allocate some memory */
+  nbytes++;  /* This was added to make all the mallocs to actually allocate some memory */
 
-  /* remove this memory de-allocation */
-  if (gkmcore != NULL && oldptr != NULL) gk_gkmcoreDel(gkmcore, oldptr);
-
-  ptr = (void *)realloc(oldptr, nbytes);
-
-  if (ptr == NULL) {
-    fprintf(stderr, "   Maximum memory used: %10zu bytes\n", gk_GetMaxMemoryUsed());
-    fprintf(stderr, "   Current memory used: %10zu bytes\n", gk_GetCurMemoryUsed());
-    gk_errexit(SIGMEM, "***Memory realloc failed for %s. " "Requested size: %zu bytes", 
-        msg, nbytes);
+  if (nbytes == 0) {
+    gk_free((void **)&oldptr, LTERM);
     return NULL;
   }
 
-  /* add this memory allocation */
-  if (gkmcore != NULL) gk_gkmcoreAdd(gkmcore, GK_MOPT_HEAP, nbytes, ptr);
+#ifdef USE_DLMALLOC
+#ifdef GKMSPACE
+  if (gk_mspace == 0)
+    gk_mspace = create_mspace(0, 0);
+
+  if (gk_mspace == NULL) {
+    gk_errexit(SIGMEM, "***Memory allocation failed for creating gk_mspace.");
+    return NULL;
+  }
+
+  ptr = (void *)mspace_realloc(gk_mspace, oldptr, nbytes);
+#else
+  ptr = (void *)dlrealloc(oldptr, nbytes);
+#endif
+#else
+  ptr = (void *)realloc(oldptr, nbytes);
+#endif
+
+  if (ptr == NULL) {
+    fprintf(stderr, "   Maximum memory used:              %10ju bytes\n", gk_GetMaxMemoryUsed());
+    fprintf(stderr, "   Current memory used:              %10ju bytes\n", gk_GetCurMemoryUsed());
+
+    gk_errexit(SIGMEM, "***Memory re-allocation failed for %s. Requested size: %zd bytes", msg, nbytes);
+    return NULL;
+  }
 
   return ptr;
 }
@@ -202,38 +198,76 @@ void gk_free(void **ptr1,...)
   va_list plist;
   void **ptr;
 
-  if (*ptr1 != NULL) {
+  if (*ptr1 != NULL)
+#ifdef USE_DLMALLOC
+#ifdef GKMSPACE
+    mspace_free(gk_mspace, *ptr1);
+#else
+    dlfree(*ptr1);
+#endif
+#else
     free(*ptr1);
-
-    /* remove this memory de-allocation */
-    if (gkmcore != NULL) gk_gkmcoreDel(gkmcore, *ptr1);
-  }
+#endif
   *ptr1 = NULL;
 
   va_start(plist, ptr1);
-  while ((ptr = va_arg(plist, void **)) != LTERM) {
-    if (*ptr != NULL) {
-      free(*ptr);
 
-      /* remove this memory de-allocation */
-      if (gkmcore != NULL) gk_gkmcoreDel(gkmcore, *ptr);
-    }
+  while ((ptr = va_arg(plist, void **)) != LTERM) {
+    if (*ptr != NULL)
+#ifdef USE_DLMALLOC
+#ifdef GKMSPACE
+      mspace_free(gk_mspace, *ptr);
+#else
+      dlfree(*ptr);
+#endif
+#else
+      free(*ptr);
+#endif
     *ptr = NULL;
   }
+
   va_end(plist);
-}          
+}            
+
+
+/*************************************************************************
+* This function cleans up the memory that has been allocated thus far.
+* This work only if code has been compiled with GKMSPACE 
+**************************************************************************/
+void gk_malloc_cleanup()
+{
+#ifdef USE_DLMALLOC
+#ifdef GKMSPACE
+  if (gk_mspace != 0)
+    destroy_mspace(gk_mspace);
+  gk_mspace = 0;
+#endif
+#endif
+}
 
 
 /*************************************************************************
 * This function returns the current ammount of dynamically allocated
 * memory that is used by the system
 **************************************************************************/
-size_t gk_GetCurMemoryUsed()
+uintmax_t gk_GetCurMemoryUsed()
 {
-  if (gkmcore == NULL)
-    return 0;
-  else
-    return gkmcore->cur_hallocs;
+  size_t cused=0;
+#ifdef USE_DLMALLOC
+  struct mallinfo meminfo;
+
+#ifdef GKMSPACE
+  if (gk_mspace != 0) {
+    meminfo = mspace_mallinfo(gk_mspace);
+    cused = meminfo.uordblks;
+  }
+#else
+  meminfo = dlmallinfo();
+  cused = meminfo.uordblks;
+#endif
+#endif
+
+  return (uintmax_t) cused;
 }
 
 
@@ -241,10 +275,24 @@ size_t gk_GetCurMemoryUsed()
 * This function returns the maximum ammount of dynamically allocated 
 * memory that was used by the system
 **************************************************************************/
-size_t gk_GetMaxMemoryUsed()
+uintmax_t gk_GetMaxMemoryUsed()
 {
-  if (gkmcore == NULL)
-    return 0;
-  else
-    return gkmcore->max_hallocs;
+  size_t mused=0;
+#ifdef USE_DLMALLOC
+  struct mallinfo meminfo;
+
+#ifdef GKMSPACE
+  if (gk_mspace != 0) {
+    meminfo = mspace_mallinfo(gk_mspace);
+    mused = meminfo.usmblks;
+  }
+#else
+  meminfo = dlmallinfo();
+  mused = meminfo.usmblks;
+#endif
+#endif
+
+  return (uintmax_t) mused;
 }
+
+

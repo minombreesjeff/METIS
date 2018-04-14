@@ -5,7 +5,7 @@
 \date   Started 5/12/2011
 \author George  
 \author Copyright 1997-2009, Regents of the University of Minnesota 
-\version\verbatim $Id: auxapi.c 10409 2011-06-25 16:58:34Z karypis $ \endverbatim
+\version\verbatim $Id: auxapi.c 10103 2011-06-07 18:28:27Z karypis $ \endverbatim
 */
 
 
@@ -22,7 +22,8 @@
 /*************************************************************************/
 int METIS_Free(void *ptr)
 {
-  if (ptr != NULL) free(ptr);
+  gk_free((void **)&ptr, LTERM);
+
   return METIS_OK;
 }
 
