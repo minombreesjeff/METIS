@@ -2,7 +2,7 @@
  * @file dlbinarytree_headers.h
  * @brief Tree prototypes
  * @author Dominique LaSalle <lasalle@cs.umn.edu>
- * Copyright 2013
+ * Copyright (c) 2013-2015, Dominique LaSalle
  * @version 1
  * @date 2013-10-03
  */
@@ -17,7 +17,10 @@
 #define DLTREE_PRI(name) \
   DLTREE_PRE1(_,DLTREE_PRE1(DLTREE_PREFIX,name))
 
+
+#ifndef DLTREE_WIDTH
 #define DLTREE_WIDTH 5
+#endif
 
 /******************************************************************************
 * TYPES ***********************************************************************
@@ -36,7 +39,7 @@ typedef struct DLTREE_PRI(tree_node_t) {
 typedef struct DLTREE_PUB(tree_t) {
   DLTREE_PRI(tree_node_t) * root;
   size_t size;
-  int (*compar)(const DLTREE_KEY_T,const DLTREE_KEY_T);
+  int (*compar)(DLTREE_KEY_T const, DLTREE_KEY_T const);
 } DLTREE_PUB(tree_t);
 
 
@@ -46,21 +49,26 @@ typedef struct DLTREE_PUB(tree_t) {
 
 
 DLTREE_PUB(tree_t) * DLTREE_PUB(tree_create)(
-    int (*compar)(const DLTREE_KEY_T,const DLTREE_KEY_T));
+    int (*compar)(DLTREE_KEY_T const, DLTREE_KEY_T const));
 
 
-void DLTREE_PUB(tree_free)(DLTREE_PUB(tree_t) * tree);
-
-
-int DLTREE_PUB(tree_add)(const DLTREE_KEY_T key, const DLTREE_VAL_T val, 
+void DLTREE_PUB(tree_free)(
     DLTREE_PUB(tree_t) * tree);
 
 
-DLTREE_VAL_T DLTREE_PUB(tree_remove)(const DLTREE_KEY_T key, 
+int DLTREE_PUB(tree_add)(
+    DLTREE_KEY_T const key, 
+    DLTREE_VAL_T const val, 
     DLTREE_PUB(tree_t) * tree);
 
 
-DLTREE_VAL_T DLTREE_PUB(tree_get)(const DLTREE_KEY_T key, 
+DLTREE_VAL_T DLTREE_PUB(tree_remove)(
+    DLTREE_KEY_T const key, 
+    DLTREE_PUB(tree_t) * tree);
+
+
+DLTREE_VAL_T DLTREE_PUB(tree_get)(
+    DLTREE_KEY_T const key, 
     DLTREE_PUB(tree_t) * tree);
 
 

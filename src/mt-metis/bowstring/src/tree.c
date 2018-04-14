@@ -2,7 +2,7 @@
  * @file tree.c
  * @brief Functions for generating trees in a graph
  * @author Dominique LaSalle <lasalle@cs.umn.edu>
- * Copyright 2013
+ * Copyright 2013-2014, Dominique LaSalle
  * @version 1
  * @date 2013-08-06
  */
@@ -60,9 +60,11 @@ static vtx_t const NULL_PARENT = (vtx_t)-1;
 #define DLPQ_KEY_T adj_t
 #define DLPQ_VAL_T wgt_t
 #define DLPQ_PREFIX aw
+#define DLPQ_MIN 
 #define DLPQ_STATIC
 #include "dlpq_headers.h"
 #undef DLPQ_STATIC
+#undef DLPQ_MIN
 #undef DLPQ_PREFIX
 #undef DLPQ_KEY_T
 #undef DLPQ_VAL_T
@@ -87,7 +89,7 @@ static void __kruskal_mst(
   adj_t * radj = NULL;
   vtx_t * alist = NULL;
   vtx_djset_t * set = NULL;
-  aw_priority_queue_t * q = NULL;
+  aw_pq_t * q = NULL;
 
   adj_t const nedges = xadj[nvtxs];
 
@@ -104,11 +106,11 @@ static void __kruskal_mst(
   build_adjncy_index(nvtxs,xadj,adjncy,radj);
 
   /* sort edges */
-  q = aw_priority_queue_create(0,nedges);
+  q = aw_pq_create(0,nedges);
   for (i=0;i<nvtxs;++i) {
     vtx_set(alist+xadj[i],i,xadj[i+1]-xadj[i]);
     for (j=xadj[i];j<xadj[i+1];++j) {
-      aw_minpq_push(adjwgt[j],j,q);
+      aw_pq_push(adjwgt[j],j,q);
     }
   }
 
@@ -116,7 +118,7 @@ static void __kruskal_mst(
   int_set(adjmask,0,xadj[nvtxs]);
 
   while (q->size > 0) {
-    j = aw_minpq_pop(q);
+    j = aw_pq_pop(q);
     i = alist[j];
     k = adjncy[j];
     if (vtx_djset_find(i,set) != vtx_djset_find(k,set)) {
@@ -125,7 +127,7 @@ static void __kruskal_mst(
     }
   }
 
-  aw_priority_queue_free(q);
+  aw_pq_free(q);
   vtx_djset_free(set);
   dl_free(alist);
   dl_free(radj);
@@ -362,10 +364,16 @@ void build_bfs_tree(
 {
   vtx_t i, k, nq, sq, p;
   adj_t j;
+  vtx_t * q;
 
   int * visited = int_calloc(nvtxs);
-  vtx_t * q = vtx_alloc(nvtxs);
   vtx_t * parent = NULL;
+
+  if (!label) {
+    q = vtx_alloc(nvtxs);
+  } else {
+    q = label;
+  }
   
   p = NULL_PARENT;
   sq = nq = 0;
@@ -420,9 +428,11 @@ void build_bfs_tree(
   if (parent) {
     dl_free(parent);
   }
+  if (!label) {
+    dl_free(q);
+  }
 
   dl_free(visited);
-  dl_free(q);
 }
 
 
@@ -449,6 +459,8 @@ void build_rst_tree(
 {
   __kruskal_rst(nvtxs,xadj,adjncy,adjmask);
 }
+
+
 
 
 /* un-obscure */

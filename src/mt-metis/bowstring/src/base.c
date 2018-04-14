@@ -2,7 +2,7 @@
  * @file base.c
  * @brief Base library functions
  * @author Dominique LaSalle <lasalle@cs.umn.edu>
- * Copyright 2012
+ * Copyright 2012, Dominique LaSalle
  * @version 1
  * @date 2013-04-09
  */

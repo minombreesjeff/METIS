@@ -2,7 +2,7 @@
  * @file graph.c
  * @brief Functions for performing misc graph operations
  * @author Dominique LaSalle <lasalle@cs.umn.edu>
- * Copyright 2013
+ * Copyright 2013-2014, Dominique LaSalle
  * @version 1
  * @date 2013-08-07
  */
@@ -45,9 +45,11 @@ static const vtx_t QUEUED = (vtx_t)-2;
 #define DLPQ_PREFIX vw
 #define DLPQ_KEY_T wgt_t
 #define DLPQ_VAL_T vtx_t
+#define DLPQ_MIN
 #define DLPQ_STATIC
 #include "dlpq_headers.h"
 #undef DLPQ_STATIC
+#undef DLPQ_MIN
 #undef DLPQ_VAL_T
 #undef DLPQ_KEY_T
 #undef DLPQ_PREFIX
@@ -987,7 +989,7 @@ int check_graph(
           goto NEXT_EDGE;
         }
       }
-      eprintf("Could not find reverse of edge going from "PF_VTX_T" to "
+      eprintf("Could not find reverse of edge going from "PF_VTX_T" to " \
           PF_VTX_T"\n",i,k);
       return 0;
       NEXT_EDGE:;
@@ -998,132 +1000,217 @@ int check_graph(
 }
 
 
-void voronoi_diagram(
+void voronoi_regions(
     vtx_t const nvtxs,
     adj_t const * const xadj,
     vtx_t const * const adjncy,
     wgt_t const * const adjwgt,
     vtx_t const * const sources,
     vtx_t const nsources,
-    vtx_t ** const r_where,
-    adj_t ** const r_vxadj,
-    vtx_t ** const r_vadjncy,
-    wgt_t ** const r_vadjwgt,
-    vtx_t ** const r_adjsrc,
-    adj_t ** const r_adjori,
-    vtx_t ** const r_parent)
+    vtx_t * const where,
+    vtx_t * const parent,
+    wgt_t * const dist)
 {
-  vtx_t t, i, v, k, nborder, p;
-  adj_t j, l, m, vnedges;
+  vtx_t t, i, k;
+  adj_t j;
   wgt_t d;
-  wgt_t * dist;
-  adj_t * htable;
-  vtx_t * voronoi, * border, * perm, * keys, * parent;
-  vw_priority_queue_t * q;
-  vtx_iset_t * bnd;
+  vw_pq_t * q;
 
-  /* voronoi graph parts */
-  adj_t * vxadj, * adjori;
-  vtx_t * vadjncy, * adjsrc;
-  wgt_t * vadjwgt;
+  DL_ASSERT(check_graph(nvtxs,xadj,adjncy,adjwgt),"Bad graph passed " \
+      "into voronoi_regions().");
 
-  /* allocate tracking arrays */
-  voronoi = vtx_init_alloc(nsources,nvtxs);
-  bnd = vtx_iset_create(0,nvtxs);
-  dist = wgt_alloc(nvtxs);
+  q = vw_pq_create(0,nvtxs);
 
-  /* allocate tree indicator arrays */
-  parent = vtx_alloc(nvtxs);
-
-  q = vw_priority_queue_create(0,nvtxs);
+  vtx_set(where,nsources,nvtxs);
 
   /* create voronoi partitions */
   for (t=0;t<nsources;++t) {
     i = sources[t];
-    voronoi[i] = t;
+    where[i] = t;
     dist[i] = 0;
     parent[i] = NULL_VTX;
-    vw_minpq_push(0,i,q);
+    vw_pq_push(0,i,q);
   }
-  vnedges = 0;
   if (adjwgt) {
     while (q->size > 0) {
-      i = vw_minpq_pop(q);
+      i = vw_pq_pop(q);
       d = dist[i];
-      t = voronoi[i];
+      t = where[i];
       for (j=xadj[i];j<xadj[i+1];++j) {
         k = adjncy[j];
-        if (voronoi[k] == nsources) {
-          voronoi[k] = t;
+        if (where[k] == nsources) {
+          where[k] = t;
           parent[k] = i;
           dist[k] = d + adjwgt[j];
-          vw_minpq_push(dist[k],k,q);
+          vw_pq_push(dist[k],k,q);
         } else {
+          DL_ASSERT(where[k] < nsources,"Bad location of vertex "PF_VTX_T \
+              ", "PF_VTX_T"/"PF_VTX_T"\n",k,where[k],nsources);
           if (d + adjwgt[j] < dist[k]) {
             parent[k] = i;
-            voronoi[k] = t;
+            where[k] = t;
             dist[k] = d + adjwgt[j];
-            vw_minpq_update(dist[k],k,q);
-          }
-          if (voronoi[k] != t) {
-            if (!vtx_iset_contains(i,bnd)) {
-              vtx_iset_add(i,bnd);
-            }
-            if (!vtx_iset_contains(k,bnd)) {
-              vtx_iset_add(k,bnd);
-            }
-            vnedges+=2;
+            vw_pq_update(dist[k],k,q);
           }
         }
       }
     }
   } else {
     while (q->size > 0) {
-      i = vw_minpq_pop(q);
+      i = vw_pq_pop(q);
       d = dist[i];
-      t = voronoi[i];
+      t = where[i];
       for (j=xadj[i];j<xadj[i+1];++j) {
         k = adjncy[j];
-        if (voronoi[k] == nsources) {
-          voronoi[k] = t;
+        if (where[k] == nsources) {
+          where[k] = t;
           parent[k] = i;
           dist[k] = d + 1;
-          vw_minpq_push(dist[k],k,q);
+          vw_pq_push(dist[k],k,q);
         } else {
+          DL_ASSERT(where[k] < nsources,"Bad location of vertex "PF_VTX_T \
+              ", "PF_VTX_T"/"PF_VTX_T"\n",k,where[k],nsources);
           if (d + 1 < dist[k]) {
             parent[k] = i;
-            voronoi[k] = t;
+            where[k] = t;
             dist[k] = d + 1;
-            vw_minpq_update(dist[k],k,q);
-          }
-          if (voronoi[k] != t) {
-            if (!vtx_iset_contains(i,bnd)) {
-              vtx_iset_add(i,bnd);
-            }
-            if (!vtx_iset_contains(k,bnd)) {
-              vtx_iset_add(k,bnd);
-            }
-            vnedges+=2;
+            vw_pq_update(dist[k],k,q);
           }
         }
       }
     }
-
   }
 
-  vw_priority_queue_free(q);
+  vw_pq_free(q);
+}
 
-  /* copy boundary vertices into border array */
-  nborder = bnd->size;
-  border = vtx_alloc(nborder);
-  vtx_copy(border,bnd->ind,nborder);
-  vtx_iset_free(bnd);
+
+void voronoi_add_sources(
+    vtx_t const nvtxs,
+    adj_t const * const xadj,
+    vtx_t const * const adjncy,
+    wgt_t const * const adjwgt,
+    vtx_t const offset,
+    vtx_t const * const sources,
+    vtx_t const nsources,
+    vtx_t * const where,
+    vtx_t * const parent,
+    wgt_t * const dist)
+{
+  vtx_t t, i, k;
+  adj_t j;
+  wgt_t d, nd;
+
+  vw_pq_t * q;
+
+  q = vw_pq_create(0,nvtxs);
+
+  /* initialize new sources */
+  for (t=0;t<nsources;++t) {
+    i = sources[t];
+    where[i] = t + offset;
+    dist[i] = 0;
+    parent[i] = NULL_VTX;
+    vw_pq_push(0,i,q);
+  }
+  /* expand sources */
+  if (adjwgt) {
+    while (q->size > 0) {
+      i = vw_pq_pop(q);
+      d = dist[i];
+      t = where[i];
+      for (j=xadj[i];j<xadj[i+1];++j) {
+        k = adjncy[j];
+        nd = d + adjwgt[j];
+        if (nd < dist[k]) {
+          parent[k] = i;
+          where[k] = t;
+          dist[k] = nd;
+          vw_pq_update(nd,k,q);
+        }
+      }
+    }
+  } else {
+    while (q->size > 0) {
+      i = vw_pq_pop(q);
+      d = dist[i];
+      t = where[i];
+      for (j=xadj[i];j<xadj[i+1];++j) {
+        k = adjncy[j];
+        nd = d + 1;
+        if (nd < dist[k]) {
+          parent[k] = i;
+          where[k] = t;
+          dist[k] = nd;
+          vw_pq_update(nd,k,q);
+        }
+      }
+    }
+  }
+
+  vw_pq_free(q);
+}
+
+
+void voronoi_diagram(
+    vtx_t const nvtxs,
+    adj_t const * const xadj,
+    vtx_t const * const adjncy,
+    wgt_t const * const adjwgt,
+    vtx_t const nsources,
+    vtx_t const * const where,
+    wgt_t const * const dist,
+    adj_t ** const r_vxadj,
+    vtx_t ** const r_vadjncy,
+    wgt_t ** const r_vadjwgt,
+    vtx_t ** const r_adjsrc,
+    adj_t ** const r_adjori)
+{
+  vtx_t i, k, me, p, t, v;
+  adj_t j, l, m, vnedges;
+  vtx_t nborder;
+  wgt_t d;
+
+  adj_t * htable;
+  vtx_t * perm, * keys, * border;
+
+  /* voronoi graph parts */
+  adj_t * vxadj, * adjori;
+  vtx_t * vadjncy, * adjsrc;
+  wgt_t * vadjwgt;
+
+
+  DL_ASSERT(check_graph(nvtxs,xadj,adjncy,adjwgt),"Bad graph passed " \
+      "into voronoi_diagram().");
+
+  DL_ASSERT(nsources <= nvtxs,"More sources than vertices: "PF_VTX_T" vs " \
+      PF_VTX_T"\n",nsources,nvtxs);
+
+  /* maximum sized border has everything */
+  border = vtx_alloc(nvtxs+1);
+
+  /* find my border vertices and count maximum possible of edges */
+  vnedges = 0;
+  nborder = 0;
+  for (i=0;i<nvtxs;++i) {
+    me = where[i];
+    for (j=xadj[i];j<xadj[i+1];++j) {
+      k = adjncy[j];
+      if (me != where[k]) {
+        border[nborder++] = i;
+        vnedges += xadj[i+1] - xadj[i];
+        break;
+      }
+    }
+  }
+
+  /* shuffle the border vertices */
   vtx_pseudo_shuffle(border,nborder/8,nborder);
 
   /* sort boundary vertices based on voronoi region */
   keys = vtx_alloc(nvtxs);
   for (i=0;i<nborder;++i) {
-    keys[i] = voronoi[border[i]];
+    keys[i] = where[border[i]];
   }
   perm = vtx_alloc(nborder);
   vtx_countingsort_kv(keys,border,0,nsources,nborder,perm,NULL);
@@ -1150,10 +1237,10 @@ void voronoi_diagram(
   for (t=0;t<nsources;++t) {
     for (v=border[t];v<border[t+1];++v) {
       i = perm[v];
-      DL_ASSERT_EQUALS(voronoi[i],t,PF_VTX_T);
+      DL_ASSERT_EQUALS(where[i],t,PF_VTX_T);
       for (j=xadj[i];j<xadj[i+1];++j) {
         k = adjncy[j];
-        p = voronoi[k];
+        p = where[k];
         if (p != t) {
           if (adjwgt) {
             d = adjwgt[j] + (dist[i] + dist[k]);
@@ -1186,18 +1273,13 @@ void voronoi_diagram(
       htable[p] = NULL_ADJ;
     }
   }
+  dl_free(border);
   dl_free(perm);
   dl_free(htable);
-  dl_free(dist);
 
-  DL_ASSERT(bowstring_check_graph(nsources,vxadj,vadjncy,vadjwgt),"Bad " \
+  DL_ASSERT(check_graph(nsources,vxadj,vadjncy,vadjwgt),"Bad " \
       "voronoi diagram generated.");
 
-  if (r_where) {
-    *r_where = voronoi;
-  } else {
-    dl_free(voronoi);
-  }
   if (r_vxadj) {
     *r_vxadj = vxadj;
   } else {
@@ -1223,12 +1305,10 @@ void voronoi_diagram(
   } else {
     dl_free(adjori);
   }
-  if (r_parent) {
-    *r_parent = parent;
-  } else {
-    dl_free(parent);
-  }
 }
+
+
+
 
 
 #endif

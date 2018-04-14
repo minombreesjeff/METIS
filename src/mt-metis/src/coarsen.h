@@ -16,7 +16,6 @@
 
 
 
-#include "base.h"
 #include "ctrl.h"
 #include "graph.h"
 
@@ -24,11 +23,11 @@
 
 
 /******************************************************************************
-* FUNCTION PROTOTYPES *********************************************************
+* PARALLEL FUNCTION PROTOTYPES ************************************************
 ******************************************************************************/
 
 
-#define coarsen_graph __mtmetis_coarsen_graph
+#define par_coarsen_graph __mtmetis_par_coarsen_graph
 /**
  * @brief Coarsen a graph. 
  *
@@ -37,7 +36,7 @@
  *
  * @return The coarse graph.
  */
-graph_t * coarsen_graph(
+graph_t * par_coarsen_graph(
     ctrl_t * ctrl,
     graph_t * graph);
 

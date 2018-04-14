@@ -2,7 +2,7 @@
  * @file dlht_headers.h
  * @brief Hashtable function prototypes
  * @author Dominique LaSalle <lasalle@cs.umn.edu>
- * Copyright 2013
+ * Copyright (c) 2013-2015, Dominique LaSalle
  * @version 1
  * @date 2013-10-04
  */
@@ -120,7 +120,7 @@ int DLHT_PUB(ht_adjust_size)(
     DLHT_PUB(ht_t) * map);
 
 
-int DLHT_PUB(ht_free)(
+void DLHT_PUB(ht_free)(
     DLHT_PUB(ht_t) * map);
 
 

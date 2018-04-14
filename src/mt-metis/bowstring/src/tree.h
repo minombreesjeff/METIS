@@ -2,7 +2,7 @@
  * @file tree.h
  * @brief Functions for generating trees in a graph
  * @author Dominique LaSalle <lasalle@cs.umn.edu>
- * Copyright 2013
+ * Copyright 2013-2014, Dominique LaSalle
  * @version 1
  * @date 2013-08-06
  */
@@ -107,6 +107,22 @@ void build_rst_tree(
     const adj_t * xadj, 
     const vtx_t * adjncy, 
     int * adjmap);
+
+
+#define post_order __bowstring_post_order
+/**
+ * @brief Generate an permuation for a post order traversal of a tree.
+ *
+ * @param nvtxs The number of vertices in the tree.
+ * @param xadj The adjacency list pointer.
+ * @param adjncy The adjacency list.
+ * @param perm The post order of the vertices.
+ */
+void post_order(
+    vtx_t nvtxs,
+    adj_t const * xadj,
+    vtx_t const * adjncy,
+    vtx_t * perm);
 
 
 

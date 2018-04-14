@@ -2,7 +2,7 @@
  * @file graph.h
  * @brief Misc function prototypes for graph operations 
  * @author Dominique LaSalle <lasalle@cs.umn.edu>
- * Copyright 2013
+ * Copyright 2013-2014, Dominique LaSalle
  * @version 1
  * @date 2013-08-07
  */
@@ -355,6 +355,60 @@ void label_partition_components(
     vlbl_t * r_nlbl);
 
 
+#define voronoi_regions __bowstring_voronoi_regions
+/**
+ * @brief Create voronoi regions on a graph for a given set of vertices.
+ *
+ * @param nvtxs The number of vertices in the graph.
+ * @param xadj The adjacency list pointer.
+ * @param adjncy The adjacency list.
+ * @param adjwgt The edge weights.
+ * @param sources The set of source vertices.
+ * @param nsources The number of source vertices.
+ * @param where The voronoi region ID of each vertex (output).
+ * @param parent The parent of each vertex in the voronoi region (output).
+ * @param dist The distance of each vertex to its source vertex (output).
+ */
+void voronoi_regions(
+    vtx_t nvtxs,
+    adj_t const * xadj,
+    vtx_t const * adjncy,
+    wgt_t const * adjwgt,
+    vtx_t const * sources,
+    vtx_t nsources,
+    vtx_t * where,
+    vtx_t * parent,
+    wgt_t * dist);
+
+
+#define voronoi_add_sources __bowstring_voronoi_add_sources
+/**
+ * @brief Add a set of sources to existing voronoi regions.
+ *
+ * @param nvtxs The number of vertices in the graph.
+ * @param xadj The adjacency list pointer.
+ * @param adjncy The adjacency list.
+ * @param adjwgt The edge weights.
+ * @param offset The number of existing voronoi regions.
+ * @param sources The set of source vertices.
+ * @param nsources The number of source vertices.
+ * @param where The voronoi region ID of each vertex (output).
+ * @param parent The parent of each vertex in the voronoi region (output).
+ * @param dist The distance of each vertex to its source vertex (output).
+ */
+void voronoi_add_sources(
+    vtx_t nvtxs,
+    adj_t const * xadj,
+    vtx_t const * adjncy,
+    wgt_t const * adjwgt,
+    vtx_t offset,
+    vtx_t const * sources,
+    vtx_t nsources,
+    vtx_t * where,
+    vtx_t * parent,
+    wgt_t * dist);
+
+
 #define voronoi_diagram __bowstring_voronoi_diagram
 /**
  * @brief Create a voronoi diagram of a graph given a subset of vertices. 
@@ -363,10 +417,9 @@ void label_partition_components(
  * @param xadj The adjacency list pointer.
  * @param adjncy The adjacency list.
  * @param adjwgt The edge weights (may be NULL).
- * @param sources The source vertices to grow voronoi regions from.
  * @param nsources The number of source vertices.
- * @param r_where A reference to the voronoi region labels (may be NULL, 
- * output).
+ * @param where The voronoi region labels.
+ * @param dist The distance of each vertex to the center of its voronoi region.
  * @param r_vxadj A reference to the adjacency list pointer for the voronoi
  * graph (may be NULL, output).
  * @param r_vadjncy A reference to the adjacency list for the voronoi graph
@@ -377,23 +430,20 @@ void label_partition_components(
  * voronoi diagram (may be NULL, output).
  * @param r_adjori The source edge index in the original graph for the edge in 
  * the voronoi diagram (may be NULL, output).
- * @param r_parent A reference to the parent vertex ids of each vertex in a
- * voronoi region (may be NULL, output).
  */
 void voronoi_diagram(
     vtx_t nvtxs,
     adj_t const * xadj,
     vtx_t const * adjncy,
     wgt_t const * adjwgt,
-    vtx_t const * sources,
     vtx_t nsources,
-    vtx_t ** r_where,
+    vtx_t const * where,
+    wgt_t const * dist,
     adj_t ** r_vxadj,
     vtx_t ** r_vadjncy,
     wgt_t ** r_vadjwgt,
     vtx_t ** r_adjsrc,
-    adj_t ** r_adjori,
-    vtx_t ** r_parent);
+    adj_t ** r_adjori);
 
 
 

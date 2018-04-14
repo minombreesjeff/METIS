@@ -15,87 +15,6 @@
 #include "metislib.h"
 
 
-/*************************************************************************/
-/*! This function is the entry point for the node ND code for ParMETIS.
-    The difference between this routine and the standard METIS_NodeND are
-    the following
-    
-    - It performs at least log2(npes) levels of nested dissection.
-    - It stores the size of the log2(npes) top-level separators in the
-      sizes array.
-*/
-/*************************************************************************/
-int METIS_NodeNDP(idx_t nvtxs, idx_t *xadj, idx_t *adjncy, idx_t *vwgt,
-           idx_t npes, idx_t *options, idx_t *perm, idx_t *iperm, idx_t *sizes) 
-{
-  idx_t i, ii, j, l, nnvtxs=0;
-  graph_t *graph;
-  ctrl_t *ctrl;
-  idx_t *cptr, *cind;
-
-  ctrl = SetupCtrl(METIS_OP_OMETIS, options, 1, 3, NULL, NULL);
-  if (!ctrl) return METIS_ERROR_INPUT;
-
-  IFSET(ctrl->dbglvl, METIS_DBG_TIME, InitTimers(ctrl));
-  IFSET(ctrl->dbglvl, METIS_DBG_TIME, gk_startwctimer(ctrl->TotalTmr));
-
-  /* compress the graph; not that compression only happens if not prunning 
-     has taken place. */
-  if (ctrl->compress) {
-    cptr = imalloc(nvtxs+1, "OMETIS: cptr");
-    cind = imalloc(nvtxs, "OMETIS: cind");
-
-    graph = CompressGraph(ctrl, nvtxs, xadj, adjncy, vwgt, cptr, cind);
-    if (graph == NULL) {
-      /* if there was no compression, cleanup the compress flag */
-      gk_free((void **)&cptr, &cind, LTERM);
-      ctrl->compress = 0;
-    }
-    else {
-      nnvtxs = graph->nvtxs;
-    }
-  }
-
-  /* if no compression, setup the graph in the normal way. */
-  if (ctrl->compress == 0) 
-    graph = SetupGraph(ctrl, nvtxs, 1, xadj, adjncy, vwgt, NULL, NULL);
-
-
-  /* allocate workspace memory */
-  AllocateWorkSpace(ctrl, graph);
-
-
-  /* do the nested dissection ordering  */
-  iset(2*npes-1, 0, sizes);
-  MlevelNestedDissectionP(ctrl, graph, iperm, graph->nvtxs, npes, 0, sizes);
-
-
-  /* Uncompress the ordering */
-  if (ctrl->compress) { 
-    /* construct perm from iperm */
-    for (i=0; i<nnvtxs; i++)
-      perm[iperm[i]] = i; 
-    for (l=ii=0; ii<nnvtxs; ii++) {
-      i = perm[ii];
-      for (j=cptr[i]; j<cptr[i+1]; j++)
-        iperm[cind[j]] = l++;
-    }
-
-    gk_free((void **)&cptr, &cind, LTERM);
-  }
-
-
-  for (i=0; i<nvtxs; i++)
-    perm[iperm[i]] = i;
-
-  IFSET(ctrl->dbglvl, METIS_DBG_TIME, gk_stopwctimer(ctrl->TotalTmr));
-  IFSET(ctrl->dbglvl, METIS_DBG_TIME, PrintTimers(ctrl));
-
-  /* clean up */
-  FreeCtrl(&ctrl);
-
-  return METIS_OK;
-}
 
 
 /*************************************************************************/
@@ -184,6 +103,8 @@ int METIS_ComputeVertexSeparator(idx_t *nvtxs, idx_t *xadj, idx_t *adjncy,
   icopy(*nvtxs, graph->where, part);
 
   FreeGraph(&graph);
+
+  IFSET(ctrl->dbglvl, METIS_DBG_TIME, PrintTimers(ctrl));
 
   FreeCtrl(&ctrl);
 

@@ -2,7 +2,7 @@
  * @file dlutil.h
  * @brief Utility functions (moslty timing)
  * @author Dominique LaSalle <lasalle@cs.umn.edu>
- * Copyright 2013
+ * Copyright (c) 2013-2015, Dominique LaSalle
  * @version 1
  * @date 2013-09-11
  */
@@ -127,6 +127,18 @@ double dl_reset_timer(
  */
 double dl_poll_timer(
     dl_timer_t const * timer);
+
+
+/**
+ * @brief Combine the time of two timers.
+ *
+ * @param timer1 The timer to increase the duration of.
+ * @param timer2 The timer to add to the first timer.
+ *
+ */
+void dl_combine_timer(
+    dl_timer_t * timer1,
+    dl_timer_t const * timer2);
 
 
 /**

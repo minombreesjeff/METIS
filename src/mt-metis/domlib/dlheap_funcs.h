@@ -2,7 +2,7 @@
  * @file dlheap_funcs.h
  * @brief Functions for heaps
  * @author Dominique LaSalle <lasalle@cs.umn.edu>
- * Copyright 2013
+ * Copyright (c) 2013-2015, Dominique LaSalle
  * @version 1
  * @date 2013-10-04
  */
@@ -46,10 +46,22 @@ static inline int DLHEAP_PRI(isorder)(const DLHEAP_TYPE_T a,
     const DLHEAP_TYPE_T b)
 {
   #ifdef DLHEAP_MIN
+
+  #ifdef DLHEAP_KEY
+  return a.DLHEAP_KEY < b.DLHEAP_KEY;
+  #else
   return a < b;
+  #endif /* DLHEAP_KEY */
+
+  #else
+
+  #ifdef DLHEAP_KEY
+  return a.DLHEAP_KEY > b.DLHEAP_KEY;
   #else
   return a > b;
-  #endif
+  #endif /* DLHEAP_KEY */
+
+  #endif /* DLHEAP_MIN */
 }
 
 
@@ -65,41 +77,46 @@ static inline int DLHEAP_PRI(isorder)(const DLHEAP_TYPE_T a,
 #endif
 
 
-DLHEAP_VISIBILITY DLHEAP_PUB(heap_t) * DLHEAP_PUB(heap_create)(size_t n)
+DLHEAP_VISIBILITY DLHEAP_PUB(heap_t) * DLHEAP_PUB(heap_create)(
+    size_t const n)
 {
-  DLHEAP_PUB(heap_t) * heap = (DLHEAP_PUB(heap_t)*)malloc(
-      sizeof(DLHEAP_PUB(heap_t)));
+  DLHEAP_PUB(heap_t) * heap;
+  
+  heap = (DLHEAP_PUB(heap_t)*)malloc(sizeof(DLHEAP_PUB(heap_t)));
   heap->maxsize = n;
   heap->size = 0;
   heap->elements = DLHEAP_PUB(alloc)(heap->maxsize);
+
   return heap;
 }
 
 
-DLHEAP_VISIBILITY DLHEAP_PUB(heap_t) * DLHEAP_PUB(heap_expand)(
-    DLHEAP_PUB(heap_t) * heap)
+DLHEAP_VISIBILITY void DLHEAP_PUB(heap_expand)(
+    DLHEAP_PUB(heap_t) * const heap)
 {
   heap->elements = DLHEAP_PUB(realloc)(heap->elements,heap->maxsize*=2);
-  return heap;
 }
 
 
-DLHEAP_VISIBILITY void DLHEAP_PUB(heap_free)(DLHEAP_PUB(heap_t) * heap)
+DLHEAP_VISIBILITY void DLHEAP_PUB(heap_free)(
+    DLHEAP_PUB(heap_t) * heap)
 {
   free(heap->elements);
   free(heap);
 }
 
 
-DLHEAP_VISIBILITY void DLHEAP_PUB(heap_push)(const DLHEAP_TYPE_T val,
-    DLHEAP_PUB(heap_t) * heap)
+DLHEAP_VISIBILITY void DLHEAP_PUB(heap_push)(
+    DLHEAP_TYPE_T const val,
+    DLHEAP_PUB(heap_t) * const heap)
 {
   size_t i, j;
+
   if (heap->size == heap->maxsize) {
-    heap = DLHEAP_PUB(heap_expand)(heap);
+    DLHEAP_PUB(heap_expand)(heap);
   }
   i = heap->size++;
-  j =DLHEAP_PRI(parent)(i);
+  j = DLHEAP_PRI(parent)(i);
   while (i > 0 && !DLHEAP_PRI(isorder)(heap->elements[j],val)) {
     heap->elements[i] = heap->elements[j];
     i = j;
@@ -109,12 +126,15 @@ DLHEAP_VISIBILITY void DLHEAP_PUB(heap_push)(const DLHEAP_TYPE_T val,
 }
 
 
-DLHEAP_VISIBILITY DLHEAP_TYPE_T DLHEAP_PUB(heap_pop)(DLHEAP_PUB(heap_t) * heap)
+DLHEAP_VISIBILITY DLHEAP_TYPE_T DLHEAP_PUB(heap_pop)(
+    DLHEAP_PUB(heap_t) * const heap)
 {
   size_t i,j,k;
+  DLHEAP_TYPE_T num, val;
+
   i = 0;
-  DLHEAP_TYPE_T num = heap->elements[i];
-  DLHEAP_TYPE_T val = heap->elements[--heap->size];
+  num = heap->elements[i];
+  val = heap->elements[--heap->size];
   while (1) {
     heap->elements[i] = val;
     j = DLHEAP_PRI(leftchild)(i);
@@ -135,6 +155,13 @@ DLHEAP_VISIBILITY DLHEAP_TYPE_T DLHEAP_PUB(heap_pop)(DLHEAP_PUB(heap_t) * heap)
     }
   }
   return num;
+}
+
+
+DLHEAP_VISIBILITY DLHEAP_TYPE_T DLHEAP_PUB(heap_peek)(
+    DLHEAP_PUB(heap_t) const * const heap)
+{
+  return heap->elements[0];
 }
 
 

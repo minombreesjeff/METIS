@@ -29,16 +29,30 @@
 ******************************************************************************/
 
 
-#define initpart_kway __mtmetis_initpart_kway
+#define par_initpart_cut __mtmetis_par_initpart_cut
 /**
- * @brief Create a kway partitioning of a coarsened graph.
+ * @brief Create a cut partitioning of a coarsened graph.
  *
  * @param ctrl The control structure with runtime parameters.
  * @param graph The coarse graph to partition.
  *
  * @return The edgecut of the new partitioning.  
  */
-vtx_t initpart_kway(
+wgt_t par_initpart_cut(
+    ctrl_t * ctrl,
+    graph_t * graph);
+
+
+#define par_initpart_vsep __mtmetis_par_initpart_vsep
+/**
+ * @brief Create a small vertex separator of a coarsened graph.
+ *
+ * @param ctrl The control structure to use.
+ * @param graph The graph to partition.
+ *
+ * @return The size of the vertex separator.
+ */
+wgt_t par_initpart_vsep(
     ctrl_t * ctrl,
     graph_t * graph);
 

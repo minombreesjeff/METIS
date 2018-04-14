@@ -2,7 +2,7 @@
  * @file coordinates.c
  * @brief Functions for assigning coordinates
  * @author Dominique LaSalle <lasalle@cs.umn.edu>
- * Copyright 2013
+ * Copyright 2013-2014, Dominique LaSalle
  * @version 1
  * @date 2014-01-26
  */

@@ -19,8 +19,10 @@
 
 #include "base.h"
 #include "partition.h"
+#include "order.h"
 #include "graph.h"
 #include "ctrl.h"
+#include "internal.h"
 #include <bowstring.h>
 
 
@@ -44,7 +46,36 @@
 
 static const cmd_opt_pair_t CTYPE_CHOICES[] = {
   {MTMETIS_STR_CTYPE_RM,"Random Matching",MTMETIS_CTYPE_RM},
-  {MTMETIS_STR_CTYPE_SHEM,"Sorted Heavy Edge Matching",MTMETIS_CTYPE_SHEM}
+  {MTMETIS_STR_CTYPE_SHEM,"Sorted Heavy Edge Matching",MTMETIS_CTYPE_SHEM},
+  {MTMETIS_STR_CTYPE_FC,"FirstChoice Grouping",MTMETIS_CTYPE_FC}
+};
+
+
+static const cmd_opt_pair_t CONTYPE_CHOICES[] = {
+  {MTMETIS_STR_CONTYPE_CLS,"Hash-table with linear scanning", \
+      MTMETIS_CONTYPE_CLS},
+  {MTMETIS_STR_CONTYPE_DENSE,"Dense vector",MTMETIS_CONTYPE_DENSE},
+  {MTMETIS_STR_CONTYPE_SORT,"Sort and merge",MTMETIS_CONTYPE_SORT}
+};
+
+
+static const cmd_opt_pair_t RTYPE_CHOICES[] = {
+  {MTMETIS_STR_RTYPE_GREEDY,"Greedy refinement",MTMETIS_RTYPE_GREEDY},
+  {MTMETIS_STR_RTYPE_FM,"FM based serial refinement (pairwise for kway)", \
+      MTMETIS_RTYPE_FM},
+  {MTMETIS_STR_RTYPE_SFM,"Segmented FM based parallel refinement", \
+      MTMETIS_RTYPE_SFM},
+  {MTMETIS_STR_RTYPE_SFG,"Segmented FM plus Greedy parallel refinement", \
+      MTMETIS_RTYPE_SFG},
+};
+
+
+static const cmd_opt_pair_t PTYPE_CHOICES[] = {
+  {MTMETIS_STR_PTYPE_KWAY,"K-Way Edgecut",MTMETIS_PTYPE_KWAY},
+  {MTMETIS_STR_PTYPE_ESEP,"Edge Separator",MTMETIS_PTYPE_ESEP},
+  {MTMETIS_STR_PTYPE_RB,"RB Edgecut",MTMETIS_PTYPE_RB},
+  {MTMETIS_STR_PTYPE_VSEP,"Vertex Separator",MTMETIS_PTYPE_VSEP},
+  {MTMETIS_STR_PTYPE_ND,"Nested Dissection",MTMETIS_PTYPE_ND}
 };
 
 
@@ -72,18 +103,37 @@ static const cmd_opt_pair_t DISTRIBUTION_CHOICES[] = {
 };
 
 
+static const cmd_opt_pair_t IGNOREWEIGHTS_CHOICES[] = {
+  {MTMETIS_STR_IGNORE_NONE,"Use all weights normally", \
+      MTMETIS_IGNORE_NONE},
+  {MTMETIS_STR_IGNORE_VERTEXWEIGHTS,"Force all vertex weights to be one", \
+      MTMETIS_IGNORE_VERTEXWEIGHTS},
+  {MTMETIS_STR_IGNORE_EDGEWEIGHTS,"Force all edge weights to be one", \
+      MTMETIS_IGNORE_EDGEWEIGHTS},
+  {MTMETIS_STR_IGNORE_BOTH,"Force all weights to be one", \
+      MTMETIS_IGNORE_VERTEXWEIGHTS | MTMETIS_IGNORE_EDGEWEIGHTS}
+};
+
+
 static const cmd_opt_t OPTS[] = {
   {MTMETIS_OPTION_HELP,'h',"help","Display this help page.",CMD_OPT_FLAG, \
       NULL,0},
   {MTMETIS_OPTION_CTYPE,'c',"ctype","The type of coarsening.", \
       CMD_OPT_CHOICE,CTYPE_CHOICES,__ARRAY_SIZE(CTYPE_CHOICES)},
+  {MTMETIS_OPTION_CONTYPE,'d',"contype","How to merge adjacency lists " \
+      "during contraction.",CMD_OPT_CHOICE,CONTYPE_CHOICES, \
+        __ARRAY_SIZE(CONTYPE_CHOICES)},
+  {MTMETIS_OPTION_RTYPE,'r',"rtype","The type of refinement.", \
+      CMD_OPT_CHOICE,RTYPE_CHOICES,__ARRAY_SIZE(RTYPE_CHOICES)},
   {MTMETIS_OPTION_SEED,'s',"seed","The random seed to use.",CMD_OPT_INT,NULL, \
       0},
-  {MTMETIS_OPTION_NCUTS,'n',"runs","The number of partitionings to " \
+  {MTMETIS_OPTION_NCUTS,'N',"cuts","The number of cuts to " \
+      "generate using succesive random seeds.",CMD_OPT_INT,NULL,0},
+  {MTMETIS_OPTION_NRUNS,'n',"runs","The number of partitionings to " \
       "generate using succesive random seeds.",CMD_OPT_INT,NULL,0},
   {MTMETIS_OPTION_NINITSOLUTIONS,'i',"initialcuts","The number of " \
       "initial cuts to generate at the coarsest level.",CMD_OPT_INT,NULL,0},
-  {MTMETIS_OPTION_NITER,'r',"nrefpass","The maximum number of refinement " \
+  {MTMETIS_OPTION_NITER,'R',"nrefpass","The maximum number of refinement " \
       "passes.",CMD_OPT_INT,NULL,0},
   {MTMETIS_OPTION_TIME,'t',"times","Print timing information",CMD_OPT_FLAG, \
       NULL,0},
@@ -96,7 +146,22 @@ static const cmd_opt_t OPTS[] = {
       "for assigning vertices to threads.",CMD_OPT_CHOICE, \
       DISTRIBUTION_CHOICES,__ARRAY_SIZE(DISTRIBUTION_CHOICES)},
   {MTMETIS_OPTION_UBFACTOR,'b',"balance","The balance constraint (1.03 " \
-      "means allowing for a 3% imbalance).",CMD_OPT_FLOAT,NULL,0}
+      "means allowing for a 3% imbalance).",CMD_OPT_FLOAT,NULL,0},
+  {MTMETIS_OPTION_PTYPE,'p',"ptype","The type of partition to compute", \
+      CMD_OPT_CHOICE,PTYPE_CHOICES,__ARRAY_SIZE(PTYPE_CHOICES)},
+  {MTMETIS_OPTION_RUNSTATS,'C',"partstats","Statics on quality of " \
+      "partitions",CMD_OPT_FLAG,NULL,0},
+  {MTMETIS_OPTION_METIS,'M',"metis","When run with one thread, call Metis " \
+      "directly.",CMD_OPT_FLAG,NULL,0},
+  {MTMETIS_OPTION_LEAFMATCH,'L',"leafmatch","Match leaf vertices together " \
+      "if there are too many unmatched vertices.",CMD_OPT_BOOL,NULL,0},
+  {MTMETIS_OPTION_REMOVEISLANDS,'I',"removeislands","Remove island vertices " \
+      "before partitioning.",CMD_OPT_BOOL,NULL,0},
+  {MTMETIS_OPTION_VWGTDEGREE,'V',"vwgtdegree","Use the degree of each " \
+      "vertex as its weight.",CMD_OPT_FLAG,NULL,0},
+  {MTMETIS_OPTION_IGNORE,'W',"ignoreweights","Ignore input weights " \
+      "on a graph file.",CMD_OPT_CHOICE,IGNOREWEIGHTS_CHOICES, \
+      __ARRAY_SIZE(IGNOREWEIGHTS_CHOICES)}
 };
 
 
@@ -113,8 +178,19 @@ static const size_t NOPTS = __ARRAY_SIZE(OPTS);
 ******************************************************************************/
 
 
+static char const * __bool2str(
+    int const b)
+{
+  if (b) {
+    return "Yes";
+  } else {
+    return "No";
+  }
+}
+
+
 static int __usage(
-    const char * const name)
+    char const * const name)
 {
   fprintf(stderr,"USAGE:\n");
   fprintf(stderr,"%s [options] <graphfile> <nparts> [ <partfile> | - ]\n", \
@@ -141,6 +217,7 @@ static double * __parse_args(
   /* set default verbosity to low */
   options[MTMETIS_OPTION_VERBOSITY] = MTMETIS_VERBOSITY_LOW;
   options[MTMETIS_OPTION_NPARTS] = 2.0;
+  options[MTMETIS_OPTION_PTYPE] = MTMETIS_PTYPE_KWAY;
 
   for (i=0;i<nargs;++i) {
     switch (args[i].type) {
@@ -171,23 +248,35 @@ static double * __parse_args(
       goto CLEANUP;
     }
     if (args[i].type == CMD_OPT_XARG) {
-      switch (xarg) {
-        case 0 :
-          input_file = args[i].val.s;
-          break;
-        case 1 :
-          options[MTMETIS_OPTION_NPARTS] = (pid_t)atoll(args[i].val.s);
-          break;
-        case 2 :
-          output_file = args[i].val.s;
-          if (strcmp(output_file,"-") == 0) {
-            /* if we are going to print to stdout, don't print anything else */
-            options[MTMETIS_OPTION_VERBOSITY] = MTMETIS_VERBOSITY_NONE;
+      if (xarg == 0) {
+        input_file = args[i].val.s;
+      } else {
+        if (options[MTMETIS_OPTION_PTYPE] == MTMETIS_PTYPE_KWAY || \
+            options[MTMETIS_OPTION_PTYPE] == MTMETIS_PTYPE_RB) {
+          if (xarg == 1) {
+            options[MTMETIS_OPTION_NPARTS] = (pid_t)atoll(args[i].val.s);
+          } else if (xarg == 2) {
+            output_file = args[i].val.s;
+            if (strcmp(output_file,"-") == 0) {
+              /* if we are going to print to stdout, don't print anything else */
+              options[MTMETIS_OPTION_VERBOSITY] = MTMETIS_VERBOSITY_NONE;
+            }
+          } else {
+            eprintf("Unknown extra argument '%s'\n",args[i].val.s);
+            goto CLEANUP;
           }
-          break;
-        default :
-          eprintf("Unknown extra argument '%s'\n",args[i].val.s);
-          goto CLEANUP;
+        } else {
+          if (xarg == 1) {
+            output_file = args[i].val.s;
+            if (strcmp(output_file,"-") == 0) {
+              /* if we are going to print to stdout, don't print anything else */
+              options[MTMETIS_OPTION_VERBOSITY] = MTMETIS_VERBOSITY_NONE;
+            }
+          } else {
+            eprintf("Unknown extra argument '%s'\n",args[i].val.s);
+            goto CLEANUP;
+          }
+        }
       }
       ++xarg;
     }
@@ -210,20 +299,6 @@ static double * __parse_args(
 
   return NULL;
 }
-
-
-
-
-/******************************************************************************
-* FUNCTION PROTOTYPES *********************************************************
-******************************************************************************/
-
-
-/* prevent warning for calling this function in mtmetis.c */
-void mtmetis_partition_internal(
-    ctrl_t * ctrl,
-    graph_t * graph,
-    pid_t * where);
 
 
 
@@ -278,6 +353,24 @@ int main(
   dl_start_timer(&timers->total);
   dl_start_timer(&timers->io);
 
+  if (ctrl->verbosity >= MTMETIS_VERBOSITY_LOW) {
+    dl_print_header("PARAMETERS",'%');
+    printf("Number of Threads: %"PF_TID_T" | Verbosity: %s\n",ctrl->nthreads, \
+        trans_verbosity_string(ctrl->verbosity));
+    printf("Number of Runs: %zu | Random Seed: %u\n",ctrl->nruns, \
+        ctrl->seed);
+    printf("Number of Partitions: %"PF_PID_T" | Partition Type: %s\n", \
+        ctrl->nparts,trans_ptype_string(ctrl->ptype));
+    printf("Coarsening Type: %s | Contraction Type: %s\n", \
+        trans_ctype_string(ctrl->ctype),trans_contype_string(ctrl->contype));
+    printf("Refinement Type: %s | Number of Refinement Passes: %zu\n",
+        trans_rtype_string(ctrl->rtype),ctrl->nrefpass);
+    printf("Balance: %0.2lf\n",ctrl->ubfactor);
+    printf("Leaf-Matching: %s | Remove Islands: %s\n", \
+        __bool2str(ctrl->leafmatch),__bool2str(ctrl->removeislands));
+    dl_print_footer('%');
+  }
+
   /* read the input graph */
   vprintf(ctrl->verbosity,MTMETIS_VERBOSITY_LOW,"Reading '%s'\n", \
       input_file);
@@ -289,18 +382,60 @@ int main(
     goto CLEANUP;
   }
 
-  dl_stop_timer(&timers->io);
+  ctrl_setup(ctrl,NULL,nvtxs);
 
-  ctrl_setup(ctrl,nvtxs);
+  dl_stop_timer(&timers->io);
   
   if (output_file) {
     owhere = pid_alloc(nvtxs);
   }
 
+  if (ctrl->ignore & MTMETIS_IGNORE_EDGEWEIGHTS) {
+    if (adjwgt) {
+      dl_free(adjwgt);
+      adjwgt = NULL;
+    }
+  }
+  if (ctrl->ignore & MTMETIS_IGNORE_VERTEXWEIGHTS) {
+    if (vwgt) {
+      dl_free(vwgt);
+      vwgt = NULL;
+    }
+  }
+
+  if (ctrl->vwgtdegree) {
+    if (vwgt) {
+      /* discard file vertex weights */
+      dl_free(vwgt);
+    }
+    vwgt = wgt_alloc(nvtxs);
+    for (i=0;i<nvtxs;++i) {
+      vwgt[i] = xadj[i+1] - xadj[i];
+    }
+  }
+
   graph = graph_distribute(MTMETIS_DISTRIBUTION_BLOCKCYCLIC,nvtxs,xadj, \
       adjncy,vwgt,adjwgt,ctrl->nthreads);
 
-  mtmetis_partition_internal(ctrl,graph,owhere);
+  switch (ctrl->ptype) {
+    case MTMETIS_PTYPE_RB:
+      mtmetis_partition_rb_int(ctrl,graph,owhere);
+      break;
+    case MTMETIS_PTYPE_KWAY:
+      mtmetis_partition_kway_int(ctrl,graph,owhere);
+      break;
+    case MTMETIS_PTYPE_ESEP:
+      mtmetis_partition_esep_int(ctrl,graph,owhere);
+      break;
+    case MTMETIS_PTYPE_VSEP:
+      mtmetis_partition_vsep_int(ctrl,graph,owhere);
+      break;
+    case MTMETIS_PTYPE_ND:
+      order_nd(ctrl,graph,owhere);
+      break;
+    default:
+      dl_error("Unknown ptype '%d'",ctrl->ptype);
+  }
 
   dl_start_timer(&timers->io);
 
@@ -318,10 +453,28 @@ int main(
 
   dl_stop_timer(&timers->io);
 
+  if (ctrl->runstats) {
+    dl_print_header("STATISTICS",'&');
+    printf("Best Objective: %"PF_WGT_T"\n",wgt_min_value(ctrl->runs, \
+          ctrl->nruns));
+    printf("Worst Objective: %"PF_WGT_T"\n",wgt_max_value(ctrl->runs, \
+          ctrl->nruns));
+    printf("Median Objective: %"PF_WGT_T"\n",wgt_median(ctrl->runs, \
+          ctrl->nruns));
+    printf("Mean Objective - Geo.: %0.2lf - Ari.: %.2lf\n", \
+        wgt_geometric_mean(ctrl->runs,ctrl->nruns), \
+        wgt_arithmetic_mean(ctrl->runs,ctrl->nruns));
+    dl_print_footer('&');
+  }
+
   if (ctrl->time && ctrl->verbosity > MTMETIS_VERBOSITY_NONE) {
     dl_print_header("TIMING",'$');
     printf("Total Time: %.05fs\n",dl_poll_timer(&(timers->total)));
     printf("\tIO: %.05fs\n",dl_poll_timer(&(timers->io)));
+    printf("\tPreprocessing: %.05fs\n",dl_poll_timer(&(timers->preprocess)));
+    if (ctrl->ptype == MTMETIS_PTYPE_ND) {
+      printf("\tOrdering: %.05fs\n",dl_poll_timer(&(timers->ordering)));
+    }
     printf("\tPartitioning: %.05fs\n",dl_poll_timer(&(timers->partitioning)));
     printf("\t\tCoarsening: %.05fs\n",dl_poll_timer(&(timers->coarsening)));
     printf("\t\t\tMatching: %.05fs\n",dl_poll_timer(&(timers->matching)));
@@ -333,6 +486,14 @@ int main(
         dl_poll_timer(&(timers->uncoarsening)));
     printf("\t\t\tProjection: %.05fs\n",dl_poll_timer(&(timers->projection)));
     printf("\t\t\tRefinement: %.05fs\n",dl_poll_timer(&(timers->refinement)));
+    if (ctrl->ptype == MTMETIS_PTYPE_ND || ctrl->ptype == MTMETIS_PTYPE_RB) {
+      printf("\t\tRecursion Overhead: %.05fs\n", \
+          dl_poll_timer(&(timers->recursion)));
+    }
+    if (ctrl->ptype == MTMETIS_PTYPE_ND || ctrl->ptype == MTMETIS_PTYPE_RB || \
+        ctrl->metis_serial) {
+      printf("\tMetis: %.05fs\n",dl_poll_timer(&(timers->metis)));
+    }
     dl_print_footer('$');
   }
 

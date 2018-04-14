@@ -2,7 +2,7 @@
  * @file dlmem.h
  * @brief Memory functio prototypes
  * @author Dominique LaSalle <lasalle@cs.umn.edu>
- * Copyright 2013
+ * Copyright (c) 2013-2015, Dominique LaSalle
  * @version 1
  * @date 2013-08-19
  */
@@ -144,6 +144,7 @@ void DLMEM_RPUB(free)(
 #undef DLMEM_PRE2
 #undef DLMEM_PRE1
 #undef DLMEM_PUB
+#undef DLMEM_RPUB
 
 #else
 

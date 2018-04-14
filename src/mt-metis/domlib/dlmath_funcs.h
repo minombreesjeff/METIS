@@ -2,7 +2,7 @@
  * @file dlmath_funcs.h
  * @brief Mathematical functions
  * @author Dominique LaSalle <lasalle@cs.umn.edu>
- * Copyright 2013
+ * Copyright (c) 2013-2015, Dominique LaSalle
  * @version 1
  * @date 2013-10-06
  */
@@ -48,6 +48,16 @@ static const unsigned char DLMATH_PRI(rbyte)[256] = {
 #endif
 
 
+DLMATH_VISIBILITY DLMATH_TYPE_T DLMATH_PUB(abs_diff)(
+    DLMATH_TYPE_T const a,
+    DLMATH_TYPE_T const b)
+{
+  if (a > b) {
+    return a - b;
+  } else {
+    return b - a;
+  }
+}
 
 
 DLMATH_VISIBILITY DLMATH_TYPE_T DLMATH_PUB(sum)(
@@ -60,7 +70,7 @@ DLMATH_VISIBILITY DLMATH_TYPE_T DLMATH_PUB(sum)(
   size_t pend;
   DLMATH_TYPE_T pagesum;
 
-  size_t const psize = __DL_PAGESIZE / sizeof(DLMATH_TYPE_T);
+  size_t const psize = MEM_BLOCK_SIZE / sizeof(DLMATH_TYPE_T);
 
   for (i=0;i<n;) {
     pagesum = 0;
@@ -463,7 +473,7 @@ DLMATH_VISIBILITY long double DLMATH_PUB(fa_sum)(
   long double sum;
   double pagesum;
 
-  size_t const psize = __DL_PAGESIZE / sizeof(DLMATH_TYPE_T);
+  size_t const psize = MEM_BLOCK_SIZE / sizeof(DLMATH_TYPE_T);
   sum = 0;
   for (i=0;i<n;) {
     pagesum = 0;
@@ -480,6 +490,23 @@ DLMATH_VISIBILITY long double DLMATH_PUB(fa_sum)(
 
 
 #if defined(DLMATH_DLTYPE) && DLMATH_DLTYPE == DLTYPE_INTEGRAL
+
+
+DLMATH_VISIBILITY int64_t DLMATH_PUB(lsum)(
+    DLMATH_TYPE_T const * const a,
+    size_t const n)
+{
+  int64_t sum;
+  size_t i;
+  
+  sum = 0;
+
+  for (i=0;i<n;++i) {
+    sum+=a[i];
+  }
+
+  return sum;
+}
 
 
 DLMATH_VISIBILITY DLMATH_TYPE_T DLMATH_PUB(updiv)(
@@ -505,6 +532,26 @@ DLMATH_VISIBILITY DLMATH_TYPE_T DLMATH_PUB(chunkstart)(
     DLMATH_TYPE_T const m)
 {
   return ((m/n)*i) + dl_min(i,m%n);
+}
+
+
+DLMATH_VISIBILITY DLMATH_TYPE_T DLMATH_PUB(chunkid)(
+    DLMATH_TYPE_T const g,
+    DLMATH_TYPE_T const n,
+    DLMATH_TYPE_T const m)
+{
+  DLMATH_TYPE_T a, b, c, d;
+
+  c = m/n;
+  d = m%n;
+
+  a = g / (c + 1);
+  if (g < d) {
+    return a;
+  } else {
+    b = (g - d) / c;
+    return dl_max(a,b);
+  }
 }
 
 

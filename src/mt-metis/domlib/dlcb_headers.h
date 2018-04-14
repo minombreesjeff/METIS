@@ -2,7 +2,7 @@
  * @file dlcombuffer_headers.h
  * @brief Function prototypes for communication buffers 
  * @author Dominique LaSalle <lasalle@cs.umn.edu>
- * Copyright 2013
+ * Copyright (c) 2013-2015, Dominique LaSalle
  * @version 1
  * @date 2013-10-05
  */
@@ -25,7 +25,7 @@
 
 
 typedef struct DLCB_PUB(combuffer_t) {
-  size_t nthreads;
+  dlthread_comm_t comm;
   size_t defbufsize;
   #ifdef DLCB_BUFFER_TYPE_T
   DLCB_BUFFER_TYPE_T ** buffers;
@@ -43,24 +43,31 @@ typedef struct DLCB_PUB(combuffer_t) {
 ******************************************************************************/
 
 
-DLCB_PUB(combuffer_t) * DLCB_PUB(combuffer_create)(size_t n);
+DLCB_PUB(combuffer_t) * DLCB_PUB(combuffer_create)(
+    dlthread_comm_t comm);
 
 
-void DLCB_PUB(combuffer_add)(size_t dst, DLCB_TYPE_T val,
+void DLCB_PUB(combuffer_add)(
+    size_t dst, 
+    DLCB_TYPE_T val,
     DLCB_PUB(combuffer_t) * com);
 
 
-void DLCB_PUB(combuffer_send)(DLCB_PUB(combuffer_t) * com);
+void DLCB_PUB(combuffer_send)(
+    DLCB_PUB(combuffer_t) * com);
 
 
-void DLCB_PUB(combuffer_clear)(DLCB_PUB(combuffer_t) * com);
+void DLCB_PUB(combuffer_clear)(
+    DLCB_PUB(combuffer_t) * com);
 
 
-void DLCB_PUB(combuffer_free)(DLCB_PUB(combuffer_t) * com);
+void DLCB_PUB(combuffer_free)(
+    DLCB_PUB(combuffer_t) * com);
 
 
 #ifdef DLCB_BUFFER_TYPE_T
-DLCB_BUFFER_TYPE_T * DLCB_PUB(combuffer_get)(size_t idx, 
+DLCB_BUFFER_TYPE_T * DLCB_PUB(combuffer_get)(
+    size_t idx, 
     const DLCB_PUB(combuffer_t) * com);
 #endif
 

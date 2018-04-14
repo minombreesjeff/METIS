@@ -1,7 +1,17 @@
-# Changelog -- introduced with version 0.1.2
+# Changelog
 
+0.2.2 - 2015.05.27
+ -Added self-loop filtering to IO routines.
+ -Compatability fix for new domlib.
 
-0.1.4 - 2014.0
+0.2.1 - 2015.01.28
+  -Added flow calculation.
+  -Added (re-added) BFS, DFS, and RCM orderings.
+  -Fixed triangle counting bug.
+
+0.2.0 - 2014.10.28
+  -Modified interface to better handle graph re-ordering.
+  -Added Post-Order graph traversal code.
   -Implemented CSR reading and writing.
   -Changed nerstrand clustering reading/writing to use the vertex label
   reading/writing.

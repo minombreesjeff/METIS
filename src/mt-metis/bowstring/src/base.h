@@ -2,7 +2,7 @@
  * @file base.h
  * @brief Library external header file
  * @author Dominique LaSalle <lasalle@cs.umn.edu>
- * Copyright 2012
+ * Copyright 2012, Dominique LaSalle
  * @version 1
  * @date 2013-04-09
  */
@@ -40,9 +40,6 @@ typedef enum bowstring_wgt_flag_t {
   IADJWGT_FLAG = 1 << 2
 } bowstring_wgt_flag_t;
 
-/* Define the label types for internal use if they are externally defined.
- * Otherwise bowstring.h will provide definitions for us. */
-
 
 /* rename bowstring types to short names */
 #define vtx_t bowstring_vtx_t
@@ -51,6 +48,12 @@ typedef enum bowstring_wgt_flag_t {
 #define vlbl_t bowstring_vlbl_t
 #define elbl_t bowstring_elbl_t
 #define coord_t bowstring_coord_t
+
+
+/* rename dynamic graph types to short names */
+#define dynnode_t bowstring_dynnode_t
+#define dyngraph_t bowstring_dyngraph_t
+
 
 
 

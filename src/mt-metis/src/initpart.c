@@ -17,60 +17,8 @@
 
 
 #include "initpart.h"
+#include "imetis.h"
 
-#undef real_t
-#include <metis.h>
-#define real_t mtmetis_real_t
-
-
-
-
-/******************************************************************************
-* PRIVATE FUNCTIONS ***********************************************************
-******************************************************************************/
-
-
-static wgt_t __initpart_metis_kway(
-    ctrl_t * const ctrl,
-    size_t const ncuts,
-    vtx_t nvtxs,
-    adj_t * const xadj,
-    vtx_t * const adjncy,
-    wgt_t * const vwgt,
-    wgt_t * const adjwgt,
-    pid_t * const where)
-{
-  idx_t nparts;
-  idx_t cut, ncon;
-  idx_t options[METIS_NOPTIONS];
-  real_t ubf;
-
-  tid_t const myid = omp_get_thread_num();
-
-  METIS_SetDefaultOptions(options);
-
-  ncon = 1;
-
-  options[METIS_OPTION_NITER] = 10;
-  options[METIS_OPTION_OBJTYPE] = METIS_OBJTYPE_CUT;
-  options[METIS_OPTION_SEED] = ctrl->seed + myid;
-  options[METIS_OPTION_NCUTS] = ncuts;
-  options[METIS_OPTION_DBGLVL] = 0;
-  nparts = ctrl->nparts;
-  ubf = ctrl->ubfactor;
-
-  #ifdef KWAY_INIT
-  METIS_PartGraphKway((idx_t*)&nvtxs,&ncon,(idx_t*)xadj,(idx_t*)adjncy, \
-      (idx_t*)vwgt,NULL,(idx_t*)adjwgt,&nparts,NULL,&ubf,options,&cut, \
-      (idx_t*)where);
-  #else
-  METIS_PartGraphRecursive((idx_t*)&nvtxs,&ncon,(idx_t*)xadj,(idx_t*)adjncy, \
-      (idx_t*)vwgt,NULL,(idx_t*)adjwgt,&nparts,NULL,&ubf,options,&cut, \
-      (idx_t*)where);
-  #endif
-
-  return (wgt_t)cut;
-}
 
 
 
@@ -78,8 +26,8 @@ static wgt_t __initpart_metis_kway(
 * PUBLIC FUNCTIONS ************************************************************
 ******************************************************************************/
 
-static pid_t * __ik_where;
-vtx_t initpart_kway(
+
+wgt_t par_initpart_cut(
     ctrl_t * const ctrl,
     graph_t * const graph)
 {
@@ -88,65 +36,57 @@ vtx_t initpart_kway(
   adj_t * xadj;
   vtx_t * adjncy;
   wgt_t * adjwgt, * vwgt;
-  pid_t * where = NULL;
+  pid_t * where = NULL, ** r_where;
 
-  tid_t const nthreads = omp_get_num_threads();
-  tid_t const myid = omp_get_thread_num();
+  tid_t const myid = dlthread_get_id(ctrl->comm);
+  tid_t const nthreads = dlthread_get_nthreads(ctrl->comm);
 
   vtx_t const nvtxs = graph->nvtxs; 
 
-  size_t const tcuts = dl_max(NSOLUTIONS,nthreads/TPPRATIO);
+  size_t const tcuts = ctrl->ninitsolutions; 
 
   size_t myncuts = (tcuts / nthreads);
 
-  size_t a = tcuts % nthreads, b = nthreads, c = a;
-
-  #pragma omp master
-  {
+  if (myid == 0) {
     dl_start_timer(&ctrl->timers.initpart);
   }
 
-  graph_gather(graph,&xadj,&adjncy,&vwgt,&adjwgt,&voff);
+  r_where = dlthread_get_shmem(sizeof(pid_t*),ctrl->comm);
 
-  /* factor */
-  while (c > 0) {
-    if (a % c == 0 && b % c == 0) {
-      a /= c;
-      b /= c;
-    }
-    --c;
-  }
-  myncuts += (myid % b < a) ? 1 : 0;
+  par_graph_gather(graph,&xadj,&adjncy,&vwgt,&adjwgt,&voff);
+
+  myncuts += (myid < (tcuts%nthreads)) ? 1 : 0;
 
   if (myncuts > 0) {
     where = pid_alloc(nvtxs);
 
-    cut = __initpart_metis_kway(ctrl,myncuts,nvtxs,xadj,adjncy,vwgt,adjwgt, \
-        where);
+    cut = metis_initcut(ctrl,ctrl->nparts,ctrl->tpwgts,myncuts,1, \
+        nvtxs,xadj,adjncy,vwgt,adjwgt,where);
   } else {
     cut = graph->tadjwgt+1;
   }
 
-  idx = wgt_omp_minreduce_index(cut);
+  idx = wgt_dlthread_minreduce_index(cut,ctrl->comm);
 
   if (myid == idx) {
     DL_ASSERT(where != NULL,"Non-cutting thread chosen");
     graph->mincut = cut;
-    __ik_where = where;
+    *r_where = where;
   }
-  #pragma omp barrier
+  dlthread_barrier(ctrl->comm);
 
-  graph_alloc_partmemory(ctrl,graph);
+  par_graph_alloc_partmemory(ctrl,graph);
 
   par_vprintf(ctrl->verbosity,MTMETIS_VERBOSITY_MEDIUM,"Selected initial " \
       "partition with cut of %"PF_WGT_T"\n",graph->mincut);
 
   /* save the best where */
-  pid_copy(graph->where[myid],__ik_where+voff,graph->mynvtxs[myid]);
+  pid_copy(graph->where[myid],(*r_where)+voff,graph->mynvtxs[myid]);
 
-  #pragma omp barrier
-  #pragma omp master
-  {
+  /* implicit barrier */
+  dlthread_free_shmem(r_where,ctrl->comm);
+
+  if (myid == 0) {
     /* free the gathered graph */
     dl_free(xadj);
     dl_free(adjncy);
@@ -158,12 +98,100 @@ vtx_t initpart_kway(
     dl_free(where);
   }
 
-  #pragma omp master
-  {
+  if (myid == 0) {
     dl_stop_timer(&ctrl->timers.initpart);
   }
 
   return graph->mincut;
+}
+
+
+wgt_t par_initpart_vsep(
+    ctrl_t * const ctrl,
+    graph_t * const graph)
+{
+  vtx_t voff, idx;
+  wgt_t sep;
+  adj_t * xadj;
+  vtx_t * adjncy;
+  wgt_t * adjwgt, * vwgt;
+  pid_t * where = NULL, ** r_where;
+
+  tid_t const myid = dlthread_get_id(ctrl->comm);
+  tid_t const nthreads = dlthread_get_nthreads(ctrl->comm);
+
+  vtx_t const nvtxs = graph->nvtxs; 
+
+  size_t const tseps = ctrl->ninitsolutions; 
+
+  size_t mynseps = (tseps / nthreads);
+
+  size_t a = tseps % nthreads, b = nthreads, c = a;
+
+  if (myid == 0) {
+    dl_start_timer(&ctrl->timers.initpart);
+  }
+
+  r_where = dlthread_get_shmem(sizeof(pid_t*),ctrl->comm);
+
+  par_graph_gather(graph,&xadj,&adjncy,&vwgt,&adjwgt,&voff);
+
+  /* factor */
+  while (c > 0) {
+    if (a % c == 0 && b % c == 0) {
+      a /= c;
+      b /= c;
+    }
+    --c;
+  }
+  mynseps += (myid % b < a) ? 1 : 0;
+
+  if (mynseps > 0) {
+    where = pid_alloc(nvtxs);
+
+    sep = metis_initsep(ctrl,mynseps,nvtxs,xadj,adjncy,vwgt,adjwgt, \
+        where);
+  } else {
+    sep = graph->tvwgt+1;
+  }
+
+  idx = wgt_dlthread_minreduce_index(sep,ctrl->comm);
+
+  if (myid == idx) {
+    DL_ASSERT(where != NULL,"Non-cutting thread chosen");
+    graph->minsep = sep;
+    *r_where = where;
+  }
+  dlthread_barrier(ctrl->comm);
+
+  par_graph_alloc_partmemory(ctrl,graph);
+
+  par_vprintf(ctrl->verbosity,MTMETIS_VERBOSITY_MEDIUM,"Selected initial " \
+      "partition with separator of %"PF_WGT_T"\n",graph->minsep);
+
+  /* save the best where */
+  pid_copy(graph->where[myid],(*r_where)+voff,graph->mynvtxs[myid]);
+
+  /* implicit barrier */
+  dlthread_free_shmem(r_where,ctrl->comm);
+
+  if (myid == 0) {
+    /* free the gathered graph */
+    dl_free(xadj);
+    dl_free(adjncy);
+    dl_free(vwgt);
+    dl_free(adjwgt);
+  }
+
+  if (where) {
+    dl_free(where);
+  }
+
+  if (myid == 0) {
+    dl_stop_timer(&ctrl->timers.initpart);
+  }
+
+  return graph->minsep;
 }
 
 

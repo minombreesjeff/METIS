@@ -2,7 +2,7 @@
  * @file dltree_funcs.h
  * @brief Tree functions
  * @author Dominique LaSalle <lasalle@cs.umn.edu>
- * Copyright 2013
+ * Copyright (c) 2013-2015, Dominique LaSalle
  * @version 1
  * @date 2013-10-03
  */
@@ -54,9 +54,10 @@ static void DLTREE_PRI(tree_node_free)(DLTREE_PRI(tree_node_t) * node)
 }
 
 
-static DLTREE_VAL_T DLTREE_PRI(tree_find)(const DLTREE_KEY_T key, 
-      DLTREE_PRI(tree_node_t) * const node, 
-      int (*compar)(const DLTREE_KEY_T, const DLTREE_KEY_T))
+static DLTREE_VAL_T DLTREE_PRI(tree_find)(
+    DLTREE_KEY_T const key, 
+    DLTREE_PRI(tree_node_t) * const node, 
+    int (*compar)(DLTREE_KEY_T const, DLTREE_KEY_T const))
 {
   int r;
   size_t i,j,k;
@@ -87,7 +88,8 @@ static DLTREE_VAL_T DLTREE_PRI(tree_find)(const DLTREE_KEY_T key,
 }
 
 
-static void DLTREE_PRI(tree_shift)(const size_t idx, 
+static void DLTREE_PRI(tree_shift)(
+    size_t const idx, 
     DLTREE_PRI(tree_node_t) * const node)
 {
   size_t i;
@@ -107,7 +109,8 @@ static void DLTREE_PRI(tree_shift)(const size_t idx,
 }
 
 
-static void DLTREE_PRI(tree_split)(const size_t idx, 
+static void DLTREE_PRI(tree_split)(
+    size_t const idx, 
     DLTREE_PRI(tree_node_t) * const node)
 {
   size_t i, n;
@@ -156,9 +159,11 @@ static void DLTREE_PRI(tree_split)(const size_t idx,
 }
 
 
-static int DLTREE_PRI(tree_insert)(const DLTREE_KEY_T key, 
-    const DLTREE_VAL_T val, DLTREE_PRI(tree_node_t) * const node,
-    int (*compar)(const DLTREE_KEY_T, const DLTREE_KEY_T))
+static int DLTREE_PRI(tree_insert)(
+    DLTREE_KEY_T const key, 
+    DLTREE_VAL_T const val, 
+    DLTREE_PRI(tree_node_t) * const node,
+    int (*compar)(DLTREE_KEY_T const, DLTREE_KEY_T const))
 {
   int r;
   size_t i,j,k;
@@ -226,7 +231,7 @@ static int DLTREE_PRI(tree_insert)(const DLTREE_KEY_T key,
 
 
 DLTREE_VISIBILITY DLTREE_PUB(tree_t) * DLTREE_PUB(tree_create)(
-    int (*compar)(const DLTREE_KEY_T,const DLTREE_KEY_T))
+    int (*compar)(DLTREE_KEY_T const, DLTREE_KEY_T const))
 {
   DLTREE_PUB(tree_t) * tree;
 
@@ -241,15 +246,18 @@ DLTREE_VISIBILITY DLTREE_PUB(tree_t) * DLTREE_PUB(tree_create)(
 }
 
 
-DLTREE_VISIBILITY void DLTREE_PUB(tree_free)(DLTREE_PUB(tree_t) * tree)
+DLTREE_VISIBILITY void DLTREE_PUB(tree_free)(
+    DLTREE_PUB(tree_t) * tree)
 {
   DLTREE_PRI(tree_node_free)(tree->root); 
   dl_free(tree);
 }
 
 
-DLTREE_VISIBILITY int DLTREE_PUB(tree_add)(const DLTREE_KEY_T key, 
-    const DLTREE_VAL_T val, DLTREE_PUB(tree_t) * const tree)
+DLTREE_VISIBILITY int DLTREE_PUB(tree_add)(
+    DLTREE_KEY_T const key, 
+    DLTREE_VAL_T const val, 
+    DLTREE_PUB(tree_t) * const tree)
 {
   int r;
   DLTREE_PRI(tree_node_t) * root;
@@ -270,14 +278,17 @@ DLTREE_VISIBILITY int DLTREE_PUB(tree_add)(const DLTREE_KEY_T key,
 }
 
 
-DLTREE_VISIBILITY DLTREE_VAL_T DLTREE_PUB(tree_remove)(const DLTREE_KEY_T key, 
+DLTREE_VISIBILITY DLTREE_VAL_T DLTREE_PUB(tree_remove)(
+    DLTREE_KEY_T const key, 
     DLTREE_PUB(tree_t) * const tree)
 {
+  /* implement me */
   return (DLTREE_VAL_T)0; 
 }
 
 
-DLTREE_VISIBILITY DLTREE_VAL_T DLTREE_PUB(tree_get)(const DLTREE_KEY_T key, 
+DLTREE_VISIBILITY DLTREE_VAL_T DLTREE_PUB(tree_get)(
+    DLTREE_KEY_T const key, 
     DLTREE_PUB(tree_t) * const tree)
 {
   return DLTREE_PRI(tree_find)(key,tree->root,tree->compar);  

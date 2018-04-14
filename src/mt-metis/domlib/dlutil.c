@@ -2,7 +2,7 @@
  * @file dlutil.c
  * @brief Utility functions
  * @author Dominique LaSalle <lasalle@cs.umn.edu>
- * Copyright 2013
+ * Copyright (c) 2013-2015, Dominique LaSalle
  * @version 1
  * @date 2013-09-11
  */
@@ -69,21 +69,22 @@ void dl_to_bytes(
     default : dl_error("Unsupported byte width %zu\n",width);
   }
   #else 
+  int64_t x;
   unsigned char * bdst = (unsigned char*)dst;
   switch (width) {
     case 1: *bdst = *((unsigned char*)src);
             break;
-    case 2: int16_t x = *((int16_t*)src);
+    case 2: x = *((int16_t*)src);
             bdst[0] = BYTED(x,1); 
             bdst[1] = BYTED(x,0);
             break;
-    case 4: int32_t x = *((int32_t*)src);
+    case 4: x = *((int32_t*)src);
             bdst[0] = BYTED(x,3); 
             bdst[1] = BYTED(x,2);
             bdst[2] = BYTED(x,1);
             bdst[3] = BYTED(x,0);
             break;
-    case 8: int64_t x = *((int64_t*)src);
+    case 8: x = *((int64_t*)src);
             bdst[0] = BYTED(x,7); 
             bdst[1] = BYTED(x,6);
             bdst[2] = BYTED(x,5);
@@ -117,21 +118,23 @@ void dl_from_bytes(
     default : dl_error("Unsupported byte width %zu\n",width);
   }
   #else 
+  int64_t x;
   unsigned char * bsrc = (unsigned char*)src;
+
   switch (width) {
     case 1: *((unsigned char*)dst) = *bsrc;
             break;
-    case 2: int16_t x = BYTEN(int16_t,bsrc[0],1);
+    case 2: x = BYTEN(int16_t,bsrc[0],1);
             x += BYTEN(int16_t,bsrc[1],0);
-            *((int16_t*)(dst)) = x;
+            *((int16_t*)(dst)) = (int16_t)x;
             break;
-    case 4: int32_t x = BYTEN(int32_t,bsrc[0],3);
+    case 4: x = BYTEN(int32_t,bsrc[0],3);
             x += BYTEN(int32_t,bsrc[1],2);
             x += BYTEN(int32_t,bsrc[2],1);
             x += BYTEN(int32_t,bsrc[3],0);
-            *((int32_t*)(dst)) = x;
+            *((int32_t*)(dst)) = (int32_t)x;
             break;
-    case 8: int64_t x = BYTEN(int64_t,bsrc[0],7);
+    case 8: x = BYTEN(int64_t,bsrc[0],7);
             x += BYTEN(int64_t,bsrc[1],6);
             x += BYTEN(int64_t,bsrc[2],5);
             x += BYTEN(int64_t,bsrc[3],4);
@@ -220,6 +223,14 @@ double dl_poll_timer(
       break;
   }
   return res;
+}
+
+
+void dl_combine_timer(
+    dl_timer_t * const timer1,
+    dl_timer_t const * const timer2)
+{
+  timer1->duration += timer2->duration;
 }
 
 

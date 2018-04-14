@@ -27,25 +27,25 @@
 ******************************************************************************/
 
 
-int check_info(
-    ucinfo_t const * const ucinfo,
+int check_kwinfo(
+    kwinfo_t const * const kwinfo,
     graph_t const * const graph,
     pid_t const * const * const where)
 {
   vtx_t i,k,mynvtxs,gvtx,lvtx;
   adj_t j;
   wgt_t ted, tid, m;
-  pid_t me, other, nnbrs, nbrid;
+  pid_t me, other, nnbrs, nbrid, p;
   adj_t const * xadj;
   vtx_t const * adjncy;
   wgt_t const * adjwgt;
   pid_t const * mywhere;
-  nbrinfo_t const * myrinfo;
+  kwnbrinfo_t const * myrinfo;
   adjinfo_t const * mynbrs;
 
-  pid_t const nparts = ucinfo->nparts;
+  pid_t const nparts = kwinfo->nparts;
 
-  tid_t const myid = omp_get_thread_num();
+  tid_t const myid = dlthread_get_id(graph->comm);
 
   wgt_t htable[nparts];
 
@@ -81,17 +81,18 @@ int check_info(
         tid += adjwgt[j];
       }
     }
-    myrinfo = ucinfo->nbrinfo + i;
-    mynbrs = ucinfo->nbrpool + myrinfo->nbrstart;
+    myrinfo = kwinfo->nbrinfo + i;
+    mynbrs = kwinfo_get_nbrs_ro(kwinfo,i,dl_min(nparts,xadj[i+1]-xadj[i]));
+
     if (myrinfo->id != tid) {
-      printf("[%"PF_TID_T"] Mismatch of tid_ternal degree of vertex %" \
+      printf("[%"PF_TID_T"] Mismatch of internal degree of vertex %" \
           PF_VTX_T"(%"PF_VTX_T") in p%"PF_PID_T" (expected [%"PF_WGT_T \
           ":%"PF_WGT_T"], but got [%"PF_WGT_T":%"PF_WGT_T"])\n",myid,gvtx, \
           i,me,tid,ted,myrinfo->id,myrinfo->ed);
       printf("[%"PF_TID_T"] R-Neighbors = {",myid);
-      for (i=0;i<nparts;++i) {
-        if (htable[i] > 0) {
-          printf("[p%"PF_PID_T",w%"PF_WGT_T"]",i,htable[i]);
+      for (p=0;p<nparts;++p) {
+        if (htable[p] > 0) {
+          printf("[p%"PF_PID_T",w%"PF_WGT_T"]",p,htable[p]);
         }
       }
       printf("}\n");
@@ -108,9 +109,9 @@ int check_info(
           PF_WGT_T"], but got [%"PF_WGT_T":%"PF_WGT_T"])\n",myid,gvtx,i,me, \
           tid,ted,myrinfo->id,myrinfo->ed);
       printf("[%"PF_TID_T"] R-Neighbors = {",myid);
-      for (i=0;i<nparts;++i) {
-        if (htable[i] > 0) {
-          printf("[p%"PF_PID_T",w%"PF_WGT_T"]",i,htable[i]);
+      for (p=0;p<nparts;++p) {
+        if (htable[p] > 0) {
+          printf("[p%"PF_PID_T",w%"PF_WGT_T"]",p,htable[p]);
         }
       }
       printf("}\n");
@@ -126,9 +127,9 @@ int check_info(
           PF_VTX_T"(%"PF_VTX_T") in %"PF_PID_T" (expected %"PF_PID_T", " \
           "but got %"PF_PID_T")\n",myid,gvtx,i,me,nnbrs,myrinfo->nnbrs);
       printf("[%"PF_TID_T"] R-Neighbors = {",myid);
-      for (i=0;i<nparts;++i) {
-        if (htable[i] > 0) {
-          printf("[p%"PF_PID_T",w%"PF_WGT_T"]",i,htable[i]);
+      for (p=0;p<nparts;++p) {
+        if (htable[p] > 0) {
+          printf("[p%"PF_PID_T",w%"PF_WGT_T"]",p,htable[p]);
         }
       }
       printf("}\n");
@@ -143,15 +144,21 @@ int check_info(
         other = mynbrs[j].pid;
         if (htable[other] == NULL_WGT) {
           printf("[%"PF_TID_T"] Vertex %"PF_VTX_T"(%"PF_VTX_T")[p%"PF_PID_T \
-              "] thinks its connected to %"PF_PID_T"/%"PF_WGT_T"",myid, \
-              gvtx,i,me,other,htable[other]);
-          printf(" : {");
-          for (k=0;k<nparts;++k) {
-            if (htable[k] != NULL_WGT) {
-              printf("[p%"PF_PID_T":w%"PF_WGT_T"]",k,htable[k]);
+              "] thinks its connected to %"PF_PID_T"/%"PF_WGT_T"\n",myid, \
+              gvtx,i,me,other,mynbrs[j].ed);
+          printf("R : {");
+          for (p=0;p<nparts;++p) {
+            if (htable[p] != NULL_WGT) {
+              printf("[p%"PF_PID_T":w%"PF_WGT_T"]",p,htable[p]);
             }
           }
           printf("}\n");
+          printf("E : {");
+          for (p=0;p<myrinfo->nnbrs;++p) {
+            printf("[p%"PF_PID_T":w%"PF_WGT_T"]",mynbrs[p].pid,mynbrs[p].ed);
+          }
+          printf("}\n");
+
           return 0;
         } else if (htable[other] != mynbrs[j].ed) {
           printf("[%"PF_TID_T"] Mismatch of neighbor p%"PF_PID_T" weight " \
@@ -167,75 +174,245 @@ int check_info(
 }
 
 
+int check_vsinfo(
+    vsinfo_t const * const vsinfo,
+    graph_t const * const graph,
+    pid_t const * const * const where)
+{
+  int rv;
+  vtx_t i, k, lvtx;
+  adj_t j;
+  pid_t me, p;
+  tid_t nbrid;
+  wgt_t con[3];
+
+  tid_t const myid = dlthread_get_id(graph->comm);
+
+  vtx_t const mynvtxs = graph->mynvtxs[myid];
+  adj_t const * const xadj = graph->xadj[myid];
+  vtx_t const * const adjncy = graph->adjncy[myid];
+
+  wgt_t const * const * const gvwgt = (wgt_t const **)graph->vwgt;
+
+  rv = 1;
+
+  for (i=0;i<mynvtxs;++i) {
+    me = where[myid][i];
+
+    if (me == MTMETIS_VSEP_SEP) {
+      wgt_set(con,0,3);
+
+      /* count connectivity */
+      for (j=xadj[i];j<xadj[i+1];++j) {
+        k = adjncy[j];
+        if (k < mynvtxs) {
+          lvtx = k;
+          nbrid = myid;
+        } else {
+          lvtx = gvtx_to_lvtx(k,graph->dist);
+          nbrid = gvtx_to_tid(k,graph->dist);
+        }
+        con[where[nbrid][lvtx]] += gvwgt[nbrid][lvtx];
+      }
+
+      if (where[myid][i] != MTMETIS_VSEP_SEP) {
+        if (con[MTMETIS_VSEP_PARTA] > 0 && con[MTMETIS_VSEP_PARTB] > 0) {
+          eprintf("Vertex %"PF_VTX_T" is in %"PF_PID_T" but is connected to " \
+              "both sides (%"PF_WGT_T":%"PF_WGT_T":%"PF_WGT_T")",i, \
+              where[myid][i],con[MTMETIS_VSEP_PARTA],con[MTMETIS_VSEP_PARTB], \
+              con[MTMETIS_VSEP_SEP]);
+          rv = 0;
+        }
+      }
+
+      if (vsinfo->nbrinfo) {
+        for (p=0;p<MTMETIS_VSEP_SEP;++p) {
+          if (con[p] != vsinfo->nbrinfo[i].con[p]) {
+            eprintf("Wrong connectivity to %"PF_PID_T" of %"PF_WGT_T" " \
+                "(should be %"PF_WGT_T") for vertex %"PF_TID_T":%"PF_VTX_T \
+                " in %"PF_PID_T"\n",p,vsinfo->nbrinfo[i].con[p],con[p],myid, \
+                i,me);
+            rv = 0;
+          }
+        }
+      }
+      if (rv == 0) {
+        return 0;
+      }
+    }
+  }
+  
+  return 1;
+}
+
+
+int check_esinfo(
+    esinfo_t const * const esinfo,
+    graph_t const * const graph,
+    pid_t const * const * const gwhere)
+{
+  int rv;
+  vtx_t i, k, p, lvtx;
+  adj_t j;
+  pid_t other;
+  tid_t nbrid;
+  wgt_t con[2];
+
+  tid_t const myid = dlthread_get_id(graph->comm);
+
+  vtx_t const mynvtxs = graph->mynvtxs[myid];
+  adj_t const * const xadj = graph->xadj[myid];
+  vtx_t const * const adjncy = graph->adjncy[myid];
+  wgt_t const * const adjwgt = graph->adjwgt[myid];
+
+  esnbrinfo_t const * const nbrinfo = esinfo->nbrinfo;
+  vtx_iset_t const * const bnd = esinfo->bnd;
+
+  rv = 1;
+
+  for (p=0;p<bnd->size;++p) {
+    i = vtx_iset_get(p,bnd);
+
+    con[0] = con[1] = 0;
+    for (j=xadj[i];j<xadj[i+1];++j) {
+      k = adjncy[j];
+      if (k < mynvtxs) {
+        lvtx = k;
+        nbrid = myid;
+      } else {
+        lvtx = gvtx_to_lvtx(k,graph->dist);
+        nbrid = gvtx_to_tid(k,graph->dist);
+      }
+      other = gwhere[nbrid][lvtx];
+      con[other] += adjwgt[j];
+    }
+    if (nbrinfo[i].con[0] != con[0] || nbrinfo[i].con[1] != con[1]) {
+      eprintf("Vertex %"PF_TID_T":%"PF_VTX_T" in %"PF_PID_T" has " \
+          "connectivity of [%"PF_WGT_T":%"PF_WGT_T"] but thinks it has [%" \
+          PF_WGT_T":%"PF_WGT_T"]\n",myid,i,gwhere[myid][i],con[0],con[1], \
+          nbrinfo[i].con[0],nbrinfo[i].con[1]);
+      rv = 0;       
+      break;
+    }
+  }
+  
+  return rv;
+}
+
+
 int check_graph(
     graph_t const * const graph)
 {
+  vtx_t mynvtxs, i, v, u, k, m, nvtxs;
+  adj_t j, l, nedges;
+  tid_t myid, nbrid;
+  twgt_t tvwgt, tadjwgt;
   adj_t * xadj, * xudj;
   vtx_t * adjncy, * udjncy;
   wgt_t * adjwgt, * udjwgt;
 
-  vtx_t mynvtxs, i, v, u, k, m;
-  adj_t j, l;
-  tid_t nbrid;
+  /* simple check */
+  nvtxs = vtx_sum(graph->mynvtxs,graph->dist.nthreads);
+  if (nvtxs != graph->nvtxs) {
+    printf("Bad nvtxs: %"PF_VTX_T":%"PF_VTX_T"\n",nvtxs,graph->nvtxs);
+    return 0;
+  }
+  nedges = adj_sum(graph->mynedges,graph->dist.nthreads);
+  if (nedges != graph->nedges) {
+    printf("Bad nedges: %"PF_ADJ_T":%"PF_ADJ_T"\n",nedges,graph->nedges);
+    return 0;
+  }
 
-  tid_t const myid = omp_get_thread_num();
+  tvwgt = 0;
+  tadjwgt = 0;
 
-  mynvtxs = graph->mynvtxs[myid];
-  xadj = graph->xadj[myid];
-  adjncy = graph->adjncy[myid];
-  adjwgt = graph->adjwgt[myid];
-  for (i=0;i<mynvtxs;++i) {
-    v = lvtx_to_gvtx(i,myid,graph->dist);
-    for (j=xadj[i];j<xadj[i+1];++j) {
-      u = adjncy[j];
-      if (u < mynvtxs) {
-        k = u;
-        nbrid = myid;
-      } else {
-        k = gvtx_to_lvtx(u,graph->dist);
-        nbrid = gvtx_to_tid(u,graph->dist);
-        if (nbrid == myid) {
-          printf("Local vertex is stored as remote\n");
+  for (myid=0;myid<graph->dist.nthreads;++myid) {
+    mynvtxs = graph->mynvtxs[myid];
+    xadj = graph->xadj[myid];
+    adjncy = graph->adjncy[myid];
+    adjwgt = graph->adjwgt[myid];
+    tvwgt += wgt_lsum(graph->vwgt[myid],mynvtxs);
+    tadjwgt += wgt_lsum(graph->adjwgt[myid],xadj[mynvtxs]);
+
+    /* simple check */
+    if (xadj[mynvtxs] != graph->mynedges[myid]) {
+      printf("[%"PF_TID_T"] Bad mynedges: %"PF_ADJ_T":%"PF_ADJ_T"\n",myid, \
+          xadj[mynvtxs],graph->mynedges[myid]);
+      return 0;
+    }
+
+    /* check structure */
+    for (i=0;i<mynvtxs;++i) {
+      v = lvtx_to_gvtx(i,myid,graph->dist);
+      for (j=xadj[i];j<xadj[i+1];++j) {
+        u = adjncy[j];
+        if (u < mynvtxs) {
+          k = u;
+          nbrid = myid;
+        } else {
+          k = gvtx_to_lvtx(u,graph->dist);
+          nbrid = gvtx_to_tid(u,graph->dist);
+          if (nbrid == myid) {
+            printf("Local vertex is stored as remote\n");
+            return 0;
+          }
+        }
+        xudj = graph->xadj[nbrid];
+        udjncy = graph->adjncy[nbrid];
+        udjwgt = graph->adjwgt[nbrid];
+        /* find the reverse edge */
+        for (l=xudj[k];l<xudj[k+1];++l) {
+          m = udjncy[l];
+          if (m < graph->mynvtxs[nbrid]) {
+            m = lvtx_to_gvtx(m,nbrid,graph->dist);
+          }
+          if (m == v) {
+            if (udjwgt[l] != adjwgt[j]) {
+              printf("[%"PF_TID_T"] Adjwgt of edge {%"PF_VTX_T"/%"PF_VTX_T \
+                  ":%"PF_TID_T",%"PF_VTX_T"/%"PF_VTX_T":%"PF_TID_T"} is " \
+                  "uneven (%"PF_WGT_T":%"PF_WGT_T")\n",myid,i,mynvtxs,myid,k, \
+                  graph->mynvtxs[nbrid],nbrid,adjwgt[j],udjwgt[l]);
+              return 0;
+            } else {
+              break;
+            }
+          }
+        }
+        if (l == xudj[k+1]) {
+          printf("[%"PF_TID_T"] Edge {%"PF_VTX_T"/%"PF_VTX_T":%"PF_TID_T",%" \
+              PF_VTX_T"/%"PF_VTX_T":%"PF_TID_T"} is only in one direction\n", \
+              myid,i,mynvtxs,myid,k,graph->mynvtxs[nbrid],nbrid);
           return 0;
         }
       }
-      xudj = graph->xadj[nbrid];
-      udjncy = graph->adjncy[nbrid];
-      udjwgt = graph->adjwgt[nbrid];
-      /* find the reverse edge */
-      for (l=xudj[k];l<xudj[k+1];++l) {
-        m = udjncy[l];
-        if (m < graph->mynvtxs[nbrid]) {
-          m = lvtx_to_gvtx(m,nbrid,graph->dist);
-        }
-        if (m == v) {
-          if (udjwgt[l] != adjwgt[j]) {
-            printf("[%"PF_TID_T"] Adjwgt of edge {%"PF_VTX_T"/%"PF_VTX_T":%" \
-                PF_TID_T",%"PF_VTX_T"/%"PF_VTX_T":%"PF_TID_T"} is uneven (%" \
-                PF_WGT_T":%"PF_WGT_T")\n",myid,i,mynvtxs,myid,k, \
-                graph->mynvtxs[nbrid],nbrid,adjwgt[j],udjwgt[l]);
-            return 0;
-          } else {
-            break;
-          }
-        }
-      }
-      if (l == xudj[k+1]) {
-        printf("[%"PF_TID_T"] Edge {%"PF_VTX_T"/%"PF_VTX_T":%"PF_TID_T",%" \
-            PF_VTX_T"/%"PF_VTX_T":%"PF_TID_T"} is only in one direction\n", \
-            myid,i,mynvtxs,myid,k,graph->mynvtxs[nbrid],nbrid);
-        return 0;
-      }
     }
+  }
+
+  /* check sums */
+  if (graph->tvwgt != tvwgt) {
+    printf("Total vertex weight is %"PF_TWGT_T", but graph " \
+        "thinks it is %"PF_TWGT_T"\n",tvwgt,graph->tvwgt);
+    return 0;
+  }
+  if (graph->tadjwgt != tadjwgt) {
+    printf("Total edge weight is %"PF_TWGT_T", but graph " \
+        "thinks it is %"PF_TWGT_T"\n",tadjwgt,graph->tadjwgt);
+    return 0;
+  }
+  if ((int)(graph->invtvwgt * tvwgt * 1.01) != 1) {
+    printf("Inverse vertex weight is %lf, but graph " \
+        "thinks it is %lf\n",1.0/tvwgt,graph->invtvwgt);
+    return 0;
   }
 
   return 1;
 }
 
 
-int check_bnd(
+int check_kwbnd(
     vtx_iset_t const * const bnd,
-    graph_t const * const graph)
+    graph_t const * const graph,
+    int const greedy)
 {
   vtx_t mynvtxs, i, lvtx, gvtx, k;
   adj_t j;
@@ -246,7 +423,7 @@ int check_bnd(
   wgt_t * adjwgt;
 
   pid_t const * const * const gwhere = (pid_t const **)graph->where;
-  tid_t const myid = omp_get_thread_num();
+  tid_t const myid = dlthread_get_id(graph->comm);
   
   xadj = graph->xadj[myid];
   adjncy = graph->adjncy[myid];
@@ -272,7 +449,7 @@ int check_bnd(
         tid += adjwgt[j];
       }
     }
-    if (ted >= tid) {
+    if (is_bnd(tid,ted,greedy)) {
       if (!vtx_iset_contains(i,bnd)) {
         printf("[%"PF_TID_T"] vertex %"PF_VTX_T"(%"PF_VTX_T") should be " \
             "on the border [%"PF_WGT_T":%"PF_WGT_T"]\n",myid,gvtx,i,tid,ted);
@@ -289,6 +466,140 @@ int check_bnd(
 }
 
 
+int check_vsbnd(
+    vtx_iset_t const * const bnd,
+    graph_t const * const graph)
+{
+  vtx_t i;
+
+  tid_t const myid = dlthread_get_id(graph->comm);
+  pid_t const * const where = graph->where[myid];
+  vtx_t const mynvtxs = graph->mynvtxs[myid];
+  
+  for (i=0;i<mynvtxs;++i) {
+    if (where[i] == MTMETIS_VSEP_SEP) {
+      if (!vtx_iset_contains(i,bnd)) {
+        eprintf("Vertex %"PF_TID_T":%"PF_VTX_T" is in separator but not in " \
+            " boundary\n",myid,i);
+        return 0;
+      }
+    } else {
+      if (vtx_iset_contains(i,bnd)) {
+        eprintf("Vertex %"PF_TID_T":%"PF_VTX_T" is in partition %"PF_PID_T \
+            " but is in boundary\n",myid,i,where[i]);
+        return 0;
+      }
+    }
+  }
+
+  return 1;
+}
+
+
+int check_esbnd(
+    vtx_iset_t const * const bnd,
+    graph_t const * const graph)
+{
+  vtx_t i, k, lvtx;
+  adj_t j;
+  tid_t nbrid;
+  pid_t me, other;
+
+  tid_t const myid = dlthread_get_id(graph->comm);
+  vtx_t const mynvtxs = graph->mynvtxs[myid];
+  adj_t const * const xadj = graph->xadj[myid];
+  vtx_t const * const adjncy = graph->adjncy[myid];
+
+  pid_t const * const * const gwhere = (pid_t const **)graph->where;
+  
+  for (i=0;i<mynvtxs;++i) {
+    me = gwhere[myid][i];
+    for (j=xadj[i];j<xadj[i+1];++j) {
+      k = adjncy[j];
+      if (k <mynvtxs) {
+        lvtx = k;
+        nbrid = myid;
+      } else {
+        lvtx = gvtx_to_lvtx(k,graph->dist);
+        nbrid = gvtx_to_tid(k,graph->dist);
+      }
+      other = gwhere[nbrid][lvtx];
+      if (other != me) {
+        if (!vtx_iset_contains(i,bnd)) {
+          eprintf("Vertex %"PF_TID_T":%"PF_VTX_T" is connected to the other " \
+              "side (%"PF_PID_T") but is not in the boundary\n",myid,i, \
+              gwhere[myid][i]^0x01);
+          return 0;
+        }
+        break;
+      } 
+    }
+    if (j == xadj[i+1]) {
+      if (j == xadj[i]) {
+        /* island vertex */
+        if (!vtx_iset_contains(i,bnd)) {
+          eprintf("Vertex %"PF_TID_T":%"PF_VTX_T" is an island but is not " \
+              "the boundary\n",myid,i);
+          return 0;
+        }
+      } else {
+        /* internal vertex */
+        if (vtx_iset_contains(i,bnd)) {
+          eprintf("Vertex %"PF_TID_T":%"PF_VTX_T" is not connected to the " \
+              "other side (%"PF_PID_T") but is in the boundary\n",myid,i, \
+              gwhere[myid][i]^0x01);
+          return 0;
+        }
+      }
+    }
+  }
+
+  return 1;
+}
+
+
+int check_separator(
+    graph_t const * const graph,
+    pid_t const * const * const gwhere)
+{
+  vtx_t i, k, lvtx, mynvtxs;
+  adj_t j;
+  pid_t me, other;
+  tid_t nbrid, myid;
+  adj_t * xadj;
+  vtx_t * adjncy;
+
+  tid_t const nthreads = dlthread_get_nthreads(graph->comm);
+
+  for (myid=0;myid<nthreads;++myid) {
+    mynvtxs = graph->mynvtxs[myid];
+    xadj = graph->xadj[myid];
+    adjncy = graph->adjncy[myid];
+    for (i=0;i<mynvtxs;++i) {
+      me = gwhere[myid][i];
+      if (me != MTMETIS_VSEP_SEP) {
+        for (j=xadj[i];j<xadj[i+1];++j) {
+          k = adjncy[j];
+          if (k <mynvtxs) {
+            lvtx = k;
+            nbrid = myid;
+          } else {
+            lvtx = gvtx_to_lvtx(k,graph->dist);
+            nbrid = gvtx_to_tid(k,graph->dist);
+          }
+          other = gwhere[nbrid][lvtx];
+          if (other != me && other != MTMETIS_VSEP_SEP) {
+            eprintf("Non-separator vertex %"PF_TID_T":%"PF_VTX_T" in %" \
+                PF_PID_T" is connected to %"PF_PID_T"\n",myid,i,me,other);
+            return 0;
+          }
+        }
+      }
+    }
+  }
+
+  return 1;
+}
 
 
 #endif

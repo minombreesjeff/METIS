@@ -2,7 +2,7 @@
  * @file analytics.c
  * @brief Functions for measuring and estimating graph characteristics
  * @author Dominique LaSalle <lasalle@cs.umn.edu>
- * Copyright 2013
+ * Copyright 2013-2014, Dominique LaSalle
  * @version 1
  * @date 2013-10-09
  */
@@ -191,8 +191,8 @@ size_t count_triangles(
   }
 
   deg = vtx_alloc(nvtxs);
-  mark = vtx_calloc(nvtxs);
-  perm = vtx_calloc(nvtxs);
+  mark = vtx_init_alloc(0,nvtxs);
+  perm = vtx_init_alloc(0,nvtxs);
   madjncy = vtx_duplicate(adjncy,nedges);
 
   maxdeg = 0;
@@ -233,6 +233,8 @@ size_t count_triangles(
       madjncy[r] = madjncy[ridx];
       /* update the radj vector */
       radj[r] = radj[ridx];
+      /* update the remote radj vector */
+      radj[radj[r]] = r;
       --deg[k];
     }
   }
@@ -426,6 +428,41 @@ void calc_domaindegree(
       }
     }
   }
+}
+
+
+void calc_domainconn(
+    vtx_t const nvtxs, 
+    adj_t const * const xadj, 
+    vtx_t const * const adjncy, 
+    vlbl_t const nparts, 
+    vlbl_t const * const where, 
+    int * const dc)
+{
+  vtx_t i, k;
+  adj_t j;
+  vlbl_t me;
+  int * dd;
+
+  dd = int_init_alloc(0,nparts*nparts);
+
+  for (i=0;i<nvtxs;++i) {
+    me = where[i];
+    for (j=xadj[i];j<xadj[i+1];++j) {
+      k = adjncy[j];
+      if (me != where[k]) {
+        dd[(me*nparts)+where[k]] = 1;
+      }
+    }
+  }
+
+  int_set(dc,0,nparts);
+
+  for (me=0;me<nparts;++me) {
+    dc[me] = int_sum(dd+(nparts*me),nparts);
+  }
+
+  dl_free(dd);
 }
 
 

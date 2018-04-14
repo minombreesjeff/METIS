@@ -2,7 +2,7 @@
  * @file cut.h
  * @brief Function prototypes for cutting graphs
  * @author Dominique LaSalle <lasalle@cs.umn.edu>
- * Copyright 2013
+ * Copyright 2013-2014, Dominique LaSalle
  * @version 1
  * @date 2014-01-26
  */

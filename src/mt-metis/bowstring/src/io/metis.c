@@ -56,7 +56,7 @@ int read_metis_graph(
   size_t n,m,i, j, ln, ne, num_header;
   ssize_t ll;
   size_t bufsize;
-  char * line,*eptr, * sptr;
+  char * line = NULL, *eptr, * sptr;
   wgt_t weight;
 
   adj_t * xadj = NULL;
@@ -214,7 +214,9 @@ int read_metis_graph(
 
   ERROR:
 
-  dl_free(line);
+  if (line) {
+    dl_free(line);
+  }
   if (xadj) {
     dl_free(xadj);
   }
@@ -241,15 +243,13 @@ int write_metis_graph(
 {
   int rv;
   file_t * file;
-  vtx_t i;
-  adj_t j;
+  vtx_t i, k;
+  adj_t j, nedges;
 
   int do_vwgt, do_adjwgt, iflags;
 
   int wgt_flags = 0;
   do_vwgt = do_adjwgt = 0;
-
-  const adj_t nedges = xadj[nvtxs];
 
   /* check if we should write the weights */
   if (vwgt) {
@@ -279,6 +279,17 @@ int write_metis_graph(
     return rv;
   }
 
+  /* filter self loops */
+  nedges = xadj[nvtxs];
+  for (i=0;i<nvtxs;++i) {
+    for (j=xadj[i];j<xadj[i+1];++j) {
+      k = adjncy[j];
+      if (k == i) {
+        --nedges;
+      }
+    }
+  }
+
   /* print the header line */
   dl_fprintf(file,"%zu %zu",(size_t)nvtxs,(size_t)(nedges/2));
   iflags = __flag_to_int(wgt_flags);
@@ -294,9 +305,12 @@ int write_metis_graph(
       dl_fprintf(file,"%zu ",(size_t)vwgt[i]);
     }
     for (j=xadj[i];j<xadj[i+1];++j) {
-      dl_fprintf(file,"%zu ",(size_t)(adjncy[j]+1));
-      if (do_adjwgt) {
-        dl_fprintf(file,"%zu ",(size_t)adjwgt[j]);
+      k = adjncy[j];
+      if (k != i) {
+        dl_fprintf(file,"%zu ",(size_t)(k+1));
+        if (do_adjwgt) {
+          dl_fprintf(file,"%zu ",(size_t)k);
+        }
       }
     }
     dl_fprintf(file,"\n");

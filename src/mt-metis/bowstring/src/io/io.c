@@ -37,7 +37,7 @@
 
 #define DLTREE_STATIC
 #define DLTREE_PREFIX cv
-#define DLTREE_KEY_T char *
+#define DLTREE_KEY_T char const *
 #define DLTREE_VAL_T vtx_t 
 #include "dltree_headers.h"
 #undef DLTREE_PREFIX
@@ -282,10 +282,9 @@ int read_vertex_labels(
     *r_nvtxs = nl;
   }
 
-  dl_free(line);
-
   if (r_labels) {
     *r_labels = labels;
+    labels = NULL;
   } else {
     dl_free(labels);
   }
@@ -463,6 +462,39 @@ int write_edge_labels(
 
   return rv;
 }
+
+
+int write_weights(
+    char const * const filename,
+    wgt_t const * const wgts,
+    size_t const nwgts)
+{
+  int rv;
+  size_t i;
+  file_t * file = NULL;
+
+  if ((rv = __open_file(filename,"w",&file)) != BOWSTRING_SUCCESS) {
+    goto ERROR;
+  }
+
+  for (i=0;i<nwgts;++i) {
+    dl_fprintf(file,PF_WGT_T"\n",wgts[i]);
+  }
+
+  dl_close_file(file);
+  file = NULL;
+
+  return BOWSTRING_SUCCESS;
+
+  ERROR:
+
+  if (file) {
+    dl_close_file(file);
+  }
+
+  return rv;
+}
+
 
 
 /* TRANSLATION ***************************************************************/

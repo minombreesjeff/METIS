@@ -2,7 +2,7 @@
  * @file dlheap_headers.h
  * @brief Heap function prototypes
  * @author Dominique LaSalle <lasalle@cs.umn.edu>
- * Copyright 2013
+ * Copyright (c) 2013-2015, Dominique LaSalle
  * @version 1
  * @date 2013-10-04
  */
@@ -36,20 +36,29 @@ typedef struct DLHEAP_PUB(heap_t) {
 ******************************************************************************/
 
 
-
-DLHEAP_PUB(heap_t) * DLHEAP_PUB(heap_create)(size_t n);
-
-
-DLHEAP_PUB(heap_t) * DLHEAP_PUB(heap_expand)(DLHEAP_PUB(heap_t) * heap);
+DLHEAP_PUB(heap_t) * DLHEAP_PUB(heap_create)(
+    size_t n);
 
 
-void DLHEAP_PUB(heap_free)(DLHEAP_PUB(heap_t) * heap);
+void DLHEAP_PUB(heap_expand)(
+    DLHEAP_PUB(heap_t) * heap);
 
 
-void DLHEAP_PUB(heap_push)(DLHEAP_TYPE_T val, DLHEAP_PUB(heap_t) * heap);
+void DLHEAP_PUB(heap_free)(
+    DLHEAP_PUB(heap_t) * heap);
 
 
-DLHEAP_TYPE_T DLHEAP_PUB(heap_pop)(DLHEAP_PUB(heap_t) * heap);
+void DLHEAP_PUB(heap_push)(
+    DLHEAP_TYPE_T val, 
+    DLHEAP_PUB(heap_t) * heap);
+
+
+DLHEAP_TYPE_T DLHEAP_PUB(heap_pop)(
+    DLHEAP_PUB(heap_t) * heap);
+
+
+DLHEAP_TYPE_T DLHEAP_PUB(heap_peek)(
+    DLHEAP_PUB(heap_t) const * heap);
 
 
 #undef DLHEAP_PRE2

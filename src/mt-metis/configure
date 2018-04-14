@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 2014, Dominique LaSalle
+# Copyright 2014-2015, Dominique LaSalle
 #
 # I know I should write this in plain 'sh', but I haven't...
 
@@ -45,10 +45,14 @@ show_help() {
   echo "    Generate a shared version of lib${NAME} instead of a static one."
   echo "  --cc=<cc>"
   echo "    Set the C compiler to use."
+  echo "  --devel"
+  echo "    Turn on compiler warnings."
   echo "  --edges64bit"
   echo "    Use 64 bit data types for edges instead of 32 bit."
   echo "  --vertices64bit"
   echo "    Use 64 bit data types for vertices instead of 32 bit."
+  echo "  --weights64bit"
+  echo "    Use 64 bit data types for weights instead of 32 bit."
   echo ""
 }
 
@@ -90,6 +94,10 @@ for i in "${@}"; do
     --shared)
     CONFIG_FLAGS="${CONFIG_FLAGS} -DSHARED=1"
     ;;
+    # devel
+    --devel)
+    CONFIG_FLAGS="${CONFIG_FLAGS} -DDEVEL=1"
+    ;;
     # cc
     --cc=*)
     CONFIG_FLAGS="${CONFIG_FLAGS} -DCMAKE_C_COMPILER=${i#*=}"
@@ -101,6 +109,10 @@ for i in "${@}"; do
     # 64 bit vertices
     --vertices64bit)
     CONFIG_FLAGS="${CONFIG_FLAGS} -DBIGVERTICES=1"
+    ;;
+    # 64 bit wegihts
+    --weights64bit)
+    CONFIG_FLAGS="${CONFIG_FLAGS} -DBIGWEIGHTS=1"
     ;;
     *)
     # bad argument

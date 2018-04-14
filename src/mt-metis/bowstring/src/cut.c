@@ -2,7 +2,7 @@
  * @file cut.c
  * @brief Functions for cutting graphs
  * @author Dominique LaSalle <lasalle@cs.umn.edu>
- * Copyright 2013
+ * Copyright 2013-2014, Dominique LaSalle
  * @version 1
  * @date 2014-01-26
  */
@@ -27,7 +27,7 @@
 ******************************************************************************/
 
 
-static const vlbl_t NSPLIT = 2;
+static vlbl_t const NSPLIT = 2;
 
 
 
@@ -37,15 +37,15 @@ static const vlbl_t NSPLIT = 2;
 ******************************************************************************/
 
 
-static int _split_graph(
-    const vtx_t nvtxs, 
-    const adj_t * xadj, 
-    const vtx_t * const adjncy, 
-    const wgt_t * const vwgt, 
-    const wgt_t * const adjwgt, 
-    const vlbl_t * const where, 
-    const coord_t ** const coords, 
-    const size_t ndim, 
+static int __split_graph(
+    vtx_t const nvtxs, 
+    adj_t const * xadj, 
+    vtx_t const * const adjncy, 
+    wgt_t const * const vwgt, 
+    wgt_t const * const adjwgt, 
+    vlbl_t const * const where, 
+    coord_t const ** const coords, 
+    size_t const ndim, 
     vtx_t * snvtxs, 
     adj_t ** sxadj, 
     vtx_t ** sadjncy, 
@@ -138,10 +138,10 @@ static int _split_graph(
 
 
 void coordinate_bisection(
-    const vtx_t nvtxs, 
-    const wgt_t * const vwgt, 
-    const coord_t * const x, 
-    const wgt_t lwgt, 
+    vtx_t const nvtxs, 
+    wgt_t const * const vwgt, 
+    coord_t const * const x, 
+    wgt_t const lwgt, 
     vlbl_t * where)
 {
   vtx_t pivot,n,s,i,j;
@@ -209,12 +209,12 @@ void coordinate_bisection(
 
 
 void recursive_coordinate_bisection(
-    const vtx_t nvtxs, 
-    const wgt_t * const vwgt, 
-    const coord_t ** coords, 
+    vtx_t const nvtxs, 
+    wgt_t const * const vwgt, 
+    coord_t const ** coords, 
     size_t ndim, 
-    const wgt_t * twgts, 
-    const vlbl_t nparts, 
+    wgt_t const * twgts, 
+    vlbl_t const nparts, 
     vlbl_t * const where) 
 {
   #ifdef XXX
@@ -255,12 +255,12 @@ void recursive_coordinate_bisection(
   }
 
   if (nparts > 2) {
-    _split_graph(nvtxs,xadj,adjncy,vwgt,adjwgt,minwhere,coords,ndim,snvtxs,
+    __split_graph(nvtxs,xadj,adjncy,vwgt,adjwgt,minwhere,coords,ndim,snvtxs, \
         sxadj,sadjncy,svwgt,sadjwgt,scoords,slbl);
 
     if (lnpart > 1) {
-      recursive_coordinate_bisection(snvtxs[0],sxadj[0],sadjncy[0],svwgt[0],
-          sadjwgt[0],(const coord_t **)scoords[0],ndim,twgts,lnpart,minwhere);
+      recursive_coordinate_bisection(snvtxs[0],sxadj[0],sadjncy[0],svwgt[0], \
+          sadjwgt[0],(coord_t const **)scoords[0],ndim,twgts,lnpart,minwhere);
       for (v=0;v<snvtxs[0];++v) {
         where[slbl[0][v]] = minwhere[v];
       }
@@ -271,8 +271,8 @@ void recursive_coordinate_bisection(
     }
 
     if (rnpart > 1) {
-      recursive_coordinate_bisection(snvtxs[1],sxadj[1],sadjncy[1],svwgt[1],
-          sadjwgt[1],(const coord_t **)scoords[1],ndim,twgts+lnpart,rnpart,
+      recursive_coordinate_bisection(snvtxs[1],sxadj[1],sadjncy[1],svwgt[1], \
+          sadjwgt[1],(coord_t const **)scoords[1],ndim,twgts+lnpart,rnpart, \
           minwhere);
       for (v=0;v<snvtxs[0];++v) {
         where[slbl[0][v]] = minwhere[v]+lnpart;

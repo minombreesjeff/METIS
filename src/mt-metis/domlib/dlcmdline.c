@@ -2,7 +2,7 @@
  * @file dlcmdline.c
  * @brief Functions for parseing command line arguemnts
  * @author Dominique LaSalle <lasalle@cs.umn.edu>
- * Copyright 2013
+ * Copyright (c) 2013-2015, Dominique LaSalle
  * @version 1
  * @date 2013-10-08
  */
@@ -231,7 +231,7 @@ int cmd_parse_args(const size_t argc, char ** argv,
           /* start of a long cmd args */
           argn = __split(sptr,__DELIM,&stropt);
           for (j=0;j<nopts;++j) {
-            if (strlen(opts[j].lflag) == argn && 
+            if (strlen(opts[j].lflag) == argn && \
                 strncmp(sptr,opts[j].lflag,argn) == 0) {
               arg.id = opts[j].id;
               arg.type = opts[j].type;
@@ -239,8 +239,8 @@ int cmd_parse_args(const size_t argc, char ** argv,
                 /* we've already flagged it -- do nothing */
                 if (stropt != NULL) {
                   /* they gave us an option for a flag -- panick */
-                  eprintf("Extra parameter '%s' for '%.*s'\n",stropt,(int)argn,
-                      sptr);
+                  eprintf("Extra parameter '%s' for '%.*s'\n",stropt, \
+                      (int)argn,sptr);
                   error = DL_CMDLINE_EXTRA_PARAMETER;
                   goto CLEANUP;
                 }

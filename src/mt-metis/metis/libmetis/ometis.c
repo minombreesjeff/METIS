@@ -1,5 +1,5 @@
 /*
- * Copyright 1997, Regents of the University of Minnesota
+ * Copyright 1997-2015, Regents of the University of Minnesota
  *
  * ometis.c
  *
@@ -9,11 +9,95 @@
  * Started 7/24/97
  * George
  *
- * $Id: ometis.c 17627 2014-09-10 00:27:58Z dominique $
+ * $Id: ometis.c 18208 2015-01-17 18:02:38Z dominique $
+ *
+ *
+ * Dominique LaSalle - 2015-02-28
+ * Modified to support parallel task scheduling.
  *
  */
 
 #include "metislib.h"
+#include "dlthread_pool.h"
+
+
+//#define OMP_TASK 1
+
+static idx_t const MIN_TASK_SIZE = 2048;
+
+
+static ctrl_t * __duplicate_ctrl(
+    ctrl_t const * const ctrl,
+    graph_t * const graph)
+{
+  ctrl_t * myctrl;
+
+  myctrl = gk_malloc(sizeof(ctrl_t),"X"); 
+  memcpy(myctrl,ctrl,sizeof(ctrl_t));
+
+  myctrl->mcore = NULL;
+  myctrl->cnbrpool = NULL;
+  myctrl->vnbrpool = NULL;
+  myctrl->maxnads = NULL;
+  myctrl->nads = NULL;
+  myctrl->adids = NULL;
+  myctrl->adwgts = NULL;
+  myctrl->pvec1 = NULL;
+  myctrl->pvec2 = NULL;
+
+  myctrl->maxvwgt = ismalloc(ctrl->ncon, 0, "SetupCtrl: maxvwgt");
+
+  myctrl->tpwgts = rsmalloc(2, .5, "ctrl->tpwgts");
+
+  myctrl->ubfactors = rsmalloc(ctrl->ncon, \
+      I2RUBFACTOR(ctrl->ufactor), "SetupCtrl: ubfactors");
+
+  myctrl->pijbm = rmalloc(ctrl->nparts, "SetupCtrl: ctrl->pijbm");
+
+  AllocateWorkSpace(myctrl, graph);
+
+  return myctrl;
+}
+
+
+typedef struct task_info_t {
+  ctrl_t * ctrl;
+  graph_t * graph;
+  idx_t * order;
+  idx_t lvtx;
+} task_info_t;
+
+
+static void perform_task(
+    void * ptr) 
+{
+  ctrl_t * myctrl;
+  task_info_t * task;
+
+  ctrl_t * ctrl;
+  graph_t * lgraph; 
+  idx_t * order;
+  idx_t lvtx;
+
+  task = ptr;
+  ctrl = task->ctrl;
+  lgraph = task->graph;
+  order = task->order;
+  lvtx = task->lvtx;
+
+  /* create my control */
+  myctrl = __duplicate_ctrl(ctrl,lgraph); 
+
+  if (lgraph->nvtxs > MMDSWITCH && lgraph->nedges > 0) 
+    MlevelNestedDissection(myctrl, lgraph, order, lvtx);
+  else {
+    MMDOrder(myctrl, lgraph, order, lvtx); 
+    FreeGraph(&lgraph);
+  }
+
+  FreeCtrl(&myctrl);
+  free(task);
+}
 
 
 /*************************************************************************/
@@ -49,20 +133,9 @@ int METIS_NodeND(idx_t *nvtxs, idx_t *xadj, idx_t *adjncy, idx_t *vwgt,
   ctrl_t *ctrl;
   idx_t *cptr, *cind, *piperm;
 
-  /* set up malloc cleaning code and signal catchers */
-  if (!gk_malloc_init()) 
-    return METIS_ERROR_MEMORY;
-
-  gk_sigtrap();
-
-  if ((sigrval = gk_sigcatch()) != 0) 
-    goto SIGTHROW;
-
-
   /* set up the run time parameters */
   ctrl = SetupCtrl(METIS_OP_OMETIS, options, 1, 3, NULL, NULL);
   if (!ctrl) {
-    gk_siguntrap();
     return METIS_ERROR_INPUT;
   }
 
@@ -113,8 +186,9 @@ int METIS_NodeND(idx_t *nvtxs, idx_t *xadj, idx_t *adjncy, idx_t *vwgt,
   }
 
   /* if no prunning and no compression, setup the graph in the normal way. */
-  if (ctrl->pfactor == 0.0 && ctrl->compress == 0) 
+  if (ctrl->pfactor == 0.0 && ctrl->compress == 0) {
     graph = SetupGraph(ctrl, *nvtxs, 1, xadj, adjncy, vwgt, NULL, NULL);
+  }
 
   ASSERT(CheckGraph(graph, ctrl->numflag, 1));
 
@@ -122,11 +196,11 @@ int METIS_NodeND(idx_t *nvtxs, idx_t *xadj, idx_t *adjncy, idx_t *vwgt,
   AllocateWorkSpace(ctrl, graph);
 
   /* do the nested dissection ordering  */
-  if (ctrl->ccorder) 
+  if (ctrl->ccorder) {
     MlevelNestedDissectionCC(ctrl, graph, iperm, graph->nvtxs);
-  else
+  } else {
     MlevelNestedDissection(ctrl, graph, iperm, graph->nvtxs);
-
+  }
 
   if (ctrl->pfactor > 0.0) { /* Order any prunned vertices */
     icopy(nnvtxs, iperm, perm);  /* Use perm as an auxiliary array */
@@ -150,8 +224,9 @@ int METIS_NodeND(idx_t *nvtxs, idx_t *xadj, idx_t *adjncy, idx_t *vwgt,
     gk_free((void **)&cptr, &cind, LTERM);
   }
 
-  for (i=0; i<*nvtxs; i++)
+  for (i=0; i<*nvtxs; i++) {
     perm[iperm[i]] = i;
+  }
 
   IFSET(ctrl->dbglvl, METIS_DBG_TIME, gk_stopwctimer(ctrl->TotalTmr));
   IFSET(ctrl->dbglvl, METIS_DBG_TIME, PrintTimers(ctrl));
@@ -159,13 +234,9 @@ int METIS_NodeND(idx_t *nvtxs, idx_t *xadj, idx_t *adjncy, idx_t *vwgt,
   /* clean up */
   FreeCtrl(&ctrl);
 
-SIGTHROW:
   /* if required, change the numbering back to 1 */
   if (renumber)
     Change2FNumberingOrder(*nvtxs, xadj, adjncy, perm, iperm);
-
-  gk_siguntrap();
-  gk_malloc_cleanup(0);
 
   return metis_rcode(sigrval);
 }
@@ -182,7 +253,7 @@ SIGTHROW:
 void MlevelNestedDissection(ctrl_t *ctrl, graph_t *graph, idx_t *order, 
          idx_t lastvtx)
 {
-  idx_t i, nbnd;
+  idx_t i, nbnd, rvtx, lvtx;
   idx_t *label, *bndind;
   graph_t *lgraph, *rgraph;
 
@@ -205,19 +276,82 @@ void MlevelNestedDissection(ctrl_t *ctrl, graph_t *graph, idx_t *order,
   /* Free the memory of the top level graph */
   FreeGraph(&graph);
 
+  rvtx = lastvtx;
+  lvtx = lastvtx - rgraph->nvtxs;
+
   /* Recurse on lgraph first, as its lastvtx depends on rgraph->nvtxs, which
      will not be defined upon return from MlevelNestedDissection. */
-  if (lgraph->nvtxs > MMDSWITCH && lgraph->nedges > 0) 
-    MlevelNestedDissection(ctrl, lgraph, order, lastvtx-rgraph->nvtxs);
-  else {
-    MMDOrder(ctrl, lgraph, order, lastvtx-rgraph->nvtxs); 
-    FreeGraph(&lgraph);
-  }
-  if (rgraph->nvtxs > MMDSWITCH && rgraph->nedges > 0) 
-    MlevelNestedDissection(ctrl, rgraph, order, lastvtx);
-  else {
-    MMDOrder(ctrl, rgraph, order, lastvtx); 
-    FreeGraph(&rgraph);
+  if (rgraph->nvtxs + lgraph->nvtxs > MIN_TASK_SIZE) {
+    #ifdef OMP_TASK
+    #pragma omp task default(none) shared(ctrl,lgraph,order,lvtx)
+    {
+      ctrl_t * myctrl;
+
+      /* create my control */
+      myctrl = __duplicate_ctrl(ctrl,lgraph); 
+
+      if (lgraph->nvtxs > MMDSWITCH && lgraph->nedges > 0) 
+        MlevelNestedDissection(myctrl, lgraph, order, lvtx);
+      else {
+        MMDOrder(myctrl, lgraph, order, lvtx); 
+        FreeGraph(&lgraph);
+      }
+
+      FreeCtrl(&myctrl);
+    }
+    #pragma omp task default(none) shared(ctrl,rgraph,order,rvtx)
+    {
+      ctrl_t * myctrl;
+
+      /* create my control */
+      myctrl = __duplicate_ctrl(ctrl,rgraph); 
+
+      if (rgraph->nvtxs > MMDSWITCH && rgraph->nedges > 0) 
+        MlevelNestedDissection(myctrl, rgraph, order, rvtx);
+      else {
+        MMDOrder(myctrl, rgraph, order, rvtx); 
+        FreeGraph(&rgraph);
+      }
+
+      FreeCtrl(&myctrl);
+    }
+
+    #pragma omp taskwait
+    #else
+
+    size_t tid;
+    task_info_t * task;
+
+    task = malloc(sizeof(task_info_t));
+    task->ctrl = ctrl;
+    task->graph = lgraph;
+    task->order = order;
+    task->lvtx = lvtx;
+
+    tid = dlthread_pool_add(&perform_task,task);
+
+    if (rgraph->nvtxs > MMDSWITCH && rgraph->nedges > 0) 
+      MlevelNestedDissection(ctrl, rgraph, order, rvtx);
+    else {
+      MMDOrder(ctrl, rgraph, order, rvtx); 
+      FreeGraph(&rgraph);
+    }
+
+    dlthread_pool_wait(tid);
+    #endif
+  } else {
+    if (lgraph->nvtxs > MMDSWITCH && lgraph->nedges > 0) {
+      MlevelNestedDissection(ctrl, lgraph, order, lvtx);
+    } else {
+      MMDOrder(ctrl, lgraph, order, lvtx); 
+      FreeGraph(&lgraph);
+    }
+    if (rgraph->nvtxs > MMDSWITCH && rgraph->nedges > 0) {
+      MlevelNestedDissection(ctrl, rgraph, order, rvtx);
+    } else {
+      MMDOrder(ctrl, rgraph, order, rvtx); 
+      FreeGraph(&rgraph);
+    }
   }
 }
 
@@ -233,8 +367,8 @@ void MlevelNestedDissection(ctrl_t *ctrl, graph_t *graph, idx_t *order,
 void MlevelNestedDissectionCC(ctrl_t *ctrl, graph_t *graph, idx_t *order, 
          idx_t lastvtx)
 {
-  idx_t i, nvtxs, nbnd, ncmps, rnvtxs, snvtxs;
-  idx_t *label, *bndind;
+  idx_t i, nvtxs, nbnd, ncmps;
+  idx_t *label, *bndind, * offset;
   idx_t *cptr, *cind;
   graph_t **sgraphs;
 
@@ -270,23 +404,63 @@ void MlevelNestedDissectionCC(ctrl_t *ctrl, graph_t *graph, idx_t *order,
   /* Free the memory of the top level graph */
   FreeGraph(&graph);
 
-  /* Go and process the subgraphs */
-  for (rnvtxs=i=0; i<ncmps; i++) {
+  omp_set_nested(1);
+
+  offset = imalloc(ncmps,"X");
+  offset[0] = 0;
+  for (i=1;i<ncmps;++i) {
+    offset[i] = sgraphs[i-1]->nvtxs + offset[i-1];
+  }
+
+  #ifdef OMP_TASK
+  for (i=0;i<ncmps;++i) {
+    /* Go and process the subgraphs */
+    #pragma omp task shared(ctrl,sgraphs,order,offset,lastvtx,i) \
+        default(none)
+    {
+      idx_t rnvtxs;
+
+      /* Save the number of vertices in sgraphs[i] because sgraphs[i] is freed 
+         inside MlevelNestedDissectionCC, and as such it will be undefined. */
+      ctrl_t * myctrl;
+
+      /* create my control */
+      myctrl = __duplicate_ctrl(ctrl,sgraphs[i]); 
+
+      rnvtxs = offset[i];
+
+      if (sgraphs[i]->nvtxs > MMDSWITCH && sgraphs[i]->nedges > 0) {
+        MlevelNestedDissectionCC(myctrl, sgraphs[i], order, lastvtx-rnvtxs);
+      } else {
+        MMDOrder(myctrl, sgraphs[i], order, lastvtx-rnvtxs);
+        FreeGraph(&sgraphs[i]);
+      }
+
+      FreeCtrl(&myctrl);
+    }
+  }
+  #pragma omp taskwait
+  #else
+  for (i=0;i<ncmps;++i) {
+    /* Go and process the subgraphs */
+    idx_t rnvtxs;
+
     /* Save the number of vertices in sgraphs[i] because sgraphs[i] is freed 
        inside MlevelNestedDissectionCC, and as such it will be undefined. */
-    snvtxs = sgraphs[i]->nvtxs;
+
+    rnvtxs = offset[i];
 
     if (sgraphs[i]->nvtxs > MMDSWITCH && sgraphs[i]->nedges > 0) {
       MlevelNestedDissectionCC(ctrl, sgraphs[i], order, lastvtx-rnvtxs);
-    }
-    else {
+    } else {
       MMDOrder(ctrl, sgraphs[i], order, lastvtx-rnvtxs);
       FreeGraph(&sgraphs[i]);
     }
-    rnvtxs += snvtxs;
-  }
 
-  gk_free((void **)&sgraphs, LTERM);
+  }
+  #endif
+
+  gk_free((void **)&sgraphs, &offset, LTERM);
 }
 
 
@@ -341,7 +515,7 @@ void MlevelNodeBisectionMultiple(ctrl_t *ctrl, graph_t *graph)
 /*************************************************************************/
 void MlevelNodeBisectionL2(ctrl_t *ctrl, graph_t *graph, idx_t niparts)
 {
-  idx_t i, mincut, nruns=5;
+  idx_t i, mincut, nruns=1;
   graph_t *cgraph; 
   idx_t *bestwhere;
 

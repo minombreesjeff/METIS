@@ -2,7 +2,7 @@
  * @file analytics.h
  * @brief Functions for measuring and estimating characteristics of graphs
  * @author Dominique LaSalle <lasalle@cs.umn.edu>
- * Copyright 2013
+ * Copyright 2013-2014, Dominique LaSalle
  * @version 1
  * @date 2013-10-09
  */
@@ -144,6 +144,27 @@ void calc_domaindegree(
     vlbl_t nparts, 
     vlbl_t const * where, 
     wgt_t * dd);
+
+
+#define calc_domainconn __bowstring_calc_domainconn
+/**
+ * @brief Calcuate the connectivity of each domain/partition/cluster.
+ *
+ * @param nvtxs The number of vertices in the graph.
+ * @param xadj The adjacency list pointer.
+ * @param adjncy The adjacency list.
+ * @param nparts The number of domains.
+ * @param where The array containing the domain label for each vertex.
+ * @param dd The connectivity of each domain (output, should be of length 
+ *   nparts).
+ */
+void calc_domainconn(
+    vtx_t nvtxs, 
+    adj_t const * xadj, 
+    vtx_t const * adjncy, 
+    vlbl_t nparts, 
+    vlbl_t const * where, 
+    int * dc);
 
 
 #define calc_domaincomvol __bowstring_calc_domaincomvol

@@ -63,10 +63,12 @@ GK_MKRANDOM(gk_zu,  size_t, size_t)
 
 
 /* The array for the state vector */
-static uint64_t mt[NN]; 
+static __thread uint64_t mt[NN]; 
 /* mti==NN+1 means mt[NN] is not initialized */
-static int mti=NN+1; 
-#endif /* USE_GKRAND */
+static __thread int mti=NN+1; 
+#else /* USE_GKRAND */
+static __thread unsigned int lseed;
+#endif 
 
 /* initializes mt[NN] with a seed */
 void gk_randinit(uint64_t seed)
@@ -76,7 +78,7 @@ void gk_randinit(uint64_t seed)
   for (mti=1; mti<NN; mti++) 
     mt[mti] = (6364136223846793005ULL * (mt[mti-1] ^ (mt[mti-1] >> 62)) + mti);
 #else
-  srand((unsigned int) seed);
+  lseed = (unsigned int)seed;
 #endif
 }
 
@@ -87,7 +89,7 @@ uint64_t gk_randint64(void)
 #ifdef USE_GKRAND
   int i;
   unsigned long long x;
-  static uint64_t mag01[2]={0ULL, MATRIX_A};
+  static __thread uint64_t mag01[2]={0ULL, MATRIX_A};
 
   if (mti >= NN) { /* generate NN words at one time */
     /* if init_genrand64() has not been called, */
@@ -118,7 +120,7 @@ uint64_t gk_randint64(void)
 
   return x & 0x7FFFFFFFFFFFFFFF;
 #else
-  return (uint64_t)(((uint64_t) rand()) << 32 | ((uint64_t) rand()));
+  return (uint64_t)(((uint64_t) rand_r(&lseed)) << 32 | ((uint64_t) rand_r(&lseed)));
 #endif
 }
 
@@ -128,7 +130,7 @@ uint32_t gk_randint32(void)
 #ifdef USE_GKRAND
   return (uint32_t)(gk_randint64() & 0x7FFFFFFF);
 #else
-  return (uint32_t)rand();
+  return (uint32_t)rand_r(&lseed);
 #endif
 }
 

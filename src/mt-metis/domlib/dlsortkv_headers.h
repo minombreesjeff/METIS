@@ -2,7 +2,7 @@
  * @file dlsortkv_headers.h
  * @brief Sorting function prototypes
  * @author Dominique LaSalle <lasalle@cs.umn.edu>
- * Copyright 2014
+ * Copyright (c) 2014-2015, Dominique LaSalle
  * @version 1
  * @date 2014-05-12
  */

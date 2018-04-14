@@ -2,7 +2,7 @@
  * @file bowstring.c
  * @brief Top level driver functions
  * @author Dominique LaSalle <lasalle@cs.umn.edu>
- * Copyright 2013
+ * Copyright 2013-2014, Dominique LaSalle
  * @version 1
  * @date 2013-07-24
  */
@@ -18,6 +18,7 @@
 
 #include "base.h"
 #include "tree.h"
+#include "order.h"
 #include "graph.h"
 #include "sparsen.h"
 #include "io/io.h"
@@ -83,7 +84,7 @@ int bowstring_read_graph(
 int bowstring_write_graph(
     const char * const filename, 
     int graphtype, 
-    const vtx_t const nvtxs, 
+    vtx_t const nvtxs, 
     const adj_t * const xadj, 
     const vtx_t * const adjncy, 
     const wgt_t * const vwgt, 
@@ -306,24 +307,62 @@ int bowstring_check_graph(
   return check_graph(nvtxs,xadj,adjncy,adjwgt);
 }
 
-
-void bowstring_voronoi_diagram(
+void bowstring_voronoi_regions(
     vtx_t const nvtxs,
     adj_t const * const xadj,
     vtx_t const * const adjncy,
     wgt_t const * const adjwgt,
     vtx_t const * const sources,
     vtx_t const nsources,
-    vtx_t ** const r_where,
+    vtx_t * const where,
+    vtx_t * const parent,
+    wgt_t * const dist)
+{
+  voronoi_regions(nvtxs,xadj,adjncy,adjwgt,sources,nsources,where,parent,dist);
+}
+
+
+void bowstring_voronoi_diagram(
+    vtx_t const nvtxs,
+    adj_t const * const xadj,
+    vtx_t const * const adjncy,
+    wgt_t const * const adjwgt,
+    vtx_t const nsources,
+    vtx_t const * const where,
+    wgt_t const * const dist,
     adj_t ** const r_vxadj,
     vtx_t ** const r_vadjncy,
     wgt_t ** const r_vadjwgt,
     vtx_t ** const r_adjsrc,
-    adj_t ** const r_adjori,
-    vtx_t ** const r_parent)
+    adj_t ** const r_adjori)
 {
-  voronoi_diagram(nvtxs,xadj,adjncy,adjwgt,sources,nsources,r_where,r_vxadj, \
-      r_vadjncy,r_vadjwgt,r_adjsrc,r_adjori,r_parent);
+  voronoi_diagram(nvtxs,xadj,adjncy,adjwgt,nsources,where,dist,r_vxadj, \
+      r_vadjncy,r_vadjwgt,r_adjsrc,r_adjori);
+}
+
+
+void bowstring_order_graph(
+    vtx_t const nvtxs, 
+    adj_t * const xadj, 
+    vtx_t * const adjncy,
+    wgt_t * const vwgt, 
+    wgt_t * const adjwgt, 
+    vtx_t const * const perm) 
+{
+  order_graph(nvtxs,xadj,adjncy,vwgt,adjwgt,perm);
+}
+
+
+void bowstring_permutation(
+    int const ordering,
+    vtx_t const nvtxs, 
+    adj_t const * const xadj, 
+    vtx_t const * const adjncy,
+    wgt_t const * const vwgt,
+    wgt_t const * const adjwgt,
+    vtx_t * const perm)
+{
+  order_permutation(ordering,nvtxs,xadj,adjncy,vwgt,adjwgt,perm);
 }
 
 

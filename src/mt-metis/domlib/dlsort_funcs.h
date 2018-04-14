@@ -2,7 +2,7 @@
  * @file dlsort_funcs.h
  * @brief Sorting functions
  * @author Dominique LaSalle <lasalle@cs.umn.edu>
- * Copyright 2013
+ * Copyright (c) 2013-2015, Dominique LaSalle
  * @version 1
  * @date 2013-10-06
  */
@@ -40,9 +40,15 @@ static const size_t DLSORT_PRI(nbuckets) = 256;
 #endif
 
 
+#ifndef DLSORT_COMPARE
+#define DLSORT_DEFAULT_COMPARE 1
+#define DLSORT_COMPARE(a,b) ((a) < (b))
+#endif
+
+
 #define __BS_BLOCK(n,x,y,v,b,a) \
   case (n) : \
-    if ((v) < (a)[(x)+((signed)b)]) { \
+    if (DLSORT_COMPARE(v,a[(x)+((signed)b)])) { \
       (y) = (x) + ((signed)b); \
     } else { \
       (x) = (y) - ((signed)b); \
@@ -136,7 +142,7 @@ DLSORT_VISIBILITY DLSORT_TYPE_T * DLSORT_PUB(insertionsort)(
   for (i=1;i<n;++i) {
     b = a[i];
     j = i;
-    while (j > 0 &&  a[j-1] > b) {
+    while (j > 0 &&  DLSORT_COMPARE(b,a[j-1])) {
       --j;
     }
     memmove(a+(j+1),a+j,sizeof(DLSORT_TYPE_T)*(i-j));
@@ -160,20 +166,20 @@ DLSORT_VISIBILITY DLSORT_TYPE_T * DLSORT_PUB(quicksort)(
     mid = a[k];
     a[k] = a[0];
     while (i < j) {
-      if (a[i] > mid) { /* a[i] is on the wrong side */
-        if (a[j] <= mid) {
+      if (DLSORT_COMPARE(mid,a[i])) { /* a[i] is on the wrong side */
+        if (!DLSORT_COMPARE(mid,a[j])) {
           dl_swap(a[i],a[j]);
           ++i;
         }
         --j;
       } else {
-        if (a[j] > mid) { /* a[j] is on the right side */
+        if (DLSORT_COMPARE(mid,a[j])) { /* a[j] is on the right side */
           --j;
         }
         ++i;
       }
     }
-    if (a[i] > mid) {
+    if (DLSORT_COMPARE(mid,a[i])) {
       --i;
     }
     a[0] = a[i];
@@ -196,7 +202,7 @@ DLSORT_VISIBILITY DLSORT_TYPE_T * DLSORT_PUB(radixsort)(
   size_t npass, pass, i, j;
   size_t bcount[DLSORT_PRI(nbuckets)];
   npass = sizeof(DLSORT_TYPE_T);
-  DLSORT_TYPE_T * b = DLSORT_PUB(alloc)(n);
+  DLSORT_TYPE_T * b = malloc(sizeof(DLSORT_TYPE_T)*n);
   DLSORT_TYPE_T * c = a;
   #if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__ 
   #if defined(DLSORT_DLSIGN) && DLSORT_DLSIGN == DLSIGN_UNSIGNED
@@ -299,11 +305,17 @@ DLSORT_VISIBILITY DLSORT_TYPE_T * DLSORT_PUB(radixsort)(
   if (a == c) {
     free(b);
   } else {
-    DLSORT_PUB(copy)(a,c,n);
+    memcpy(a,c,n*sizeof(DLSORT_TYPE_T));
     free(c);
   }
   return a;
 } 
+
+
+#ifdef DLSORT_DEFAULT_COMPARE
+  #undef DLSORT_DEFAULT_COMPARE
+  #undef DLSORT_COMPARE
+#endif
 
 
 #ifdef DLSORT_DEFVIS

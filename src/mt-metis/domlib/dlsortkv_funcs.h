@@ -2,7 +2,7 @@
  * @file dlsort_funcs.h
  * @brief Sorting functions
  * @author Dominique LaSalle <lasalle@cs.umn.edu>
- * Copyright 2014
+ * Copyright (c) 2014-2015, Dominique LaSalle
  * @version 1
  * @date 2014-05-12
  */
@@ -55,11 +55,11 @@
 
 
 DLSORTKV_VISIBILITY DLSORTKV_VAL_T * DLSORTKV_PUB(countingsort_kv)(
-    const DLSORTKV_KEY_T * const keys, 
-    const DLSORTKV_VAL_T * const vals,
-    const DLSORTKV_KEY_T min,
-    const DLSORTKV_KEY_T max,
-    const DLSORTKV_SIZE_T n,
+    DLSORTKV_KEY_T const * const keys, 
+    DLSORTKV_VAL_T const * const vals,
+    DLSORTKV_KEY_T const min,
+    DLSORTKV_KEY_T const max,
+    DLSORTKV_SIZE_T const n,
     DLSORTKV_VAL_T * const out,
     DLSORTKV_SIZE_T ** const r_counts)
 {
@@ -76,7 +76,7 @@ DLSORTKV_VISIBILITY DLSORTKV_VAL_T * DLSORTKV_PUB(countingsort_kv)(
   DLSORTKV_PRI(count_prefixsum_exc)(counts+1,size); 
 
   for (i=0;i<n;++i) { 
-    out[counts[keys[i]+1]++] = vals[i]; 
+    out[start[keys[i]+1]++] = vals[i]; 
   } 
 
   if (r_counts) {

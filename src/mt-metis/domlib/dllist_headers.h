@@ -2,7 +2,7 @@
  * @file dlist_headers.h
  * @brief Function prototypes for lists
  * @author Dominique LaSalle <lasalle@cs.umn.edu>
- * Copyright 2013
+ * Copyright (c) 2013-2015, Dominique LaSalle
  * @version 1
  * @date 2013-10-07
  */

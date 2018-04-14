@@ -2,7 +2,7 @@
  * @file flow.h
  * @brief Function for computing maximum-flows / minimum cuts
  * @author Dominique LaSalle <lasalle@cs.umn.edu>
- * Copyright 2014, Regents of the University of Minnesota
+ * Copyright 2014, Dominique LaSalle
  * @version 1
  * @date 2014-10-14
  */
@@ -37,10 +37,12 @@
  * @param adjncy The adjacency list.
  * @param adjwgt The edge weights (capacity).
  * @param flow The flow on each edge (output).
+ *
+ * @return The value of the maximum flow.
  */
-void maxflow_edge(
+wgt_t maxflow_edge(
     vtx_t src,
-    vtx_T dst,
+    vtx_t dst,
     vtx_t nvtxs,
     adj_t const * xadj,
     vtx_t const * adjncy,
@@ -60,10 +62,12 @@ void maxflow_edge(
  * @param adjncy THe adjacency list.
  * @param vwgt The vertex weights (capacity).
  * @param flow THe flow on each vertex (output). 
+ *
+ * @return The value of the maximum flow.
  */
-void maxflow_vertex(
+wgt_t maxflow_vertex(
     vtx_t src,
-    vtx_T dst,
+    vtx_t dst,
     vtx_t nvtxs,
     adj_t const * xadj,
     vtx_t const * adjncy,

@@ -2,7 +2,7 @@
  * @file dlcb_funcs.h
  * @brief Functions for communication buffers
  * @author Dominique LaSalle <lasalle@cs.umn.edu>
- * Copyright 2013
+ * Copyright (c) 2013-2015, Dominique LaSalle
  * @version 1
  * @date 2013-10-05
  */
@@ -66,70 +66,81 @@
 
 
 
-DLCB_VISIBILITY DLCB_PUB(combuffer_t) * DLCB_PRI(cbc_com);
 DLCB_VISIBILITY DLCB_PUB(combuffer_t) * DLCB_PUB(combuffer_create)(
-    const size_t n)
+    dlthread_comm_t comm)
 {
   size_t i;
-  const size_t myid = omp_get_thread_num();
-  #pragma omp barrier
-  #pragma omp master
-  {
-    DLCB_PRI(cbc_com) = DLCB_PUB(combuffer_alloc)(1);
-    DLCB_PRI(cbc_com)->nthreads = omp_get_num_threads();
-    #ifndef DLCB_BUFFER_TYPE_T
-    DLCB_PRI(cbc_com)->buffers = (DLCB_PRI(cb_buffer_t)**)
-    #else
-    DLCB_PRI(cbc_com)->buffers = (DLCB_BUFFER_TYPE_T**)
-    #endif
-        malloc(sizeof(void*)*DLCB_PRI(cbc_com)->nthreads);
+  DLCB_PUB(combuffer_t) * cbc;
+
+  size_t const nthreads = dlthread_get_nthreads(comm);
+  size_t const myid = dlthread_get_id(comm);
+
+  cbc = dlthread_get_shmem(sizeof(DLCB_PUB(combuffer_t)),comm);
+
+  if (myid == 0) {
+    cbc->comm = comm;
+    cbc->buffers = malloc(sizeof(void*)*nthreads);
   }
-  #pragma omp barrier
-  DLCB_PRI(cbc_com)->buffers[myid] =
-      DLCB_BUFFER_FUNC(alloc)(DLCB_PRI(cbc_com)->nthreads);
-  for (i=0;i<DLCB_PRI(cbc_com)->nthreads;++i) {
+  dlthread_barrier(comm);
+
+  cbc->buffers[myid] = DLCB_BUFFER_FUNC(alloc)(nthreads);
+  for (i=0;i<nthreads;++i) {
     if (i != myid) { 
-      DLCB_BUFFER_FUNC(init)(n,DLCB_PRI(cbc_com)->buffers[myid]+i);
+      DLCB_BUFFER_FUNC(init)(nthreads,cbc->buffers[myid]+i);
     } else {
-      DLCB_PRI(cbc_com)->buffers[myid][i].maxsize = 0;
-      DLCB_PRI(cbc_com)->buffers[myid][i].defsize = 0;
-      DLCB_PRI(cbc_com)->buffers[myid][i].size = 0;
-      DLCB_PRI(cbc_com)->buffers[myid][i].elements = NULL;
+      cbc->buffers[myid][i].maxsize = 0;
+      cbc->buffers[myid][i].defsize = 0;
+      cbc->buffers[myid][i].size = 0;
+      cbc->buffers[myid][i].elements = NULL;
     }
   }
-  return DLCB_PRI(cbc_com);
+
+  return cbc;
 }
 
 
-DLCB_VISIBILITY void DLCB_PUB(combuffer_add)(const size_t dst, 
-    const DLCB_TYPE_T val, DLCB_PUB(combuffer_t) * const com)
+DLCB_VISIBILITY void DLCB_PUB(combuffer_add)(
+    size_t const dst, 
+    DLCB_TYPE_T const val, 
+    DLCB_PUB(combuffer_t) * const com)
 {
-  DLCB_BUFFER_FUNC(add)(val,com->buffers[omp_get_thread_num()]+dst);
+  size_t const myid = dlthread_get_id(com->comm);
+
+  DLCB_BUFFER_FUNC(add)(val,com->buffers[myid]+dst);
 }
 
 
-DLCB_VISIBILITY void DLCB_PUB(combuffer_send)(DLCB_PUB(combuffer_t) * com)
+DLCB_VISIBILITY void DLCB_PUB(combuffer_send)(
+    DLCB_PUB(combuffer_t) * const com)
 {
   size_t i,j;
   DLCB_BUFFER_FUNC(t) buf;
-  #pragma omp barrier
-  #pragma omp for schedule(static)
-  for (i=0;i<com->nthreads-1;++i) {
-    for (j=i+1;j<com->nthreads;++j) {
-      buf = com->buffers[j][i];
-      com->buffers[j][i] = com->buffers[i][j];
-      com->buffers[i][j] = buf;
+
+  size_t const myid = dlthread_get_id(com->comm);
+  size_t const nthreads = dlthread_get_nthreads(com->comm);
+
+  dlthread_barrier(com->comm);
+  if (myid == 0) {
+    for (i=0;i<nthreads-1;++i) {
+      for (j=i+1;j<nthreads;++j) {
+        buf = com->buffers[j][i];
+        com->buffers[j][i] = com->buffers[i][j];
+        com->buffers[i][j] = buf;
+      }
     }
   }
-  #pragma omp barrier
+  dlthread_barrier(com->comm);
 }
 
 
 DLCB_VISIBILITY void DLCB_PUB(combuffer_clear)(DLCB_PUB(combuffer_t) * com)
 {
   size_t i;
-  const size_t myid = omp_get_thread_num();
-  for (i=0;i<com->nthreads;++i) {
+
+  size_t const myid = dlthread_get_id(com->comm);
+  size_t const nthreads = dlthread_get_nthreads(com->comm);
+
+  for (i=0;i<nthreads;++i) {
     DLCB_BUFFER_FUNC(clear)(com->buffers[myid]+i);
   }
 }
@@ -138,28 +149,38 @@ DLCB_VISIBILITY void DLCB_PUB(combuffer_clear)(DLCB_PUB(combuffer_t) * com)
 DLCB_VISIBILITY void DLCB_PUB(combuffer_free)(DLCB_PUB(combuffer_t) * com)
 {
   size_t i;
-  const size_t myid = omp_get_thread_num();
-  for (i=0;i<com->nthreads;++i) {
+  dlthread_comm_t comm;
+
+  size_t const myid = dlthread_get_id(com->comm);
+  size_t const nthreads = dlthread_get_nthreads(com->comm);
+
+  comm = com->comm;
+
+  for (i=0;i<nthreads;++i) {
     if (i!=myid) {
       dl_free(com->buffers[myid][i].elements);
     }
   }
   dl_free(com->buffers[myid]);
-  #pragma omp barrier
-  #pragma omp master
-  {
+  dlthread_barrier(com->comm);
+
+  if (myid == 0) {
     dl_free(com->buffers);
-    dl_free(com);
   }
+
+  dlthread_free_shmem(com,comm);
 }
 
 
 #ifdef DLCB_BUFFER_TYPE_T
 
-DLCB_VISIBILITY DLCB_BUFFER_TYPE_T * DLCB_PUB(combuffer_get)(const size_t idx, 
-    const DLCB_PUB(combuffer_t) * const com)
+DLCB_VISIBILITY DLCB_BUFFER_TYPE_T * DLCB_PUB(combuffer_get)(
+    size_t const idx, 
+    DLCB_PUB(combuffer_t) const * const com)
 {
-  return com->buffers[omp_get_thread_num()]+idx;
+  size_t const myid = dlthread_get_id(com->comm);
+
+  return com->buffers[myid]+idx;
 }
 
 #endif

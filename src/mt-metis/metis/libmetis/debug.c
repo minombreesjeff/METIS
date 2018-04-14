@@ -213,13 +213,13 @@ idx_t CheckNodeBnd(graph_t *graph, idx_t onbnd)
     if (where[i] != 2) {
       if (bndptr[i] != -1) {
         printf("%"PRIDX" %"PRIDX"\n", i, bndptr[i]);
+        return 0;
       }
-      return 0;
     } else {
       if (bndptr[i] == -1) {
         printf("%"PRIDX" %"PRIDX"\n", i, bndptr[i]);
+        return 0;
       }
-      return 0;
     }
   }
 

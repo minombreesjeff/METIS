@@ -2,7 +2,7 @@
  * @file dlmath_headers.h
  * @brief Mathematical function prototypes
  * @author Dominique LaSalle <lasalle@cs.umn.edu>
- * Copyright 2013
+ * Copyright (c) 2013-2015, Dominique LaSalle
  * @version 1
  * @date 2013-10-06
  */
@@ -25,6 +25,18 @@
 #define DLMATH_PUB(name) DLMATH_PRE1(DLMATH_PREFIX,name)
 #define DLMATH_PRI(name) DLMATH_PRE1(_,DLMATH_PRE1(DLMATH_PREFIX,name))
 
+
+/**
+ * @brief Take the absolute different between two numbers. 
+ *
+ * @param a The first number.
+ * @param b The second number.
+ *
+ * @return The difference.
+ */
+DLMATH_TYPE_T DLMATH_PUB(abs_diff)(
+    DLMATH_TYPE_T a,
+    DLMATH_TYPE_T b);
 
 /**
  * @brief Sum the values in an array. For floating point types, an effort is
@@ -381,6 +393,19 @@ long double DLMATH_PUB(fa_sum)(
 
 
 /**
+ * @brief Sum the numbers in an array using a uint64_t to track the sum.
+ *
+ * @param a The array to sum.
+ * @param n Size of array.
+ *
+ * @return The sum. 
+ */
+int64_t DLMATH_PUB(lsum)(
+    DLMATH_TYPE_T const * a,
+    size_t n);
+
+
+/**
  * @brief Calculate the integer log_2(n) rounded up.
  *
  * @param n The number to calculate the logrithm of. 
@@ -434,7 +459,9 @@ DLMATH_TYPE_T DLMATH_PUB(downpow2)(
  *
  * @return ceil (a/b).
  */
-DLMATH_TYPE_T DLMATH_PUB(updiv)(DLMATH_TYPE_T a, DLMATH_TYPE_T b);
+DLMATH_TYPE_T DLMATH_PUB(updiv)(
+    DLMATH_TYPE_T a, 
+    DLMATH_TYPE_T b);
 
 
 /**
@@ -447,7 +474,9 @@ DLMATH_TYPE_T DLMATH_PUB(updiv)(DLMATH_TYPE_T a, DLMATH_TYPE_T b);
  *
  * @return The number of elements in the i'th chunk. 
  */
-DLMATH_TYPE_T DLMATH_PUB(chunksize)(DLMATH_TYPE_T i, DLMATH_TYPE_T n, 
+DLMATH_TYPE_T DLMATH_PUB(chunksize)(
+    DLMATH_TYPE_T i, 
+    DLMATH_TYPE_T n, 
     DLMATH_TYPE_T m);
 
 
@@ -461,7 +490,24 @@ DLMATH_TYPE_T DLMATH_PUB(chunksize)(DLMATH_TYPE_T i, DLMATH_TYPE_T n,
  *
  * @return The starting element/index of the i'th chunk.
  */
-DLMATH_TYPE_T DLMATH_PUB(chunkstart)(DLMATH_TYPE_T i, DLMATH_TYPE_T n, 
+DLMATH_TYPE_T DLMATH_PUB(chunkstart)(
+    DLMATH_TYPE_T i, 
+    DLMATH_TYPE_T n, 
+    DLMATH_TYPE_T m);
+
+
+/**
+ * @brief Determine the chunk number of the g'th element.
+ *
+ * @param g The element index.
+ * @param n The number of chunks.
+ * @param m The number of elements.
+ *
+ * @return The chunk number. 
+ */
+DLMATH_TYPE_T DLMATH_PUB(chunkid)(
+    DLMATH_TYPE_T g, 
+    DLMATH_TYPE_T n, 
     DLMATH_TYPE_T m);
 
 
@@ -472,7 +518,8 @@ DLMATH_TYPE_T DLMATH_PUB(chunkstart)(DLMATH_TYPE_T i, DLMATH_TYPE_T n,
  *
  * @return The number with the bits reversed. 
  */
-DLMATH_TYPE_T DLMATH_PUB(reversebits)(DLMATH_TYPE_T n);
+DLMATH_TYPE_T DLMATH_PUB(reversebits)(
+    DLMATH_TYPE_T n);
 
 
 

@@ -1,8 +1,8 @@
 /**
  * @file uncoarsen.h
- * @brief Refinement functions and structs
+ * @brief Uncoarsening functions.
  * @author Dominique LaSalle <lasalle@cs.umn.edu>
- * Copyright 2014, Regents of the University of Minnesota
+ * Copyright 2014-2015, Regents of the University of Minnesota
  * @version 1
  * @date 2014-09-18
  */
@@ -16,7 +16,6 @@
 
 
 
-#include "base.h"
 #include "graph.h"
 #include "ctrl.h"
 
@@ -28,17 +27,16 @@
 ******************************************************************************/
 
 
+#define par_uncoarsen_graph __mtmetis_par_uncoarsen_graph
 /**
- * @brief Uncoarsen a graph with a kway partition.
+ * @brief Uncoarsen a partitioning on a graph (from graph->coarser to graph).
  *
  * @param ctrl The control structure containing runtime parameters.
- * @param ograph The original graph to uncoarsen the partition to.
- * @param cgraph The partitioned coarse graph.
+ * @param graph The original graph to uncoarsen the partition to.
  */
-void uncoarsen_kway(
+void par_uncoarsen_graph(
     ctrl_t * ctrl,
-    graph_t * ograph,
-    graph_t * cgraph);
+    graph_t * graph);
 
 
 

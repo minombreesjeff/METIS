@@ -1,2 +1,0 @@
-/home/grad03/lasalle/src/bowstring/build/Linux-x86_64/src/CMakeFiles/bowstring.dir
-/home/grad03/lasalle/src/bowstring/build/Linux-x86_64/src/CMakeFiles/bowstring_bin.dir

@@ -35,8 +35,8 @@
 
 
 #define MTMETIS_VER_MAJOR 0
-#define MTMETIS_VER_MINOR 3
-#define MTMETIS_VER_SUBMINOR 0
+#define MTMETIS_VER_MINOR 4
+#define MTMETIS_VER_SUBMINOR 3
 
 
 
@@ -60,6 +60,7 @@ typedef uint64_t mtmetis_adj_t;
 typedef uint32_t mtmetis_adj_t;
 #endif
 
+/* this must be signed for refinement to work */
 #ifdef MTMETIS_64BIT_WEIGHTS
 typedef int64_t mtmetis_wgt_t;
 #else
@@ -82,7 +83,8 @@ typedef uint32_t mtmetis_pid_t;
 typedef enum mtmetis_error_t {
   MTMETIS_SUCCESS = 1,
   MTMETIS_ERROR_INVALIDINPUT,
-  MTMETIS_ERROR_NOTENOUGHMEMORY
+  MTMETIS_ERROR_NOTENOUGHMEMORY,
+  MTMETIS_ERROR_THREADING
 } mtmetis_error_t;
 
 
@@ -93,20 +95,57 @@ typedef enum mtmetis_option_t {
   MTMETIS_OPTION_NTHREADS,
   MTMETIS_OPTION_SEED,
   MTMETIS_OPTION_NCUTS,
+  MTMETIS_OPTION_NRUNS,
   MTMETIS_OPTION_NINITSOLUTIONS,
   MTMETIS_OPTION_NITER,
   MTMETIS_OPTION_UBFACTOR,
   MTMETIS_OPTION_CTYPE,
+  MTMETIS_OPTION_CONTYPE,
+  MTMETIS_OPTION_LEAFMATCH,
+  MTMETIS_OPTION_RTYPE,
+  MTMETIS_OPTION_PTYPE,
   MTMETIS_OPTION_VERBOSITY,
   MTMETIS_OPTION_DISTRIBUTION,
+  MTMETIS_OPTION_RUNSTATS,
+  MTMETIS_OPTION_METIS,
+  MTMETIS_OPTION_REMOVEISLANDS,
+  MTMETIS_OPTION_VWGTDEGREE,
+  MTMETIS_OPTION_IGNORE,
   __MTMETIS_OPTION_TERM
 } mtmetis_option_t;
 
 
 typedef enum mtmetis_ctype_t {
   MTMETIS_CTYPE_RM,
-  MTMETIS_CTYPE_SHEM
+  MTMETIS_CTYPE_SHEM,
+  MTMETIS_CTYPE_SLEM,
+  MTMETIS_CTYPE_MDM,
+  MTMETIS_CTYPE_FC
 } mtmetis_ctype_t;
+
+
+typedef enum mtmetis_contype_t {
+  MTMETIS_CONTYPE_CLS,
+  MTMETIS_CONTYPE_DENSE,
+  MTMETIS_CONTYPE_SORT
+} mtmetis_contype_t;
+
+
+typedef enum mtmetis_rtype_t {
+  MTMETIS_RTYPE_GREEDY,
+  MTMETIS_RTYPE_FM,
+  MTMETIS_RTYPE_SFM,
+  MTMETIS_RTYPE_SFG,
+} mtmetis_rtype_t;
+
+
+typedef enum mtmetis_ptype_t {
+  MTMETIS_PTYPE_KWAY,
+  MTMETIS_PTYPE_ESEP,
+  MTMETIS_PTYPE_RB,
+  MTMETIS_PTYPE_VSEP,
+  MTMETIS_PTYPE_ND
+} mtmetis_ptype_t;
 
 
 typedef enum mtmetis_verbosity_t {
@@ -125,6 +164,25 @@ typedef enum mtmetis_dtype_t {
 } mtmetis_dtype_t;
 
 
+typedef enum mtmetis_part_t {
+  MTMETIS_VSEP_NULL = -1,
+  MTMETIS_VSEP_PARTA = 0,
+  MTMETIS_VSEP_PARTB = 1,
+  MTMETIS_VSEP_SEP = 2,
+  MTMETIS_VSEP_NPARTS = 3,
+  MTMETIS_ESEP_PARTA = 0,
+  MTMETIS_ESEP_PARTB = 1,
+  MTMETIS_ESEP_NPARTS = 2
+} mtmetis_part_t;
+
+
+typedef enum mtmetis_ignore_t {
+  MTMETIS_IGNORE_NONE = 0x00,
+  MTMETIS_IGNORE_VERTEXWEIGHTS = 0x01,
+  MTMETIS_IGNORE_EDGEWEIGHTS = 0x02
+} mtmetis_ignore_t;
+
+
 
 
 /******************************************************************************
@@ -132,8 +190,8 @@ typedef enum mtmetis_dtype_t {
 ******************************************************************************/
 
 
-static const size_t MTMETIS_NOPTIONS = __MTMETIS_OPTION_TERM;
-static const double MTMETIS_VAL_OFF = -DBL_MAX;
+static size_t const MTMETIS_NOPTIONS = __MTMETIS_OPTION_TERM;
+static double const MTMETIS_VAL_OFF = -DBL_MAX;
 
 
 
@@ -209,6 +267,27 @@ int mtmetis_partition_explicit(
     mtmetis_wgt_t * r_edgecut);
 
 
+
+/**
+ * @brief Perform a nested disection on a graph, and output a permutation. 
+ *
+ * @param nvtxs The number of vertices in the graph.
+ * @param xadj The adjacency list pointer.
+ * @param adjncy The adjacency list.
+ * @param vwgt The vertex weights.
+ * @param adjwgt The edge weights.
+ * @param options The set of options.
+ * @param perm The permutation of the vertices (rows+columns).
+ *
+ * @return MTMETIS_SUCCESS unless an error is encountered. 
+ */
+int mtmetis_nd(
+    mtmetis_vtx_t const nvtxs,
+    mtmetis_adj_t const * xadj,
+    mtmetis_vtx_t const * adjncy,
+    mtmetis_wgt_t const * vwgt,
+    mtmetis_wgt_t const * adjwgt,
+    mtmetis_pid_t * perm);
 
 
 #ifdef __cplusplus

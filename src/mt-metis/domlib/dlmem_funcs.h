@@ -2,7 +2,7 @@
  * @file dlmem.h
  * @brief Memory functions
  * @author Dominique LaSalle <lasalle@cs.umn.edu>
- * Copyright 2013
+ * Copyright (c) 2013-2015, Dominique LaSalle
  * @version 1
  * @date 2013-08-19
  */
@@ -56,11 +56,18 @@
 DLMEM_VISIBILITY DLMEM_TYPE_T * DLMEM_PUB(alloc)(
     size_t const n) 
 { 
+  DLMEM_TYPE_T * ptr;
+
   #ifdef DL_HEAP_PROFILE
   fprintf(stderr,"Allocated %zu bytes at:\n",n*sizeof(DLMEM_TYPE_T));
   __BACKTRACE();
   #endif
-  return (DLMEM_TYPE_T *) malloc(sizeof(DLMEM_TYPE_T)*n); 
+  ptr = malloc(sizeof(DLMEM_TYPE_T)*n); 
+
+  if (ptr == NULL && n > 0) {
+    wprintf("Failed to allocate '%zu' bytes\n",n*sizeof(DLMEM_TYPE_T));
+  }
+  return ptr;
 }
 
 
@@ -72,19 +79,29 @@ DLMEM_VISIBILITY DLMEM_TYPE_T * DLMEM_PUB(calloc)(
   #if defined(DLMEM_DLTYPE) && DLMEM_DLTYPE == DLTYPE_STRUCT && \
       defined(DLMEM_INITFUNCTION)
   size_t i;
-  ptr = (DLMEM_TYPE_T *) malloc(n*sizeof(DLMEM_TYPE_T)); 
-  DLMEM_INITFUNCTION(ptr); 
-  DLMEM_TYPE_T val = ptr[0]; 
-  for (i=1;i<n;++i) { 
-    ptr[i] = val; 
-  } 
+
+  ptr = malloc(n*sizeof(DLMEM_TYPE_T)); 
+
+  if (ptr != NULL) {
+    DLMEM_INITFUNCTION(ptr); 
+    DLMEM_TYPE_T val = ptr[0]; 
+    for (i=1;i<n;++i) { 
+      ptr[i] = val; 
+    } 
+  }
   #else
   ptr = (DLMEM_TYPE_T *) calloc(n,sizeof(DLMEM_TYPE_T)); 
   #endif
+
   #ifdef DL_HEAP_PROFILE
   fprintf(stderr,"cAllocated %zu bytes at:\n",n*sizeof(DLMEM_TYPE_T));
   __BACKTRACE();
   #endif
+
+  if (ptr == NULL && n > 0) {
+    wprintf("Failed to allocate '%zu' bytes\n",n*sizeof(DLMEM_TYPE_T));
+  }
+
   return ptr; 
 }
 
@@ -149,31 +166,46 @@ DLMEM_VISIBILITY DLMEM_TYPE_T * DLMEM_PUB(init_alloc)(
     size_t const n) 
 { 
   DLMEM_TYPE_T * ptr; 
+
   #if defined(DLMEM_DLTYPE) && \
       (DLMEM_DLTYPE == DLTYPE_INTEGRAL || DLMEM_DLTYPE == DLTYPE_FLOAT)
   if (val == (DLMEM_TYPE_T)0) {
     ptr = DLMEM_PUB(calloc)(n);
   } else { 
     ptr = DLMEM_PUB(alloc)(n); 
-    DLMEM_PUB(set)(ptr,val,n); 
+    if (ptr != NULL && n > 0) {
+      DLMEM_PUB(set)(ptr,val,n); 
+    }
   }
   #else 
   ptr = DLMEM_PUB(alloc)(n); 
-  DLMEM_PUB(set)(ptr,val,n); 
+  if (ptr != NULL && n > 0) {
+    DLMEM_PUB(set)(ptr,val,n); 
+  }
   #endif
+
   return ptr;
 }
 
 
 DLMEM_VISIBILITY DLMEM_TYPE_T * DLMEM_PUB(realloc)(
     DLMEM_TYPE_T * const ptr, 
-    size_t const newsize) 
+    size_t newsize) 
 { 
+  DLMEM_TYPE_T * nptr;
+
   #ifdef DL_HEAP_PROFILE
   fprintf(stderr,"reAllocated %zu bytes at:\n",newsize*sizeof(DLMEM_TYPE_T));
   __BACKTRACE();
   #endif
-  return (DLMEM_TYPE_T*)realloc(ptr,newsize*sizeof(DLMEM_TYPE_T)); 
+
+  nptr = realloc(ptr,newsize*sizeof(DLMEM_TYPE_T)); 
+
+  if (nptr == NULL && newsize > 0) {
+    wprintf("Failed to reallocate %zu bytes\n",newsize*sizeof(DLMEM_TYPE_T));
+  }
+
+  return nptr;
 }
 
 
@@ -182,34 +214,63 @@ DLMEM_VISIBILITY DLMEM_TYPE_T * DLMEM_PUB(duplicate)(
     size_t const n) 
 { 
   size_t i; 
+  DLMEM_TYPE_T * ptr;
 
-  DLMEM_TYPE_T * const tmp = DLMEM_PUB(alloc)(n); 
-  for (i=0;i<n;++i) { 
-    tmp[i] = src[i]; 
-  } 
-  return tmp; 
+  ptr = DLMEM_PUB(alloc)(n); 
+
+  if (ptr != NULL) {
+    for (i=0;i<n;++i) { 
+      ptr[i] = src[i]; 
+    } 
+  }
+  
+  return ptr; 
 }
 
 
 DLMEM_VISIBILITY DLMEM_TYPE_T ** DLMEM_RPUB(alloc)(
-    size_t const n) 
+    size_t n) 
 { 
+  DLMEM_TYPE_T ** ptr;
+
+  if (n == 0) {
+    n = 1;
+  }
+
   #ifdef DL_HEAP_PROFILE
   fprintf(stderr,"Allocated %zu bytes at:\n",n*sizeof(DLMEM_TYPE_T));
   __BACKTRACE();
   #endif
-  return (DLMEM_TYPE_T **) malloc(sizeof(DLMEM_TYPE_T*)*n); 
+
+  ptr = malloc(sizeof(DLMEM_TYPE_T*)*n); 
+
+  if (ptr == NULL) {
+    wprintf("Failed to allocate '%zu' bytes\n",n*sizeof(DLMEM_TYPE_T));
+  }
+
+  return ptr;
 } 
 
 
 DLMEM_VISIBILITY DLMEM_TYPE_T ** DLMEM_RPUB(calloc)(
-    size_t const n)
+    size_t n)
 { 
+  DLMEM_TYPE_T ** ptr;
+
+  if (n == 0) {
+    n = 1;
+  }
+
   #ifdef DL_HEAP_PROFILE
   fprintf(stderr,"cAllocated %zu bytes at:\n",n*sizeof(DLMEM_TYPE_T));
   __BACKTRACE();
   #endif
-  return (DLMEM_TYPE_T **) calloc(n,sizeof(DLMEM_TYPE_T*)); 
+  ptr = calloc(n,sizeof(DLMEM_TYPE_T*)); 
+
+  if (ptr == NULL) {
+    wprintf("Failed to allocate '%zu' bytes\n",n*sizeof(DLMEM_TYPE_T));
+  }
+  return ptr;
 } 
 
 

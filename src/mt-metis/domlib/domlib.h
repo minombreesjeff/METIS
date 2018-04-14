@@ -2,7 +2,7 @@
  * @file domlib.h
  * @brief Master header file for DOMLIB
  * @author Dominique LaSalle <lasalle@cs.umn.edu>
- * Copyright 2013
+ * Copyright (c) 2013-2015, Dominique LaSalle
  * @version 1
  * @date 2013-10-08
  */
@@ -50,28 +50,6 @@
 
 
 /******************************************************************************
-* CONSTANTS *******************************************************************
-******************************************************************************/
-
-
-#define __DL_PAGESIZE (0x1000)
-
-
-
-
-/******************************************************************************
-* PORTABILITY DEFINES *********************************************************
-******************************************************************************/
-
-
-#ifndef MAX_SIZE
-  #define MAX_SIZE ((size_t)-1)
-#endif
-
-
-
-
-/******************************************************************************
 * PRIMITIVES *******************************************************************
 ******************************************************************************/
 
@@ -84,6 +62,8 @@
 #define RF_CHAR_T PF_CHAR_T
 #define PF_PTR_T "%p"
 #define RF_PTR_T PF_PTR_T
+
+
 
 
 /******************************************************************************
@@ -106,10 +86,8 @@
 
 
 /* blue headers */
-#include "dldefs.h"
 #include "dlmacros.h"
 #include "dldebug.h"
-#include "dlomp.h"
 #include "dlsort.h"
 /* white headers */
 #include "dlutil.h"
@@ -119,6 +97,8 @@
 #include "dlfile.h"
 #include "dlcmdline.h"
 #include "dlterm.h"
+#include "dlthread.h"
+#include "dlthread_pool.h"
 /* gklib compatability */
 #ifdef USE_GKLIB
   #define __DL_USE_GKLIB__ 1
@@ -298,11 +278,6 @@
 static inline void dl_free(
     void * ptr)
 {
-  #ifdef DEBUG
-  if (ptr == NULL) {
-    eprintf("Attempting to free a null pointer\n");
-  }
-  #endif
   free(ptr);
 }
 

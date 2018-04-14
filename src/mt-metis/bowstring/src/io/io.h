@@ -27,60 +27,107 @@
 
 /* top level reads */
 
-int io_read_graph(const char * filename, int graphtype, vtx_t * nvtxs, 
-    adj_t ** xadj, vtx_t ** adjncy, wgt_t ** vwgt, wgt_t ** adjwgt);
+int io_read_graph(
+    char const * filename, 
+    int graphtype, 
+    vtx_t * nvtxs, 
+    adj_t ** xadj, 
+    vtx_t ** adjncy, 
+    wgt_t ** vwgt, 
+    wgt_t ** adjwgt);
 
 
-int io_write_graph(const char * filename, int graphtype, vtx_t nvtxs, 
-    const adj_t * xadj, const vtx_t * adjncy, const wgt_t * vwgt, 
+int io_write_graph(
+    char const * filename, 
+    int graphtype, 
+    vtx_t nvtxs, 
+    const adj_t * xadj, 
+    const vtx_t * adjncy, 
+    const wgt_t * vwgt, 
     const wgt_t * adjwgt);
 
 
 /* labels */
 
-int read_vertex_labels(const char * filename, vtx_t * nvtxs, vlbl_t ** labels);
+int read_vertex_labels(
+    char const * filename, 
+    vtx_t * nvtxs, 
+    vlbl_t ** labels);
 
 
-int write_vertex_labels(const char * filename, vtx_t nvtxs, 
+int write_vertex_labels(
+    char const * filename, 
+    vtx_t nvtxs, 
     const vlbl_t * labels);
 
 
-int read_edge_labels(const char * filename, adj_t * nedges, elbl_t ** labels);
+int read_edge_labels(
+    char const * filename, 
+    adj_t * nedges, 
+    elbl_t ** labels);
 
 
-int write_edge_labels(const char * filename, adj_t nedges, 
+int write_edge_labels(
+    char const * filename, 
+    adj_t nedges, 
     const elbl_t * labels);
+
+
+int write_weights(
+    char const * filename,
+    wgt_t const * wgts,
+    size_t nwgts);
 
 
 /* translations */
 
-int translate_metis_to_snap(const char * infile, const char * outfile);
+int translate_metis_to_snap(
+    char const * infile, 
+    char const * outfile);
 
 
-int translate_metis_to_cloud9(const char * infile, const char * outfile);
+int translate_metis_to_cloud9(
+    char const * infile, 
+    char const * outfile);
 
 
-int translate_metis_to_dimacs(const char * infile, const char * outfile);
+int translate_metis_to_dimacs(
+    char const * infile, 
+    char const * outfile);
 
 
-int translate_csr_to_snap(const char * infile, const char * outfile);
+int translate_csr_to_snap(
+    char const * infile, 
+    char const * outfile);
 
 
-int translate_csr_to_cloud9(const char * infile, const char * outfile);
+int translate_csr_to_cloud9(
+    char const * infile, 
+    char const * outfile);
 
 
-int translate_csr_to_pegasus(const char * infile, const char * outfile);
+int translate_csr_to_pegasus(
+    char const * infile, 
+    char const * outfile);
 
 
-int translate_csr_to_matrixmarket(const char * infile, const char * outfile);
+int translate_csr_to_matrixmarket(
+    char const * infile, 
+    char const * outfile);
 
 
-int translate_edgelist_to_snap(const char * infile, const char * outfile);
+int translate_edgelist_to_snap(
+    char const * infile, 
+    char const * outfile);
 
 
 /* misc */
 
-int tile_csr(const char * infile, const char * outfile, vtx_t nx, vtx_t ny);
+int tile_csr(
+    char const * infile, 
+    char const * outfile, 
+    vtx_t nx, 
+    vtx_t ny);
 
 
 
@@ -98,7 +145,8 @@ int tile_csr(const char * infile, const char * outfile, vtx_t nx, vtx_t ny);
  *
  * @return The base 10 representation suitable for printing
  */
-static inline int __flag_to_int(int flags) 
+static inline int __flag_to_int(
+    int flags) 
 {
   int iflags = 0;
 
@@ -127,8 +175,10 @@ static inline int __flag_to_int(int flags)
  *
  * @return BOWSTRING_SUCCESS, or an error code
  */
-static inline int __open_file(const char * const filename, 
-    const char * const mode, file_t ** const r_file)
+static inline int __open_file(
+    char const * const filename, 
+    char const * const mode, 
+    file_t ** const r_file)
 {
   int rv;
   if ((rv = dl_open_file(filename,mode,r_file)) != DL_FILE_SUCCESS) {
@@ -139,6 +189,7 @@ static inline int __open_file(const char * const filename,
         rv = BOWSTRING_ERROR_INVALIDINPUT;
         break;
       case DL_FILE_PATH_BAD:
+      case DL_FILE_FILENOTFOUND:
         eprintf("File not found '%s'\n",filename);
         rv = BOWSTRING_ERROR_FILENOTFOUND;
         break;
@@ -158,8 +209,6 @@ static inline int __open_file(const char * const filename,
   }
   return rv;
 }
-
-
 
 
 

@@ -2,7 +2,7 @@
  * @file bowstring_bin.c
  * @brief Command line interface for bowstring
  * @author Dominique LaSalle <lasalle@cs.umn.edu>
- * Copyright 2013
+ * Copyright 2013-2014, Dominique LaSalle
  * @version 1
  * @date 2013-04-09
  */
@@ -17,7 +17,7 @@
 
 
 #include "base.h"
-#include "permute.h"
+#include "order.h"
 #include "tree.h"
 #include "graph.h"
 #include "sparsen.h"
@@ -25,6 +25,7 @@
 #include "coordinates.h"
 #include "cut.h"
 #include "generate.h"
+#include "flow.h"
 #include "io/io.h"
 
 
@@ -56,6 +57,7 @@ typedef enum command_t {
   COMMAND_ANALYSIS,
   COMMAND_SPARSEN,
   COMMAND_COORDINATES,
+  COMMAND_FLOW,
   COMMAND_GENERATE
 } command_t;
 
@@ -67,18 +69,12 @@ typedef enum convert_option_t {
   CONVERT_OPTION_INFILE,
   CONVERT_OPTION_OUTFILE,
   CONVERT_OPTION_INFORMAT,
-  CONVERT_OPTION_OUTFORMAT
+  CONVERT_OPTION_OUTFORMAT,
+  CONVERT_OPTION_DROPWEIGHTS
 } convert_option_t;
 
 
 /* ORDER *********************************************************************/
-
-typedef enum order_t {
-  ORDER_RANDOM,
-  ORDER_BFS,
-  ORDER_DFS
-} order_t;
-
 
 typedef enum order_option_t {
   ORDER_OPTION_HELP,
@@ -180,6 +176,28 @@ typedef enum generate_option_t {
 } generate_option_t;
 
 
+/* FLOW **********************************************************************/
+
+
+typedef enum flow_t {
+  FLOW_EDGE,
+  FLOW_VERTEX
+} flow_t;
+
+
+typedef enum flow_option_t {
+  FLOW_OPTION_HELP,
+  FLOW_OPTION_TYPE,
+  FLOW_OPTION_INFILE,
+  FLOW_OPTION_INFORMAT,
+  FLOW_OPTION_OUTFILE,
+  FLOW_OPTION_OUTFORMAT,
+  FLOW_OPTION_SRC,
+  FLOW_OPTION_DST,
+  FLOW_OPTION_TIME
+} flow_option_t;
+
+
 
 
 /******************************************************************************
@@ -198,9 +216,11 @@ static const cmd_opt_pair_t COMMANDS[] = {
       "graph",COMMAND_ANALYSIS},
   [COMMAND_SPARSEN] = {"sparsen","Remove edges from a graph",COMMAND_SPARSEN},
   [COMMAND_COORDINATES] = {"coordinates","Embbed the vertices in a coordinate "
-    "space",COMMAND_COORDINATES},
+      "space",COMMAND_COORDINATES},
   [COMMAND_GENERATE] = {"generate","Generate a synthetic graph",
-      COMMAND_GENERATE}
+      COMMAND_GENERATE},
+  [COMMAND_FLOW] = {"flow","Generate a flow on a graph given a source and " \
+      "destination vertex.",COMMAND_FLOW}
 };
 static const size_t NCOMMANDS = ARRAY_SIZE(COMMANDS);
 
@@ -235,7 +255,9 @@ static const cmd_opt_t CONVERT_OPTS[] = {
   {CONVERT_OPTION_INFORMAT,'I',"informat","The input graph format.",
       CMD_OPT_CHOICE,FORMAT,ARRAY_SIZE(FORMAT)},
   {CONVERT_OPTION_OUTFORMAT,'O',"outformat","The output graph format.",
-      CMD_OPT_CHOICE,FORMAT,ARRAY_SIZE(FORMAT)}
+      CMD_OPT_CHOICE,FORMAT,ARRAY_SIZE(FORMAT)},
+  {CONVERT_OPTION_DROPWEIGHTS,'d',"dropweights","Drop weights (vertex and " \
+    "edge from the graph).",CMD_OPT_FLAG,NULL,0}
 };
 static const size_t NCONVERT_OPTS = ARRAY_SIZE(CONVERT_OPTS);
 
@@ -243,9 +265,12 @@ static const size_t NCONVERT_OPTS = ARRAY_SIZE(CONVERT_OPTS);
 /* ORDER *********************************************************************/
 
 static const cmd_opt_pair_t ORDER[] = {
-  {"random","Order a graph randomly",ORDER_RANDOM},
-  {"bfs","Order a graph using a BFS search",ORDER_BFS},
-  {"dfs","Order a graph using a DFS search",ORDER_DFS}
+  {"random","Order a graph randomly",BOWSTRING_ORDER_RANDOM},
+  {"bfs","Order a graph using a BFS search",BOWSTRING_ORDER_BFS},
+  {"dfs","Order a graph using a DFS search",BOWSTRING_ORDER_DFS},
+  {"post","Order a graph/tree using a post-order DFS search", \
+      BOWSTRING_ORDER_POST},
+  {"rcm","Order a graph using Reverse CuthillMckee",BOWSTRING_ORDER_RCM}
 };
 
 
@@ -403,6 +428,33 @@ static const cmd_opt_t GENERATE_OPTS[] = {
 static const size_t NGENERATE_OPTS = ARRAY_SIZE(GENERATE_OPTS);
 
 
+/* FLOW **********************************************************************/
+
+static const cmd_opt_pair_t FLOW[] = {
+  {"edge","Create a flow on the edges of a graph.",FLOW_EDGE},
+  {"vertex","Create a flow on the vertices of a graph",FLOW_VERTEX}
+};
+
+
+static const cmd_opt_t FLOW_OPTS[] = {
+  {FLOW_OPTION_HELP,'h',"help","Display this help page.",CMD_OPT_FLAG,NULL,
+      0},
+  {FLOW_OPTION_TYPE,'f',"flow","The type of flow to generate.",
+      CMD_OPT_CHOICE,FLOW,ARRAY_SIZE(FLOW)},
+  {FLOW_OPTION_INFILE,'i',"infile","The input graph file.",
+      CMD_OPT_STRING,NULL,0},
+  {FLOW_OPTION_INFORMAT,'I',"informat","The input graph format.",
+      CMD_OPT_CHOICE,FORMAT,ARRAY_SIZE(FORMAT)},
+  {FLOW_OPTION_OUTFILE,'o',"outfile","The output flow file.",
+      CMD_OPT_STRING,NULL,0},
+  {FLOW_OPTION_SRC,'s',"src","The source vertex for the flow.",
+      CMD_OPT_INT,NULL,0},
+  {FLOW_OPTION_DST,'d',"dst","The destination vertex for the flow.",
+      CMD_OPT_INT,NULL,0},
+  {FLOW_OPTION_TIME,'t',"time","Time the flow operation.",CMD_OPT_FLAG,NULL,0}
+};
+static const size_t NFLOW_OPTS = ARRAY_SIZE(FLOW_OPTS);
+
 
 
 
@@ -462,7 +514,7 @@ static int __convert(
     char ** argv)
 {
   size_t nargs, i;
-  int err, ondisk;
+  int err, ondisk, dropweights = 0;
   bowstring_graph_type_t informat = BOWSTRING_FORMAT_AUTO, 
       outformat = BOWSTRING_FORMAT_AUTO;
   cmd_arg_t * args = NULL;
@@ -502,6 +554,9 @@ static int __convert(
         break;
       case CONVERT_OPTION_OUTFORMAT:
         outformat = (bowstring_graph_type_t)args[i].val.o;
+        break;
+      case CONVERT_OPTION_DROPWEIGHTS:
+        dropweights = 1;
         break;
       default:
         eprintf("Unknown argument '%s'\n",args[i].val.s);
@@ -552,6 +607,17 @@ static int __convert(
       goto END;
     }
 
+    if (dropweights) {
+      if (vwgt) {
+        dl_free(vwgt);
+        vwgt = NULL;
+      }
+      if (adjwgt) {
+        dl_free(adjwgt);
+        adjwgt = NULL;
+      }
+    }
+
     err = bowstring_write_graph(outfile,outformat,nvtxs,xadj,adjncy,vwgt,
         adjwgt);
     if (err != BOWSTRING_SUCCESS) {
@@ -591,16 +657,14 @@ static int __order(
 {
   size_t nargs, i;
   int err;
-  bowstring_graph_type_t informat = BOWSTRING_FORMAT_AUTO, 
-    outformat = BOWSTRING_FORMAT_AUTO;
-  order_t type = ORDER_BFS;
-  cmd_arg_t * args = NULL;
-  const char * infile = NULL, * outfile = NULL;
-
   vtx_t nvtxs;
+  int informat = BOWSTRING_FORMAT_AUTO, outformat = BOWSTRING_FORMAT_AUTO;
+  int type = BOWSTRING_ORDER_RANDOM;
+  cmd_arg_t * args = NULL;
   adj_t * xadj = NULL;
-  vtx_t * adjncy = NULL;
+  vtx_t * adjncy = NULL, * perm = NULL;
   wgt_t * adjwgt = NULL, * vwgt = NULL;
+  const char * infile = NULL, * outfile = NULL;
 
   err = cmd_parse_args(argc-2,argv+2,ORDER_OPTS,NORDER_OPTS,&args,&nargs);
   if (err != DL_CMDLINE_SUCCESS) {
@@ -635,7 +699,7 @@ static int __order(
         dl_set_rand((unsigned int)args[i].val.i);
         break;
       case ORDER_OPTION_TYPE:
-        type = (order_t)args[i].val.o;
+        type = (int)args[i].val.o;
         break;
       default:
         eprintf("Unknown argument '%s'\n",args[i].val.s);
@@ -653,18 +717,10 @@ static int __order(
     goto END;
   }
 
-  switch (type) {
-    case ORDER_RANDOM:
-      permute_graph(nvtxs,xadj,adjncy,vwgt,adjwgt);
-      break;
-    default:
-      eprintf("Unsupported/Unimplemented ordering '%d'\n",type);
-      err = BOWSTRING_ERROR_UNIMPLEMENTED;
-      break;
-  }
-  if (err != BOWSTRING_SUCCESS) {
-    goto END;
-  }
+  perm = vtx_alloc(nvtxs);
+  bowstring_permutation(type,nvtxs,xadj,adjncy,vwgt,adjwgt,perm);
+  bowstring_order_graph(nvtxs,xadj,adjncy,vwgt,adjwgt,perm);
+  dl_free(perm);
 
   err = bowstring_write_graph(outfile,outformat,nvtxs,xadj,adjncy,vwgt,adjwgt);
   if (err != BOWSTRING_SUCCESS) {
@@ -722,9 +778,11 @@ static int __analyze(
   size_t i, nargs, npf = 0, ntriangles;
   size_t * cycles;
   vtx_t * stars;
+  adj_t ncut;
   vlbl_t nparts;
   vtx_t maxcycle, maxstar, maxdeg, nislands, ncomponents, nleafs, deg;
   double tadjwgt, tvwgt;
+  int * dc;
   int err;
   bowstring_graph_type_t informat = BOWSTRING_FORMAT_AUTO;
   cmd_arg_t * args = NULL;
@@ -810,9 +868,9 @@ static int __analyze(
         }
       }
       if (vwgt) { 
-        tvwgt = wgt_fa_sum(vwgt,nvtxs)/2.0; 
+        tvwgt = wgt_fa_sum(vwgt,nvtxs); 
       } else {
-        tvwgt = (double)nvtxs/2.0;
+        tvwgt = (double)nvtxs;
       }
       if (adjwgt) {
         tadjwgt = wgt_fa_sum(adjwgt,xadj[nvtxs])/2.0; 
@@ -831,32 +889,43 @@ static int __analyze(
       break;
     case ANALYSIS_PARTSTATS:
       for (i=0;i<npf;++i) {
-        nparts = vlbl_max_value(wheres[i],nvtxs)+1;
+        nparts = vlbl_max_value(wheres[i],nvtxs) - \
+                 vlbl_min_value(wheres[i],nvtxs)+1;
         if (npf > 1) {
           printf("Partition %zu\n",i);
         }
-        printf("Number of Partitions  = %16zu\n",(size_t)nparts);
-        printf("Edgecut               = %16.3lf\n", \
-            calc_edgecut(nvtxs,xadj,adjncy,adjwgt,wheres[i]));
-        printf("Max Domain Degree     = %16.3lf\n", \
+        dc = int_alloc(nparts);
+        calc_domainconn(nvtxs,xadj,adjncy,nparts,wheres[i],dc);
+        ncut = calc_edgecut(nvtxs,xadj,adjncy,adjwgt,wheres[i]);
+        printf("Number of Partitions  = %15zu\n",(size_t)nparts);
+        printf("Edgecut               = %15zu\n",(size_t)ncut);
+        printf("Internal edges        = %15zu\n",(size_t)(xadj[nvtxs]/2)-ncut);
+        printf("Internal edges %%      = %19.3lf%%\n", \
+            (100.0*((xadj[nvtxs]/2)-ncut))/(xadj[nvtxs]/2));
+        printf("Max Domain Degree     = %19.3lf\n", \
             calc_max_domaindegree(nvtxs,xadj,adjncy,adjwgt,nparts,wheres[i]));
-        printf("Domain Degree Balance = %16.3lf\n", \
+        printf("Domain Degree Balance = %19.3lf\n", \
             calc_degree_balance(nvtxs,xadj,adjncy,adjwgt,nparts,wheres[i]));
-        printf("Communication Volume  = %16.3lf\n", \
+        printf("Max Domain Conn.      = %15zu\n", \
+            (size_t)int_max_value(dc,nparts));
+        printf("Avg. Domain Conn.     = %19.3lf\n", \
+            int_sum(dc,nparts)/(double)nparts);
+        printf("Communication Volume  = %19.3lf\n", \
             calc_communicationvolume(nvtxs,xadj,adjncy,adjwgt,nparts, \
               wheres[i]));
-        printf("Max domain ComVol     = %16.3lf\n", \
+        printf("Max domain ComVol     = %19.3lf\n", \
             calc_max_domaincomvol(nvtxs,xadj,adjncy,adjwgt,nparts,wheres[i]));
-        printf("Domain ComVol Balance = %16.3lf\n", \
+        printf("Domain ComVol Balance = %19.3lf\n", \
             calc_comvol_balance(nvtxs,xadj,adjncy,adjwgt,nparts,wheres[i]));
-        printf("Vertex Balance        = %16.3lf\n", \
+        printf("Vertex Balance        = %19.3lf\n", \
             calc_vertex_balance(nvtxs,xadj,adjncy,vwgt,nparts,wheres[i]));
-        printf("Edge Balance          = %16.3lf\n", \
+        printf("Edge Balance          = %19.3lf\n", \
             calc_edge_balance(nvtxs,xadj,adjncy,adjwgt,nparts,wheres[i]));
-        printf("Modularity            = %16.7lf\n", \
+        printf("Modularity            = %23.7lf\n", \
             calc_modularity(nvtxs,xadj,adjncy,adjwgt,nparts,wheres[i]));
-        printf("Partition Components  = %16.3lf\n", \
+        printf("Partition Components  = %19.3lf\n", \
             calc_partition_components(nvtxs,xadj,adjncy,nparts,wheres[i]));
+        dl_free(dc);
       }
       break;
     #ifdef XXX
@@ -1020,7 +1089,7 @@ static int __sparsen(
         reweight = (bowstring_reweight_t)args[i].val.o;
         break;
       case SPARSEN_OPTION_TYPE:
-        type = (order_t)args[i].val.o;
+        type = (int)args[i].val.o;
         break;
       default:
         eprintf("Unknown argument '%s'\n",args[i].val.s);
@@ -1403,6 +1472,179 @@ static int __generate(
 }
 
 
+static int __flow(
+    int argc, 
+    char ** argv)
+{
+  size_t nargs, i, nflow;
+  int err, time = 0;
+  dl_timer_t flowtmr, iotmr;
+  vtx_t src = 0, dst = 1;
+  wgt_t maxflow = 0;
+
+  bowstring_graph_type_t informat = BOWSTRING_FORMAT_AUTO;
+  flow_t type = FLOW_EDGE;
+
+  cmd_arg_t * args = NULL;
+  const char * infile = NULL, * outfile = NULL;
+
+  vtx_t nvtxs;
+  adj_t * xadj = NULL;
+  vtx_t * adjncy = NULL;
+  wgt_t * adjwgt = NULL, * vwgt = NULL, * flow = NULL;
+
+  dl_init_timer(&flowtmr);
+  dl_init_timer(&iotmr);
+
+  err = cmd_parse_args(argc-2,argv+2,FLOW_OPTS,NFLOW_OPTS,&args,&nargs);
+  if (err != DL_CMDLINE_SUCCESS) {
+    return BOWSTRING_ERROR_INVALIDINPUT;
+  }
+
+  err = BOWSTRING_SUCCESS;
+
+  if (nargs < 2) {
+    __command_usage(argv[0],argv[1],FLOW_OPTS,NFLOW_OPTS,stderr);
+    goto END;
+  }
+  for (i=0;i<nargs;++i) {
+    switch (args[i].id) {
+      case FLOW_OPTION_HELP:
+        __command_usage(argv[0],argv[1],FLOW_OPTS,NFLOW_OPTS,stdout);
+        goto END;
+        break;
+      case FLOW_OPTION_INFILE:
+        infile = args[i].val.s;
+        break;
+      case FLOW_OPTION_OUTFILE:
+        outfile = args[i].val.s;
+        break;
+      case FLOW_OPTION_INFORMAT:
+        informat = (bowstring_graph_type_t)args[i].val.o;
+        break;
+      case FLOW_OPTION_TYPE:
+        type = (int)args[i].val.o;
+        break;
+      case FLOW_OPTION_SRC:
+        src = (vtx_t)args[i].val.i;
+        break;
+      case FLOW_OPTION_DST:
+        dst = (vtx_t)args[i].val.i;
+        break;
+      case FLOW_OPTION_TIME:
+        time = 1;
+        break;
+      default:
+        eprintf("Unknown argument '%s'\n",args[i].val.s);
+        err = BOWSTRING_ERROR_INVALIDINPUT;
+        break;
+    }
+  }
+  if (err != BOWSTRING_SUCCESS) {
+    goto END;
+  }
+
+  dl_start_timer(&iotmr);
+
+  err = bowstring_read_graph(infile,informat,&nvtxs,&xadj,&adjncy,&vwgt,
+      &adjwgt);
+  if (err != BOWSTRING_SUCCESS) {
+    goto END;
+  }
+
+  if (src > nvtxs || src < 1) {
+    eprintf("Invalid source vertex "PF_VTX_T" for graph of "PF_VTX_T \
+        " vertices\n",src,nvtxs);
+    goto END;
+  }
+  if (dst > nvtxs || dst < 1) {
+    eprintf("Invalid destination vertex "PF_VTX_T" for graph of "PF_VTX_T \
+        " vertices\n",dst,nvtxs);
+    goto END;
+  }
+  if (dst == src) {
+    eprintf("Source and destination vertices are both "PF_VTX_T"\n",dst);
+    goto END;
+  }
+
+  dl_stop_timer(&iotmr);
+
+  /* adjust vertex labeling */
+  --src;
+  --dst;
+
+  dl_start_timer(&flowtmr);
+  nflow = xadj[nvtxs];
+  flow = wgt_alloc(nflow);
+  switch (type) {
+    case FLOW_EDGE:
+      dprintf("Performing edge based flow from "PF_VTX_T" to "PF_VTX_T"\n", \
+          src,dst);
+      if (adjwgt == NULL) {
+        adjwgt = wgt_init_alloc(1,xadj[nvtxs]);
+      }
+      maxflow = maxflow_edge(src,dst,nvtxs,xadj,adjncy,adjwgt,flow);
+      break;
+    case FLOW_VERTEX:
+      dprintf("Performing vertex based flow from "PF_VTX_T" to "PF_VTX_T"\n", \
+          src,dst);
+      if (vwgt == NULL) {
+        vwgt = wgt_init_alloc(1,nvtxs);
+      }
+      maxflow = maxflow_vertex(src,dst,nvtxs,xadj,adjncy,vwgt,flow);
+      break;
+    default:
+      eprintf("Unsupported/Unimplemented flow '%d'\n",type);
+      err = BOWSTRING_ERROR_UNIMPLEMENTED;
+      goto END;
+  }
+  dl_stop_timer(&flowtmr);
+
+  dl_start_timer(&iotmr);
+  if (outfile) {
+    err = write_weights(outfile,flow,nflow);
+    if (err != BOWSTRING_SUCCESS) {
+      goto END;
+    }
+  }
+  printf("Maximum flow of "PF_WGT_T"\n",maxflow);
+  dl_stop_timer(&iotmr);
+
+  if (time) {
+    printf("Flow Time: %0.05fs | IO Time: %0.05fs\n",dl_poll_timer(&flowtmr), \
+        dl_poll_timer(&iotmr));
+  }
+
+  END:
+
+  if (xadj) {
+    dl_free(xadj);
+  }
+
+  if (adjncy) {
+    dl_free(adjncy);
+  }
+
+  if (adjwgt) {
+    dl_free(adjwgt);
+  }
+
+  if (vwgt) {
+    dl_free(vwgt);
+  }
+
+  if (flow) {
+    dl_free(flow);
+  }
+
+  if (args) {
+    dl_free(args); 
+  }
+
+  return err;
+}
+
+
 typedef int (*__cmdfuncptr_t)(int,char**); 
 static const __cmdfuncptr_t COMMAND_FUNCS[] = {
   [COMMAND_HELP] = __help,
@@ -1411,9 +1653,9 @@ static const __cmdfuncptr_t COMMAND_FUNCS[] = {
   [COMMAND_ANALYSIS] = __analyze,
   [COMMAND_SPARSEN] = __sparsen,
   [COMMAND_COORDINATES] = __coordinates,
-  [COMMAND_GENERATE] = __generate
+  [COMMAND_GENERATE] = __generate,
+  [COMMAND_FLOW] = __flow
 };
-
 
 
 int main(

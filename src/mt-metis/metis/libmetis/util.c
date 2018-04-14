@@ -9,6 +9,10 @@
  * George
  *
  * $Id: util.c 17622 2014-09-09 03:27:49Z dominique $
+ *
+ * Dominique LaSalle 2015-02-28
+ * Modified to use rentrant random functions.
+ *
  */
 
 #define _POSIX_SOURCE

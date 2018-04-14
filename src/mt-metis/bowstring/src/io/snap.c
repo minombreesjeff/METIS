@@ -113,7 +113,7 @@ int read_snap_graph(const char * const filename, vtx_t * const r_nvtxs,
     wgt_t ** const r_adjwgt)
 {
   file_t * file;
-  int rv;
+  int rv, do_adjwgt;
   vtx_t nvtxs, i, j, u, v, maxv;
   adj_t nedges;
   ssize_t ll;
@@ -133,7 +133,7 @@ int read_snap_graph(const char * const filename, vtx_t * const r_nvtxs,
   }
   line = char_alloc(bufsize);
 
-  int do_adjwgt = 0;
+  do_adjwgt = 0;
 
   nedges = 0;
 

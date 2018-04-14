@@ -2,7 +2,7 @@
  * @file dldebug.h
  * @brief Debugging functions
  * @author Dominique LaSalle <lasalle@cs.umn.edu>
- * Copyright 2013
+ * Copyright (c) 2013-2015, Dominique LaSalle
  * @version 1
  * @date 2013-10-08
  */
@@ -69,7 +69,7 @@ static inline const char * __current_time(void)
 #else
 #define eprintf(...) \
   do { \
-    fprintf(stderr, "%s ERROR: ",__current_time()); \
+    fprintf(stderr, "ERROR: "); \
     fprintf(stderr, __VA_ARGS__); \
     fflush(stderr); \
   } while (0)
@@ -78,8 +78,6 @@ static inline const char * __current_time(void)
 #define dl_error(...) \
   do { \
     eprintf( __VA_ARGS__); \
-    fprintf(stderr,"At %s: %d ", __FILE__, __LINE__); \
-    fflush(stderr); \
     abort(); \
   } while (0)
 
@@ -112,10 +110,13 @@ static inline const char * __current_time(void)
     do { \
       if (!(cond)) { \
         int __rank, __size; \
+        fflush(stdout); \
+        fflush(stderr); \
         MPI_Comm_rank(MPI_COMM_WORLD,&__rank); \
         MPI_Comm_size(MPI_COMM_WORLD,&__size); \
         eprintf("[%d/%d] : ",__rank,__size); \
         fprintf(stderr, __VA_ARGS__); \
+        fflush(stdout); \
         fflush(stderr); \
         /* print the stack trace */ \
         /*__backtrace();*/ \
@@ -126,8 +127,11 @@ static inline const char * __current_time(void)
   #define DL_ASSERT(cond, ...) \
     do { \
       if (!(cond)) { \
+        fflush(stdout); \
+        fflush(stderr); \
         eprintf( __VA_ARGS__); \
         fprintf(stderr,"\n"); \
+        fflush(stdout); \
         fflush(stderr); \
         /* print the stack trace */ \
         /*__backtrace();*/ \
@@ -136,16 +140,18 @@ static inline const char * __current_time(void)
     } while (0)
   #endif
   #define DL_ASSERT_EQUALS(a,b,fmt) \
-    DL_ASSERT(a == b,"("#a" = "fmt") != ("#b" = "fmt")",a,b)
+    DL_ASSERT((a) == (b),"("#a" = "fmt") != ("#b" = "fmt")",a,b)
 #else
   #define DL_ASSERT(cnd, ...)
   #define DL_ASSERT_EQUALS(a,b,fmt)
 #endif
 
+/* static assertions */
+#define __DL_STATIC_ASSERT2(x,y) \
+  enum { __static_assertion_ ## y = (2/(x)) }
+#define __DL_STATIC_ASSERT1(x,y) __DL_STATIC_ASSERT2(x,y)
 #define DL_STATIC_ASSERT(x) \
-  enum { __static_assertion = (2/(x)) }
-
-
+  __DL_STATIC_ASSERT1(x,__COUNTER__)
 
 
 #endif
