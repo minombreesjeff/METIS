@@ -12,6 +12,11 @@
  *
  */
 
+/*#define _RENAME_H_*/
+
+#ifndef _RENAME_H_
+#define _RENAME_H_
+
 /* balance.c */
 #define Balance2Way			libmetis__Balance2Way
 #define Bnd2WayBalance			libmetis__Bnd2WayBalance
@@ -70,7 +75,6 @@
 
 /* graph.c */
 #define SetUpGraph			libmetis__SetUpGraph
-#define SetUpGraphKway 			libmetis__SetUpGraphKway
 #define SetUpGraph2			libmetis__SetUpGraph2
 #define VolSetUpGraph			libmetis__VolSetUpGraph
 #define RandomizeGraph			libmetis__RandomizeGraph
@@ -166,6 +170,7 @@
 #define fwspacemalloc			libmetis__fwspacemalloc
 #define CreateGraph			libmetis__CreateGraph
 #define InitGraph			libmetis__InitGraph
+#define FreeRData			libmetis__FreeRData
 #define FreeGraph			libmetis__FreeGraph
 
 
@@ -285,9 +290,9 @@
 
 /* myqsort.c */
 #define iidxsort			libmetis__iidxsort
-#define iintsort			libmetis__iintsort
 #define ikeysort			libmetis__ikeysort
 #define ikeyvalsort			libmetis__ikeyvalsort
+#define idkeysort			libmetis__idkeysort
 
 
 /* ometis.c */
@@ -372,47 +377,22 @@
 /* timing.c */
 #define InitTimers			libmetis__InitTimers
 #define PrintTimers			libmetis__PrintTimers
-#define seconds				libmetis__seconds
 
 
 /* util.c */
-#define errexit				libmetis__errexit
-#define GKfree				libmetis__GKfree
-#ifndef DMALLOC
-#define imalloc				libmetis__imalloc
 #define idxmalloc			libmetis__idxmalloc
-#define fmalloc				libmetis__fmalloc
-#define ismalloc			libmetis__ismalloc
 #define idxsmalloc			libmetis__idxsmalloc
-#define GKmalloc			libmetis__GKmalloc
-#endif
-#define iset				libmetis__iset
 #define idxset				libmetis__idxset
-#define sset				libmetis__sset
-#define iamax				libmetis__iamax
-#define idxamax				libmetis__idxamax
-#define idxamax_strd			libmetis__idxamax_strd
-#define samax				libmetis__samax
-#define samax2				libmetis__samax2
-#define idxamin				libmetis__idxamin
-#define samin				libmetis__samin
+#define idxargmax		        libmetis__idxargmax
+#define idxargmin			libmetis__idxargmin
 #define idxsum				libmetis__idxsum
-#define idxsum_strd			libmetis__idxsum_strd
-#define idxadd				libmetis__idxadd
-#define charsum				libmetis__charsum
-#define isum				libmetis__isum
-#define ssum				libmetis__ssum
-#define ssum_strd			libmetis__ssum_strd
-#define sscale				libmetis__sscale
-#define snorm2				libmetis__snorm2
-#define sdot				libmetis__sdot
-#define saxpy				libmetis__saxpy
+#define idxaxpy				libmetis__idxaxpy
+#define idxargmax_strd			libmetis__idxargmax_strd
+#define famax2				libmetis__famax2
 #define RandomPermute			libmetis__RandomPermute
-#define ispow2				libmetis__ispow2
 #define InitRandom			libmetis__InitRandom
-#define log2i				libmetis__log2i
 
 
-
+#endif
 
 

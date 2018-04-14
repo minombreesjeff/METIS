@@ -20,15 +20,15 @@
 /*************************************************************************
 * Let the game begin
 **************************************************************************/
-int main(idxtype argc, char *argv[])
+int main(int argc, char *argv[])
 {
   idxtype i, j, ne, nn, etype, mtype, numflag=0;
   idxtype *elmnts, *xadj, *adjncy, *metype, *weights;
-  timer IOTmr, DUALTmr;
+  double IOTmr, DUALTmr;
   char fileout[256], etypestr[5][5] = {"TRI", "TET", "HEX", "QUAD", "LINE"};
 
   if (argc != 2) {
-    printf("Usage: %s <meshfile>\n",argv[0]);
+    mprintf("Usage: %s <meshfile>\n",argv[0]);
     exit(0);
   }
 
@@ -41,88 +41,88 @@ int main(idxtype argc, char *argv[])
   if (mtype==1 || mtype==3){ 
   
    
-  cleartimer(IOTmr);
-  cleartimer(DUALTmr);
+  gk_clearcputimer(IOTmr);
+  gk_clearcputimer(DUALTmr);
 
-  starttimer(IOTmr);
+  gk_startcputimer(IOTmr);
   if (mtype==1)
      elmnts = ReadMesh(argv[1], &ne, &nn, &etype);
   else
      elmnts = ReadMeshWgt(argv[1], &ne, &nn, &etype, weights);
-  stoptimer(IOTmr);
+  gk_stopcputimer(IOTmr);
 
-  printf("**********************************************************************\n");
-  printf("%s", METISTITLE);
-  printf("Mesh Information ----------------------------------------------------\n");
-  printf("  Name: %s, #Elements: %d, #Nodes: %d, Etype: %s\n\n", argv[1], ne, nn, etypestr[etype-1]);
-  printf("Forming Nodal Graph... ----------------------------------------------\n");
+  mprintf("**********************************************************************\n");
+  mprintf("%s", METISTITLE);
+  mprintf("Mesh Information ----------------------------------------------------\n");
+  mprintf("  Name: %s, #Elements: %D, #Nodes: %D, Etype: %s\n\n", argv[1], ne, nn, etypestr[etype-1]);
+  mprintf("Forming Nodal Graph... ----------------------------------------------\n");
 
   xadj = idxmalloc(nn+1, "main: xadj");
   adjncy = idxmalloc(20*nn, "main: adjncy");
 
-  starttimer(DUALTmr);
+  gk_startcputimer(DUALTmr);
   METIS_MeshToNodal(&ne, &nn, elmnts, &etype, &numflag, xadj, adjncy);
-  stoptimer(DUALTmr);
+  gk_stopcputimer(DUALTmr);
 
-  printf("  Nodal Information: #Vertices: %d, #Edges: %d\n", nn, xadj[nn]/2);
+  mprintf("  Nodal Information: #Vertices: %D, #Edges: %D\n", nn, xadj[nn]/2);
 
-  sprintf(fileout, "%s.ngraph", argv[1]);
-  starttimer(IOTmr);
+  msprintf(fileout, "%s.ngraph", argv[1]);
+  gk_startcputimer(IOTmr);
   WriteGraph(fileout, nn, xadj, adjncy);
-  stoptimer(IOTmr);
+  gk_stopcputimer(IOTmr);
 
 
-  printf("\nTiming Information --------------------------------------------------\n");
-  printf("  I/O:          \t\t %7.3f\n", gettimer(IOTmr));
-  printf("  Nodal Creation:\t\t %7.3f\n", gettimer(DUALTmr));
-  printf("**********************************************************************\n");
+  mprintf("\nTiming Information --------------------------------------------------\n");
+  mprintf("  I/O:          \t\t %7.3f\n", gk_getcputimer(IOTmr));
+  mprintf("  Nodal Creation:\t\t %7.3f\n", gk_getcputimer(DUALTmr));
+  mprintf("**********************************************************************\n");
 
 
   }
 
   else{
 
-  cleartimer(IOTmr);
-  cleartimer(DUALTmr);
+  gk_clearcputimer(IOTmr);
+  gk_clearcputimer(DUALTmr);
 
-  starttimer(IOTmr);
+  gk_startcputimer(IOTmr);
   if(mtype==0)
      elmnts = ReadMixedMesh(argv[1], &ne, &nn, metype);
   else
      elmnts = ReadMixedMeshWgt(argv[1], &ne, &nn, metype, weights);
-  stoptimer(IOTmr);
+  gk_stopcputimer(IOTmr);
 
 
-  printf("**********************************************************************\n");
-  printf("%s", METISTITLE);
-  printf("Mesh Information ----------------------------------------------------\n");
-  printf("  Name: %s, #Elements: %d, #Nodes: %d, Etype: %s\n\n", argv[1], ne, nn, "Mixed");
-  printf("Forming Nodal Graph... ----------------------------------------------\n");
+  mprintf("**********************************************************************\n");
+  mprintf("%s", METISTITLE);
+  mprintf("Mesh Information ----------------------------------------------------\n");
+  mprintf("  Name: %s, #Elements: %D, #Nodes: %D, Etype: %s\n\n", argv[1], ne, nn, "Mixed");
+  mprintf("Forming Nodal Graph... ----------------------------------------------\n");
 
   xadj = idxmalloc(nn+1, "main: xadj");
   adjncy = idxmalloc(20*nn, "main: adjncy");
 
-  starttimer(DUALTmr);
+  gk_startcputimer(DUALTmr);
   METIS_MixedMeshToNodal(&ne, &nn, elmnts, metype, &numflag, xadj, adjncy);
-  stoptimer(DUALTmr);
+  gk_stopcputimer(DUALTmr);
 
-  printf("  Nodal Information: #Vertices: %d, #Edges: %d\n", nn, xadj[nn]/2);
+  mprintf("  Nodal Information: #Vertices: %D, #Edges: %D\n", nn, xadj[nn]/2);
 
-  sprintf(fileout, "%s.ngraph", argv[1]);
-  starttimer(IOTmr);
+  msprintf(fileout, "%s.ngraph", argv[1]);
+  gk_startcputimer(IOTmr);
   WriteGraph(fileout, nn, xadj, adjncy);
-  stoptimer(IOTmr);
+  gk_stopcputimer(IOTmr);
 
 
-  printf("\nTiming Information --------------------------------------------------\n");
-  printf("  I/O:          \t\t %7.3f\n", gettimer(IOTmr));
-  printf("  Nodal Creation:\t\t %7.3f\n", gettimer(DUALTmr));
-  printf("**********************************************************************\n");
+  mprintf("\nTiming Information --------------------------------------------------\n");
+  mprintf("  I/O:          \t\t %7.3f\n", gk_getcputimer(IOTmr));
+  mprintf("  Nodal Creation:\t\t %7.3f\n", gk_getcputimer(DUALTmr));
+  mprintf("**********************************************************************\n");
 
 
   }
   
-  GKfree((void *)&elmnts, &xadj, &adjncy, &metype, &weights, LTERM);
+  gk_free((void **)&elmnts, &xadj, &adjncy, &metype, &weights, LTERM);
 
 }
 

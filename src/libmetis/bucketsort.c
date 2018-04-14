@@ -17,7 +17,7 @@
 
 /*************************************************************************
 * This function uses simple counting sort to return a permutation array
-* corresponding to the sorted order. The keys are assumed to start from
+* corresponding to the sorted order. The keys are agk_fsumed to start from
 * 0 and they are positive.  This sorting is used during matching.
 **************************************************************************/
 void BucketSortKeysInc(idxtype n, idxtype max, idxtype *keys, idxtype *tperm, idxtype *perm)
@@ -36,6 +36,6 @@ void BucketSortKeysInc(idxtype n, idxtype max, idxtype *keys, idxtype *tperm, id
     perm[counts[keys[i]]++] = i;
   }
 
-  free(counts);
+  gk_free((void **)&counts, LTERM);
 }
 

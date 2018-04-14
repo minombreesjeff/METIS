@@ -22,20 +22,20 @@ void RefineKWay(CtrlType *ctrl, GraphType *orggraph, GraphType *graph, idxtype n
   idxtype i, nlevels, mustfree=0;
   GraphType *ptr;
 
-  IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->UncoarsenTmr));
+  IFSET(ctrl->dbglvl, DBG_TIME, gk_startcputimer(ctrl->UncoarsenTmr));
 
   /* Compute the parameters of the coarsest graph */
   ComputeKWayPartitionParams(ctrl, graph, nparts);
 
 
   /* Take care any non-contiguity */
-  IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->AuxTmr1));
+  IFSET(ctrl->dbglvl, DBG_TIME, gk_startcputimer(ctrl->AuxTmr1));
   if (ctrl->RType == RTYPE_KWAYRANDOM_MCONN) {
     EliminateComponents(ctrl, graph, nparts, tpwgts, 1.25);
     EliminateSubDomainEdges(ctrl, graph, nparts, tpwgts);
     EliminateComponents(ctrl, graph, nparts, tpwgts, 1.25);
   }
-  IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->AuxTmr1));
+  IFSET(ctrl->dbglvl, DBG_TIME, gk_stopcputimer(ctrl->AuxTmr1));
 
   /* Determine how many levels are there */
   for (ptr=graph, nlevels=0; ptr!=orggraph; ptr=ptr->finer, nlevels++); 
@@ -45,7 +45,7 @@ void RefineKWay(CtrlType *ctrl, GraphType *orggraph, GraphType *graph, idxtype n
     if (ctrl->RType == RTYPE_KWAYRANDOM_MCONN && (i == nlevels/2 || i == nlevels/2+1))
       EliminateSubDomainEdges(ctrl, graph, nparts, tpwgts);
 
-    IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->RefTmr));
+    IFSET(ctrl->dbglvl, DBG_TIME, gk_startcputimer(ctrl->RefTmr));
 
     if (2*i >= nlevels && !IsBalanced(graph->pwgts, nparts, tpwgts, 1.04*ubfactor)) {
       ComputeKWayBalanceBoundary(ctrl, graph, nparts);
@@ -67,23 +67,21 @@ void RefineKWay(CtrlType *ctrl, GraphType *orggraph, GraphType *graph, idxtype n
         Random_KWayEdgeRefineMConn(ctrl, graph, nparts, tpwgts, ubfactor, 10, 1); 
         break;
     }
-    IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->RefTmr));
+    IFSET(ctrl->dbglvl, DBG_TIME, gk_stopcputimer(ctrl->RefTmr));
 
     if (graph == orggraph)
       break;
 
-    GKfree((void *)&graph->gdata, LTERM);  /* Deallocate the graph related arrays */
-
     graph = graph->finer;
 
-    IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->ProjectTmr));
+    IFSET(ctrl->dbglvl, DBG_TIME, gk_startcputimer(ctrl->ProjectTmr));
     if (graph->vwgt == NULL) {
       graph->vwgt = idxsmalloc(graph->nvtxs, 1, "RefineKWay: graph->vwgt");
       graph->adjwgt = idxsmalloc(graph->nedges, 1, "RefineKWay: graph->adjwgt");
       mustfree = 1;
     }
     ProjectKWayPartition(ctrl, graph, nparts);
-    IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->ProjectTmr));
+    IFSET(ctrl->dbglvl, DBG_TIME, gk_stopcputimer(ctrl->ProjectTmr));
   }
 
   if (!IsBalanced(graph->pwgts, nparts, tpwgts, ubfactor)) {
@@ -99,14 +97,14 @@ void RefineKWay(CtrlType *ctrl, GraphType *orggraph, GraphType *graph, idxtype n
   }
 
   /* Take care any trivial non-contiguity */
-  IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->AuxTmr2));
+  IFSET(ctrl->dbglvl, DBG_TIME, gk_startcputimer(ctrl->AuxTmr2));
   EliminateComponents(ctrl, graph, nparts, tpwgts, ubfactor);
-  IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->AuxTmr2));
+  IFSET(ctrl->dbglvl, DBG_TIME, gk_stopcputimer(ctrl->AuxTmr2));
 
   if (mustfree) 
-    GKfree((void *)&graph->vwgt, &graph->adjwgt, LTERM);
+    gk_free((void **)&graph->vwgt, &graph->adjwgt, LTERM);
 
-  IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->UncoarsenTmr));
+  IFSET(ctrl->dbglvl, DBG_TIME, gk_stopcputimer(ctrl->UncoarsenTmr));
 }
 
 
@@ -118,7 +116,7 @@ void RefineKWayRefinement(CtrlType *ctrl, GraphType *orggraph, GraphType *graph,
   idxtype i, nlevels, mustfree=0;
   GraphType *ptr;
 
-  IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->UncoarsenTmr));
+  IFSET(ctrl->dbglvl, DBG_TIME, gk_startcputimer(ctrl->UncoarsenTmr));
 
   /* Compute the parameters of the coarsest graph */
   ComputeKWayPartitionParams(ctrl, graph, nparts);
@@ -126,13 +124,13 @@ void RefineKWayRefinement(CtrlType *ctrl, GraphType *orggraph, GraphType *graph,
 
 #ifdef XXXX
   /* Take care any non-contiguity */
-  IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->AuxTmr1));
+  IFSET(ctrl->dbglvl, DBG_TIME, gk_startcputimer(ctrl->AuxTmr1));
   if (ctrl->RType == RTYPE_KWAYRANDOM_MCONN) {
     EliminateComponents(ctrl, graph, nparts, tpwgts, 1.25);
     EliminateSubDomainEdges(ctrl, graph, nparts, tpwgts);
     EliminateComponents(ctrl, graph, nparts, tpwgts, 1.25);
   }
-  IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->AuxTmr1));
+  IFSET(ctrl->dbglvl, DBG_TIME, gk_stopcputimer(ctrl->AuxTmr1));
 #endif
 
   /* Determine how many levels are there */
@@ -144,7 +142,7 @@ void RefineKWayRefinement(CtrlType *ctrl, GraphType *orggraph, GraphType *graph,
     if (ctrl->RType == RTYPE_KWAYRANDOM_MCONN && (i == nlevels/2 || i == nlevels/2+1))
       EliminateSubDomainEdges(ctrl, graph, nparts, tpwgts);
 
-    IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->RefTmr));
+    IFSET(ctrl->dbglvl, DBG_TIME, gk_startcputimer(ctrl->RefTmr));
 #endif
 
     if (2*i >= nlevels && !IsBalanced(graph->pwgts, nparts, tpwgts, 1.04*ubfactor)) {
@@ -167,23 +165,21 @@ void RefineKWayRefinement(CtrlType *ctrl, GraphType *orggraph, GraphType *graph,
         Random_KWayEdgeRefineMConn(ctrl, graph, nparts, tpwgts, ubfactor, 10, 1); 
         break;
     }
-    IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->RefTmr));
+    IFSET(ctrl->dbglvl, DBG_TIME, gk_stopcputimer(ctrl->RefTmr));
 
     if (graph == orggraph)
       break;
 
-    GKfree((void *)&graph->gdata, LTERM);  /* Deallocate the graph related arrays */
-
     graph = graph->finer;
 
-    IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->ProjectTmr));
+    IFSET(ctrl->dbglvl, DBG_TIME, gk_startcputimer(ctrl->ProjectTmr));
     if (graph->vwgt == NULL) {
       graph->vwgt = idxsmalloc(graph->nvtxs, 1, "RefineKWay: graph->vwgt");
       graph->adjwgt = idxsmalloc(graph->nedges, 1, "RefineKWay: graph->adjwgt");
       mustfree = 1;
     }
     ProjectKWayPartition(ctrl, graph, nparts);
-    IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->ProjectTmr));
+    IFSET(ctrl->dbglvl, DBG_TIME, gk_stopcputimer(ctrl->ProjectTmr));
   }
 
   if (!IsBalanced(graph->pwgts, nparts, tpwgts, ubfactor)) {
@@ -199,14 +195,14 @@ void RefineKWayRefinement(CtrlType *ctrl, GraphType *orggraph, GraphType *graph,
   }
 
   /* Take care any trivial non-contiguity */
-  IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->AuxTmr2));
+  IFSET(ctrl->dbglvl, DBG_TIME, gk_startcputimer(ctrl->AuxTmr2));
   EliminateComponents(ctrl, graph, nparts, tpwgts, ubfactor);
-  IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->AuxTmr2));
+  IFSET(ctrl->dbglvl, DBG_TIME, gk_stopcputimer(ctrl->AuxTmr2));
 
   if (mustfree) 
-    GKfree((void *)&graph->vwgt, &graph->adjwgt, LTERM);
+    gk_free((void **)&graph->vwgt, &graph->adjwgt, LTERM);
 
-  IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->UncoarsenTmr));
+  IFSET(ctrl->dbglvl, DBG_TIME, gk_stopcputimer(ctrl->UncoarsenTmr));
 }
 
 /*************************************************************************
@@ -214,24 +210,16 @@ void RefineKWayRefinement(CtrlType *ctrl, GraphType *orggraph, GraphType *graph,
 **************************************************************************/
 void AllocateKWayPartitionMemory(CtrlType *ctrl, GraphType *graph, idxtype nparts)
 {
-  idxtype nvtxs, pad64;
+  idxtype nvtxs;
 
   nvtxs = graph->nvtxs;
 
-  pad64 = (3*nvtxs+nparts)%2;
+  graph->pwgts  = idxmalloc(nparts, "AllocateKWayPartitionMemory: pwgts");
+  graph->where  = idxmalloc(nvtxs, "AllocateKWayPartitionMemory: pwgts");
+  graph->bndptr = idxmalloc(nvtxs, "AllocateKWayPartitionMemory: pwgts");
+  graph->bndind = idxmalloc(nvtxs, "AllocateKWayPartitionMemory: pwgts");
+  graph->rinfo  = (RInfoType *)gk_malloc(nvtxs*sizeof(RInfoType), "AllocateKWayPartitionMemory: rinfo");
 
-  graph->rdata = idxmalloc(3*nvtxs+nparts+(sizeof(RInfoType)/sizeof(idxtype))*nvtxs+pad64, "AllocateKWayPartitionMemory: rdata");
-  graph->pwgts          = graph->rdata;
-  graph->where          = graph->rdata + nparts;
-  graph->bndptr         = graph->rdata + nvtxs + nparts;
-  graph->bndind         = graph->rdata + 2*nvtxs + nparts;
-  graph->rinfo          = (RInfoType *)(graph->rdata + 3*nvtxs+nparts + pad64);
-
-/*
-  if (ctrl->wspace.edegrees != NULL)
-    GKfree((void *)&ctrl->wspace.edegrees, LTERM);
-  ctrl->wspace.edegrees = (EDegreeType *)GKmalloc(graph->nedges*sizeof(EDegreeType), "AllocateKWayPartitionMemory: edegrees");
-*/
 }
 
 
@@ -411,7 +399,7 @@ void ProjectKWayPartition(CtrlType *ctrl, GraphType *graph, idxtype nparts)
   graph->mincut = cgraph->mincut;
   graph->nbnd = nbnd;
 
-  FreeGraph(graph->coarser);
+  FreeGraph(graph->coarser, 1);
   graph->coarser = NULL;
 
   idxwspacefree(ctrl, nparts);
@@ -430,7 +418,7 @@ idxtype IsBalanced(idxtype *pwgts, idxtype nparts, float *tpwgts, float ubfactor
 {
   idxtype i, j, tvwgt;
 
-  tvwgt = idxsum(nparts, pwgts);
+  tvwgt = idxsum(nparts, pwgts, 1);
   for (i=0; i<nparts; i++) {
     if (pwgts[i] > tpwgts[i]*tvwgt*(ubfactor+0.005))
       return 0;

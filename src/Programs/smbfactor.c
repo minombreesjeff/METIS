@@ -26,7 +26,7 @@ void ComputeFillIn(GraphType *graph, idxtype *iperm)
   double opc;
 
 /*
-  printf("\nSymbolic factorization... --------------------------------------------\n");
+  mprintf("\nSymbolic factorization... --------------------------------------------\n");
 */
 
   nvtxs = graph->nvtxs;
@@ -60,7 +60,7 @@ void ComputeFillIn(GraphType *graph, idxtype *iperm)
    * Call sparspak routine.
    */
   if (smbfct(nvtxs, xadj, adjncy, perm, iperm, xlnz, &maxlnz, xnzsub, nzsub, &maxsub)) {
-    GKfree((void *)&nzsub, LTERM);
+    gk_free((void **)&nzsub, LTERM);
 
     maxsub = 4*maxsub; 
     nzsub = idxmalloc(maxsub, "ComputeFillIn: nzsub");
@@ -74,10 +74,10 @@ void ComputeFillIn(GraphType *graph, idxtype *iperm)
   for (i=0; i<nvtxs; i++)
     opc += (xlnz[i+1]-xlnz[i])*(xlnz[i+1]-xlnz[i]) - (xlnz[i+1]-xlnz[i]);
 
-  printf("  Nonzeros: %d, \tOperation Count: %6.4le\n", maxlnz, opc);
+  mprintf("  Nonzeros: %D, \tOperation Count: %6.4le\n", maxlnz, opc);
 
 
-  GKfree((void *)&perm, &xlnz, &xnzsub, &nzsub, LTERM);
+  gk_free((void **)&perm, &xlnz, &xnzsub, &nzsub, LTERM);
 
 
   /* Relabel the vertices so that it starts from 0 */
@@ -134,7 +134,7 @@ idxtype ComputeFillIn2(GraphType *graph, idxtype *iperm)
    * Call sparspak routine.
    */
   if (smbfct(nvtxs, xadj, adjncy, perm, iperm, xlnz, &maxlnz, xnzsub, nzsub, &maxsub)) {
-    GKfree((void *)&nzsub, LTERM);
+    gk_free((void **)&nzsub, LTERM);
 
     maxsub = 4*maxsub; 
     nzsub = idxmalloc(maxsub, "ComputeFillIn: nzsub");
@@ -149,7 +149,7 @@ idxtype ComputeFillIn2(GraphType *graph, idxtype *iperm)
     opc += (xlnz[i+1]-xlnz[i])*(xlnz[i+1]-xlnz[i]) - (xlnz[i+1]-xlnz[i]);
 
 
-  GKfree((void *)&perm, &xlnz, &xnzsub, &nzsub, LTERM);
+  gk_free((void **)&perm, &xlnz, &xnzsub, &nzsub, LTERM);
 
 
   /* Relabel the vertices so that it starts from 0 */
@@ -188,8 +188,8 @@ idxtype ComputeFillIn2(GraphType *graph, idxtype *iperm)
 *      MAXLNZ - THE NUMBER OF NONZEROS FOUND.             
 *
 *******************************************************************/
-int smbfct(idxtype neqns, idxtype *xadj, idxtype *adjncy, idxtype *perm, idxtype *invp, idxtype *xlnz, 
-           idxtype *maxlnz, idxtype *xnzsub, idxtype *nzsub, idxtype *maxsub)
+idxtype smbfct(idxtype neqns, idxtype *xadj, idxtype *adjncy, idxtype *perm, idxtype *invp, 
+	       idxtype *xlnz, idxtype *maxlnz, idxtype *xnzsub, idxtype *nzsub, idxtype *maxsub)
 {
   /* Local variables */
   idxtype node, rchm, mrgk, lmax, i, j, k, m, nabor, nzbeg, nzend;
@@ -377,7 +377,7 @@ L1400:
   perm++;
   adjncy++;
   xadj++;
-  GKfree((void *)&rchlnk, &mrglnk, &marker, LTERM);
+  gk_free((void **)&rchlnk, &mrglnk, &marker, LTERM);
 
   return flag;
   

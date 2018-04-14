@@ -56,11 +56,11 @@ void METIS_mCPartGraphRecursive(idxtype *nvtxs, idxtype *ncon, idxtype *xadj, id
   AllocateWorkSpace(&ctrl, &graph, *nparts);
 
   IFSET(ctrl.dbglvl, DBG_TIME, InitTimers(&ctrl));
-  IFSET(ctrl.dbglvl, DBG_TIME, starttimer(ctrl.TotalTmr));
+  IFSET(ctrl.dbglvl, DBG_TIME, gk_startcputimer(ctrl.TotalTmr));
 
   *edgecut = MCMlevelRecursiveBisection(&ctrl, &graph, *nparts, part, 1.000, 0);
 
-  IFSET(ctrl.dbglvl, DBG_TIME, stoptimer(ctrl.TotalTmr));
+  IFSET(ctrl.dbglvl, DBG_TIME, gk_stopcputimer(ctrl.TotalTmr));
   IFSET(ctrl.dbglvl, DBG_TIME, PrintTimers(&ctrl));
 
   FreeWorkSpace(&ctrl, &graph);
@@ -106,23 +106,23 @@ void METIS_mCHPartGraphRecursive(idxtype *nvtxs, idxtype *ncon, idxtype *xadj, i
 
   ctrl.nmaxvwgt = 1.5/(1.0*ctrl.CoarsenTo);
 
-  myubvec = fmalloc(*ncon, "PWMETIS: mytpwgts");
-  scopy(*ncon, ubvec, myubvec);
+  myubvec = gk_fmalloc(*ncon, "PWMETIS: mytpwgts");
+  gk_fcopy(*ncon, ubvec, myubvec);
 
   InitRandom(-1);
 
   AllocateWorkSpace(&ctrl, &graph, *nparts);
 
   IFSET(ctrl.dbglvl, DBG_TIME, InitTimers(&ctrl));
-  IFSET(ctrl.dbglvl, DBG_TIME, starttimer(ctrl.TotalTmr));
+  IFSET(ctrl.dbglvl, DBG_TIME, gk_startcputimer(ctrl.TotalTmr));
 
   *edgecut = MCHMlevelRecursiveBisection(&ctrl, &graph, *nparts, part, myubvec, 0);
 
-  IFSET(ctrl.dbglvl, DBG_TIME, stoptimer(ctrl.TotalTmr));
+  IFSET(ctrl.dbglvl, DBG_TIME, gk_stopcputimer(ctrl.TotalTmr));
   IFSET(ctrl.dbglvl, DBG_TIME, PrintTimers(&ctrl));
 
   FreeWorkSpace(&ctrl, &graph);
-  GKfree((void *)&myubvec, LTERM);
+  gk_free((void **)&myubvec, LTERM);
 
   if (*numflag == 1)
     Change2FNumbering(*nvtxs, xadj, adjncy, part);
@@ -165,11 +165,11 @@ void METIS_mCPartGraphRecursiveInternal(idxtype *nvtxs, idxtype *ncon, idxtype *
   AllocateWorkSpace(&ctrl, &graph, *nparts);
 
   IFSET(ctrl.dbglvl, DBG_TIME, InitTimers(&ctrl));
-  IFSET(ctrl.dbglvl, DBG_TIME, starttimer(ctrl.TotalTmr));
+  IFSET(ctrl.dbglvl, DBG_TIME, gk_startcputimer(ctrl.TotalTmr));
 
   *edgecut = MCMlevelRecursiveBisection(&ctrl, &graph, *nparts, part, 1.000, 0);
 
-  IFSET(ctrl.dbglvl, DBG_TIME, stoptimer(ctrl.TotalTmr));
+  IFSET(ctrl.dbglvl, DBG_TIME, gk_stopcputimer(ctrl.TotalTmr));
   IFSET(ctrl.dbglvl, DBG_TIME, PrintTimers(&ctrl));
 
   FreeWorkSpace(&ctrl, &graph);
@@ -209,23 +209,23 @@ void METIS_mCHPartGraphRecursiveInternal(idxtype *nvtxs, idxtype *ncon, idxtype 
 
   ctrl.nmaxvwgt = 1.5/(1.0*ctrl.CoarsenTo);
 
-  myubvec = fmalloc(*ncon, "PWMETIS: mytpwgts");
-  scopy(*ncon, ubvec, myubvec);
+  myubvec = gk_fmalloc(*ncon, "PWMETIS: mytpwgts");
+  gk_fcopy(*ncon, ubvec, myubvec);
 
   InitRandom(-1);
 
   AllocateWorkSpace(&ctrl, &graph, *nparts);
 
   IFSET(ctrl.dbglvl, DBG_TIME, InitTimers(&ctrl));
-  IFSET(ctrl.dbglvl, DBG_TIME, starttimer(ctrl.TotalTmr));
+  IFSET(ctrl.dbglvl, DBG_TIME, gk_startcputimer(ctrl.TotalTmr));
 
   *edgecut = MCHMlevelRecursiveBisection(&ctrl, &graph, *nparts, part, myubvec, 0);
 
-  IFSET(ctrl.dbglvl, DBG_TIME, stoptimer(ctrl.TotalTmr));
+  IFSET(ctrl.dbglvl, DBG_TIME, gk_stopcputimer(ctrl.TotalTmr));
   IFSET(ctrl.dbglvl, DBG_TIME, PrintTimers(&ctrl));
 
   FreeWorkSpace(&ctrl, &graph);
-  GKfree((void *)&myubvec, LTERM);
+  gk_free((void **)&myubvec, LTERM);
 
 }
 
@@ -245,7 +245,7 @@ idxtype MCMlevelRecursiveBisection(CtrlType *ctrl, GraphType *graph, idxtype npa
 
   nvtxs = graph->nvtxs;
   if (nvtxs == 0) {
-    printf("\t***Cannot bisect a graph with 0 vertices!\n\t***You are trying to partition a graph into too many parts!\n");
+    mprintf("\t***Cannot bisect a graph with 0 vertices!\n\t***You are trying to partition a graph into too many parts!\n");
     return 0;
   }
 
@@ -265,7 +265,7 @@ idxtype MCMlevelRecursiveBisection(CtrlType *ctrl, GraphType *graph, idxtype npa
     SplitGraphPart(ctrl, graph, &lgraph, &rgraph);
 
   /* Free the memory of the top level graph */
-  GKfree((void *)&graph->gdata, &graph->nvwgt, &graph->rdata, &graph->npwgts, &graph->label, LTERM);
+  FreeGraph(graph, 0);
 
 
   /* Do the recursive call */
@@ -275,7 +275,7 @@ idxtype MCMlevelRecursiveBisection(CtrlType *ctrl, GraphType *graph, idxtype npa
   }
   else if (nparts == 3) {
     cut += MCMlevelRecursiveBisection(ctrl, &rgraph, nparts-nparts/2, part, ubfactor, fpart+nparts/2);
-    GKfree((void *)&lgraph.gdata, &lgraph.nvwgt, &lgraph.label, LTERM);
+    FreeGraph(&lgraph, 0);
   }
 
   return cut;
@@ -300,7 +300,7 @@ idxtype MCHMlevelRecursiveBisection(CtrlType *ctrl, GraphType *graph, idxtype np
   nvtxs = graph->nvtxs;
   ncon = graph->ncon;
   if (nvtxs == 0) {
-    printf("\t***Cannot bisect a graph with 0 vertices!\n\t***You are trying to partition a graph into too many parts!\n");
+    mprintf("\t***Cannot bisect a graph with 0 vertices!\n\t***You are trying to partition a graph into too many parts!\n");
     return 0;
   }
 
@@ -323,8 +323,8 @@ idxtype MCHMlevelRecursiveBisection(CtrlType *ctrl, GraphType *graph, idxtype np
   if (nparts > 2) {
     /* Adjust the ubvecs before the split */
     npwgts = graph->npwgts;
-    lubvec = fmalloc(ncon, "MCHMlevelRecursiveBisection");
-    rubvec = fmalloc(ncon, "MCHMlevelRecursiveBisection");
+    lubvec = gk_fmalloc(ncon, "MCHMlevelRecursiveBisection");
+    rubvec = gk_fmalloc(ncon, "MCHMlevelRecursiveBisection");
 
     for (i=0; i<ncon; i++) {
       lubvec[i] = ubvec[i]*tpwgts[0]/npwgts[i];
@@ -338,7 +338,7 @@ idxtype MCHMlevelRecursiveBisection(CtrlType *ctrl, GraphType *graph, idxtype np
   }
 
   /* Free the memory of the top level graph */
-  GKfree((void *)&graph->gdata, &graph->nvwgt, &graph->rdata, &graph->npwgts, &graph->label, LTERM);
+  FreeGraph(graph, 0);
 
 
   /* Do the recursive call */
@@ -348,10 +348,10 @@ idxtype MCHMlevelRecursiveBisection(CtrlType *ctrl, GraphType *graph, idxtype np
   }
   else if (nparts == 3) {
     cut += MCHMlevelRecursiveBisection(ctrl, &rgraph, nparts-nparts/2, part, rubvec, fpart+nparts/2);
-    GKfree((void *)&lgraph.gdata, &lgraph.nvwgt, &lgraph.label, LTERM);
+    FreeGraph(&lgraph, 0);
   }
 
-  GKfree((void *)&lubvec, &rubvec, LTERM);
+  gk_free((void **)&lubvec, &rubvec, LTERM);
 
   return cut;
 
@@ -387,8 +387,8 @@ void MCHMlevelEdgeBisection(CtrlType *ctrl, GraphType *graph, float *tpwgts, flo
 
 /*
   for (i=0; i<graph->ncon; i++)
-    printf("%.4f ", ubvec[i]);
-  printf("\n");
+    mprintf("%.4f ", ubvec[i]);
+  mprintf("\n");
 */
 
   cgraph = MCCoarsen2Way(ctrl, graph);

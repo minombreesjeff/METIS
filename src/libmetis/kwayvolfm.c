@@ -41,8 +41,8 @@ void Random_KWayVolRefine(CtrlType *ctrl, GraphType *graph, idxtype nparts, floa
   minwgt =  idxwspacemalloc(ctrl, nparts);
   maxwgt = idxwspacemalloc(ctrl, nparts);
   itpwgts = idxwspacemalloc(ctrl, nparts);
-  tvwgt = idxsum(nparts, pwgts);
-  ASSERT(tvwgt == idxsum(nvtxs, graph->vwgt));
+  tvwgt = idxsum(nparts, pwgts, 1);
+  ASSERT(tvwgt == idxsum(nvtxs, graph->vwgt, 1));
 
   updind = idxmalloc(nvtxs, "Random_KWayVolRefine: updind");
   marker = idxsmalloc(nvtxs, 0, "Random_KWayVolRefine: marker");
@@ -57,9 +57,9 @@ void Random_KWayVolRefine(CtrlType *ctrl, GraphType *graph, idxtype nparts, floa
   perm = idxwspacemalloc(ctrl, nvtxs);
 
   IFSET(ctrl->dbglvl, DBG_REFINE,
-     printf("VolPart: [%5d %5d]-[%5d %5d], Balance: %3.2f, Nv-Nb[%5d %5d]. Cut: %5d, Vol: %5d\n",
-             pwgts[idxamin(nparts, pwgts)], pwgts[idxamax(nparts, pwgts)], minwgt[0], maxwgt[0], 
-             1.0*nparts*pwgts[idxamax(nparts, pwgts)]/tvwgt, graph->nvtxs, graph->nbnd,
+     mprintf("VolPart: [%5D %5D]-[%5D %5D], Balance: %3.2f, Nv-Nb[%5D %5D]. Cut: %5D, Vol: %5D\n",
+             pwgts[idxargmin(nparts, pwgts)], pwgts[idxargmax(nparts, pwgts)], minwgt[0], maxwgt[0], 
+             1.0*nparts*pwgts[idxargmax(nparts, pwgts)]/tvwgt, graph->nvtxs, graph->nbnd,
              graph->mincut, graph->minvol));
 
   for (pass=0; pass<npasses; pass++) {
@@ -127,7 +127,7 @@ void Random_KWayVolRefine(CtrlType *ctrl, GraphType *graph, idxtype nparts, floa
         graph->minvol -= (xgain+myedegrees[k].gv);
         where[i] = to;
 
-        IFSET(ctrl->dbglvl, DBG_MOVEINFO, printf("\t\tMoving %6d from %3d to %3d. Gain: [%4d %4d]. Cut: %6d, Vol: %6d\n", 
+        IFSET(ctrl->dbglvl, DBG_MOVEINFO, mprintf("\t\tMoving %6D from %3D to %3D. Gain: [%4D %4D]. Cut: %6D, Vol: %6D\n", 
               i, from, to, xgain+myedegrees[k].gv, myedegrees[k].ed-myrinfo->id, graph->mincut, graph->minvol));
 
         KWayVolUpdate(ctrl, graph, i, from, to, marker, phtable, updind);
@@ -139,16 +139,16 @@ void Random_KWayVolRefine(CtrlType *ctrl, GraphType *graph, idxtype nparts, floa
     }
 
     IFSET(ctrl->dbglvl, DBG_REFINE,
-       printf("\t[%6d %6d], Balance: %5.3f, Nb: %6d. Nmoves: %5d, Cut: %6d, Vol: %6d\n",
-               pwgts[idxamin(nparts, pwgts)], pwgts[idxamax(nparts, pwgts)],
-               1.0*nparts*pwgts[idxamax(nparts, pwgts)]/tvwgt, graph->nbnd, nmoves, graph->mincut, 
+       mprintf("\t[%6D %6D], Balance: %5.3f, Nb: %6D. Nmoves: %5D, Cut: %6D, Vol: %6D\n",
+               pwgts[idxargmin(nparts, pwgts)], pwgts[idxargmax(nparts, pwgts)],
+               1.0*nparts*pwgts[idxargmax(nparts, pwgts)]/tvwgt, graph->nbnd, nmoves, graph->mincut, 
                graph->minvol));
 
     if (graph->minvol == oldvol && graph->mincut == oldcut)
       break;
   }
 
-  GKfree((void *)&marker, &updind, &phtable, LTERM);
+  gk_free((void **)&marker, &updind, &phtable, LTERM);
 
   idxwspacefree(ctrl, nparts);
   idxwspacefree(ctrl, nparts);
@@ -186,8 +186,8 @@ void Random_KWayVolRefineMConn(CtrlType *ctrl, GraphType *graph, idxtype nparts,
   minwgt =  idxwspacemalloc(ctrl, nparts);
   maxwgt = idxwspacemalloc(ctrl, nparts);
   itpwgts = idxwspacemalloc(ctrl, nparts);
-  tvwgt = idxsum(nparts, pwgts);
-  ASSERT(tvwgt == idxsum(nvtxs, graph->vwgt));
+  tvwgt = idxsum(nparts, pwgts, 1);
+  ASSERT(tvwgt == idxsum(nvtxs, graph->vwgt, 1));
 
   updind = idxmalloc(nvtxs, "Random_KWayVolRefine: updind");
   marker = idxsmalloc(nvtxs, 0, "Random_KWayVolRefine: marker");
@@ -207,15 +207,15 @@ void Random_KWayVolRefineMConn(CtrlType *ctrl, GraphType *graph, idxtype nparts,
   perm = idxwspacemalloc(ctrl, nvtxs);
 
   IFSET(ctrl->dbglvl, DBG_REFINE,
-     printf("VolPart: [%5d %5d]-[%5d %5d], Balance: %3.2f, Nv-Nb[%5d %5d]. Cut: %5d, Vol: %5d\n",
-             pwgts[idxamin(nparts, pwgts)], pwgts[idxamax(nparts, pwgts)], minwgt[0], maxwgt[0], 
-             1.0*nparts*pwgts[idxamax(nparts, pwgts)]/tvwgt, graph->nvtxs, graph->nbnd,
+     mprintf("VolPart: [%5D %5D]-[%5D %5D], Balance: %3.2f, Nv-Nb[%5D %5D]. Cut: %5D, Vol: %5D\n",
+             pwgts[idxargmin(nparts, pwgts)], pwgts[idxargmax(nparts, pwgts)], minwgt[0], maxwgt[0], 
+             1.0*nparts*pwgts[idxargmax(nparts, pwgts)]/tvwgt, graph->nvtxs, graph->nbnd,
              graph->mincut, graph->minvol));
 
   for (pass=0; pass<npasses; pass++) {
     ASSERT(ComputeCut(graph, where) == graph->mincut);
 
-    maxndoms = ndoms[idxamax(nparts, ndoms)];
+    maxndoms = ndoms[idxargmax(nparts, ndoms)];
 
     oldcut = graph->mincut;
     oldvol = graph->minvol;
@@ -311,7 +311,7 @@ void Random_KWayVolRefineMConn(CtrlType *ctrl, GraphType *graph, idxtype nparts,
         graph->minvol -= (xgain+myedegrees[k].gv);
         where[i] = to;
 
-        IFSET(ctrl->dbglvl, DBG_MOVEINFO, printf("\t\tMoving %6d from %3d to %3d. Gain: [%4d %4d]. Cut: %6d, Vol: %6d\n", 
+        IFSET(ctrl->dbglvl, DBG_MOVEINFO, mprintf("\t\tMoving %6D from %3D to %3D. Gain: [%4D %4D]. Cut: %6D, Vol: %6D\n", 
               i, from, to, xgain+myedegrees[k].gv, myedegrees[k].ed-myrinfo->id, graph->mincut, graph->minvol));
 
         /* Update pmat to reflect the move of 'i' */
@@ -320,12 +320,12 @@ void Random_KWayVolRefineMConn(CtrlType *ctrl, GraphType *graph, idxtype nparts,
         if (pmat[from*nparts+to] == 0) {
           ndoms[from]--;
           if (ndoms[from]+1 == maxndoms)
-            maxndoms = ndoms[idxamax(nparts, ndoms)];
+            maxndoms = ndoms[idxargmax(nparts, ndoms)];
         }
         if (pmat[to*nparts+from] == 0) {
           ndoms[to]--;
           if (ndoms[to]+1 == maxndoms)
-            maxndoms = ndoms[idxamax(nparts, ndoms)];
+            maxndoms = ndoms[idxargmax(nparts, ndoms)];
         }
 
         for (j=xadj[i]; j<xadj[i+1]; j++) {
@@ -339,25 +339,25 @@ void Random_KWayVolRefineMConn(CtrlType *ctrl, GraphType *graph, idxtype nparts,
             if (pmat[me*nparts+from] == 0) {
               ndoms[me]--;
               if (ndoms[me]+1 == maxndoms)
-                maxndoms = ndoms[idxamax(nparts, ndoms)];
+                maxndoms = ndoms[idxargmax(nparts, ndoms)];
             }
             if (pmat[from*nparts+me] == 0) {
               ndoms[from]--;
               if (ndoms[from]+1 == maxndoms)
-                maxndoms = ndoms[idxamax(nparts, ndoms)];
+                maxndoms = ndoms[idxargmax(nparts, ndoms)];
             }
 
             if (pmat[me*nparts+to] == 0) {
               ndoms[me]++;
               if (ndoms[me] > maxndoms) {
-                printf("You just increased the maxndoms: %d %d\n", ndoms[me], maxndoms);
+                mprintf("You just increased the maxndoms: %D %D\n", ndoms[me], maxndoms);
                 maxndoms = ndoms[me];
               }
             }
             if (pmat[to*nparts+me] == 0) {
               ndoms[to]++;
               if (ndoms[to] > maxndoms) {
-                printf("You just increased the maxndoms: %d %d\n", ndoms[to], maxndoms);
+                mprintf("You just increased the maxndoms: %D %D\n", ndoms[to], maxndoms);
                 maxndoms = ndoms[to];
               }
             }
@@ -375,16 +375,16 @@ void Random_KWayVolRefineMConn(CtrlType *ctrl, GraphType *graph, idxtype nparts,
     }
 
     IFSET(ctrl->dbglvl, DBG_REFINE,
-       printf("\t[%6d %6d], Balance: %5.3f, Nb: %6d. Nmoves: %5d, Cut: %6d, Vol: %6d\n",
-               pwgts[idxamin(nparts, pwgts)], pwgts[idxamax(nparts, pwgts)],
-               1.0*nparts*pwgts[idxamax(nparts, pwgts)]/tvwgt, graph->nbnd, nmoves, graph->mincut, 
+       mprintf("\t[%6D %6D], Balance: %5.3f, Nb: %6D. Nmoves: %5D, Cut: %6D, Vol: %6D\n",
+               pwgts[idxargmin(nparts, pwgts)], pwgts[idxargmax(nparts, pwgts)],
+               1.0*nparts*pwgts[idxargmax(nparts, pwgts)]/tvwgt, graph->nbnd, nmoves, graph->mincut, 
                graph->minvol));
 
     if (graph->minvol == oldvol && graph->mincut == oldcut)
       break;
   }
 
-  GKfree((void *)&marker, &updind, &phtable, LTERM);
+  gk_free((void **)&marker, &updind, &phtable, LTERM);
 
   idxwspacefree(ctrl, nparts);
   idxwspacefree(ctrl, nparts);
@@ -425,8 +425,8 @@ void Greedy_KWayVolBalance(CtrlType *ctrl, GraphType *graph, idxtype nparts, flo
   minwgt =  idxwspacemalloc(ctrl, nparts);
   maxwgt = idxwspacemalloc(ctrl, nparts);
   itpwgts = idxwspacemalloc(ctrl, nparts);
-  tvwgt = idxsum(nparts, pwgts);
-  ASSERT(tvwgt == idxsum(nvtxs, graph->vwgt));
+  tvwgt = idxsum(nparts, pwgts, 1);
+  ASSERT(tvwgt == idxsum(nvtxs, graph->vwgt, 1));
 
   updind = idxmalloc(nvtxs, "Random_KWayVolRefine: updind");
   marker = idxsmalloc(nvtxs, 0, "Random_KWayVolRefine: marker");
@@ -441,12 +441,12 @@ void Greedy_KWayVolBalance(CtrlType *ctrl, GraphType *graph, idxtype nparts, flo
   perm = idxwspacemalloc(ctrl, nvtxs);
   moved = idxwspacemalloc(ctrl, nvtxs);
 
-  PQueueInit(ctrl, &queue, nvtxs, graph->adjwgtsum[idxamax(nvtxs, graph->adjwgtsum)]);
+  PQueueInit(ctrl, &queue, nvtxs, graph->adjwgtsum[idxargmax(nvtxs, graph->adjwgtsum)]);
 
   IFSET(ctrl->dbglvl, DBG_REFINE,
-     printf("VolPart: [%5d %5d]-[%5d %5d], Balance: %3.2f, Nv-Nb[%5d %5d]. Cut: %5d, Vol: %5d [B]\n",
-             pwgts[idxamin(nparts, pwgts)], pwgts[idxamax(nparts, pwgts)], minwgt[0], maxwgt[0], 
-             1.0*nparts*pwgts[idxamax(nparts, pwgts)]/tvwgt, graph->nvtxs, graph->nbnd,
+     mprintf("VolPart: [%5D %5D]-[%5D %5D], Balance: %3.2f, Nv-Nb[%5D %5D]. Cut: %5D, Vol: %5D [B]\n",
+             pwgts[idxargmin(nparts, pwgts)], pwgts[idxargmax(nparts, pwgts)], minwgt[0], maxwgt[0], 
+             1.0*nparts*pwgts[idxargmax(nparts, pwgts)]/tvwgt, graph->nvtxs, graph->nbnd,
              graph->mincut, graph->minvol));
 
 
@@ -519,7 +519,7 @@ void Greedy_KWayVolBalance(CtrlType *ctrl, GraphType *graph, idxtype nparts, flo
       graph->minvol -= (xgain+myedegrees[k].gv);
       where[i] = to;
 
-      IFSET(ctrl->dbglvl, DBG_MOVEINFO, printf("\t\tMoving %6d from %3d to %3d. Gain: [%4d %4d]. Cut: %6d, Vol: %6d\n", 
+      IFSET(ctrl->dbglvl, DBG_MOVEINFO, mprintf("\t\tMoving %6D from %3D to %3D. Gain: [%4D %4D]. Cut: %6D, Vol: %6D\n", 
             i, from, to, xgain+myedegrees[k].gv, myedegrees[k].ed-myrinfo->id, graph->mincut, graph->minvol));
 
       KWayVolUpdate(ctrl, graph, i, from, to, marker, phtable, updind);
@@ -530,14 +530,14 @@ void Greedy_KWayVolBalance(CtrlType *ctrl, GraphType *graph, idxtype nparts, flo
     }
 
     IFSET(ctrl->dbglvl, DBG_REFINE,
-       printf("\t[%6d %6d], Balance: %5.3f, Nb: %6d. Nmoves: %5d, Cut: %6d, Vol: %6d\n",
-               pwgts[idxamin(nparts, pwgts)], pwgts[idxamax(nparts, pwgts)],
-               1.0*nparts*pwgts[idxamax(nparts, pwgts)]/tvwgt, graph->nbnd, nmoves, graph->mincut, 
+       mprintf("\t[%6D %6D], Balance: %5.3f, Nb: %6D. Nmoves: %5D, Cut: %6D, Vol: %6D\n",
+               pwgts[idxargmin(nparts, pwgts)], pwgts[idxargmax(nparts, pwgts)],
+               1.0*nparts*pwgts[idxargmax(nparts, pwgts)]/tvwgt, graph->nbnd, nmoves, graph->mincut, 
                graph->minvol));
 
   }
 
-  GKfree((void *)&marker, &updind, &phtable, LTERM);
+  gk_free((void **)&marker, &updind, &phtable, LTERM);
 
   PQueueFree(ctrl, &queue);
 
@@ -580,8 +580,8 @@ void Greedy_KWayVolBalanceMConn(CtrlType *ctrl, GraphType *graph, idxtype nparts
   minwgt =  idxwspacemalloc(ctrl, nparts);
   maxwgt = idxwspacemalloc(ctrl, nparts);
   itpwgts = idxwspacemalloc(ctrl, nparts);
-  tvwgt = idxsum(nparts, pwgts);
-  ASSERT(tvwgt == idxsum(nvtxs, graph->vwgt));
+  tvwgt = idxsum(nparts, pwgts, 1);
+  ASSERT(tvwgt == idxsum(nvtxs, graph->vwgt, 1));
 
   updind = idxmalloc(nvtxs, "Random_KWayVolRefine: updind");
   marker = idxsmalloc(nvtxs, 0, "Random_KWayVolRefine: marker");
@@ -601,12 +601,12 @@ void Greedy_KWayVolBalanceMConn(CtrlType *ctrl, GraphType *graph, idxtype nparts
   perm = idxwspacemalloc(ctrl, nvtxs);
   moved = idxwspacemalloc(ctrl, nvtxs);
 
-  PQueueInit(ctrl, &queue, nvtxs, graph->adjwgtsum[idxamax(nvtxs, graph->adjwgtsum)]);
+  PQueueInit(ctrl, &queue, nvtxs, graph->adjwgtsum[idxargmax(nvtxs, graph->adjwgtsum)]);
 
   IFSET(ctrl->dbglvl, DBG_REFINE,
-     printf("VolPart: [%5d %5d]-[%5d %5d], Balance: %3.2f, Nv-Nb[%5d %5d]. Cut: %5d, Vol: %5d [B]\n",
-             pwgts[idxamin(nparts, pwgts)], pwgts[idxamax(nparts, pwgts)], minwgt[0], maxwgt[0], 
-             1.0*nparts*pwgts[idxamax(nparts, pwgts)]/tvwgt, graph->nvtxs, graph->nbnd,
+     mprintf("VolPart: [%5D %5D]-[%5D %5D], Balance: %3.2f, Nv-Nb[%5D %5D]. Cut: %5D, Vol: %5D [B]\n",
+             pwgts[idxargmin(nparts, pwgts)], pwgts[idxargmax(nparts, pwgts)], minwgt[0], maxwgt[0], 
+             1.0*nparts*pwgts[idxargmax(nparts, pwgts)]/tvwgt, graph->nvtxs, graph->nbnd,
              graph->mincut, graph->minvol));
 
 
@@ -630,7 +630,7 @@ void Greedy_KWayVolBalanceMConn(CtrlType *ctrl, GraphType *graph, idxtype nparts
       moved[i] = 2;
     }
 
-    maxndoms = ndoms[idxamax(nparts, ndoms)];
+    maxndoms = ndoms[idxargmax(nparts, ndoms)];
 
     for (nmoves=0;;) {
       if ((i = PQueueGetMax(&queue)) == -1) 
@@ -711,7 +711,7 @@ void Greedy_KWayVolBalanceMConn(CtrlType *ctrl, GraphType *graph, idxtype nparts
       graph->minvol -= (xgain+myedegrees[k].gv);
       where[i] = to;
 
-      IFSET(ctrl->dbglvl, DBG_MOVEINFO, printf("\t\tMoving %6d from %3d to %3d. Gain: [%4d %4d]. Cut: %6d, Vol: %6d\n", 
+      IFSET(ctrl->dbglvl, DBG_MOVEINFO, mprintf("\t\tMoving %6D from %3D to %3D. Gain: [%4D %4D]. Cut: %6D, Vol: %6D\n", 
             i, from, to, xgain+myedegrees[k].gv, myedegrees[k].ed-myrinfo->id, graph->mincut, graph->minvol));
 
       /* Update pmat to reflect the move of 'i' */
@@ -720,12 +720,12 @@ void Greedy_KWayVolBalanceMConn(CtrlType *ctrl, GraphType *graph, idxtype nparts
       if (pmat[from*nparts+to] == 0) {
         ndoms[from]--;
         if (ndoms[from]+1 == maxndoms)
-          maxndoms = ndoms[idxamax(nparts, ndoms)];
+          maxndoms = ndoms[idxargmax(nparts, ndoms)];
       }
       if (pmat[to*nparts+from] == 0) {
         ndoms[to]--;
         if (ndoms[to]+1 == maxndoms)
-          maxndoms = ndoms[idxamax(nparts, ndoms)];
+          maxndoms = ndoms[idxargmax(nparts, ndoms)];
       }
 
       for (j=xadj[i]; j<xadj[i+1]; j++) {
@@ -739,25 +739,25 @@ void Greedy_KWayVolBalanceMConn(CtrlType *ctrl, GraphType *graph, idxtype nparts
           if (pmat[me*nparts+from] == 0) {
             ndoms[me]--;
             if (ndoms[me]+1 == maxndoms)
-              maxndoms = ndoms[idxamax(nparts, ndoms)];
+              maxndoms = ndoms[idxargmax(nparts, ndoms)];
           }
           if (pmat[from*nparts+me] == 0) {
             ndoms[from]--;
             if (ndoms[from]+1 == maxndoms)
-              maxndoms = ndoms[idxamax(nparts, ndoms)];
+              maxndoms = ndoms[idxargmax(nparts, ndoms)];
           }
 
           if (pmat[me*nparts+to] == 0) {
             ndoms[me]++;
             if (ndoms[me] > maxndoms) {
-              printf("You just increased the maxndoms: %d %d\n", ndoms[me], maxndoms);
+              mprintf("You just increased the maxndoms: %D %D\n", ndoms[me], maxndoms);
               maxndoms = ndoms[me];
             }
           }
           if (pmat[to*nparts+me] == 0) {
             ndoms[to]++;
             if (ndoms[to] > maxndoms) {
-              printf("You just increased the maxndoms: %d %d\n", ndoms[to], maxndoms);
+              mprintf("You just increased the maxndoms: %D %D\n", ndoms[to], maxndoms);
               maxndoms = ndoms[to];
             }
           }
@@ -774,14 +774,14 @@ void Greedy_KWayVolBalanceMConn(CtrlType *ctrl, GraphType *graph, idxtype nparts
     }
 
     IFSET(ctrl->dbglvl, DBG_REFINE,
-       printf("\t[%6d %6d], Balance: %5.3f, Nb: %6d. Nmoves: %5d, Cut: %6d, Vol: %6d\n",
-               pwgts[idxamin(nparts, pwgts)], pwgts[idxamax(nparts, pwgts)],
-               1.0*nparts*pwgts[idxamax(nparts, pwgts)]/tvwgt, graph->nbnd, nmoves, graph->mincut, 
+       mprintf("\t[%6D %6D], Balance: %5.3f, Nb: %6D. Nmoves: %5D, Cut: %6D, Vol: %6D\n",
+               pwgts[idxargmin(nparts, pwgts)], pwgts[idxargmax(nparts, pwgts)],
+               1.0*nparts*pwgts[idxargmax(nparts, pwgts)]/tvwgt, graph->nbnd, nmoves, graph->mincut, 
                graph->minvol));
 
   }
 
-  GKfree((void *)&marker, &updind, &phtable, LTERM);
+  gk_free((void **)&marker, &updind, &phtable, LTERM);
 
   PQueueFree(ctrl, &queue);
 
@@ -799,7 +799,7 @@ void Greedy_KWayVolBalanceMConn(CtrlType *ctrl, GraphType *graph, idxtype nparts
 /*************************************************************************
 * This function updates the edge and volume gains as a result of moving
 * v from 'from' to 'to'.
-* The working arrays marker and phtable are assumed to be initialized to
+* The working arrays marker and phtable are agk_fsumed to be initialized to
 * -1, and they left to -1 upon return
 **************************************************************************/
 void KWayVolUpdate(CtrlType *ctrl, GraphType *graph, idxtype v, idxtype from, idxtype to,
@@ -1188,7 +1188,7 @@ idxtype ComputeVolume(GraphType *graph, idxtype *where)
   adjncy = graph->adjncy;
   vsize = (graph->vsize == NULL ? graph->vwgt : graph->vsize);
 
-  nparts = where[idxamax(nvtxs, where)]+1;
+  nparts = where[idxargmax(nvtxs, where)]+1;
   marker = idxsmalloc(nparts, -1, "ComputeVolume: marker");
 
   totalv = 0;
@@ -1204,7 +1204,7 @@ idxtype ComputeVolume(GraphType *graph, idxtype *where)
     }
   }
 
-  GKfree((void *)&marker, LTERM);
+  gk_free((void **)&marker, LTERM);
 
   return totalv;
 }
@@ -1231,7 +1231,7 @@ void CheckVolKWayPartitionParams(CtrlType *ctrl, GraphType *graph, idxtype npart
   where = graph->where;
   rinfo = graph->vrinfo;
 
-  tmpdegrees = (VEDegreeType *)GKmalloc(nparts*sizeof(VEDegreeType), "CheckVolKWayPartitionParams: tmpdegrees");
+  tmpdegrees = (VEDegreeType *)gk_malloc(nparts*sizeof(VEDegreeType), "CheckVolKWayPartitionParams: tmpdegrees");
 
   /*------------------------------------------------------------
   / Compute now the iv/ev degrees
@@ -1326,7 +1326,7 @@ void CheckVolKWayPartitionParams(CtrlType *ctrl, GraphType *graph, idxtype npart
       for (kk=0; kk<tmprinfo.ndegrees; kk++) {
         if (tmpdegrees[kk].pid == pid) {
           if (tmpdegrees[kk].gv != myedegrees[k].gv)
-            printf("[%d %d %d %d]\n", i, pid, myedegrees[k].gv, tmpdegrees[kk].gv);
+            mprintf("[%D %D %D %D]\n", i, pid, myedegrees[k].gv, tmpdegrees[kk].gv);
           break;
         }
       }
@@ -1334,7 +1334,7 @@ void CheckVolKWayPartitionParams(CtrlType *ctrl, GraphType *graph, idxtype npart
 
   }
 
-  GKfree((void *)&tmpdegrees, LTERM);
+  gk_free((void **)&tmpdegrees, LTERM);
 
 }
 
@@ -1406,8 +1406,8 @@ void EliminateVolSubDomainEdges(CtrlType *ctrl, GraphType *graph, idxtype nparts
   ind = idxwspacemalloc(ctrl, nvtxs);
   pmat = idxset(nparts*nparts, 0, ctrl->wspace.pmat);
 
-  cand = (KeyValueType *)GKmalloc(nparts*sizeof(KeyValueType), "EliminateSubDomainEdges: cand");
-  cand2 = (KeyValueType *)GKmalloc(nparts*sizeof(KeyValueType), "EliminateSubDomainEdges: cand");
+  cand = (KeyValueType *)gk_malloc(nparts*sizeof(KeyValueType), "EliminateSubDomainEdges: cand");
+  cand2 = (KeyValueType *)gk_malloc(nparts*sizeof(KeyValueType), "EliminateSubDomainEdges: cand");
 
   /* Compute the pmat matrix */
   for (i=0; i<nvtxs; i++) {
@@ -1421,7 +1421,7 @@ void EliminateVolSubDomainEdges(CtrlType *ctrl, GraphType *graph, idxtype nparts
   }
 
   /* Compute the maximum allowed weight for each domain */
-  tvwgt = idxsum(nparts, pwgts);
+  tvwgt = idxsum(nparts, pwgts, 1);
   for (i=0; i<nparts; i++)
     maxpwgt[i] = 1.25*tpwgts[i]*tvwgt;
 
@@ -1436,20 +1436,20 @@ void EliminateVolSubDomainEdges(CtrlType *ctrl, GraphType *graph, idxtype nparts
 
   /* Get into the loop eliminating subdomain connections */
   for (;;) {
-    total = idxsum(nparts, ndoms);
+    total = idxsum(nparts, ndoms, 1);
     avg = total/nparts;
-    max = ndoms[idxamax(nparts, ndoms)];
+    max = ndoms[idxargmax(nparts, ndoms)];
 
-    /* printf("Adjacent Subdomain Stats: Total: %3d, Max: %3d, Avg: %3d\n", total, max, avg); */
+    /* mprintf("Adjacent Subdomain Stats: Total: %3D, Max: %3D, Avg: %3D\n", total, max, avg); */
 
     if (max < 1.5*avg)
       break;
 
-    me = idxamax(nparts, ndoms);
+    me = idxargmax(nparts, ndoms);
     mypmat = pmat + me*nparts;
-    totalout = idxsum(nparts, mypmat);
+    totalout = idxsum(nparts, mypmat, 1);
 
-    /*printf("Me: %d, TotalOut: %d,\n", me, totalout);*/
+    /*mprintf("Me: %D, TotalOut: %D,\n", me, totalout);*/
 
     /* Sort the connections according to their cut */
     for (ncand2=0, i=0; i<nparts; i++) {
@@ -1467,7 +1467,7 @@ void EliminateVolSubDomainEdges(CtrlType *ctrl, GraphType *graph, idxtype nparts
 
       other = cand2[min].val;
 
-      /*printf("\tMinOut: %d to %d\n", mypmat[other], other);*/
+      /*mprintf("\tMinOut: %D to %D\n", mypmat[other], other);*/
 
       idxset(nparts, 0, otherpmat);
 
@@ -1526,7 +1526,7 @@ void EliminateVolSubDomainEdges(CtrlType *ctrl, GraphType *graph, idxtype nparts
                 nadd++;
             }
 
-            /*printf("\t\tto=%d, nadd=%d, %d\n", k, nadd, ndoms[k]);*/
+            /*mprintf("\t\tto=%D, nadd=%D, %D\n", k, nadd, ndoms[k]);*/
             if (target2 == -1 && ndoms[k]+nadd < ndoms[me]) {
               target2 = k;
             }
@@ -1541,11 +1541,11 @@ void EliminateVolSubDomainEdges(CtrlType *ctrl, GraphType *graph, idxtype nparts
         target = target2;
 
       if (target == -1) {
-        /* printf("\t\tCould not make the move\n");*/
+        /* mprintf("\t\tCould not make the move\n");*/
         continue;
       }
 
-      /*printf("\t\tMoving to %d\n", target);*/
+      /*mprintf("\t\tMoving to %D\n", target);*/
 
       /* Update the partition weights */
       INC_DEC(pwgts[target], pwgts[other], cpwgt);
@@ -1560,13 +1560,13 @@ void EliminateVolSubDomainEdges(CtrlType *ctrl, GraphType *graph, idxtype nparts
           k = adjncy[j];
           if (where[k] != other) {
             if (pmat[nparts*other + where[k]] == 0)
-              printf("Something wrong\n");
+              mprintf("Something wrong\n");
             pmat[nparts*other + where[k]] -= adjwgt[j];
             if (pmat[nparts*other + where[k]] == 0)
               ndoms[other]--;
 
             if (pmat[nparts*where[k] + other] == 0)
-              printf("Something wrong\n");
+              mprintf("Something wrong\n");
             pmat[nparts*where[k] + other] -= adjwgt[j];
             if (pmat[nparts*where[k] + other] == 0)
               ndoms[where[k]]--;
@@ -1601,7 +1601,7 @@ void EliminateVolSubDomainEdges(CtrlType *ctrl, GraphType *graph, idxtype nparts
   idxwspacefree(ctrl, nparts);
   idxwspacefree(ctrl, nvtxs);
 
-  GKfree((void *)&cand, &cand2, LTERM);
+  gk_free((void **)&cand, &cand2, LTERM);
 }
 
 
@@ -1670,15 +1670,15 @@ void EliminateVolComponents(CtrlType *ctrl, GraphType *graph, idxtype nparts, fl
   }
   cptr[++ncmps] = first;
 
-  /* printf("I found %d components, for this %d-way partition\n", ncmps, nparts); */
+  /* mprintf("I found %D components, for this %D-way partition\n", ncmps, nparts); */
 
   if (ncmps > nparts) { /* There are more components than processors */
-    cand = (KeyValueType *)GKmalloc(nparts*sizeof(KeyValueType), "EliminateSubDomainEdges: cand");
+    cand = (KeyValueType *)gk_malloc(nparts*sizeof(KeyValueType), "EliminateSubDomainEdges: cand");
 
     /* First determine the partition sizes and max allowed load imbalance */
     for (i=0; i<nvtxs; i++) 
       pwgts[where[i]] += vwgt[i];
-    tvwgt = idxsum(nparts, pwgts);
+    tvwgt = idxsum(nparts, pwgts, 1);
     for (i=0; i<nparts; i++)
       maxpwgt[i] = ubfactor*tpwgts[i]*tvwgt;
 
@@ -1690,7 +1690,7 @@ void EliminateVolComponents(CtrlType *ctrl, GraphType *graph, idxtype nparts, fl
       if (npcmps[me] == 1)
         continue;  /* Skip it because it is contigous */
 
-      /*printf("Trying to move %d from %d\n", i, me); */
+      /*mprintf("Trying to move %D from %D\n", i, me); */
 
       /* Determine the connectivity */
       idxset(nparts, 0, cpvec);
@@ -1704,7 +1704,7 @@ void EliminateVolComponents(CtrlType *ctrl, GraphType *graph, idxtype nparts, fl
         }
       }
 
-      /*printf("\tCmp weight: %d\n", cwgt);*/
+      /*mprintf("\tCmp weight: %D\n", cwgt);*/
 
       if (cwgt > .30*pwgts[me])
         continue;  /* Skip the component if it is over 30% of the weight */
@@ -1729,7 +1729,7 @@ void EliminateVolComponents(CtrlType *ctrl, GraphType *graph, idxtype nparts, fl
         }
       }
 
-      /*printf("\tMoving it to %d [%d]\n", target, cpvec[target]);*/
+      /*mprintf("\tMoving it to %D [%D]\n", target, cpvec[target]);*/
 
       if (target != -1) {
         /* Assign all the vertices of 'me' to 'target' and update data structures */
@@ -1745,7 +1745,7 @@ void EliminateVolComponents(CtrlType *ctrl, GraphType *graph, idxtype nparts, fl
       }
     }
 
-    GKfree((void *)&cand, LTERM);
+    gk_free((void **)&cand, LTERM);
   }
 
   if (recompute) {

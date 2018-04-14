@@ -49,18 +49,18 @@ void METIS_EdgeND(idxtype *nvtxs, idxtype *xadj, idxtype *adjncy, idxtype *numfl
 
   ctrl.optype = OP_OEMETIS;
   ctrl.CoarsenTo = 20;
-  ctrl.maxvwgt = 1.5*(idxsum(*nvtxs, graph.vwgt)/ctrl.CoarsenTo);
+  ctrl.maxvwgt = 1.5*(idxsum(*nvtxs, graph.vwgt, 1)/ctrl.CoarsenTo);
 
   InitRandom(-1);
 
   AllocateWorkSpace(&ctrl, &graph, 2);
 
   IFSET(ctrl.dbglvl, DBG_TIME, InitTimers(&ctrl));
-  IFSET(ctrl.dbglvl, DBG_TIME, starttimer(ctrl.TotalTmr));
+  IFSET(ctrl.dbglvl, DBG_TIME, gk_startcputimer(ctrl.TotalTmr));
 
   MlevelNestedDissection(&ctrl, &graph, iperm, ORDER_UNBALANCE_FRACTION, *nvtxs);
 
-  IFSET(ctrl.dbglvl, DBG_TIME, stoptimer(ctrl.TotalTmr));
+  IFSET(ctrl.dbglvl, DBG_TIME, gk_stopcputimer(ctrl.TotalTmr));
   IFSET(ctrl.dbglvl, DBG_TIME, PrintTimers(&ctrl));
 
   for (i=0; i<*nvtxs; i++)
@@ -112,7 +112,7 @@ void METIS_NodeND(idxtype *nvtxs, idxtype *xadj, idxtype *adjncy, idxtype *numfl
   ctrl.CoarsenTo = 100;
 
   IFSET(ctrl.dbglvl, DBG_TIME, InitTimers(&ctrl));
-  IFSET(ctrl.dbglvl, DBG_TIME, starttimer(ctrl.TotalTmr));
+  IFSET(ctrl.dbglvl, DBG_TIME, gk_startcputimer(ctrl.TotalTmr));
 
   InitRandom(-1);
 
@@ -135,7 +135,7 @@ void METIS_NodeND(idxtype *nvtxs, idxtype *xadj, idxtype *adjncy, idxtype *numfl
 
     if (graph.nvtxs >= COMPRESSION_FRACTION*(*nvtxs)) {
       ctrl.oflags--; /* We actually performed no compression */
-      GKfree((void *)&cptr, &cind, LTERM);
+      gk_free((void **)&cptr, &cind, LTERM);
     }
     else if (2*graph.nvtxs < *nvtxs && ctrl.nseps == 1)
       ctrl.nseps = 2;
@@ -148,7 +148,7 @@ void METIS_NodeND(idxtype *nvtxs, idxtype *xadj, idxtype *adjncy, idxtype *numfl
   /*=============================================================
   * Do the nested dissection ordering 
   --=============================================================*/
-  ctrl.maxvwgt = 1.5*(idxsum(graph.nvtxs, graph.vwgt)/ctrl.CoarsenTo);
+  ctrl.maxvwgt = 1.5*(idxsum(graph.nvtxs, graph.vwgt, 1)/ctrl.CoarsenTo);
   AllocateWorkSpace(&ctrl, &graph, 2);
 
   if (ctrl.oflags&OFLAG_CCMP) 
@@ -167,7 +167,7 @@ void METIS_NodeND(idxtype *nvtxs, idxtype *xadj, idxtype *adjncy, idxtype *numfl
         iperm[piperm[i]] = i;
     }
 
-    GKfree((void *)&piperm, LTERM);
+    gk_free((void **)&piperm, LTERM);
   }
   else if (ctrl.oflags&OFLAG_COMPRESS) { /* Uncompress the ordering */
     if (graph.nvtxs < COMPRESSION_FRACTION*(*nvtxs)) { 
@@ -181,14 +181,14 @@ void METIS_NodeND(idxtype *nvtxs, idxtype *xadj, idxtype *adjncy, idxtype *numfl
       }
     }
 
-    GKfree((void *)&cptr, &cind, LTERM);
+    gk_free((void **)&cptr, &cind, LTERM);
   }
 
 
   for (i=0; i<*nvtxs; i++)
     perm[iperm[i]] = i;
 
-  IFSET(ctrl.dbglvl, DBG_TIME, stoptimer(ctrl.TotalTmr));
+  IFSET(ctrl.dbglvl, DBG_TIME, gk_stopcputimer(ctrl.TotalTmr));
   IFSET(ctrl.dbglvl, DBG_TIME, PrintTimers(&ctrl));
 
   if (*numflag == 1)
@@ -231,18 +231,18 @@ void METIS_NodeWND(idxtype *nvtxs, idxtype *xadj, idxtype *adjncy, idxtype *vwgt
   ctrl.nseps = 2;
   ctrl.optype = OP_ONMETIS;
   ctrl.CoarsenTo = 100;
-  ctrl.maxvwgt = 1.5*(idxsum(*nvtxs, graph.vwgt)/ctrl.CoarsenTo);
+  ctrl.maxvwgt = 1.5*(idxsum(*nvtxs, graph.vwgt, 1)/ctrl.CoarsenTo);
 
   InitRandom(-1);
 
   AllocateWorkSpace(&ctrl, &graph, 2);
 
   IFSET(ctrl.dbglvl, DBG_TIME, InitTimers(&ctrl));
-  IFSET(ctrl.dbglvl, DBG_TIME, starttimer(ctrl.TotalTmr));
+  IFSET(ctrl.dbglvl, DBG_TIME, gk_startcputimer(ctrl.TotalTmr));
 
   MlevelNestedDissection(&ctrl, &graph, iperm, ORDER_UNBALANCE_FRACTION, *nvtxs);
 
-  IFSET(ctrl.dbglvl, DBG_TIME, stoptimer(ctrl.TotalTmr));
+  IFSET(ctrl.dbglvl, DBG_TIME, gk_stopcputimer(ctrl.TotalTmr));
   IFSET(ctrl.dbglvl, DBG_TIME, PrintTimers(&ctrl));
 
   for (i=0; i<*nvtxs; i++)
@@ -269,7 +269,7 @@ void MlevelNestedDissection(CtrlType *ctrl, GraphType *graph, idxtype *order, fl
   nvtxs = graph->nvtxs;
 
   /* Determine the weights of the partitions */
-  tvwgt = idxsum(nvtxs, graph->vwgt);
+  tvwgt = idxsum(nvtxs, graph->vwgt, 1);
   tpwgts2[0] = tvwgt/2;
   tpwgts2[1] = tvwgt-tpwgts2[0];
 
@@ -277,15 +277,15 @@ void MlevelNestedDissection(CtrlType *ctrl, GraphType *graph, idxtype *order, fl
     case OP_OEMETIS:
       MlevelEdgeBisection(ctrl, graph, tpwgts2, ubfactor);
 
-      IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->SepTmr));
+      IFSET(ctrl->dbglvl, DBG_TIME, gk_startcputimer(ctrl->SepTmr));
       ConstructMinCoverSeparator(ctrl, graph, ubfactor);
-      IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->SepTmr));
+      IFSET(ctrl->dbglvl, DBG_TIME, gk_stopcputimer(ctrl->SepTmr));
 
       break;
     case OP_ONMETIS:
       MlevelNodeBisectionMultiple(ctrl, graph, tpwgts2, ubfactor);
 
-      IFSET(ctrl->dbglvl, DBG_SEPINFO, printf("Nvtxs: %6d, [%6d %6d %6d]\n", graph->nvtxs, graph->pwgts[0], graph->pwgts[1], graph->pwgts[2]));
+      IFSET(ctrl->dbglvl, DBG_SEPINFO, mprintf("Nvtxs: %6D, [%6D %6D %6D]\n", graph->nvtxs, graph->pwgts[0], graph->pwgts[1], graph->pwgts[2]));
 
       break;
   }
@@ -300,19 +300,19 @@ void MlevelNestedDissection(CtrlType *ctrl, GraphType *graph, idxtype *order, fl
   SplitGraphOrder(ctrl, graph, &lgraph, &rgraph);
 
   /* Free the memory of the top level graph */
-  GKfree((void *)&graph->gdata, &graph->rdata, &graph->label, LTERM);
+  FreeGraph(graph, 0);
 
   if (rgraph.nvtxs > MMDSWITCH) 
     MlevelNestedDissection(ctrl, &rgraph, order, ubfactor, lastvtx);
   else {
     MMDOrder(ctrl, &rgraph, order, lastvtx); 
-    GKfree((void *)&rgraph.gdata, &rgraph.rdata, &rgraph.label, LTERM);
+    FreeGraph(&rgraph, 0);
   }
   if (lgraph.nvtxs > MMDSWITCH) 
     MlevelNestedDissection(ctrl, &lgraph, order, ubfactor, lastvtx-rgraph.nvtxs);
   else {
     MMDOrder(ctrl, &lgraph, order, lastvtx-rgraph.nvtxs); 
-    GKfree((void *)&lgraph.gdata, &lgraph.rdata, &lgraph.label, LTERM);
+    FreeGraph(&lgraph, 0);
   }
 }
 
@@ -330,12 +330,12 @@ void MlevelNestedDissectionCC(CtrlType *ctrl, GraphType *graph, idxtype *order, 
   nvtxs = graph->nvtxs;
 
   /* Determine the weights of the partitions */
-  tvwgt = idxsum(nvtxs, graph->vwgt);
+  tvwgt = idxsum(nvtxs, graph->vwgt, 1);
   tpwgts2[0] = tvwgt/2;
   tpwgts2[1] = tvwgt-tpwgts2[0];
 
   MlevelNodeBisectionMultiple(ctrl, graph, tpwgts2, ubfactor);
-  IFSET(ctrl->dbglvl, DBG_SEPINFO, printf("Nvtxs: %6d, [%6d %6d %6d]\n", graph->nvtxs, graph->pwgts[0], graph->pwgts[1], graph->pwgts[2]));
+  IFSET(ctrl->dbglvl, DBG_SEPINFO, mprintf("Nvtxs: %6D, [%6D %6D %6D]\n", graph->nvtxs, graph->pwgts[0], graph->pwgts[1], graph->pwgts[2]));
 
   /* Order the nodes in the separator */
   nbnd = graph->nbnd;
@@ -350,23 +350,23 @@ void MlevelNestedDissectionCC(CtrlType *ctrl, GraphType *graph, idxtype *order, 
 
 /*
   if (ncmps > 2)
-    printf("[%5d] has %3d components\n", nvtxs, ncmps);
+    mprintf("[%5D] has %3D components\n", nvtxs, ncmps);
 */
 
-  sgraphs = (GraphType *)GKmalloc(ncmps*sizeof(GraphType), "MlevelNestedDissectionCC: sgraphs");
+  sgraphs = (GraphType *)gk_malloc(ncmps*sizeof(GraphType), "MlevelNestedDissectionCC: sgraphs");
 
   nsgraphs = SplitGraphOrderCC(ctrl, graph, sgraphs, ncmps, cptr, cind);
 
-  GKfree((void *)&cptr, &cind, LTERM);
+  gk_free((void **)&cptr, &cind, LTERM);
 
   /* Free the memory of the top level graph */
-  GKfree((void *)&graph->gdata, &graph->rdata, &graph->label, LTERM);
+  FreeGraph(graph, 0);
 
   /* Go and process the subgraphs */
   for (rnvtxs=i=0; i<nsgraphs; i++) {
     if (sgraphs[i].adjwgt == NULL) {
       MMDOrder(ctrl, sgraphs+i, order, lastvtx-rnvtxs);
-      GKfree((void *)&sgraphs[i].gdata, &sgraphs[i].label, LTERM);
+      FreeGraph(sgraphs+i, 0);
     }
     else {
       MlevelNestedDissectionCC(ctrl, sgraphs+i, order, ubfactor, lastvtx-rnvtxs);
@@ -374,7 +374,7 @@ void MlevelNestedDissectionCC(CtrlType *ctrl, GraphType *graph, idxtype *order, 
     rnvtxs += sgraphs[i].nvtxs;
   }
 
-  GKfree((void *)&sgraphs, LTERM);
+  gk_free((void **)&sgraphs, LTERM);
 }
 
 
@@ -402,23 +402,23 @@ void MlevelNodeBisectionMultiple(CtrlType *ctrl, GraphType *graph, idxtype *tpwg
     for (i=ctrl->nseps; i>0; i--) {
       MlevelNodeBisection(ctrl, graph, tpwgts, ubfactor);
 
-      /* printf("%5d ", cgraph->mincut); */
+      /* mprintf("%5D ", cgraph->mincut); */
 
       if (i==ctrl->nseps || graph->mincut < mincut) {
         mincut = graph->mincut;
         idxcopy(nvtxs, graph->where, bestwhere);
       }
 
-      GKfree((void *)&graph->rdata, LTERM);
+      FreeRData(graph);
     
       if (mincut == 0)
         break;
     }
-    /* printf("[%5d]\n", mincut); */
+    /* mprintf("[%5D]\n", mincut); */
 
     Allocate2WayNodePartitionMemory(ctrl, graph);
     idxcopy(nvtxs, bestwhere, graph->where);
-    GKfree((void *)&bestwhere, LTERM);
+    gk_free((void **)&bestwhere, LTERM);
 
     Compute2WayNodePartitionParams(ctrl, graph);
   }
@@ -435,23 +435,23 @@ void MlevelNodeBisectionMultiple(CtrlType *ctrl, GraphType *graph, idxtype *tpwg
       ctrl->CType += 20; /* This is a hack. Look at coarsen.c */
       MlevelNodeBisection(ctrl, cgraph, tpwgts, ubfactor);
 
-      /* printf("%5d ", cgraph->mincut); */
+      /* mprintf("%5D ", cgraph->mincut); */
 
       if (i==ctrl->nseps || cgraph->mincut < mincut) {
         mincut = cgraph->mincut;
         idxcopy(cnvtxs, cgraph->where, bestwhere);
       }
 
-      GKfree((void *)&cgraph->rdata, LTERM);
+      FreeRData(graph);
     
       if (mincut == 0)
         break;
     }
-    /* printf("[%5d]\n", mincut); */
+    /* mprintf("[%5D]\n", mincut); */
 
     Allocate2WayNodePartitionMemory(ctrl, cgraph);
     idxcopy(cnvtxs, bestwhere, cgraph->where);
-    GKfree((void *)&bestwhere, LTERM);
+    gk_free((void **)&bestwhere, LTERM);
 
     Compute2WayNodePartitionParams(ctrl, cgraph);
 
@@ -480,12 +480,12 @@ void MlevelNodeBisection(CtrlType *ctrl, GraphType *graph, idxtype *tpwgts, floa
     case ITYPE_GGPKL:
       Init2WayPartition(ctrl, cgraph, tpwgts, ubfactor);
 
-      IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->SepTmr));
+      IFSET(ctrl->dbglvl, DBG_TIME, gk_startcputimer(ctrl->SepTmr));
 
       Compute2WayPartitionParams(ctrl, cgraph);
       ConstructSeparator(ctrl, cgraph, ubfactor);
 
-      IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->SepTmr));
+      IFSET(ctrl->dbglvl, DBG_TIME, gk_stopcputimer(ctrl->SepTmr));
       break;
     case ITYPE_GGPKLNODE:
       InitSeparator(ctrl, cgraph, ubfactor);
@@ -511,7 +511,7 @@ void SplitGraphOrder(CtrlType *ctrl, GraphType *graph, GraphType *lgraph, GraphT
   idxtype *rename;
   idxtype *auxadjncy, *auxadjwgt;
 
-  IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->SplitTmr));
+  IFSET(ctrl->dbglvl, DBG_TIME, gk_startcputimer(ctrl->SplitTmr));
 
   nvtxs = graph->nvtxs;
   xadj = graph->xadj;
@@ -602,7 +602,7 @@ void SplitGraphOrder(CtrlType *ctrl, GraphType *graph, GraphType *lgraph, GraphT
   rgraph->nvtxs = snvtxs[1];
   rgraph->nedges = snedges[1];
 
-  IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->SplitTmr));
+  IFSET(ctrl->dbglvl, DBG_TIME, gk_stopcputimer(ctrl->SplitTmr));
 
   idxwspacefree(ctrl, nvtxs);
 
@@ -643,7 +643,7 @@ void MMDOrder(CtrlType *ctrl, GraphType *graph, idxtype *order, idxtype lastvtx)
   for (i=0; i<nvtxs; i++)
     order[label[i]] = firstvtx+iperm[i]-1;
 
-  GKfree((void *)&perm, LTERM);
+  gk_free((void **)&perm, LTERM);
 
   /* Relabel the vertices so that it starts from 0 */
   for (i=0; i<nvtxs+1; i++)
@@ -666,7 +666,7 @@ idxtype SplitGraphOrderCC(CtrlType *ctrl, GraphType *graph, GraphType *sgraphs, 
   idxtype *rename;
   idxtype *auxadjncy, *auxadjwgt;
 
-  IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->SplitTmr));
+  IFSET(ctrl->dbglvl, DBG_TIME, gk_startcputimer(ctrl->SplitTmr));
 
   nvtxs = graph->nvtxs;
   xadj = graph->xadj;
@@ -748,7 +748,7 @@ idxtype SplitGraphOrderCC(CtrlType *ctrl, GraphType *graph, GraphType *sgraphs, 
       sgraphs[iii].adjwgt = NULL;  /* A marker to call MMD on the driver */
   }
 
-  IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->SplitTmr));
+  IFSET(ctrl->dbglvl, DBG_TIME, gk_stopcputimer(ctrl->SplitTmr));
 
   idxwspacefree(ctrl, nvtxs);
 

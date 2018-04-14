@@ -19,7 +19,7 @@ GraphType *Coarsen2Way(CtrlType *ctrl, GraphType *graph)
   idxtype clevel;
   GraphType *cgraph;
 
-  IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->CoarsenTmr));
+  IFSET(ctrl->dbglvl, DBG_TIME, gk_startcputimer(ctrl->CoarsenTmr));
 
   cgraph = graph;
 
@@ -33,10 +33,10 @@ GraphType *Coarsen2Way(CtrlType *ctrl, GraphType *graph)
     clevel = 0;
 
   do {
-    IFSET(ctrl->dbglvl, DBG_COARSEN, printf("%6d %7d %7d [%d] [%d %d]\n",
-          cgraph->nvtxs, cgraph->nedges/2, idxsum(cgraph->nvtxs, cgraph->adjwgtsum)/2,
+    IFSET(ctrl->dbglvl, DBG_COARSEN, mprintf("%6D %7D %7D [%D] [%D %D]\n",
+          cgraph->nvtxs, cgraph->nedges/2, idxsum(cgraph->nvtxs, cgraph->adjwgtsum, 1)/2,
           ctrl->CoarsenTo, ctrl->maxvwgt, 
-          (cgraph->vwgt ? idxsum(cgraph->nvtxs, cgraph->vwgt) : cgraph->nvtxs)));
+          (cgraph->vwgt ? idxsum(cgraph->nvtxs, cgraph->vwgt, 1) : cgraph->nvtxs)));
 
     if (cgraph->adjwgt) {
       switch (ctrl->CType) {
@@ -74,12 +74,12 @@ GraphType *Coarsen2Way(CtrlType *ctrl, GraphType *graph)
 
   } while (cgraph->nvtxs > ctrl->CoarsenTo && cgraph->nvtxs < COARSEN_FRACTION2*cgraph->finer->nvtxs && cgraph->nedges > cgraph->nvtxs/2); 
 
-  IFSET(ctrl->dbglvl, DBG_COARSEN, printf("%6d %7d %7d [%d] [%d %d]\n",
-        cgraph->nvtxs, cgraph->nedges/2, idxsum(cgraph->nvtxs, cgraph->adjwgtsum)/2,
+  IFSET(ctrl->dbglvl, DBG_COARSEN, mprintf("%6D %7D %7D [%D] [%D %D]\n",
+        cgraph->nvtxs, cgraph->nedges/2, idxsum(cgraph->nvtxs, cgraph->adjwgtsum, 1)/2,
         ctrl->CoarsenTo, ctrl->maxvwgt, 
-        (cgraph->vwgt ? idxsum(cgraph->nvtxs, cgraph->vwgt) : cgraph->nvtxs)));
+        (cgraph->vwgt ? idxsum(cgraph->nvtxs, cgraph->vwgt, 1) : cgraph->nvtxs)));
 
-  IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->CoarsenTmr));
+  IFSET(ctrl->dbglvl, DBG_TIME, gk_stopcputimer(ctrl->CoarsenTmr));
 
   return cgraph;
 }

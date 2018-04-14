@@ -96,7 +96,7 @@ void MinCover(idxtype *xadj, idxtype *adjncy, idxtype asize, idxtype bsize, idxt
             }
             else { /* This column node is matched */
               if (flag[mate[col]]) 
-                printf("\nSomething wrong, flag[%d] is 1",mate[col]);
+                mprintf("\nSomething wrong, flag[%D] is 1",mate[col]);
               queue[rptr++] = mate[col];
               level[mate[col]] = level[row] + 1;
             }
@@ -115,7 +115,7 @@ void MinCover(idxtype *xadj, idxtype *adjncy, idxtype asize, idxtype bsize, idxt
 
   MinCover_Decompose(xadj, adjncy, asize, bsize, mate, cover, csize);
 
-  GKfree((void *)&mate, &flag, &level, &queue, &lst, LTERM);
+  gk_free((void **)&mate, &flag, &level, &queue, &lst, LTERM);
 
 }
 
@@ -187,20 +187,20 @@ void MinCover_Decompose(idxtype *xadj, idxtype *adjncy, idxtype asize, idxtype b
 
   k = 0;
   if (idxtype_abs(card[VC]+card[SC]-card[HR]) < idxtype_abs(card[VC]-card[SR]-card[HR])) {  /* S = VC+SC+HR */
-    /* printf("%d %d ",vc+sc, hr); */
+    /* mprintf("%D %D ",vc+sc, hr); */
     for (i=0; i<bsize; i++) 
       if (where[i] == VC || where[i] == SC || where[i] == HR)
         cover[k++] = i;
   }
   else {  /* S = VC+SR+HR */
-    /* printf("%d %d ",vc, hr+sr); */
+    /* mprintf("%D %D ",vc, hr+sr); */
     for (i=0; i<bsize; i++) 
       if (where[i] == VC || where[i] == SR || where[i] == HR)
         cover[k++] = i;
   }
 
   *csize = k;
-  GKfree((void *)&where, LTERM);
+  gk_free((void **)&where, LTERM);
 
 }
 

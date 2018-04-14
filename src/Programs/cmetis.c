@@ -20,7 +20,7 @@
 /*************************************************************************
 * Let the game begin
 **************************************************************************/
-int main(idxtype argc, char *argv[])
+int main(int argc, char *argv[])
 {
   idxtype i, options[10], nnodes, nclean, naclean, ndirty, maxdepth;
   idxtype *part, *sflag;
@@ -29,69 +29,69 @@ int main(idxtype argc, char *argv[])
   idxtype numflag = 0, wgtflag = 0, edgecut;
   ParamType params;
   void *cinfo;
-  timer TOTALTmr, METISTmr, IOTmr;
+  double TOTALTmr, METISTmr, IOTmr;
 
   parse_cmdline(&params, argc, argv);
 
   if (params.nparts < 2) {
-    printf("The number of partitions should be greater than 1!\n");
+    mprintf("The number of partitions should be greater than 1!\n");
     exit(0);
   }
 
-  cleartimer(TOTALTmr);
-  cleartimer(METISTmr);
-  cleartimer(IOTmr);
+  gk_clearcputimer(TOTALTmr);
+  gk_clearcputimer(METISTmr);
+  gk_clearcputimer(IOTmr);
 
-  starttimer(TOTALTmr);
-  starttimer(IOTmr);
+  gk_startcputimer(TOTALTmr);
+  gk_startcputimer(IOTmr);
   ReadGraph(&graph, params.filename, &wgtflag);
   if (graph.nvtxs <= 0) {
-    printf("Empty graph. Nothing to do.\n");
+    mprintf("Empty graph. Nothing to do.\n");
     exit(0);
   }
   ReadCoordinates(&graph, params.xyzfilename);
-  stoptimer(IOTmr);
+  gk_stopcputimer(IOTmr);
 
-  printf("**********************************************************************\n");
-  printf("%s", METISTITLE);
-  printf("Graph Information ---------------------------------------------------\n");
-  printf("  Name: %s, #Vertices: %d, #Edges: %d, #Parts: %d\n", params.filename, graph.nvtxs, graph.nedges/2, params.nparts);
+  mprintf("**********************************************************************\n");
+  mprintf("%s", METISTITLE);
+  mprintf("Graph Information ---------------------------------------------------\n");
+  mprintf("  Name: %s, #Vertices: %D, #Edges: %D, #Parts: %D\n", params.filename, graph.nvtxs, graph.nedges/2, params.nparts);
   if (graph.ncon > 1)
-    printf("  Balancing Constraints: %d\n", graph.ncon);
-  printf("\nRecursive Partitioning... -------------------------------------------\n");
+    mprintf("  Balancing Constraints: %D\n", graph.ncon);
+  mprintf("\nRecursive Partitioning... -------------------------------------------\n");
 
   part  = idxmalloc(graph.nvtxs, "main: part");
   sflag = idxsmalloc(graph.nvtxs, 1, "main: sflag");
   options[0] = 0;
 
-  starttimer(METISTmr);
+  gk_startcputimer(METISTmr);
   cinfo = METIS_PartGraphForContact(&graph.nvtxs, graph.xadj, graph.adjncy, graph.coords, sflag, 
                     &numflag, &(params.nparts), options, &edgecut, part);
 
   METIS_UpdateContactInfo(cinfo, &graph.nvtxs, graph.coords, sflag);
-  stoptimer(METISTmr);
+  gk_stopcputimer(METISTmr);
 
   ComputePartitionBalance(&graph, params.nparts, part, lbvec);
 
-  graph.vwgt = ismalloc(graph.nvtxs, 1, "main: graph->vwgt");
+  graph.vwgt = idxsmalloc(graph.nvtxs, 1, "main: graph->vwgt");
 
-  printf("  %d-way Edge-Cut: %7d, Volume: %7d, Balance: ", params.nparts, edgecut, 
+  mprintf("  %D-way Edge-Cut: %7D, Volume: %7D, Balance: ", params.nparts, edgecut, 
                                                            ComputeVolume(&graph, part));
   for (i=0; i<graph.ncon; i++)
-    printf("%5.2f ", lbvec[i]);
-  printf("\n");
+    mprintf("%5.2f ", lbvec[i]);
+  mprintf("\n");
 
-  starttimer(IOTmr);
+  gk_startcputimer(IOTmr);
   WritePartition(params.filename, part, graph.nvtxs, params.nparts); 
-  stoptimer(IOTmr);
-  stoptimer(TOTALTmr);
+  gk_stopcputimer(IOTmr);
+  gk_stopcputimer(TOTALTmr);
 
-  printf("\nTiming Information --------------------------------------------------\n");
-  printf("  I/O:          \t\t %7.3f\n", gettimer(IOTmr));
-  printf("  Partitioning: \t\t %7.3f   (CMETIS time)\n", gettimer(METISTmr));
-  printf("  Total:        \t\t %7.3f\n", gettimer(TOTALTmr));
-  printf("**********************************************************************\n");
+  mprintf("\nTiming Information --------------------------------------------------\n");
+  mprintf("  I/O:          \t\t %7.3f\n", gk_getcputimer(IOTmr));
+  mprintf("  Partitioning: \t\t %7.3f   (CMETIS time)\n", gk_getcputimer(METISTmr));
+  mprintf("  Total:        \t\t %7.3f\n", gk_getcputimer(TOTALTmr));
+  mprintf("**********************************************************************\n");
 
-  GKfree((void *)&graph.xadj, &graph.adjncy, &graph.vwgt, &graph.adjwgt, &graph.coords, &part, &sflag, LTERM);
+  gk_free((void **)&graph.xadj, &graph.adjncy, &graph.vwgt, &graph.adjwgt, &graph.coords, &part, &sflag, LTERM);
 }  
 

@@ -53,7 +53,7 @@ void FM_2WayNodeRefine(CtrlType *ctrl, GraphType *graph, float ubfactor, idxtype
   perm  = idxwspacemalloc(ctrl, nvtxs);
 
   IFSET(ctrl->dbglvl, DBG_REFINE,
-    printf("Partitions: [%6d %6d] Nv-Nb[%6d %6d]. ISep: %6d\n", pwgts[0], pwgts[1], graph->nvtxs, graph->nbnd, graph->mincut));
+    mprintf("Partitions: [%6D %6D] Nv-Nb[%6D %6D]. ISep: %6D\n", pwgts[0], pwgts[1], graph->nvtxs, graph->nbnd, graph->mincut));
 
   badmaxpwgt = (int)(ubfactor*(pwgts[0]+pwgts[1]+pwgts[2])/2);
 
@@ -183,7 +183,7 @@ void FM_2WayNodeRefine(CtrlType *ctrl, GraphType *graph, float ubfactor, idxtype
       mptr[nswaps+1] = nmind;
 
       IFSET(ctrl->dbglvl, DBG_MOVEINFO,
-            printf("Moved %6d to %3d, Gain: %5d [%5d] [%4d %4d] \t[%5d %5d %5d]\n", higain, to, g[to], g[other], vwgt[u[to]], vwgt[u[other]], pwgts[0], pwgts[1], pwgts[2]));
+            mprintf("Moved %6D to %3D, Gain: %5D [%5D] [%4D %4D] \t[%5D %5D %5D]\n", higain, to, g[to], g[other], vwgt[u[to]], vwgt[u[other]], pwgts[0], pwgts[1], pwgts[2]));
 
     }
 
@@ -230,7 +230,7 @@ void FM_2WayNodeRefine(CtrlType *ctrl, GraphType *graph, float ubfactor, idxtype
     ASSERT(mincut == pwgts[2]);
 
     IFSET(ctrl->dbglvl, DBG_REFINE,
-      printf("\tMinimum sep: %6d at %5d, PWGTS: [%6d %6d], NBND: %6d\n", mincut, mincutorder, pwgts[0], pwgts[1], nbnd));
+      mprintf("\tMinimum sep: %6D at %5D, PWGTS: [%6D %6D], NBND: %6D\n", mincut, mincutorder, pwgts[0], pwgts[1], nbnd));
 
     graph->mincut = mincut;
     graph->nbnd = nbnd;
@@ -288,7 +288,7 @@ void FM_2WayNodeRefine2(CtrlType *ctrl, GraphType *graph, float ubfactor, idxtyp
   perm  = idxwspacemalloc(ctrl, nvtxs);
 
   IFSET(ctrl->dbglvl, DBG_REFINE,
-    printf("Partitions: [%6d %6d] Nv-Nb[%6d %6d]. ISep: %6d\n", pwgts[0], pwgts[1], graph->nvtxs, graph->nbnd, graph->mincut));
+    mprintf("Partitions: [%6D %6D] Nv-Nb[%6D %6D]. ISep: %6D\n", pwgts[0], pwgts[1], graph->nvtxs, graph->nbnd, graph->mincut));
 
   badmaxpwgt = (int)(ubfactor*(pwgts[0]+pwgts[1]+pwgts[2])/2);
 
@@ -420,7 +420,7 @@ void FM_2WayNodeRefine2(CtrlType *ctrl, GraphType *graph, float ubfactor, idxtyp
       mptr[nswaps+1] = nmind;
 
       IFSET(ctrl->dbglvl, DBG_MOVEINFO,
-            printf("Moved %6d to %3d, Gain: %5d [%5d] [%4d %4d] \t[%5d %5d %5d]\n", higain, to, g[to], g[other], vwgt[u[to]], vwgt[u[other]], pwgts[0], pwgts[1], pwgts[2]));
+            mprintf("Moved %6D to %3D, Gain: %5D [%5D] [%4D %4D] \t[%5D %5D %5D]\n", higain, to, g[to], g[other], vwgt[u[to]], vwgt[u[other]], pwgts[0], pwgts[1], pwgts[2]));
 
     }
 
@@ -467,7 +467,7 @@ void FM_2WayNodeRefine2(CtrlType *ctrl, GraphType *graph, float ubfactor, idxtyp
     ASSERT(mincut == pwgts[2]);
 
     IFSET(ctrl->dbglvl, DBG_REFINE,
-      printf("\tMinimum sep: %6d at %5d, PWGTS: [%6d %6d], NBND: %6d\n", mincut, mincutorder, pwgts[0], pwgts[1], nbnd));
+      mprintf("\tMinimum sep: %6D at %5D, PWGTS: [%6D %6D], NBND: %6D\n", mincut, mincutorder, pwgts[0], pwgts[1], nbnd));
 
     graph->mincut = mincut;
     graph->nbnd = nbnd;
@@ -525,7 +525,7 @@ void FM_2WayNodeRefineEqWgt(CtrlType *ctrl, GraphType *graph, idxtype npasses)
   perm  = idxwspacemalloc(ctrl, nvtxs);
 
   IFSET(ctrl->dbglvl, DBG_REFINE,
-    printf("Partitions: [%6d %6d] Nv-Nb[%6d %6d]. ISep: %6d\n", pwgts[0], pwgts[1], graph->nvtxs, graph->nbnd, graph->mincut));
+    mprintf("Partitions: [%6D %6D] Nv-Nb[%6D %6D]. ISep: %6D\n", pwgts[0], pwgts[1], graph->nvtxs, graph->nbnd, graph->mincut));
 
   for (pass=0; pass<npasses; pass++) {
     idxset(nvtxs, -1, moved);
@@ -643,7 +643,7 @@ void FM_2WayNodeRefineEqWgt(CtrlType *ctrl, GraphType *graph, idxtype npasses)
       mptr[nswaps+1] = nmind;
 
       IFSET(ctrl->dbglvl, DBG_MOVEINFO,
-            printf("Moved %6d to %3d, Gain: %5d [%5d] [%4d %4d] \t[%5d %5d %5d]\n", higain, to, g[to], g[other], vwgt[u[to]], vwgt[u[other]], pwgts[0], pwgts[1], pwgts[2]));
+            mprintf("Moved %6D to %3D, Gain: %5D [%5D] [%4D %4D] \t[%5D %5D %5D]\n", higain, to, g[to], g[other], vwgt[u[to]], vwgt[u[other]], pwgts[0], pwgts[1], pwgts[2]));
 
     }
 
@@ -690,7 +690,7 @@ void FM_2WayNodeRefineEqWgt(CtrlType *ctrl, GraphType *graph, idxtype npasses)
     ASSERT(mincut == pwgts[2]);
 
     IFSET(ctrl->dbglvl, DBG_REFINE,
-      printf("\tMinimum sep: %6d at %5d, PWGTS: [%6d %6d], NBND: %6d\n", mincut, mincutorder, pwgts[0], pwgts[1], nbnd));
+      mprintf("\tMinimum sep: %6D at %5D, PWGTS: [%6D %6D], NBND: %6D\n", mincut, mincutorder, pwgts[0], pwgts[1], nbnd));
 
     graph->mincut = mincut;
     graph->nbnd = nbnd;
@@ -744,7 +744,7 @@ void FM_2WayNodeRefine_OneSided(CtrlType *ctrl, GraphType *graph, float ubfactor
   mind  = idxwspacemalloc(ctrl, nvtxs);
 
   IFSET(ctrl->dbglvl, DBG_REFINE,
-    printf("Partitions-N1: [%6d %6d] Nv-Nb[%6d %6d]. ISep: %6d\n", pwgts[0], pwgts[1], graph->nvtxs, graph->nbnd, graph->mincut));
+    mprintf("Partitions-N1: [%6D %6D] Nv-Nb[%6D %6D]. ISep: %6D\n", pwgts[0], pwgts[1], graph->nvtxs, graph->nbnd, graph->mincut));
 
   badmaxpwgt = (int)(ubfactor*(pwgts[0]+pwgts[1]+pwgts[2])/2);
 
@@ -846,7 +846,7 @@ void FM_2WayNodeRefine_OneSided(CtrlType *ctrl, GraphType *graph, float ubfactor
 
 
       IFSET(ctrl->dbglvl, DBG_MOVEINFO,
-            printf("Moved %6d to %3d, Gain: %5d [%5d] \t[%5d %5d %5d] [%3d %2d]\n", 
+            mprintf("Moved %6D to %3D, Gain: %5D [%5D] \t[%5D %5D %5D] [%3D %2D]\n", 
                        higain, to, (vwgt[higain]-rinfo[higain].edegrees[other]), vwgt[higain], pwgts[0], pwgts[1], pwgts[2], nswaps, limit));
 
     }
@@ -893,7 +893,7 @@ void FM_2WayNodeRefine_OneSided(CtrlType *ctrl, GraphType *graph, float ubfactor
     ASSERT(mincut == pwgts[2]);
 
     IFSET(ctrl->dbglvl, DBG_REFINE,
-      printf("\tMinimum sep: %6d at %5d, PWGTS: [%6d %6d], NBND: %6d\n", mincut, mincutorder, pwgts[0], pwgts[1], nbnd));
+      mprintf("\tMinimum sep: %6D at %5D, PWGTS: [%6D %6D], NBND: %6D\n", mincut, mincutorder, pwgts[0], pwgts[1], nbnd));
 
     graph->mincut = mincut;
     graph->nbnd = nbnd;
@@ -938,7 +938,7 @@ void FM_2WayNodeBalance(CtrlType *ctrl, GraphType *graph, float ubfactor)
 
   if (idxtype_abs(pwgts[0]-pwgts[1]) < (int)((ubfactor-1.0)*(pwgts[0]+pwgts[1])))
     return;
-  if (idxtype_abs(pwgts[0]-pwgts[1]) < 3*idxsum(nvtxs, vwgt)/nvtxs)
+  if (idxtype_abs(pwgts[0]-pwgts[1]) < 3*idxsum(nvtxs, vwgt, 1)/nvtxs)
     return;
 
   to = (pwgts[0] < pwgts[1] ? 0 : 1); 
@@ -950,7 +950,7 @@ void FM_2WayNodeBalance(CtrlType *ctrl, GraphType *graph, float ubfactor)
   moved = idxset(nvtxs, -1, idxwspacemalloc(ctrl, nvtxs));
 
   IFSET(ctrl->dbglvl, DBG_REFINE,
-    printf("Partitions: [%6d %6d] Nv-Nb[%6d %6d]. ISep: %6d [B]\n", pwgts[0], pwgts[1], graph->nvtxs, graph->nbnd, graph->mincut));
+    mprintf("Partitions: [%6D %6D] Nv-Nb[%6D %6D]. ISep: %6D [B]\n", pwgts[0], pwgts[1], graph->nvtxs, graph->nbnd, graph->mincut));
 
   nbnd = graph->nbnd;
   RandomPermute(nbnd, perm, 1);
@@ -988,7 +988,7 @@ void FM_2WayNodeBalance(CtrlType *ctrl, GraphType *graph, float ubfactor)
     where[higain] = to;
 
     IFSET(ctrl->dbglvl, DBG_MOVEINFO,
-          printf("Moved %6d to %3d, Gain: %3d, \t[%5d %5d %5d]\n", higain, to, vwgt[higain]-rinfo[higain].edegrees[other], pwgts[0], pwgts[1], pwgts[2]));
+          mprintf("Moved %6D to %3D, Gain: %3D, \t[%5D %5D %5D]\n", higain, to, vwgt[higain]-rinfo[higain].edegrees[other], pwgts[0], pwgts[1], pwgts[2]));
 
 
     /**********************************************************
@@ -1032,7 +1032,7 @@ void FM_2WayNodeBalance(CtrlType *ctrl, GraphType *graph, float ubfactor)
   }
 
   IFSET(ctrl->dbglvl, DBG_REFINE,
-    printf("\tBalanced sep: %6d at %4d, PWGTS: [%6d %6d], NBND: %6d\n", pwgts[2], nswaps, pwgts[0], pwgts[1], nbnd));
+    mprintf("\tBalanced sep: %6D at %4D, PWGTS: [%6D %6D], NBND: %6D\n", pwgts[2], nswaps, pwgts[0], pwgts[1], nbnd));
 
   graph->mincut = pwgts[2];
   graph->nbnd = nbnd;

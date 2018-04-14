@@ -3,22 +3,18 @@ include ../Makefile.in
 CURBUILDDIR = $(PRGBUILDDIR)
 
 
-METISSRC       = metis.c io.c smbfactor.c getopt.c getopt1.c
-PMETISSRC      = pmetis.c io.c getopt.c getopt1.c cmdline_pmetis.c string.c
-KMETISSRC      = kmetis.c io.c getopt.c getopt1.c
-OEMETISSRC     = oemetis.c io.c smbfactor.c getopt.c getopt1.c
-ONMETISSRC     = onmetis.c io.c smbfactor.c getopt.c getopt1.c
-MESH2DUALSRC   = mesh2dual.c io.c getopt.c getopt1.c
-MESH2NODALSRC  = mesh2nodal.c io.c getopt.c getopt1.c
-PARTDMESHSRC   = partdmesh.c io.c getopt.c getopt1.c
-PARTNMESHSRC   = partnmesh.c io.c getopt.c getopt1.c
-GRAPHCHKSRC    = graphchk.c io.c getopt.c getopt1.c
-KFMETISSRC     = kfmetis.c io.c getopt.c getopt1.c cmdline_kfmetis.c string.c smbfactor.c
-CMETISSRC      = cmetis.c io.c getopt.c getopt1.c cmdline_cmetis.c string.c 
-
-#CEPICSRC       = cepic.c io.c string.c 
-#CEPICRCBSRC    = cepic-rcb.c io.c string.c 
-#MMETISSRC      = mmetis.c io.c smbfactor.c getopt.c getopt1.c
+METISSRC       = metis.c io.c smbfactor.c 
+PMETISSRC      = pmetis.c io.c cmdline_pmetis.c 
+KMETISSRC      = kmetis.c io.c 
+OEMETISSRC     = oemetis.c io.c smbfactor.c 
+ONMETISSRC     = onmetis.c io.c smbfactor.c 
+MESH2DUALSRC   = mesh2dual.c io.c 
+MESH2NODALSRC  = mesh2nodal.c io.c 
+PARTDMESHSRC   = partdmesh.c io.c 
+PARTNMESHSRC   = partnmesh.c io.c 
+GRAPHCHKSRC    = graphchk.c io.c 
+KFMETISSRC     = kfmetis.c io.c cmdline_kfmetis.c smbfactor.c
+CMETISSRC      = cmetis.c io.c cmdline_cmetis.c 
 
 METISOBJS      = $(patsubst %.c, $(CURBUILDDIR)/%$(OBJEXT), $(METISSRC))
 PMETISOBJS     = $(patsubst %.c, $(CURBUILDDIR)/%$(OBJEXT), $(PMETISSRC))
@@ -34,7 +30,7 @@ KFMETISOBJS    = $(patsubst %.c, $(CURBUILDDIR)/%$(OBJEXT), $(KFMETISSRC))
 CMETISOBJS     = $(patsubst %.c, $(CURBUILDDIR)/%$(OBJEXT), $(CMETISSRC))
 
 ALLOBJS  = $(patsubst %.c, $(CURBUILDDIR)/%$(OBJEXT), $(wildcard *.c))
-HEADERS  = $(wildcard *.h) $(TOPDIR)/include/metis.h 
+HEADERS  = $(wildcard *.h) $(TOPDIR)/include/metis.h $(wildcard $(GKLIBINCDIR)/*.h)
 
 LIBRARIES = $(BUILDDIR)/libmetis$(LIBEXT)
 

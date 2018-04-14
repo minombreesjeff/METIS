@@ -20,7 +20,7 @@
 void Refine2Way(CtrlType *ctrl, GraphType *orggraph, GraphType *graph, idxtype *tpwgts, float ubfactor)
 {
 
-  IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->UncoarsenTmr));
+  IFSET(ctrl->dbglvl, DBG_TIME, gk_startcputimer(ctrl->UncoarsenTmr));
 
   /* Compute the parameters of the coarsest graph */
   Compute2WayPartitionParams(ctrl, graph);
@@ -28,7 +28,7 @@ void Refine2Way(CtrlType *ctrl, GraphType *orggraph, GraphType *graph, idxtype *
   for (;;) {
     ASSERT(CheckBnd(graph));
 
-    IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->RefTmr));
+    IFSET(ctrl->dbglvl, DBG_TIME, gk_startcputimer(ctrl->RefTmr));
     switch (ctrl->RType) {
       case 1:
         Balance2Way(ctrl, graph, tpwgts, ubfactor);
@@ -37,18 +37,18 @@ void Refine2Way(CtrlType *ctrl, GraphType *orggraph, GraphType *graph, idxtype *
       default:
         errexit("Unknown refinement type: %d\n", ctrl->RType);
     }
-    IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->RefTmr));
+    IFSET(ctrl->dbglvl, DBG_TIME, gk_stopcputimer(ctrl->RefTmr));
 
     if (graph == orggraph)
       break;
 
     graph = graph->finer;
-    IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->ProjectTmr));
+    IFSET(ctrl->dbglvl, DBG_TIME, gk_startcputimer(ctrl->ProjectTmr));
     Project2WayPartition(ctrl, graph);
-    IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->ProjectTmr));
+    IFSET(ctrl->dbglvl, DBG_TIME, gk_stopcputimer(ctrl->ProjectTmr));
   }
 
-  IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->UncoarsenTmr));
+  IFSET(ctrl->dbglvl, DBG_TIME, gk_stopcputimer(ctrl->UncoarsenTmr));
 }
 
 
@@ -61,13 +61,13 @@ void Allocate2WayPartitionMemory(CtrlType *ctrl, GraphType *graph)
 
   nvtxs = graph->nvtxs;
 
-  graph->rdata = idxmalloc(5*nvtxs+2, "Allocate2WayPartitionMemory: rdata");
-  graph->pwgts 		= graph->rdata;
-  graph->where		= graph->rdata + 2;
-  graph->id		= graph->rdata + nvtxs + 2;
-  graph->ed		= graph->rdata + 2*nvtxs + 2;
-  graph->bndptr		= graph->rdata + 3*nvtxs + 2;
-  graph->bndind		= graph->rdata + 4*nvtxs + 2;
+  graph->pwgts  = idxmalloc(2, "Allocate2WayPartitionMemory: pwgts");
+  graph->where  = idxmalloc(nvtxs, "Allocate2WayPartitionMemory: where");
+  graph->id     = idxmalloc(nvtxs, "Allocate2WayPartitionMemory: id");
+  graph->ed     = idxmalloc(nvtxs, "Allocate2WayPartitionMemory: ed");
+  graph->bndptr = idxmalloc(nvtxs, "Allocate2WayPartitionMemory: bndptr");
+  graph->bndind = idxmalloc(nvtxs, "Allocate2WayPartitionMemory: bndind");
+
 }
 
 
@@ -197,7 +197,7 @@ void Project2WayPartition(CtrlType *ctrl, GraphType *graph)
   graph->nbnd = nbnd;
   idxcopy(2, cgraph->pwgts, graph->pwgts);
 
-  FreeGraph(graph->coarser);
+  FreeGraph(graph->coarser, 1);
   graph->coarser = NULL;
 
 }

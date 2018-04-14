@@ -172,10 +172,10 @@ idxtype * elms, idxtype *etype, idxtype *numflag, idxtype *conmat, idxtype custo
    }
 
 
-   free(mark);
-   free(nptr);
-   free(nind);
-   free(hash);
+   gk_free((void **)&mark, LTERM);
+   gk_free((void **)&nptr, LTERM);
+   gk_free((void **)&nind, LTERM);
+   gk_free((void **)&hash, LTERM);
 
  if (*numflag == 1)
     ChangeMesh2FNumbering3(tot, elmnts);
@@ -319,10 +319,10 @@ idxtype custom)
      dxadj[i] = dxadj[i-1];
    dxadj[0] = 0;
 
-   free(mark);
-   free(nptr);
-   free(nind);
-   free(hash);
+   gk_free((void **)&mark, LTERM);
+   gk_free((void **)&nptr, LTERM);
+   gk_free((void **)&nind, LTERM);
+   gk_free((void **)&hash, LTERM);
 
  if (*numflag == 1)
     ChangeMesh2FNumbering(tot, elmnts, *nn, dxadj, dadjncy);
@@ -543,9 +543,9 @@ idxtype *numflag, idxtype *dxadj, idxtype *dadjncy)
    
      
 
-   free(mark);
-   free(nptr);
-   free(nind);
+   gk_free((void **)&mark, LTERM);
+   gk_free((void **)&nptr, LTERM);
+   gk_free((void **)&nind, LTERM);
 
 
 
@@ -632,9 +632,9 @@ idxtype GENDUALMETIS_COUNT(idxtype nelmnts, idxtype nvtxs, idxtype etype, idxtyp
    }
 
 
-   free(mark);
-   free(nptr);
-   free(nind);
+   gk_free((void **)&mark, LTERM);
+   gk_free((void **)&nptr, LTERM);
+   gk_free((void **)&nind, LTERM);
    
    return cnt;
 
@@ -731,10 +731,10 @@ void GENDUALMETIS(idxtype nelmnts, idxtype nvtxs, idxtype etype, idxtype *elmnts
      dxadj[i] = dxadj[i-1];
    dxadj[0] = 0;
 
-   free(mark);
-   free(nptr);
-   free(nind);
-   free(mhash);
+   gk_free((void **)&mark, LTERM);
+   gk_free((void **)&nptr, LTERM);
+   gk_free((void **)&nind, LTERM);
+   gk_free((void **)&mhash, LTERM);
 
 
 }
@@ -784,9 +784,9 @@ void TRINODALMETIS(idxtype nelmnts, idxtype nvtxs, idxtype *elmnts, idxtype *dxa
      dxadj[i+1] = nedges;
    }
 
-   free(mark);
-   free(nptr);
-   free(nind);
+   gk_free((void **)&mark, LTERM);
+   gk_free((void **)&nptr, LTERM);
+   gk_free((void **)&nind, LTERM);
 
 }
 
@@ -833,9 +833,9 @@ void TETNODALMETIS(idxtype nelmnts, idxtype nvtxs, idxtype *elmnts, idxtype *dxa
      dxadj[i+1] = nedges;
    }
 
-   free(mark);
-   free(nptr);
-   free(nind);
+   gk_free((void **)&mark, LTERM);
+   gk_free((void **)&nptr, LTERM);
+   gk_free((void **)&nind, LTERM);
 
 }
 
@@ -906,9 +906,9 @@ void HEXNODALMETIS(idxtype nelmnts, idxtype nvtxs, idxtype *elmnts, idxtype *dxa
      dxadj[i+1] = nedges;
    }
 
-   free(mark);
-   free(nptr);
-   free(nind);
+   gk_free((void **)&mark, LTERM);
+   gk_free((void **)&nptr, LTERM);
+   gk_free((void **)&nind, LTERM);
 
 }
 
@@ -970,9 +970,9 @@ void QUADNODALMETIS(idxtype nelmnts, idxtype nvtxs, idxtype *elmnts, idxtype *dx
      dxadj[i+1] = nedges;
    }
 
-   free(mark);
-   free(nptr);
-   free(nind);
+   gk_free((void **)&mark, LTERM);
+   gk_free((void **)&nptr, LTERM);
+   gk_free((void **)&nind, LTERM);
 
 }
 
@@ -1020,9 +1020,9 @@ void LINENODALMETIS(idxtype nelmnts, idxtype nvtxs, idxtype *elmnts, idxtype *dx
      dxadj[i+1] = nedges;
    }
 
-   free(mark);
-   free(nptr);
-   free(nind);
+   gk_free((void **)&mark, LTERM);
+   gk_free((void **)&nptr, LTERM);
+   gk_free((void **)&nind, LTERM);
 
 }
 

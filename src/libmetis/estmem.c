@@ -39,7 +39,7 @@ void METIS_EstimateMemory(idxtype *nvtxs, idxtype *xadj, idxtype *adjncy, idxtyp
   coresize += nedges + 11*(*nvtxs) + 4*1024 + 2*(NEG_GAINSPAN+PLUS_GAINSPAN+1)*(sizeof(ListNodeType *)/sizeof(idxtype));
   coresize += 2*(*nvtxs);  /* add some more fore other vectors */
 
-  gdata = nedges;   /* Assume that the user does not pass weights */
+  gdata = nedges;   /* Agk_fsume that the user does not pass weights */
 
   nlevels = (int)(log(100.0/(*nvtxs))/log(vfraction) + .5);
   vmult = 0.5 + (1.0 - pow(vfraction, nlevels))/(1.0 - vfraction);
@@ -97,7 +97,7 @@ void EstimateCFraction(idxtype nvtxs, idxtype *xadj, idxtype *adjncy, float *vfr
   *vfraction = (1.0*cnvtxs)/(1.0*nvtxs);
   *efraction = (1.0*cnedges)/(1.0*xadj[nvtxs]);
 
-  GKfree((void *)&cmap, &match, &perm, LTERM);
+  gk_free((void **)&cmap, &match, &perm, LTERM);
 }
 
 
@@ -147,7 +147,7 @@ idxtype ComputeCoarseGraphSize(idxtype nvtxs, idxtype *xadj, idxtype *adjncy, id
     cnvtxs++;
   }
 
-  GKfree((void *)&htable, LTERM);
+  gk_free((void **)&htable, LTERM);
 
   return cnedges;
 }

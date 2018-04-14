@@ -47,7 +47,7 @@ void METIS_mCRefineGraphKway(idxtype *nvtxs, idxtype *ncon, idxtype *xadj, idxty
     ctrl.dbglvl = options[OPTION_DBGLVL];
   }
   ctrl.optype    = OP_KMETIS;
-  ctrl.CoarsenTo = amax((*nvtxs)/(20*log2i(*nparts)), 30*(*nparts));
+  ctrl.CoarsenTo = amax((*nvtxs)/(20*gk_log2(*nparts)), 30*(*nparts));
   ctrl.nmaxvwgt  = 0.0; /* GK-MOD: Ensure that no coarsening will take place */
 
   InitRandom(-1);
@@ -55,11 +55,11 @@ void METIS_mCRefineGraphKway(idxtype *nvtxs, idxtype *ncon, idxtype *xadj, idxty
   AllocateWorkSpace(&ctrl, &graph, *nparts);
 
   IFSET(ctrl.dbglvl, DBG_TIME, InitTimers(&ctrl));
-  IFSET(ctrl.dbglvl, DBG_TIME, starttimer(ctrl.TotalTmr));
+  IFSET(ctrl.dbglvl, DBG_TIME, gk_startcputimer(ctrl.TotalTmr));
 
   *edgecut = MCMlevelKWayRefinement(&ctrl, &graph, *nparts, part, rubvec);
 
-  IFSET(ctrl.dbglvl, DBG_TIME, stoptimer(ctrl.TotalTmr));
+  IFSET(ctrl.dbglvl, DBG_TIME, gk_stopcputimer(ctrl.TotalTmr));
   IFSET(ctrl.dbglvl, DBG_TIME, PrintTimers(&ctrl));
 
   FreeWorkSpace(&ctrl, &graph);
@@ -81,7 +81,7 @@ idxtype MCMlevelKWayRefinement(CtrlType *ctrl, GraphType *graph, idxtype nparts,
 
   cgraph = MCCoarsen2Way(ctrl, graph);
 
-  IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->InitPartTmr));
+  IFSET(ctrl->dbglvl, DBG_TIME, gk_startcputimer(ctrl->InitPartTmr));
   MocAllocateKWayPartitionMemory(ctrl, cgraph, nparts);
 
   if (cgraph->nvtxs != graph->nvtxs)
@@ -94,7 +94,7 @@ idxtype MCMlevelKWayRefinement(CtrlType *ctrl, GraphType *graph, idxtype nparts,
 
   idxcopy(graph->nvtxs, graph->where, part);
 
-  GKfree((void *)&graph->nvwgt, &graph->npwgts, &graph->gdata, &graph->rdata, LTERM);
+  FreeGraph(graph, 0);
 
   return graph->mincut;
 

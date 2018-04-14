@@ -50,8 +50,8 @@ void METIS_PartFillGraph(idxtype *nvtxs, idxtype *xadj, idxtype *adjncy, idxtype
     ctrl.dbglvl = options[OPTION_DBGLVL];
   }
   ctrl.optype = OP_KMETIS;
-  ctrl.CoarsenTo = amax((*nvtxs)/(40*log2i(*nparts)), 20*(*nparts));
-  ctrl.maxvwgt = 1.5*((graph.vwgt ? idxsum(*nvtxs, graph.vwgt) : (*nvtxs))/ctrl.CoarsenTo);
+  ctrl.CoarsenTo = amax((*nvtxs)/(40*gk_log2(*nparts)), 20*(*nparts));
+  ctrl.maxvwgt = 1.5*((graph.vwgt ? idxsum(*nvtxs, graph.vwgt, 1) : (*nvtxs))/ctrl.CoarsenTo);
 
   InitRandom(-1);
 
@@ -92,15 +92,15 @@ void BalanceFillIn(CtrlType *ctrl, GraphType *graph, idxtype nparts, idxtype *pa
 
   nvtxs = graph->nvtxs;
 
-  fills    = ismalloc(nparts, 0, "BalanceFillIn: fills");
-  subfills = ismalloc(2*nparts, 0, "BalanceFillIn: subfills");
-  ssize    = ismalloc(nparts, 0, "BalanceFillIn: ssize");
-  tssize   = ismalloc(nparts, 0, "BalanceFillIn: tssize");
+  fills    = idxsmalloc(nparts, 0, "BalanceFillIn: fills");
+  subfills = idxsmalloc(2*nparts, 0, "BalanceFillIn: subfills");
+  ssize    = idxsmalloc(nparts, 0, "BalanceFillIn: ssize");
+  tssize   = idxsmalloc(nparts, 0, "BalanceFillIn: tssize");
 
-  spart    = imalloc(nvtxs, "BalanceFillIn: spart");
-  ppart    = imalloc(nvtxs, "BalanceFillIn: ppart");
-  vmap     = imalloc(nvtxs, "BalanceFillIn: vmap");
-  vimap    = imalloc(nvtxs, "BalanceFillIn: vimap");
+  spart    = idxmalloc(nvtxs, "BalanceFillIn: spart");
+  ppart    = idxmalloc(nvtxs, "BalanceFillIn: ppart");
+  vmap     = idxmalloc(nvtxs, "BalanceFillIn: vmap");
+  vimap    = idxmalloc(nvtxs, "BalanceFillIn: vimap");
 
   /* Go and compute a top-level vertex separator for each partition */
   for (i=0; i<nparts; i++) {
@@ -116,7 +116,7 @@ void BalanceFillIn(CtrlType *ctrl, GraphType *graph, idxtype nparts, idxtype *pa
     for (j=0; j<pgraph->nvtxs; j++) 
       spart[vimap[j]] = ppart[j];
 
-    FreeGraph(pgraph);
+    FreeGraph(pgraph, 1);
   }
     
     
@@ -124,12 +124,12 @@ void BalanceFillIn(CtrlType *ctrl, GraphType *graph, idxtype nparts, idxtype *pa
   for (i=0; i<nparts; i++) 
     ComputePartitionFillIn(ctrl, graph, nparts, part, spart, i, &fills[i], &subfills[2*i]);
 
-  oldavg    = isum(nparts, fills)/nparts;
-  oldmax    = fills[iamax(nparts, fills)];
+  oldavg    = idxsum(nparts, fills, 1)/nparts;
+  oldmax    = fills[idxargmax(nparts, fills)];
   oldcut    = ComputeCut(graph, part);
   oldmaxcut = ComputeMaxCut(graph, nparts, part);
 
-  printf("AverageFill: %10d, MaxFill: %10d, LoadImbalance: %.3f, EdgeCut: %5d, MaxCut: %5d\n", 
+  mprintf("AverageFill: %10D, MaxFill: %10D, LoadImbalance: %.3f, EdgeCut: %5D, MaxCut: %5D\n", 
          oldavg, oldmax, 1.0*oldmax/oldavg, oldcut, oldmaxcut);
 
   /* Determine the target separator sizes of the domains that are above average */
@@ -140,12 +140,12 @@ void BalanceFillIn(CtrlType *ctrl, GraphType *graph, idxtype nparts, idxtype *pa
     else {
       if (oldavg - (subfills[2*i] +subfills[2*i+1])< 0) {
         tssize[i] = ssize[i]/5.0;
-        printf("* %2d %7d %7d %6d %6d\n", i, fills[i], subfills[2*i]+subfills[2*i+1], ssize[i], tssize[i]);
+        mprintf("* %2D %7D %7D %6D %6D\n", i, fills[i], subfills[2*i]+subfills[2*i+1], ssize[i], tssize[i]);
       }
       else {
         alpha = sqrt(fills[i] - (subfills[2*i]+subfills[2*i+1]))/ssize[i];
         tssize[i] = sqrt(oldavg - (subfills[2*i]+subfills[2*i+1]))/alpha;
-        printf("< %2d %7d %7d %6d %6d\n", i, fills[i], subfills[2*i]+subfills[2*i+1], ssize[i], tssize[i]);
+        mprintf("< %2D %7D %7D %6D %6D\n", i, fills[i], subfills[2*i]+subfills[2*i+1], ssize[i], tssize[i]);
       }
     }
   }
@@ -160,21 +160,21 @@ void BalanceFillIn(CtrlType *ctrl, GraphType *graph, idxtype nparts, idxtype *pa
 
 for (i=0; i<nparts; i++) {
   if (tssize[i] < ssize[i])
-    printf("%3d %6d %6d %8d\n", i, ssize[i], tssize[i], fills[i]);
+    mprintf("%3D %6D %6D %8D\n", i, ssize[i], tssize[i], fills[i]);
 }
 
-  newavg    = isum(nparts, fills)/nparts;
-  newmax    = fills[iamax(nparts, fills)];
+  newavg    = idxsum(nparts, fills, 1)/nparts;
+  newmax    = fills[idxargmax(nparts, fills)];
   newcut    = ComputeCut(graph, part);
   newmaxcut = ComputeMaxCut(graph, nparts, part);
 
-  printf("AverageFill: %10d, MaxFill: %10d, LoadImbalance: %.3f, EdgeCut: %5d, MaxCut: %5d\n", 
+  mprintf("AverageFill: %10D, MaxFill: %10D, LoadImbalance: %.3f, EdgeCut: %5D, MaxCut: %5D\n", 
          newavg, newmax, 1.0*newmax/newavg, newcut, newmaxcut);
 
-  printf("Effective Load Imbalance: %.3f, Sum Fill/Comm Ratio: %6.2f, Max Fill/Comm Ratio: %6.2f\n", 
+  mprintf("Effective Load Imbalance: %.3f, Sum Fill/Comm Ratio: %6.2f, Max Fill/Comm Ratio: %6.2f\n", 
           1.0*newmax/oldavg, 1.0*(oldmax-newmax)/(newcut-oldcut), 1.0*(oldmax-newmax)/(newmaxcut-oldmaxcut));
 
-  GKfree((void *)&fills, &subfills, &ssize, &spart, &ppart, &vmap, &vimap, LTERM);
+  gk_free((void **)&fills, &subfills, &ssize, &spart, &ppart, &vmap, &vimap, LTERM);
 
 }
 
@@ -185,7 +185,8 @@ for (i=0; i<nparts; i++) {
 * partition, whose top-level separator is provided as input
 **************************************************************************/
 void ComputePartitionFillIn(CtrlType *ctrl, GraphType *graph, idxtype nparts, 
-                            idxtype *part, idxtype *spart, idxtype pid, idxtype *r_fill, idxtype *r_subfill)
+       idxtype *part, idxtype *spart, idxtype pid, idxtype *r_fill, 
+       idxtype *r_subfill)
 {
   idxtype i, j, k, pnvtxs, options[10], numflag=0;
   idxtype *vmap, *vimap, *ppart, *iperm;
@@ -193,24 +194,24 @@ void ComputePartitionFillIn(CtrlType *ctrl, GraphType *graph, idxtype nparts,
   GraphType *pgraph, *lgraph, *rgraph;
 
   /* Extract the partition graph */
-  vmap   = imalloc(graph->nvtxs, "ComputePartitionFillIn: vmap");
-  vimap  = imalloc(graph->nvtxs, "ComputePartitionFillIn: vimap");
+  vmap   = idxmalloc(graph->nvtxs, "ComputePartitionFillIn: vmap");
+  vimap  = idxmalloc(graph->nvtxs, "ComputePartitionFillIn: vimap");
 
   pgraph = ExtractPartitionGraph(graph, part, pid, vmap, vimap);
 
   pnvtxs  = pgraph->nvtxs;
 
-  iperm  = imalloc(pnvtxs, "ComputePartitionFillIn: iperm");
-  ppart  = imalloc(pnvtxs, "ComputePartitionFillIn: ppart");
+  iperm  = idxmalloc(pnvtxs, "ComputePartitionFillIn: iperm");
+  ppart  = idxmalloc(pnvtxs, "ComputePartitionFillIn: ppart");
 
-  lvmap  = imalloc(pnvtxs, "ComputePartitionFillIn: lvmap");
-  lvimap = imalloc(pnvtxs, "ComputePartitionFillIn: lvimap");
-  rvmap  = imalloc(pnvtxs, "ComputePartitionFillIn: rvmap");
-  rvimap = imalloc(pnvtxs, "ComputePartitionFillIn: rvimap");
-  lperm  = imalloc(pnvtxs, "ComputePartitionFillIn: liperm");
-  liperm = imalloc(pnvtxs, "ComputePartitionFillIn: liperm");
-  rperm  = imalloc(pnvtxs, "ComputePartitionFillIn: riperm");
-  riperm = imalloc(pnvtxs, "ComputePartitionFillIn: riperm");
+  lvmap  = idxmalloc(pnvtxs, "ComputePartitionFillIn: lvmap");
+  lvimap = idxmalloc(pnvtxs, "ComputePartitionFillIn: lvimap");
+  rvmap  = idxmalloc(pnvtxs, "ComputePartitionFillIn: rvmap");
+  rvimap = idxmalloc(pnvtxs, "ComputePartitionFillIn: rvimap");
+  lperm  = idxmalloc(pnvtxs, "ComputePartitionFillIn: liperm");
+  liperm = idxmalloc(pnvtxs, "ComputePartitionFillIn: liperm");
+  rperm  = idxmalloc(pnvtxs, "ComputePartitionFillIn: riperm");
+  riperm = idxmalloc(pnvtxs, "ComputePartitionFillIn: riperm");
 
 
   /* project down the separator-partition */
@@ -222,7 +223,7 @@ void ComputePartitionFillIn(CtrlType *ctrl, GraphType *graph, idxtype nparts,
     for (j=pgraph->xadj[i]; j<pgraph->xadj[i+1]; j++) {
       if (ppart[i] != ppart[pgraph->adjncy[j]]) {
         if (!(ppart[i] == 2 || ppart[pgraph->adjncy[j]] == 2)) 
-          printf("Error: %d %d %d\n", i, ppart[i], ppart[pgraph->adjncy[j]]);
+          mprintf("Error: %D %D %D\n", i, ppart[i], ppart[pgraph->adjncy[j]]);
       }
     }
   }
@@ -258,14 +259,14 @@ void ComputePartitionFillIn(CtrlType *ctrl, GraphType *graph, idxtype nparts,
   r_subfill[0] = ComputeFillIn2(lgraph, liperm);
   r_subfill[1] = ComputeFillIn2(rgraph, riperm);
 
-  printf("%4d %5d %5d %5d %10d %10d %10d\n", pid, pnvtxs-lgraph->nvtxs-rgraph->nvtxs, 
+  mprintf("%4D %5D %5D %5D %10D %10D %10D\n", pid, pnvtxs-lgraph->nvtxs-rgraph->nvtxs, 
           lgraph->nvtxs, rgraph->nvtxs, r_subfill[0], r_subfill[1], *r_fill);
 
-  FreeGraph(pgraph);
-  FreeGraph(lgraph);
-  FreeGraph(rgraph);
+  FreeGraph(pgraph, 1);
+  FreeGraph(lgraph, 1);
+  FreeGraph(rgraph, 1);
 
-  GKfree((void *)&vmap, &vimap, &iperm, &ppart, &lvmap, &lvimap, &rvmap, &rvimap,
+  gk_free((void **)&vmap, &vimap, &iperm, &ppart, &lvmap, &lvimap, &rvmap, &rvimap,
          &lperm, &liperm, &rperm, &riperm, LTERM);
 
 }
@@ -308,17 +309,15 @@ GraphType *ExtractPartitionGraph(GraphType *graph, idxtype *part, idxtype pid,
 
   /* Allocate memory for the partition graph */
   pgraph = CreateGraph();
-  pgraph->nvtxs = pnvtxs;
+  pgraph->nvtxs  = pnvtxs;
   pgraph->nedges = pnedges;
 
-  pgraph->gdata = idxmalloc(4*pnvtxs+1 + 2*pnedges, "ExtractPartitionGraph: pgraph->gdata");
-
-  pxadj   = pgraph->xadj          = pgraph->gdata;
-  pvwgt   = pgraph->vwgt          = pgraph->gdata + pnvtxs + 1;
-  padjncy = pgraph->adjncy        = pgraph->gdata + 4*pnvtxs + 1;
-  padjwgt = pgraph->adjwgt        = pgraph->gdata + 4*pnvtxs + 1 + pnedges;
-  pgraph->adjwgtsum               = pgraph->gdata + 2*pnvtxs + 1;
-  pgraph->cmap                    = pgraph->gdata + 3*pnvtxs + 1;
+  pxadj   = pgraph->xadj          = idxmalloc(pnvtxs+1, "ExtractPartitionGraph: xadj");
+  pvwgt   = pgraph->vwgt          = idxmalloc(pnvtxs,   "ExtractPartitionGraph: vwgt");
+  padjncy = pgraph->adjncy        = idxmalloc(pnedges,  "ExtractPartitionGraph: adjncy");
+  padjwgt = pgraph->adjwgt        = idxmalloc(pnedges,  "ExtractPartitionGraph: adjwgt");
+  pgraph->adjwgtsum               = idxmalloc(pnvtxs,   "ExtractPartitionGraph: adjwgtsum");
+  pgraph->cmap                    = idxmalloc(pnvtxs,   "ExtractPartitionGraph: cmap");
 
 
   /* Go and extract the partition graph */
@@ -364,20 +363,20 @@ void RefineTopLevelSeparators(CtrlType *ctrl, GraphType *graph, idxtype nparts,
   adjwgt = graph->adjwgt;
 
 
-  pwgts       = ismalloc(nparts, 0, "RefineTopLevelSeparators: pwgts");
-  spwgts[0]   = ismalloc(nparts, 0, "RefineTopLevelSeparators: spwgts");
-  spwgts[1]   = ismalloc(nparts, 0, "RefineTopLevelSeparators: spwgts");
-  spwgts[2]   = ismalloc(nparts, 0, "RefineTopLevelSeparators: spwgts");
-  pdegrees[0] = ismalloc(nparts, 0, "RefineTopLevelSeparators: pdegrees");
-  pdegrees[1] = ismalloc(nparts, 0, "RefineTopLevelSeparators: pdegrees");
-  pdegrees[2] = ismalloc(nparts, 0, "RefineTopLevelSeparators: pdegrees");
-  pdegrees[3] = ismalloc(nparts, 0, "RefineTopLevelSeparators: pdegrees");
-  pmarker     = ismalloc(nparts, -1, "RefineTopLevelSeparators: pmarker ");
-  pids        = imalloc(nparts, "RefineTopLevelSeparators: pids ");
-  perm        = imalloc(nvtxs, "RefineTopLevelSeparators: perm");
-  alphas[0]   = fmalloc(nparts, "RefineTopLevelSeparators: alphas[0]");
-  alphas[1]   = fmalloc(nparts, "RefineTopLevelSeparators: alphas[1]");
-  alphas[2]   = fmalloc(nparts, "RefineTopLevelSeparators: alphas[2]");
+  pwgts       = idxsmalloc(nparts, 0, "RefineTopLevelSeparators: pwgts");
+  spwgts[0]   = idxsmalloc(nparts, 0, "RefineTopLevelSeparators: spwgts");
+  spwgts[1]   = idxsmalloc(nparts, 0, "RefineTopLevelSeparators: spwgts");
+  spwgts[2]   = idxsmalloc(nparts, 0, "RefineTopLevelSeparators: spwgts");
+  pdegrees[0] = idxsmalloc(nparts, 0, "RefineTopLevelSeparators: pdegrees");
+  pdegrees[1] = idxsmalloc(nparts, 0, "RefineTopLevelSeparators: pdegrees");
+  pdegrees[2] = idxsmalloc(nparts, 0, "RefineTopLevelSeparators: pdegrees");
+  pdegrees[3] = idxsmalloc(nparts, 0, "RefineTopLevelSeparators: pdegrees");
+  pmarker     = idxsmalloc(nparts, -1, "RefineTopLevelSeparators: pmarker ");
+  pids        = idxmalloc(nparts, "RefineTopLevelSeparators: pids ");
+  perm        = idxmalloc(nvtxs, "RefineTopLevelSeparators: perm");
+  alphas[0]   = gk_fmalloc(nparts, "RefineTopLevelSeparators: alphas[0]");
+  alphas[1]   = gk_fmalloc(nparts, "RefineTopLevelSeparators: alphas[1]");
+  alphas[2]   = gk_fmalloc(nparts, "RefineTopLevelSeparators: alphas[2]");
 
   mincut = ComputeCut(graph, part);
   
@@ -394,15 +393,15 @@ void RefineTopLevelSeparators(CtrlType *ctrl, GraphType *graph, idxtype nparts,
     alphas[2][i] = log(fills[i] - (subfills[2*i]+subfills[2*i+1]))/log(ssizes[i]);
   }
 
-  maxpwgt = (int)((float)((UNBALANCE_FRACTION*isum(nparts, pwgts))/nparts));
-  maxspwgt = 1.10*(isum(nparts, pwgts)-isum(nparts, ssizes))/(2.0*nparts);
+  maxpwgt = (int)((float)((UNBALANCE_FRACTION*idxsum(nparts, pwgts, 1))/nparts));
+  maxspwgt = 1.10*(idxsum(nparts, pwgts, 1)-idxsum(nparts, ssizes, 1))/(2.0*nparts);
 
-  avgssize  = isum(nparts, ssizes)/nparts;
-  avgfill   = isum(nparts, fills)/nparts;
+  avgssize  = idxsum(nparts, ssizes, 1)/nparts;
+  avgfill   = idxsum(nparts, fills, 1)/nparts;
   avgdegree = xadj[nvtxs]/(1.0*nvtxs);
 
 
-printf("Avgssize: %d, Avgfill: %d, AvgDegree: %d\n", avgssize, avgfill, avgdegree);
+mprintf("Avgssize: %D, Avgfill: %D, AvgDegree: %D\n", avgssize, avgfill, avgdegree);
 
   /*--------------------------------------------------------------------------
    * Go and do the refinement
@@ -497,7 +496,7 @@ printf("Avgssize: %d, Avgfill: %d, AvgDegree: %d\n", avgssize, avgfill, avgdegre
 
       if (to != -1) {
 /*
-        printf("%2d. Moving %6d %3d -> %3d, %2d -> %2d, Gain: %+4d, SepFrom: %4d, SepTo: %3d, Cut: %5d, %4d %4d\n", 
+        mprintf("%2D. Moving %6D %3D -> %3D, %2D -> %2D, Gain: %+4D, SepFrom: %4D, SepTo: %3D, Cut: %5D, %4D %4D\n", 
                 pass, i, from, pids[to], spart[i], (pdegrees[0][to] > pdegrees[1][to] ? 0 : 1),
                 pdegrees[3][to] - id, ssizes[from], ssizes[pids[to]], mincut, pwgts[from], pwgts[pids[to]]);
 */
@@ -534,7 +533,7 @@ printf("Avgssize: %d, Avgfill: %d, AvgDegree: %d\n", avgssize, avgfill, avgdegre
         pmarker[part[adjncy[j]]] = -1;
     }
 
-    printf("%4d. Nmoves: %4d, Cut: %6d [%4d %4d %4d %4d %4d]\n", pass, nmoves, mincut,
+    mprintf("%4D. Nmoves: %4D, Cut: %6D [%4D %4D %4D %4D %4D]\n", pass, nmoves, mincut,
             nskip[0], nskip[1], nskip[2], nskip[3], nskip[4]);
 
     if (nmoves == 0)
@@ -542,11 +541,11 @@ printf("Avgssize: %d, Avgfill: %d, AvgDegree: %d\n", avgssize, avgfill, avgdegre
   }
 
 for (i=0; i<nparts; i++)
-  printf("%4d %6d %8d %8d\n", i, pwgts[i], ssizes[i], fills[i]);
+  mprintf("%4D %6D %8D %8D\n", i, pwgts[i], ssizes[i], fills[i]);
 
-printf("%d %d %d / %d %d %d / %d %d\n", pwgts[10], spwgts[0][10], spwgts[1][10], pwgts[15], spwgts[0][15], spwgts[1][15], maxpwgt, maxspwgt);
+mprintf("%D %D %D / %D %D %D / %D %D\n", pwgts[10], spwgts[0][10], spwgts[1][10], pwgts[15], spwgts[0][15], spwgts[1][15], maxpwgt, maxspwgt);
 
-  GKfree((void *)&pwgts, &pdegrees[0], &pdegrees[1], &pdegrees[2], &pdegrees[3], 
+  gk_free((void **)&pwgts, &pdegrees[0], &pdegrees[1], &pdegrees[2], &pdegrees[3], 
          &pmarker, &pids, &perm, &spwgts[0], &spwgts[1], &spwgts[2], &alphas[0], 
          &alphas[1], &alphas[2], LTERM);
 }

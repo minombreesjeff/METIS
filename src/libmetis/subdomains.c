@@ -51,8 +51,8 @@ void Random_KWayEdgeRefineMConn(CtrlType *ctrl, GraphType *graph, idxtype nparts
   minwgt =  idxwspacemalloc(ctrl, nparts);
   maxwgt = idxwspacemalloc(ctrl, nparts);
   itpwgts = idxwspacemalloc(ctrl, nparts);
-  tvwgt = idxsum(nparts, pwgts);
-  ASSERT(tvwgt == idxsum(nvtxs, graph->vwgt));
+  tvwgt = idxsum(nparts, pwgts, 1);
+  ASSERT(tvwgt == idxsum(nvtxs, graph->vwgt, 1));
 
   for (i=0; i<nparts; i++) {
     itpwgts[i] = tpwgts[i]*tvwgt;
@@ -63,15 +63,15 @@ void Random_KWayEdgeRefineMConn(CtrlType *ctrl, GraphType *graph, idxtype nparts
   perm = idxwspacemalloc(ctrl, nvtxs);
 
   IFSET(ctrl->dbglvl, DBG_REFINE,
-     printf("Partitions: [%6d %6d]-[%6d %6d], Balance: %5.3f, Nv-Nb[%6d %6d]. Cut: %6d\n",
-             pwgts[idxamin(nparts, pwgts)], pwgts[idxamax(nparts, pwgts)], minwgt[0], maxwgt[0], 
-             1.0*nparts*pwgts[idxamax(nparts, pwgts)]/tvwgt, graph->nvtxs, graph->nbnd,
+     mprintf("Partitions: [%6D %6D]-[%6D %6D], Balance: %5.3f, Nv-Nb[%6D %6D]. Cut: %6D\n",
+             pwgts[idxargmin(nparts, pwgts)], pwgts[idxargmax(nparts, pwgts)], minwgt[0], maxwgt[0], 
+             1.0*nparts*pwgts[idxargmax(nparts, pwgts)]/tvwgt, graph->nvtxs, graph->nbnd,
              graph->mincut));
 
   for (pass=0; pass<npasses; pass++) {
     ASSERT(ComputeCut(graph, where) == graph->mincut);
 
-    maxndoms = ndoms[idxamax(nparts, ndoms)];
+    maxndoms = ndoms[idxargmax(nparts, ndoms)];
 
     oldcut = graph->mincut;
     nbnd = graph->nbnd;
@@ -160,7 +160,7 @@ void Random_KWayEdgeRefineMConn(CtrlType *ctrl, GraphType *graph, idxtype nparts
         *======================================================================*/
         graph->mincut -= myedegrees[k].ed-myrinfo->id;
 
-        IFSET(ctrl->dbglvl, DBG_MOVEINFO, printf("\t\tMoving %6d to %3d. Gain: %4d. Cut: %6d\n", i, to, myedegrees[k].ed-myrinfo->id, graph->mincut));
+        IFSET(ctrl->dbglvl, DBG_MOVEINFO, mprintf("\t\tMoving %6D to %3D. Gain: %4D. Cut: %6D\n", i, to, myedegrees[k].ed-myrinfo->id, graph->mincut));
 
         /* Update pmat to reflect the move of 'i' */
         pmat[from*nparts+to] += (myrinfo->id-myedegrees[k].ed);
@@ -168,12 +168,12 @@ void Random_KWayEdgeRefineMConn(CtrlType *ctrl, GraphType *graph, idxtype nparts
         if (pmat[from*nparts+to] == 0) {
           ndoms[from]--;
           if (ndoms[from]+1 == maxndoms)
-            maxndoms = ndoms[idxamax(nparts, ndoms)];
+            maxndoms = ndoms[idxargmax(nparts, ndoms)];
         }
         if (pmat[to*nparts+from] == 0) {
           ndoms[to]--;
           if (ndoms[to]+1 == maxndoms)
-            maxndoms = ndoms[idxamax(nparts, ndoms)];
+            maxndoms = ndoms[idxargmax(nparts, ndoms)];
         }
 
         /* Update where, weight, and ID/ED information of the vertex you moved */
@@ -250,25 +250,25 @@ void Random_KWayEdgeRefineMConn(CtrlType *ctrl, GraphType *graph, idxtype nparts
             if (pmat[me*nparts+from] == 0) {
               ndoms[me]--;
               if (ndoms[me]+1 == maxndoms)
-                maxndoms = ndoms[idxamax(nparts, ndoms)];
+                maxndoms = ndoms[idxargmax(nparts, ndoms)];
             }
             if (pmat[from*nparts+me] == 0) {
               ndoms[from]--;
               if (ndoms[from]+1 == maxndoms)
-                maxndoms = ndoms[idxamax(nparts, ndoms)];
+                maxndoms = ndoms[idxargmax(nparts, ndoms)];
             }
 
             if (pmat[me*nparts+to] == 0) {
               ndoms[me]++;
               if (ndoms[me] > maxndoms) {
-                printf("You just increased the maxndoms: %d %d\n", ndoms[me], maxndoms);
+                mprintf("You just increased the maxndoms: %D %D\n", ndoms[me], maxndoms);
                 maxndoms = ndoms[me];
               }
             }
             if (pmat[to*nparts+me] == 0) {
               ndoms[to]++;
               if (ndoms[to] > maxndoms) {
-                printf("You just increased the maxndoms: %d %d\n", ndoms[to], maxndoms);
+                mprintf("You just increased the maxndoms: %D %D\n", ndoms[to], maxndoms);
                 maxndoms = ndoms[to];
               }
             }
@@ -287,10 +287,10 @@ void Random_KWayEdgeRefineMConn(CtrlType *ctrl, GraphType *graph, idxtype nparts
     graph->nbnd = nbnd;
 
     IFSET(ctrl->dbglvl, DBG_REFINE,
-       printf("\t[%6d %6d], Balance: %5.3f, Nb: %6d. Nmoves: %5d, Cut: %5d, Vol: %5d, %d\n",
-               pwgts[idxamin(nparts, pwgts)], pwgts[idxamax(nparts, pwgts)],
-               1.0*nparts*pwgts[idxamax(nparts, pwgts)]/tvwgt, graph->nbnd, nmoves, 
-               graph->mincut, ComputeVolume(graph, where), idxsum(nparts, ndoms)));
+       mprintf("\t[%6D %6D], Balance: %5.3f, Nb: %6D. Nmoves: %5D, Cut: %5D, Vol: %5D, %D\n",
+               pwgts[idxargmin(nparts, pwgts)], pwgts[idxargmax(nparts, pwgts)],
+               1.0*nparts*pwgts[idxargmax(nparts, pwgts)]/tvwgt, graph->nbnd, nmoves, 
+               graph->mincut, ComputeVolume(graph, where), idxsum(nparts, ndoms, 1)));
 
     if (graph->mincut == oldcut)
       break;
@@ -342,8 +342,8 @@ void Greedy_KWayEdgeBalanceMConn(CtrlType *ctrl, GraphType *graph, idxtype npart
   minwgt =  idxwspacemalloc(ctrl, nparts);
   maxwgt = idxwspacemalloc(ctrl, nparts);
   itpwgts = idxwspacemalloc(ctrl, nparts);
-  tvwgt = idxsum(nparts, pwgts);
-  ASSERT(tvwgt == idxsum(nvtxs, graph->vwgt));
+  tvwgt = idxsum(nparts, pwgts, 1);
+  ASSERT(tvwgt == idxsum(nvtxs, graph->vwgt, 1));
 
   for (i=0; i<nparts; i++) {
     itpwgts[i] = tpwgts[i]*tvwgt;
@@ -354,12 +354,12 @@ void Greedy_KWayEdgeBalanceMConn(CtrlType *ctrl, GraphType *graph, idxtype npart
   perm = idxwspacemalloc(ctrl, nvtxs);
   moved = idxwspacemalloc(ctrl, nvtxs);
 
-  PQueueInit(ctrl, &queue, nvtxs, graph->adjwgtsum[idxamax(nvtxs, graph->adjwgtsum)]);
+  PQueueInit(ctrl, &queue, nvtxs, graph->adjwgtsum[idxargmax(nvtxs, graph->adjwgtsum)]);
 
   IFSET(ctrl->dbglvl, DBG_REFINE,
-     printf("Partitions: [%6d %6d]-[%6d %6d], Balance: %5.3f, Nv-Nb[%6d %6d]. Cut: %6d [B]\n",
-             pwgts[idxamin(nparts, pwgts)], pwgts[idxamax(nparts, pwgts)], minwgt[0], maxwgt[0], 
-             1.0*nparts*pwgts[idxamax(nparts, pwgts)]/tvwgt, graph->nvtxs, graph->nbnd,
+     mprintf("Partitions: [%6D %6D]-[%6D %6D], Balance: %5.3f, Nv-Nb[%6D %6D]. Cut: %6D [B]\n",
+             pwgts[idxargmin(nparts, pwgts)], pwgts[idxargmax(nparts, pwgts)], minwgt[0], maxwgt[0], 
+             1.0*nparts*pwgts[idxargmax(nparts, pwgts)]/tvwgt, graph->nvtxs, graph->nbnd,
              graph->mincut));
 
   for (pass=0; pass<npasses; pass++) {
@@ -386,7 +386,7 @@ void Greedy_KWayEdgeBalanceMConn(CtrlType *ctrl, GraphType *graph, idxtype npart
       moved[i] = 2;
     }
 
-    maxndoms = ndoms[idxamax(nparts, ndoms)];
+    maxndoms = ndoms[idxargmax(nparts, ndoms)];
 
     for (nmoves=0;;) {
       if ((i = PQueueGetMax(&queue)) == -1) 
@@ -454,7 +454,7 @@ void Greedy_KWayEdgeBalanceMConn(CtrlType *ctrl, GraphType *graph, idxtype npart
       *======================================================================*/
       graph->mincut -= myedegrees[k].ed-myrinfo->id;
 
-      IFSET(ctrl->dbglvl, DBG_MOVEINFO, printf("\t\tMoving %6d to %3d. Gain: %4d. Cut: %6d\n", i, to, myedegrees[k].ed-myrinfo->id, graph->mincut));
+      IFSET(ctrl->dbglvl, DBG_MOVEINFO, mprintf("\t\tMoving %6D to %3D. Gain: %4D. Cut: %6D\n", i, to, myedegrees[k].ed-myrinfo->id, graph->mincut));
 
       /* Update pmat to reflect the move of 'i' */
       pmat[from*nparts+to] += (myrinfo->id-myedegrees[k].ed);
@@ -462,12 +462,12 @@ void Greedy_KWayEdgeBalanceMConn(CtrlType *ctrl, GraphType *graph, idxtype npart
       if (pmat[from*nparts+to] == 0) {
         ndoms[from]--;
         if (ndoms[from]+1 == maxndoms)
-          maxndoms = ndoms[idxamax(nparts, ndoms)];
+          maxndoms = ndoms[idxargmax(nparts, ndoms)];
       }
       if (pmat[to*nparts+from] == 0) {
         ndoms[to]--;
         if (ndoms[to]+1 == maxndoms)
-          maxndoms = ndoms[idxamax(nparts, ndoms)];
+          maxndoms = ndoms[idxargmax(nparts, ndoms)];
       }
 
 
@@ -547,25 +547,25 @@ void Greedy_KWayEdgeBalanceMConn(CtrlType *ctrl, GraphType *graph, idxtype npart
           if (pmat[me*nparts+from] == 0) {
             ndoms[me]--;
             if (ndoms[me]+1 == maxndoms)
-              maxndoms = ndoms[idxamax(nparts, ndoms)];
+              maxndoms = ndoms[idxargmax(nparts, ndoms)];
           }
           if (pmat[from*nparts+me] == 0) {
             ndoms[from]--;
             if (ndoms[from]+1 == maxndoms)
-              maxndoms = ndoms[idxamax(nparts, ndoms)];
+              maxndoms = ndoms[idxargmax(nparts, ndoms)];
           }
 
           if (pmat[me*nparts+to] == 0) {
             ndoms[me]++;
             if (ndoms[me] > maxndoms) {
-              printf("You just increased the maxndoms: %d %d\n", ndoms[me], maxndoms);
+              mprintf("You just increased the maxndoms: %D %D\n", ndoms[me], maxndoms);
               maxndoms = ndoms[me];
             }
           }
           if (pmat[to*nparts+me] == 0) {
             ndoms[to]++;
             if (ndoms[to] > maxndoms) {
-              printf("You just increased the maxndoms: %d %d\n", ndoms[to], maxndoms);
+              mprintf("You just increased the maxndoms: %D %D\n", ndoms[to], maxndoms);
               maxndoms = ndoms[to];
             }
           }
@@ -599,9 +599,10 @@ void Greedy_KWayEdgeBalanceMConn(CtrlType *ctrl, GraphType *graph, idxtype npart
     graph->nbnd = nbnd;
 
     IFSET(ctrl->dbglvl, DBG_REFINE,
-       printf("\t[%6d %6d], Balance: %5.3f, Nb: %6d. Nmoves: %5d, Cut: %6d, %d\n",
-               pwgts[idxamin(nparts, pwgts)], pwgts[idxamax(nparts, pwgts)],
-               1.0*nparts*pwgts[idxamax(nparts, pwgts)]/tvwgt, graph->nbnd, nmoves, graph->mincut,idxsum(nparts, ndoms)));
+       mprintf("\t[%6D %6D], Balance: %5.3f, Nb: %6D. Nmoves: %5D, Cut: %6D, %D\n",
+               pwgts[idxargmin(nparts, pwgts)], pwgts[idxargmax(nparts, pwgts)],
+               1.0*nparts*pwgts[idxargmax(nparts, pwgts)]/tvwgt, graph->nbnd, 
+               nmoves, graph->mincut, idxsum(nparts, ndoms, 1)));
   }
 
   PQueueFree(ctrl, &queue);
@@ -642,7 +643,7 @@ void PrintSubDomainGraph(GraphType *graph, idxtype nparts, idxtype *where)
     }
   }
 
-  /* printf("Subdomain Info\n"); */
+  /* mprintf("Subdomain Info\n"); */
   total = max = 0;
   for (i=0; i<nparts; i++) {
     for (k=0, j=0; j<nparts; j++) {
@@ -654,17 +655,17 @@ void PrintSubDomainGraph(GraphType *graph, idxtype nparts, idxtype *where)
     if (k > max)
       max = k;
 /*
-    printf("%2d -> %2d  ", i, k);
+    mprintf("%2D -> %2D  ", i, k);
     for (j=0; j<nparts; j++) {
       if (pmat[i*nparts+j] > 0)
-        printf("[%2d %4d] ", j, pmat[i*nparts+j]);
+        mprintf("[%2D %4D] ", j, pmat[i*nparts+j]);
     }
-    printf("\n");
+    mprintf("\n");
 */
   }
-  printf("Total adjacent subdomains: %d, Max: %d\n", total, max);
+  mprintf("Total adjacent subdomains: %D, Max: %D\n", total, max);
 
-  GKfree((void *)&pmat, LTERM);
+  gk_free((void **)&pmat, LTERM);
 }
 
 
@@ -731,7 +732,7 @@ void EliminateSubDomainEdges(CtrlType *ctrl, GraphType *graph, idxtype nparts, f
   adjwgt = graph->adjwgt;
 
   where = graph->where;
-  pwgts = graph->pwgts;  /* We assume that this is properly initialized */
+  pwgts = graph->pwgts;  /* We agk_fsume that this is properly initialized */
 
   maxpwgt = idxwspacemalloc(ctrl, nparts);
   ndoms = idxwspacemalloc(ctrl, nparts);
@@ -739,35 +740,35 @@ void EliminateSubDomainEdges(CtrlType *ctrl, GraphType *graph, idxtype nparts, f
   ind = idxwspacemalloc(ctrl, nvtxs);
   pmat = ctrl->wspace.pmat;
 
-  cand = (KeyValueType *)GKmalloc(nparts*sizeof(KeyValueType), "EliminateSubDomainEdges: cand");
-  cand2 = (KeyValueType *)GKmalloc(nparts*sizeof(KeyValueType), "EliminateSubDomainEdges: cand");
+  cand = (KeyValueType *)gk_malloc(nparts*sizeof(KeyValueType), "EliminateSubDomainEdges: cand");
+  cand2 = (KeyValueType *)gk_malloc(nparts*sizeof(KeyValueType), "EliminateSubDomainEdges: cand");
 
   /* Compute the pmat matrix and ndoms */
   ComputeSubDomainGraph(graph, nparts, pmat, ndoms);
 
 
   /* Compute the maximum allowed weight for each domain */
-  tvwgt = idxsum(nparts, pwgts);
+  tvwgt = idxsum(nparts, pwgts, 1);
   for (i=0; i<nparts; i++)
     maxpwgt[i] = 1.25*tpwgts[i]*tvwgt;
 
 
   /* Get into the loop eliminating subdomain connections */
   for (;;) {
-    total = idxsum(nparts, ndoms);
+    total = idxsum(nparts, ndoms, 1);
     avg = total/nparts;
-    max = ndoms[idxamax(nparts, ndoms)];
+    max = ndoms[idxargmax(nparts, ndoms)];
 
-    /* printf("Adjacent Subdomain Stats: Total: %3d, Max: %3d, Avg: %3d [%5d]\n", total, max, avg, idxsum(nparts*nparts, pmat)); */
+    /* mprintf("Adjacent Subdomain Stats: Total: %3D, Max: %3D, Avg: %3D [%5D]\n", total, max, avg, idxsum(nparts*nparts, pmat, 1)); */
 
     if (max < 1.4*avg)
       break;
 
-    me = idxamax(nparts, ndoms);
+    me = idxargmax(nparts, ndoms);
     mypmat = pmat + me*nparts;
-    totalout = idxsum(nparts, mypmat);
+    totalout = idxsum(nparts, mypmat, 1);
 
-    /*printf("Me: %d, TotalOut: %d,\n", me, totalout);*/
+    /*mprintf("Me: %D, TotalOut: %D,\n", me, totalout);*/
 
     /* Sort the connections according to their cut */
     for (ncand2=0, i=0; i<nparts; i++) {
@@ -785,7 +786,7 @@ void EliminateSubDomainEdges(CtrlType *ctrl, GraphType *graph, idxtype nparts, f
 
       other = cand2[min].val;
 
-      /*printf("\tMinOut: %d to %d\n", mypmat[other], other);*/
+      /*mprintf("\tMinOut: %D to %D\n", mypmat[other], other);*/
 
       idxset(nparts, 0, otherpmat);
 
@@ -842,7 +843,7 @@ void EliminateSubDomainEdges(CtrlType *ctrl, GraphType *graph, idxtype nparts, f
                 nadd++;
             }
 
-            /*printf("\t\tto=%d, nadd=%d, %d\n", k, nadd, ndoms[k]);*/
+            /*mprintf("\t\tto=%D, nadd=%D, %D\n", k, nadd, ndoms[k]);*/
             if (target2 == -1 && ndoms[k]+nadd < ndoms[me]) {
               target2 = k;
             }
@@ -857,11 +858,11 @@ void EliminateSubDomainEdges(CtrlType *ctrl, GraphType *graph, idxtype nparts, f
         target = target2;
 
       if (target == -1) {
-        /* printf("\t\tCould not make the move\n");*/
+        /* mprintf("\t\tCould not make the move\n");*/
         continue;
       }
 
-      /*printf("\t\tMoving to %d\n", target);*/
+      /*mprintf("\t\tMoving to %D\n", target);*/
 
       /* Update the partition weights */
       INC_DEC(pwgts[target], pwgts[other], cpwgt);
@@ -881,7 +882,7 @@ void EliminateSubDomainEdges(CtrlType *ctrl, GraphType *graph, idxtype nparts, f
   idxwspacefree(ctrl, nparts);
   idxwspacefree(ctrl, nvtxs);
 
-  GKfree((void *)&cand, &cand2, LTERM);
+  gk_free((void **)&cand, &cand2, LTERM);
 }
 
 
@@ -1101,11 +1102,11 @@ void EliminateComponents(CtrlType *ctrl, GraphType *graph, idxtype nparts, float
   }
   cptr[++ncmps] = first;
 
-  /*printf("I found %d components, for this %d-way partition\n", ncmps, nparts); */
+  /*mprintf("I found %D components, for this %D-way partition\n", ncmps, nparts); */
 
   if (ncmps > nparts) { /* There are more components than processors */
     /* First determine the max allowed load imbalance */
-    tvwgt = idxsum(nparts, pwgts);
+    tvwgt = idxsum(nparts, pwgts, 1);
     for (i=0; i<nparts; i++)
       maxpwgt[i] = ubfactor*tpwgts[i]*tvwgt;
 
@@ -1116,7 +1117,7 @@ void EliminateComponents(CtrlType *ctrl, GraphType *graph, idxtype nparts, float
       if (npcmps[me] == 1)
         continue;  /* Skip it because it is contigous */
 
-      /*printf("Trying to move %d from %d\n", i, me); */
+      /*mprintf("Trying to move %D from %D\n", i, me); */
 
       /* Determine the weight of the block to be moved and abort if too high */
       for (cwgt=0, j=cptr[i]; j<cptr[i+1]; j++) 
@@ -1142,7 +1143,7 @@ void EliminateComponents(CtrlType *ctrl, GraphType *graph, idxtype nparts, float
         }
       }
 
-      /* printf("\tMoving it to %d [%d]\n", target, cpvec[target]);*/
+      /* mprintf("\tMoving it to %D [%D]\n", target, cpvec[target]);*/
 
       if (target != -1) {
         /* Assign all the vertices of 'me' to 'target' and update data structures */

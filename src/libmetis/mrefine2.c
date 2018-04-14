@@ -21,7 +21,7 @@ void MocRefine2Way2(CtrlType *ctrl, GraphType *orggraph, GraphType *graph, float
        float *ubvec)
 {
 
-  IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->UncoarsenTmr));
+  IFSET(ctrl->dbglvl, DBG_TIME, gk_startcputimer(ctrl->UncoarsenTmr));
 
   /* Compute the parameters of the coarsest graph */
   MocCompute2WayPartitionParams(ctrl, graph);
@@ -29,7 +29,7 @@ void MocRefine2Way2(CtrlType *ctrl, GraphType *orggraph, GraphType *graph, float
   for (;;) {
     ASSERT(CheckBnd(graph));
 
-    IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->RefTmr));
+    IFSET(ctrl->dbglvl, DBG_TIME, gk_startcputimer(ctrl->RefTmr));
     switch (ctrl->RType) {
       case RTYPE_FM:
         MocBalance2Way2(ctrl, graph, tpwgts, ubvec);
@@ -38,18 +38,18 @@ void MocRefine2Way2(CtrlType *ctrl, GraphType *orggraph, GraphType *graph, float
       default:
         errexit("Unknown refinement type: %d\n", ctrl->RType);
     }
-    IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->RefTmr));
+    IFSET(ctrl->dbglvl, DBG_TIME, gk_stopcputimer(ctrl->RefTmr));
 
     if (graph == orggraph)
       break;
 
     graph = graph->finer;
-    IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->ProjectTmr));
+    IFSET(ctrl->dbglvl, DBG_TIME, gk_startcputimer(ctrl->ProjectTmr));
     MocProject2WayPartition(ctrl, graph);
-    IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->ProjectTmr));
+    IFSET(ctrl->dbglvl, DBG_TIME, gk_stopcputimer(ctrl->ProjectTmr));
   }
 
-  IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->UncoarsenTmr));
+  IFSET(ctrl->dbglvl, DBG_TIME, gk_stopcputimer(ctrl->UncoarsenTmr));
 }
 
 

@@ -19,77 +19,77 @@
 /*************************************************************************
 * Let the game begin
 **************************************************************************/
-int main(idxtype argc, char *argv[])
+int main(int argc, char *argv[])
 {
   idxtype i, options[10];
   idxtype *perm, *iperm;
   GraphType graph;
   char filename[256];
   idxtype numflag = 0, wgtflag;
-  timer TOTALTmr, METISTmr, IOTmr, SMBTmr;
+  double TOTALTmr, METISTmr, IOTmr, SMBTmr;
 
 
   if (argc != 2) {
-    printf("Usage: %s <GraphFile>\n",argv[0]);
+    mprintf("Usage: %s <GraphFile>\n",argv[0]);
     exit(0);
   }
     
   strcpy(filename, argv[1]);
 
-  cleartimer(TOTALTmr);
-  cleartimer(METISTmr);
-  cleartimer(IOTmr);
-  cleartimer(SMBTmr);
+  gk_clearcputimer(TOTALTmr);
+  gk_clearcputimer(METISTmr);
+  gk_clearcputimer(IOTmr);
+  gk_clearcputimer(SMBTmr);
 
-  starttimer(TOTALTmr);
-  starttimer(IOTmr);
+  gk_startcputimer(TOTALTmr);
+  gk_startcputimer(IOTmr);
   ReadGraph(&graph, filename, &wgtflag);
   if (graph.nvtxs <= 0) {
-    printf("Empty graph. Nothing to do.\n");
+    mprintf("Empty graph. Nothing to do.\n");
     exit(0);
   }
   if (graph.ncon != 1) {
-    printf("Ordering can only be applied to graphs with one constraint.\n");
+    mprintf("Ordering can only be applied to graphs with one constraint.\n");
     exit(0);
   }
-  stoptimer(IOTmr);
+  gk_stopcputimer(IOTmr);
 
   /* Ordering does not use weights! */
-  GKfree((void *)&graph.vwgt, &graph.adjwgt, LTERM);
+  gk_free((void **)&graph.vwgt, &graph.adjwgt, LTERM);
 
-  printf("**********************************************************************\n");
-  printf("%s", METISTITLE);
-  printf("Graph Information ---------------------------------------------------\n");
-  printf("  Name: %s, #Vertices: %d, #Edges: %d\n\n", filename, graph.nvtxs, graph.nedges/2);
-  printf("Node-Based Ordering... ----------------------------------------------\n");
+  mprintf("**********************************************************************\n");
+  mprintf("%s", METISTITLE);
+  mprintf("Graph Information ---------------------------------------------------\n");
+  mprintf("  Name: %s, #Vertices: %D, #Edges: %D\n\n", filename, graph.nvtxs, graph.nedges/2);
+  mprintf("Node-Based Ordering... ----------------------------------------------\n");
 
   perm = idxmalloc(graph.nvtxs, "main: perm");
   iperm = idxmalloc(graph.nvtxs, "main: iperm");
   options[0] = 0;
 
-  starttimer(METISTmr);
+  gk_startcputimer(METISTmr);
   METIS_NodeND(&graph.nvtxs, graph.xadj, graph.adjncy, &numflag, options, perm, iperm);
-  stoptimer(METISTmr);
+  gk_stopcputimer(METISTmr);
 
-  starttimer(IOTmr);
+  gk_startcputimer(IOTmr);
   WritePermutation(filename, iperm, graph.nvtxs); 
-  stoptimer(IOTmr);
+  gk_stopcputimer(IOTmr);
 
-  starttimer(SMBTmr);
+  gk_startcputimer(SMBTmr);
   ComputeFillIn(&graph, iperm);
-  stoptimer(SMBTmr);
+  gk_stopcputimer(SMBTmr);
 
-  stoptimer(TOTALTmr);
+  gk_stopcputimer(TOTALTmr);
 
-  printf("\nTiming Information --------------------------------------------------\n");
-  printf("  I/O:                     \t %7.3f\n", gettimer(IOTmr));
-  printf("  Ordering:                \t %7.3f   (ONMETIS time)\n", gettimer(METISTmr));
-  printf("  Symbolic Factorization:  \t %7.3f\n", gettimer(SMBTmr));
-  printf("  Total:                   \t %7.3f\n", gettimer(TOTALTmr));
-  printf("**********************************************************************\n");
+  mprintf("\nTiming Information --------------------------------------------------\n");
+  mprintf("  I/O:                     \t %7.3f\n", gk_getcputimer(IOTmr));
+  mprintf("  Ordering:                \t %7.3f   (ONMETIS time)\n", gk_getcputimer(METISTmr));
+  mprintf("  Symbolic Factorization:  \t %7.3f\n", gk_getcputimer(SMBTmr));
+  mprintf("  Total:                   \t %7.3f\n", gk_getcputimer(TOTALTmr));
+  mprintf("**********************************************************************\n");
 
 
-  GKfree((void *)&graph.xadj, &graph.adjncy, &perm, &iperm, LTERM);
+  gk_free((void **)&graph.xadj, &graph.adjncy, &perm, &iperm, LTERM);
 }  
 
 

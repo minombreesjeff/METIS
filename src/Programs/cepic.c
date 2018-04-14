@@ -34,7 +34,7 @@
 /*************************************************************************
 * Let the game begin
 **************************************************************************/
-main(idxtype argc, char *argv[])
+main(int argc, char *argv[])
 {
   idxtype i, j, k, istep, options[10], nn, ne, fstep, lstep, nparts, nboxes, u[3], dim, nsplit, flags=0, NSKIP=1;
   char filename[256];
@@ -47,7 +47,7 @@ main(idxtype argc, char *argv[])
   long long int *ltmp;
 
   if (argc <= 6) {
-    fprintf(stderr, "Usage: %s <nn> <ne> <fstep> <lstep> <nparts> [flags] [NSKIP]\n", argv[0]);
+    mfprintf(stderr, "Usage: %s <nn> <ne> <fstep> <lstep> <nparts> [flags] [NSKIP]\n", argv[0]);
     exit(0);
   }
 
@@ -61,25 +61,25 @@ main(idxtype argc, char *argv[])
   if (argc > 7)
     NSKIP = atoi(argv[7]);
 
-  printf("\n\n------------------------------------------------------------------------------------------\n");
-  printf("Reading nn: %d, ne: %d,  fstep: %d, lstep: %d, nparts: %d\n", nn, ne, fstep, lstep, nparts);
+  mprintf("\n\n------------------------------------------------------------------------------------------\n");
+  mprintf("Reading nn: %D, ne: %D,  fstep: %D, lstep: %D, nparts: %D\n", nn, ne, fstep, lstep, nparts);
 
-  mien = imalloc(4*ne, "main: mien");
-  mxyz = dmalloc(3*nn, "main: mxyz");
-  mrng = imalloc(4*ne, "main: mrng");
-  bxyz = dmalloc(6*ne*4, "main: bxyz");
+  mien = idxmalloc(4*ne, "main: mien");
+  mxyz = gk_dmalloc(3*nn, "main: mxyz");
+  mrng = idxmalloc(4*ne, "main: mrng");
+  bxyz = gk_dmalloc(6*ne*4, "main: bxyz");
 
-  part  = imalloc(nn, "main: part");
-  sflag = imalloc(nn, "main: sflag");
+  part  = idxmalloc(nn, "main: part");
+  sflag = idxmalloc(nn, "main: sflag");
 
-  xadj   = imalloc(nn+1, "main: xadj");
-  adjncy = imalloc(50*nn, "main: adjncy");
+  xadj   = idxmalloc(nn+1, "main: xadj");
+  adjncy = idxmalloc(50*nn, "main: adjncy");
 
 
   /*========================================================================
    * Read the initial mesh and setup the graph and contact information
    *========================================================================*/
-  sprintf(filename, "mien.%04d", fstep);
+  msprintf(filename, "mien.%04D", fstep);
   fpin = GKfopen(filename, "rb", "main: mien");
   fread(mien, sizeof(int), 4*ne, fpin);
   for (i=0; i<4*ne; i++)
@@ -89,7 +89,7 @@ main(idxtype argc, char *argv[])
   /*========================================================================
    * Create the nodal graph
    *========================================================================*/
-  numflag = mien[idxamin(4*ne, mien)];
+  numflag = mien[idxargmin(4*ne, mien)];
   METIS_MeshToNodal(&ne, &nn, mien, &etype, &numflag, xadj, adjncy);
 
 
@@ -98,8 +98,8 @@ main(idxtype argc, char *argv[])
    * Get into the loop in which you go over the different configurations
    *========================================================================*/
   for (k=0, istep=fstep; istep<=lstep; istep++, k++) {
-    sprintf(filename, "mxyz.%04d", istep);
-    printf("Reading %s...............................................................\n", filename);
+    msprintf(filename, "mxyz.%04D", istep);
+    mprintf("Reading %s...............................................................\n", filename);
     fpin = GKfopen(filename, "rb", "main: mxyz");
     fread(mxyz, sizeof(double), 3*nn, fpin);
     for (i=0; i<3*nn; i++) {
@@ -108,7 +108,7 @@ main(idxtype argc, char *argv[])
     }
     GKfclose(fpin);
 
-    sprintf(filename, "mrng.%04d", istep);
+    msprintf(filename, "mrng.%04D", istep);
     fpin = GKfopen(filename, "rb", "main: mrng");
     fread(mrng, sizeof(int), 4*ne, fpin);
     for (i=0; i<4*ne; i++)
@@ -140,7 +140,7 @@ main(idxtype argc, char *argv[])
       }
     }
 
-    printf("Contact Nodes: %d of %d\n", isum(nn, sflag), nn);
+    mprintf("Contact Nodes: %D of %D\n", isum(nn, sflag), nn);
 
     /* Compute/Update the partitioning */
     if (k%NSKIP == 0) {
@@ -247,9 +247,9 @@ main(idxtype argc, char *argv[])
 
     METIS_FindContacts(cinfo, &nboxes, bxyz, &nparts, &cntptr, &cntind);
 
-    printf("Contacting Elements: %d Indices: %d Nsplit: %d\n", nboxes, cntptr[nboxes]-nboxes, nsplit);
+    mprintf("Contacting Elements: %D Indices: %D Nsplit: %D\n", nboxes, cntptr[nboxes]-nboxes, nsplit);
 
-    GKfree((void *)&cntptr, &cntind, LTERM);
+    gk_free((void **)&cntptr, &cntind, LTERM);
   }
 
 }  

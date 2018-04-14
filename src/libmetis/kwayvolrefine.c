@@ -23,7 +23,7 @@ void RefineVolKWay(CtrlType *ctrl, GraphType *orggraph, GraphType *graph, idxtyp
   idxtype i, nlevels;
   GraphType *ptr;
 
-  IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->UncoarsenTmr));
+  IFSET(ctrl->dbglvl, DBG_TIME, gk_startcputimer(ctrl->UncoarsenTmr));
 
   /* Take care any non-contiguity */
   if (ctrl->RType == RTYPE_KWAYRANDOM_MCONN) {
@@ -43,7 +43,7 @@ void RefineVolKWay(CtrlType *ctrl, GraphType *orggraph, GraphType *graph, idxtyp
   for (i=0; ;i++) {
     /*PrintSubDomainGraph(graph, nparts, graph->where);*/
     MALLOC_CHECK(NULL);
-    IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->RefTmr));
+    IFSET(ctrl->dbglvl, DBG_TIME, gk_startcputimer(ctrl->RefTmr));
 
     if (2*i >= nlevels && !IsBalanced(graph->pwgts, nparts, tpwgts, 1.04*ubfactor)) {
       ComputeVolKWayBalanceBoundary(ctrl, graph, nparts);
@@ -66,18 +66,16 @@ void RefineVolKWay(CtrlType *ctrl, GraphType *orggraph, GraphType *graph, idxtyp
         Random_KWayVolRefineMConn(ctrl, graph, nparts, tpwgts, ubfactor, 10, 0); 
         break;
     }
-    IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->RefTmr));
+    IFSET(ctrl->dbglvl, DBG_TIME, gk_stopcputimer(ctrl->RefTmr));
 
     if (graph == orggraph)
       break;
 
-    GKfree((void *)&graph->gdata, LTERM);  /* Deallocate the graph related arrays */
-
     graph = graph->finer;
 
-    IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->ProjectTmr));
+    IFSET(ctrl->dbglvl, DBG_TIME, gk_startcputimer(ctrl->ProjectTmr));
     ProjectVolKWayPartition(ctrl, graph, nparts);
-    IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->ProjectTmr));
+    IFSET(ctrl->dbglvl, DBG_TIME, gk_stopcputimer(ctrl->ProjectTmr));
   }
 
   if (!IsBalanced(graph->pwgts, nparts, tpwgts, ubfactor)) {
@@ -96,7 +94,7 @@ void RefineVolKWay(CtrlType *ctrl, GraphType *orggraph, GraphType *graph, idxtyp
 
   EliminateVolComponents(ctrl, graph, nparts, tpwgts, ubfactor); 
 
-  IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->UncoarsenTmr));
+  IFSET(ctrl->dbglvl, DBG_TIME, gk_stopcputimer(ctrl->UncoarsenTmr));
 }
 
 
@@ -106,18 +104,16 @@ void RefineVolKWay(CtrlType *ctrl, GraphType *orggraph, GraphType *graph, idxtyp
 **************************************************************************/
 void AllocateVolKWayPartitionMemory(CtrlType *ctrl, GraphType *graph, idxtype nparts)
 {
-  idxtype nvtxs, pad64;
+  idxtype nvtxs;
 
   nvtxs = graph->nvtxs;
 
-  pad64 = (3*nvtxs+nparts)%2;
+  graph->pwgts  = idxmalloc(nparts, "AllocateVolKWayPartitionMemory: pwgts");
+  graph->where  = idxmalloc(nvtxs, "AllocateVolKWayPartitionMemory: pwgts");
+  graph->bndptr = idxmalloc(nvtxs, "AllocateVolKWayPartitionMemory: pwgts");
+  graph->bndind = idxmalloc(nvtxs, "AllocateVolKWayPartitionMemory: pwgts");
 
-  graph->rdata = idxmalloc(3*nvtxs+nparts+(sizeof(VRInfoType)/sizeof(idxtype))*nvtxs+pad64, "AllocateVolKWayPartitionMemory: rdata");
-  graph->pwgts          = graph->rdata;
-  graph->where          = graph->rdata + nparts;
-  graph->bndptr         = graph->rdata + nvtxs + nparts;
-  graph->bndind         = graph->rdata + 2*nvtxs + nparts;
-  graph->vrinfo          = (VRInfoType *)(graph->rdata + 3*nvtxs+nparts + pad64);
+  graph->vrinfo = (VRInfoType *)gk_malloc(nvtxs*sizeof(VRInfoType), "AllocateVolKWayPartitionMemory: vrinfo");
 
 }
 
@@ -133,15 +129,15 @@ void ComputeVolKWayPartitionParams(CtrlType *ctrl, GraphType *graph, idxtype npa
   VRInfoType *rinfo, *myrinfo, *orinfo;
   VEDegreeType *myedegrees, *oedegrees;
 
-  nvtxs = graph->nvtxs;
-  xadj = graph->xadj;
-  vwgt = graph->vwgt;
+  nvtxs  = graph->nvtxs;
+  xadj   = graph->xadj;
+  vwgt   = graph->vwgt;
   adjncy = graph->adjncy;
   adjwgt = graph->adjwgt;
 
-  where = graph->where;
-  pwgts = idxset(nparts, 0, graph->pwgts);
-  rinfo = graph->vrinfo;
+  where  = graph->where;
+  pwgts  = idxset(nparts, 0, graph->pwgts);
+  rinfo  = graph->vrinfo;
 
 
   /*------------------------------------------------------------
@@ -213,16 +209,16 @@ void ComputeKWayVolGains(CtrlType *ctrl, GraphType *graph, idxtype nparts)
   VRInfoType *rinfo, *myrinfo, *orinfo;
   VEDegreeType *myedegrees, *oedegrees;
 
-  nvtxs = graph->nvtxs;
-  xadj = graph->xadj;
-  vsize = graph->vsize;
+  nvtxs  = graph->nvtxs;
+  xadj   = graph->xadj;
+  vsize  = graph->vsize;
   adjncy = graph->adjncy;
   adjwgt = graph->adjwgt;
 
-  where = graph->where;
+  where  = graph->where;
   bndind = graph->bndind;
   bndptr = idxset(nvtxs, -1, graph->bndptr);
-  rinfo = graph->vrinfo;
+  rinfo  = graph->vrinfo;
 
   ophtable = idxset(nparts, -1, idxwspacemalloc(ctrl, nparts));
 
@@ -321,11 +317,11 @@ void ProjectVolKWayPartition(CtrlType *ctrl, GraphType *graph, idxtype nparts)
   cwhere = cgraph->where;
   crinfo = cgraph->vrinfo;
 
-  nvtxs = graph->nvtxs;
-  cmap = graph->cmap;
-  xadj = graph->xadj;
-  adjncy = graph->adjncy;
-  adjwgt = graph->adjwgt;
+  nvtxs     = graph->nvtxs;
+  cmap      = graph->cmap;
+  xadj      = graph->xadj;
+  adjncy    = graph->adjncy;
+  adjwgt    = graph->adjwgt;
   adjwgtsum = graph->adjwgtsum;
 
   AllocateVolKWayPartitionMemory(ctrl, graph, nparts);
@@ -399,7 +395,7 @@ void ProjectVolKWayPartition(CtrlType *ctrl, GraphType *graph, idxtype nparts)
   idxcopy(nparts, cgraph->pwgts, graph->pwgts);
   graph->mincut = cgraph->mincut;
 
-  FreeGraph(graph->coarser);
+  FreeGraph(graph->coarser, 1);
   graph->coarser = NULL;
 
   idxwspacefree(ctrl, nparts);

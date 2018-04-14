@@ -169,7 +169,7 @@ n1000:
 *     list -- temporary linked list of eliminated nabors.
 ***************************************************************************/
 void mmdelm(idxtype mdeg_node, idxtype *xadj, idxtype *adjncy, idxtype *head, idxtype *forward,
-     idxtype *backward, idxtype *qsize, idxtype *list, idxtype *marker, idxtype maxint,int tag)
+     idxtype *backward, idxtype *qsize, idxtype *list, idxtype *marker, idxtype maxint, idxtype tag)
 {
     idxtype   element, i,   istop, istart, j,
           jstop, jstart, link,
@@ -411,7 +411,7 @@ void mmdnum(idxtype neqns, idxtype *perm, idxtype *invp, idxtype *qsize)
 ****************************************************************************/
 void mmdupd(idxtype ehead, idxtype neqns, idxtype *xadj, idxtype *adjncy, idxtype delta, idxtype *mdeg,
      idxtype *head, idxtype *forward, idxtype *backward, idxtype *qsize, idxtype *list,
-     idxtype *marker, idxtype maxint,int *tag)
+     idxtype *marker, idxtype maxint, idxtype *tag)
 {
  idxtype  deg, deg0, element, enode, fnode, i, iq2, istop,
       istart, j, jstop, jstart, link, mdeg0, mtag, nabor,

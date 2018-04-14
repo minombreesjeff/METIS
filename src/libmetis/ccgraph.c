@@ -34,7 +34,7 @@ void CreateCoarseGraph(CtrlType *ctrl, GraphType *graph, idxtype cnvtxs, idxtype
     return;
   }
 
-  IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->ContractTmr));
+  IFSET(ctrl->dbglvl, DBG_TIME, gk_startcputimer(ctrl->ContractTmr));
 
   nvtxs = graph->nvtxs;
   ncon = graph->ncon;
@@ -76,7 +76,7 @@ void CreateCoarseGraph(CtrlType *ctrl, GraphType *graph, idxtype cnvtxs, idxtype
     if (ncon == 1)
       cvwgt[cnvtxs] = vwgt[v];
     else
-      scopy(ncon, nvwgt+v*ncon, cnvwgt+cnvtxs*ncon);
+      gk_fcopy(ncon, nvwgt+v*ncon, cnvwgt+cnvtxs*ncon);
 
     if (dovsize)
       cvsize[cnvtxs] = vsize[v];
@@ -115,7 +115,7 @@ void CreateCoarseGraph(CtrlType *ctrl, GraphType *graph, idxtype cnvtxs, idxtype
       if (ncon == 1)
         cvwgt[cnvtxs] += vwgt[u];
       else
-        saxpy(ncon, 1.0, nvwgt+u*ncon, 1, cnvwgt+cnvtxs*ncon, 1);
+        gk_faxpy(ncon, 1.0, nvwgt+u*ncon, 1, cnvwgt+cnvtxs*ncon, 1);
 
       if (dovsize)
         cvsize[cnvtxs] += vsize[u];
@@ -180,7 +180,7 @@ void CreateCoarseGraph(CtrlType *ctrl, GraphType *graph, idxtype cnvtxs, idxtype
 
   ReAdjustMemory(graph, cgraph, dovsize);
 
-  IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->ContractTmr));
+  IFSET(ctrl->dbglvl, DBG_TIME, gk_stopcputimer(ctrl->ContractTmr));
 
   idxwspacefree(ctrl, mask+1);
 
@@ -201,7 +201,7 @@ void CreateCoarseGraphNoMask(CtrlType *ctrl, GraphType *graph, idxtype cnvtxs, i
 
   dovsize = (ctrl->optype == OP_KVMETIS ? 1 : 0);
 
-  IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->ContractTmr));
+  IFSET(ctrl->dbglvl, DBG_TIME, gk_startcputimer(ctrl->ContractTmr));
 
   nvtxs = graph->nvtxs;
   ncon = graph->ncon;
@@ -244,7 +244,7 @@ void CreateCoarseGraphNoMask(CtrlType *ctrl, GraphType *graph, idxtype cnvtxs, i
     if (ncon == 1)
       cvwgt[cnvtxs] = vwgt[v];
     else
-      scopy(ncon, nvwgt+v*ncon, cnvwgt+cnvtxs*ncon);
+      gk_fcopy(ncon, nvwgt+v*ncon, cnvwgt+cnvtxs*ncon);
 
     if (dovsize)
       cvsize[cnvtxs] = vsize[v];
@@ -270,7 +270,7 @@ void CreateCoarseGraphNoMask(CtrlType *ctrl, GraphType *graph, idxtype cnvtxs, i
       if (ncon == 1)
         cvwgt[cnvtxs] += vwgt[u];
       else
-        saxpy(ncon, 1.0, nvwgt+u*ncon, 1, cnvwgt+cnvtxs*ncon, 1);
+        gk_faxpy(ncon, 1.0, nvwgt+u*ncon, 1, cnvwgt+cnvtxs*ncon, 1);
 
       if (dovsize)
         cvsize[cnvtxs] += vsize[u];
@@ -316,7 +316,7 @@ void CreateCoarseGraphNoMask(CtrlType *ctrl, GraphType *graph, idxtype cnvtxs, i
 
   ReAdjustMemory(graph, cgraph, dovsize);
 
-  IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->ContractTmr));
+  IFSET(ctrl->dbglvl, DBG_TIME, gk_stopcputimer(ctrl->ContractTmr));
 
   idxwspacefree(ctrl, cnvtxs);
 }
@@ -335,7 +335,7 @@ void CreateCoarseGraph_NVW(CtrlType *ctrl, GraphType *graph, idxtype cnvtxs, idx
   GraphType *cgraph;
 
 
-  IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->ContractTmr));
+  IFSET(ctrl->dbglvl, DBG_TIME, gk_startcputimer(ctrl->ContractTmr));
 
   nvtxs = graph->nvtxs;
   ncon = graph->ncon;
@@ -464,7 +464,7 @@ void CreateCoarseGraph_NVW(CtrlType *ctrl, GraphType *graph, idxtype cnvtxs, idx
 
   ReAdjustMemory(graph, cgraph, 0);
 
-  IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->ContractTmr));
+  IFSET(ctrl->dbglvl, DBG_TIME, gk_stopcputimer(ctrl->ContractTmr));
 
   idxwspacefree(ctrl, mask+1);
 
@@ -479,59 +479,32 @@ GraphType *SetUpCoarseGraph(GraphType *graph, idxtype cnvtxs, idxtype dovsize)
   GraphType *cgraph;
 
   cgraph = CreateGraph();
-  cgraph->nvtxs = cnvtxs;
-  cgraph->ncon = graph->ncon;
 
-  cgraph->finer = graph;
+  cgraph->nvtxs = cnvtxs;
+  cgraph->ncon  = graph->ncon;
+
+  cgraph->finer  = graph;
   graph->coarser = cgraph;
 
 
   /* Allocate memory for the coarser graph */
-  if (graph->ncon == 1) {
-    if (dovsize) {
-      cgraph->gdata = idxmalloc(5*cnvtxs+1 + 2*graph->nedges, "SetUpCoarseGraph: gdata");
-      cgraph->xadj 		= cgraph->gdata;
-      cgraph->vwgt 		= cgraph->gdata + cnvtxs+1;
-      cgraph->vsize 		= cgraph->gdata + 2*cnvtxs+1;
-      cgraph->adjwgtsum 	= cgraph->gdata + 3*cnvtxs+1;
-      cgraph->cmap 		= cgraph->gdata + 4*cnvtxs+1;
-      cgraph->adjncy 		= cgraph->gdata + 5*cnvtxs+1;
-      cgraph->adjwgt 		= cgraph->gdata + 5*cnvtxs+1 + graph->nedges;
-    }
-    else {
-      cgraph->gdata = idxmalloc(4*cnvtxs+1 + 2*graph->nedges, "SetUpCoarseGraph: gdata");
-      cgraph->xadj 		= cgraph->gdata;
-      cgraph->vwgt 		= cgraph->gdata + cnvtxs+1;
-      cgraph->adjwgtsum 	= cgraph->gdata + 2*cnvtxs+1;
-      cgraph->cmap 		= cgraph->gdata + 3*cnvtxs+1;
-      cgraph->adjncy 		= cgraph->gdata + 4*cnvtxs+1;
-      cgraph->adjwgt 		= cgraph->gdata + 4*cnvtxs+1 + graph->nedges;
-    }
-  }
-  else {
-    if (dovsize) {
-      cgraph->gdata = idxmalloc(4*cnvtxs+1 + 2*graph->nedges, "SetUpCoarseGraph: gdata");
-      cgraph->xadj 		= cgraph->gdata;
-      cgraph->vsize 		= cgraph->gdata + cnvtxs+1;
-      cgraph->adjwgtsum 	= cgraph->gdata + 2*cnvtxs+1;
-      cgraph->cmap 		= cgraph->gdata + 3*cnvtxs+1;
-      cgraph->adjncy 		= cgraph->gdata + 4*cnvtxs+1;
-      cgraph->adjwgt 		= cgraph->gdata + 4*cnvtxs+1 + graph->nedges;
-    }
-    else {
-      cgraph->gdata = idxmalloc(3*cnvtxs+1 + 2*graph->nedges, "SetUpCoarseGraph: gdata");
-      cgraph->xadj 		= cgraph->gdata;
-      cgraph->adjwgtsum 	= cgraph->gdata + cnvtxs+1;
-      cgraph->cmap 		= cgraph->gdata + 2*cnvtxs+1;
-      cgraph->adjncy 		= cgraph->gdata + 3*cnvtxs+1;
-      cgraph->adjwgt 		= cgraph->gdata + 3*cnvtxs+1 + graph->nedges;
-    }
+  cgraph->xadj       = idxmalloc(cnvtxs+1, "SetUpCoarseGraph: xadj");
+  cgraph->adjwgtsum  = idxmalloc(cnvtxs,   "SetUpCoarseGraph: adjwgtsum");
+  cgraph->cmap       = idxmalloc(cnvtxs,   "SetUpCoarseGraph: cmap");
+  cgraph->adjncy     = idxmalloc(graph->nedges,   "SetUpCoarseGraph: adjncy");
+  cgraph->adjwgt     = idxmalloc(graph->nedges,   "SetUpCoarseGraph: adjwgt");
 
-    cgraph->nvwgt 	= fmalloc(graph->ncon*cnvtxs, "SetUpCoarseGraph: nvwgt");
-  }
+  if (graph->ncon == 1)
+    cgraph->vwgt     = idxmalloc(cnvtxs,   "SetUpCoarseGraph: vwgt");
+  else
+    cgraph->nvwgt    = gk_fmalloc(graph->ncon*cnvtxs, "SetUpCoarseGraph: nvwgt");
+
+  if (dovsize)
+    cgraph->vsize    = idxmalloc(cnvtxs,   "SetUpCoarseGraph: vsize");
 
   return cgraph;
 }
+
 
 
 /*************************************************************************
@@ -540,58 +513,8 @@ GraphType *SetUpCoarseGraph(GraphType *graph, idxtype cnvtxs, idxtype dovsize)
 **************************************************************************/
 void ReAdjustMemory(GraphType *graph, GraphType *cgraph, idxtype dovsize) 
 {
-
-  if (cgraph->nedges > 100000 && graph->nedges < 0.7*graph->nedges) {
-    idxcopy(cgraph->nedges, cgraph->adjwgt, cgraph->adjncy+cgraph->nedges);
-
-    if (graph->ncon == 1) {
-      if (dovsize) {
-        cgraph->gdata = realloc(cgraph->gdata, (5*cgraph->nvtxs+1 + 2*cgraph->nedges)*sizeof(idxtype));
-
-        /* Do this, in case everything was copied into new space */
-        cgraph->xadj 		= cgraph->gdata;
-        cgraph->vwgt 		= cgraph->gdata + cgraph->nvtxs+1;
-        cgraph->vsize 		= cgraph->gdata + 2*cgraph->nvtxs+1;
-        cgraph->adjwgtsum	= cgraph->gdata + 3*cgraph->nvtxs+1;
-        cgraph->cmap 		= cgraph->gdata + 4*cgraph->nvtxs+1;
-        cgraph->adjncy 		= cgraph->gdata + 5*cgraph->nvtxs+1;
-        cgraph->adjwgt 		= cgraph->gdata + 5*cgraph->nvtxs+1 + cgraph->nedges;
-      }
-      else {
-        cgraph->gdata = realloc(cgraph->gdata, (4*cgraph->nvtxs+1 + 2*cgraph->nedges)*sizeof(idxtype));
-
-        /* Do this, in case everything was copied into new space */
-        cgraph->xadj 	= cgraph->gdata;
-        cgraph->vwgt 	= cgraph->gdata + cgraph->nvtxs+1;
-        cgraph->adjwgtsum	= cgraph->gdata + 2*cgraph->nvtxs+1;
-        cgraph->cmap 	= cgraph->gdata + 3*cgraph->nvtxs+1;
-        cgraph->adjncy 	= cgraph->gdata + 4*cgraph->nvtxs+1;
-        cgraph->adjwgt 	= cgraph->gdata + 4*cgraph->nvtxs+1 + cgraph->nedges;
-      }
-    }
-    else {
-      if (dovsize) {
-        cgraph->gdata = realloc(cgraph->gdata, (4*cgraph->nvtxs+1 + 2*cgraph->nedges)*sizeof(idxtype));
-
-        /* Do this, in case everything was copied into new space */
-        cgraph->xadj 		= cgraph->gdata;
-        cgraph->vsize		= cgraph->gdata + cgraph->nvtxs+1;
-        cgraph->adjwgtsum	= cgraph->gdata + 2*cgraph->nvtxs+1;
-        cgraph->cmap 		= cgraph->gdata + 3*cgraph->nvtxs+1;
-        cgraph->adjncy 		= cgraph->gdata + 4*cgraph->nvtxs+1;
-        cgraph->adjwgt 		= cgraph->gdata + 4*cgraph->nvtxs+1 + cgraph->nedges;
-      }
-      else {
-        cgraph->gdata = realloc(cgraph->gdata, (3*cgraph->nvtxs+1 + 2*cgraph->nedges)*sizeof(idxtype));
-
-        /* Do this, in case everything was copied into new space */
-        cgraph->xadj 		= cgraph->gdata;
-        cgraph->adjwgtsum	= cgraph->gdata + cgraph->nvtxs+1;
-        cgraph->cmap 		= cgraph->gdata + 2*cgraph->nvtxs+1;
-        cgraph->adjncy 		= cgraph->gdata + 3*cgraph->nvtxs+1;
-        cgraph->adjwgt 		= cgraph->gdata + 3*cgraph->nvtxs+1 + cgraph->nedges;
-      }
-    }
+  if (cgraph->nedges > 10000 && cgraph->nedges < 0.8*graph->nedges) {
+    cgraph->adjncy = idxrealloc(cgraph->adjncy, cgraph->nedges, "ReAdjustMemory: adjncy");
+    cgraph->adjwgt = idxrealloc(cgraph->adjwgt, cgraph->nedges, "ReAdjustMemory: adjwgt");
   }
-
 }

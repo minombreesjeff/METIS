@@ -83,13 +83,13 @@ void MCRandom_KWayEdgeRefineHorizontal(CtrlType *ctrl, GraphType *graph, idxtype
   perm = idxwspacemalloc(ctrl, nvtxs);
 
   if (ctrl->dbglvl&DBG_REFINE) {
-    printf("Partitions: [%5.4f %5.4f], Nv-Nb[%6d %6d]. Cut: %6d, LB: ",
-            npwgts[samin(ncon*nparts, npwgts)], npwgts[samax(ncon*nparts, npwgts)], 
+    mprintf("Partitions: [%5.4f %5.4f], Nv-Nb[%6D %6D]. Cut: %6D, LB: ",
+            npwgts[gk_fargmin(ncon*nparts, npwgts)], npwgts[gk_fargmax(ncon*nparts, npwgts)], 
             graph->nvtxs, graph->nbnd, graph->mincut);
     ComputeHKWayLoadImbalance(ncon, nparts, npwgts, tvec);
     for (i=0; i<ncon; i++)
-      printf("%.3f ", tvec[i]);
-    printf("\n");
+      mprintf("%.3f ", tvec[i]);
+    mprintf("\n");
   }
 
   for (pass=0; pass<npasses; pass++) {
@@ -150,11 +150,11 @@ void MCRandom_KWayEdgeRefineHorizontal(CtrlType *ctrl, GraphType *graph, idxtype
         *======================================================================*/
         graph->mincut -= myedegrees[k].ed-myrinfo->id;
 
-        IFSET(ctrl->dbglvl, DBG_MOVEINFO, printf("\t\tMoving %6d to %3d. Gain: %4d. Cut: %6d\n", i, to, myedegrees[k].ed-myrinfo->id, graph->mincut));
+        IFSET(ctrl->dbglvl, DBG_MOVEINFO, mprintf("\t\tMoving %6D to %3D. Gain: %4D. Cut: %6D\n", i, to, myedegrees[k].ed-myrinfo->id, graph->mincut));
 
         /* Update where, weight, and ID/ED information of the vertex you moved */
-        saxpy(ncon, 1.0, nvwgt, 1, npwgts+to*ncon, 1);
-        saxpy(ncon, -1.0, nvwgt, 1, npwgts+from*ncon, 1);
+        gk_faxpy(ncon, 1.0, nvwgt, 1, npwgts+to*ncon, 1);
+        gk_faxpy(ncon, -1.0, nvwgt, 1, npwgts+from*ncon, 1);
         where[i] = to;
         myrinfo->ed += myrinfo->id-myedegrees[k].ed;
         SWAP(myrinfo->id, myedegrees[k].ed, j);
@@ -231,13 +231,13 @@ void MCRandom_KWayEdgeRefineHorizontal(CtrlType *ctrl, GraphType *graph, idxtype
     graph->nbnd = nbnd;
 
     if (ctrl->dbglvl&DBG_REFINE) {
-      printf("\t [%5.4f %5.4f], Nb: %6d, Nmoves: %5d, Cut: %6d, LB: ",
-              npwgts[samin(ncon*nparts, npwgts)], npwgts[samax(ncon*nparts, npwgts)], 
+      mprintf("\t [%5.4f %5.4f], Nb: %6D, Nmoves: %5D, Cut: %6D, LB: ",
+              npwgts[gk_fargmin(ncon*nparts, npwgts)], npwgts[gk_fargmax(ncon*nparts, npwgts)], 
               nbnd, nmoves, graph->mincut);
       ComputeHKWayLoadImbalance(ncon, nparts, npwgts, tvec);
       for (i=0; i<ncon; i++)
-        printf("%.3f ", tvec[i]);
-      printf("\n");
+        mprintf("%.3f ", tvec[i]);
+      mprintf("\n");
     }
 
     if (graph->mincut == oldcut)
@@ -292,16 +292,16 @@ void MCGreedy_KWayEdgeBalanceHorizontal(CtrlType *ctrl, GraphType *graph, idxtyp
   perm = idxwspacemalloc(ctrl, nvtxs);
   moved = idxwspacemalloc(ctrl, nvtxs);
 
-  PQueueInit(ctrl, &queue, nvtxs, graph->adjwgtsum[idxamax(nvtxs, graph->adjwgtsum)]);
+  PQueueInit(ctrl, &queue, nvtxs, graph->adjwgtsum[idxargmax(nvtxs, graph->adjwgtsum)]);
 
   if (ctrl->dbglvl&DBG_REFINE) {
-    printf("Partitions: [%5.4f %5.4f], Nv-Nb[%6d %6d]. Cut: %6d, LB: ",
-            npwgts[samin(ncon*nparts, npwgts)], npwgts[samax(ncon*nparts, npwgts)], 
+    mprintf("Partitions: [%5.4f %5.4f], Nv-Nb[%6D %6D]. Cut: %6D, LB: ",
+            npwgts[gk_fargmin(ncon*nparts, npwgts)], npwgts[gk_fargmax(ncon*nparts, npwgts)], 
             graph->nvtxs, graph->nbnd, graph->mincut);
     ComputeHKWayLoadImbalance(ncon, nparts, npwgts, tvec);
     for (i=0; i<ncon; i++)
-      printf("%.3f ", tvec[i]);
-    printf("[B]\n");
+      mprintf("%.3f ", tvec[i]);
+    mprintf("[B]\n");
   }
 
 
@@ -380,11 +380,11 @@ void MCGreedy_KWayEdgeBalanceHorizontal(CtrlType *ctrl, GraphType *graph, idxtyp
       *======================================================================*/
       graph->mincut -= myedegrees[k].ed-myrinfo->id;
 
-      IFSET(ctrl->dbglvl, DBG_MOVEINFO, printf("\t\tMoving %6d to %3d. Gain: %4d. Cut: %6d\n", i, to, myedegrees[k].ed-myrinfo->id, graph->mincut));
+      IFSET(ctrl->dbglvl, DBG_MOVEINFO, mprintf("\t\tMoving %6D to %3D. Gain: %4D. Cut: %6D\n", i, to, myedegrees[k].ed-myrinfo->id, graph->mincut));
 
       /* Update where, weight, and ID/ED information of the vertex you moved */
-      saxpy(ncon, 1.0, nvwgt, 1, npwgts+to*ncon, 1);
-      saxpy(ncon, -1.0, nvwgt, 1, npwgts+from*ncon, 1);
+      gk_faxpy(ncon, 1.0, nvwgt, 1, npwgts+to*ncon, 1);
+      gk_faxpy(ncon, -1.0, nvwgt, 1, npwgts+from*ncon, 1);
       where[i] = to;
       myrinfo->ed += myrinfo->id-myedegrees[k].ed;
       SWAP(myrinfo->id, myedegrees[k].ed, j);
@@ -479,13 +479,13 @@ void MCGreedy_KWayEdgeBalanceHorizontal(CtrlType *ctrl, GraphType *graph, idxtyp
     graph->nbnd = nbnd;
 
     if (ctrl->dbglvl&DBG_REFINE) {
-      printf("\t [%5.4f %5.4f], Nb: %6d, Nmoves: %5d, Cut: %6d, LB: ",
-              npwgts[samin(ncon*nparts, npwgts)], npwgts[samax(ncon*nparts, npwgts)], 
+      mprintf("\t [%5.4f %5.4f], Nb: %6D, Nmoves: %5D, Cut: %6D, LB: ",
+              npwgts[gk_fargmin(ncon*nparts, npwgts)], npwgts[gk_fargmax(ncon*nparts, npwgts)], 
               nbnd, nmoves, graph->mincut);
       ComputeHKWayLoadImbalance(ncon, nparts, npwgts, tvec);
       for (i=0; i<ncon; i++)
-        printf("%.3f ", tvec[i]);
-      printf("\n");
+        mprintf("%.3f ", tvec[i]);
+      mprintf("\n");
     }
 
     if (nmoves == 0)
@@ -540,7 +540,7 @@ idxtype AreAllHVwgtsAbove(idxtype ncon, float alpha, float *vwgt1, float beta, f
 
 /*************************************************************************
 * This function computes the load imbalance over all the constrains
-* For now assume that we just want balanced partitionings
+* For now agk_fsume that we just want balanced partitionings
 **************************************************************************/ 
 void ComputeHKWayLoadImbalance(idxtype ncon, idxtype nparts, float *npwgts, float *lbvec)
 {

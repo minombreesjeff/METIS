@@ -20,16 +20,16 @@
 /*************************************************************************
 * Let the game begin
 **************************************************************************/
-int main(idxtype argc, char *argv[])
+int main(int argc, char *argv[])
 {
   idxtype i, j, ne, nn, etype, mtype, cnt, numflag=0;
   idxtype *elmnts, *xadj, *adjncy, *metype;
   idxtype *conmat, *elms, *weights; 
-  timer IOTmr, DUALTmr;
+  double IOTmr, DUALTmr;
   char fileout[256], etypestr[5][5] = {"TRI", "TET", "HEX", "QUAD", "LINE"};
 
   if (argc <2) {
-    printf("Usage: %s <meshfile> [confile]\n",argv[0]);
+    mprintf("Usage: %s <meshfile> [confile]\n",argv[0]);
     exit(0);
   }
 
@@ -41,58 +41,58 @@ int main(idxtype argc, char *argv[])
   
   if (mtype==1 || mtype==3){
 
-  cleartimer(IOTmr);
-  cleartimer(DUALTmr);
+  gk_clearcputimer(IOTmr);
+  gk_clearcputimer(DUALTmr);
 
-  starttimer(IOTmr);
+  gk_startcputimer(IOTmr);
   if (mtype==1)
      elmnts = ReadMesh(argv[1], &ne, &nn, &etype);
   else
      elmnts = ReadMeshWgt(argv[1], &ne, &nn, &etype, weights);
-  stoptimer(IOTmr);
+  gk_stopcputimer(IOTmr);
 
-  printf("**********************************************************************\n");
-  printf("%s", METISTITLE);
-  printf("Mesh Information ----------------------------------------------------\n");
-  printf("  Name: %s, #Elements: %d, #Nodes: %d, Etype: %s\n\n", argv[1], ne, nn, etypestr[etype-1]);
-  printf("Forming Dual Graph... -----------------------------------------------\n");
+  mprintf("**********************************************************************\n");
+  mprintf("%s", METISTITLE);
+  mprintf("Mesh Information ----------------------------------------------------\n");
+  mprintf("  Name: %s, #Elements: %D, #Nodes: %D, Etype: %s\n\n", argv[1], ne, nn, etypestr[etype-1]);
+  mprintf("Forming Dual Graph... -----------------------------------------------\n");
 
   xadj = idxmalloc(ne+1, "main: xadj");
   elms = idxsmalloc(ne+1, 0, "main: elms");
 
 
-  starttimer(DUALTmr);
+  gk_startcputimer(DUALTmr);
   cnt=METIS_MeshToDualCount(&ne, &nn, elmnts, elms, &etype, &numflag);
   adjncy = idxmalloc(cnt+1, "main: adjncy");
   METIS_MeshToDual(&ne, &nn, elmnts, elms, &etype, &numflag, xadj, adjncy);
-  stoptimer(DUALTmr);
+  gk_stopcputimer(DUALTmr);
 
-  printf("  Dual Information: #Vertices: %d, #Edges: %d\n", ne, xadj[ne]/2);
+  mprintf("  Dual Information: #Vertices: %D, #Edges: %D\n", ne, xadj[ne]/2);
 
-  sprintf(fileout, "%s.dgraph", argv[1]);
-  starttimer(IOTmr);
+  msprintf(fileout, "%s.dgraph", argv[1]);
+  gk_startcputimer(IOTmr);
   if (mtype==1)
      WriteGraph(fileout, ne, xadj, adjncy);
   else
      WriteWgtGraph(fileout, ne, xadj, adjncy, weights);
      
-  stoptimer(IOTmr);
+  gk_stopcputimer(IOTmr);
 
 
-  printf("\nTiming Information --------------------------------------------------\n");
-  printf("  I/O:          \t\t %7.3f\n", gettimer(IOTmr));
-  printf("  Dual Creation:\t\t %7.3f\n", gettimer(DUALTmr));
-  printf("**********************************************************************\n");
+  mprintf("\nTiming Information --------------------------------------------------\n");
+  mprintf("  I/O:          \t\t %7.3f\n", gk_getcputimer(IOTmr));
+  mprintf("  Dual Creation:\t\t %7.3f\n", gk_getcputimer(DUALTmr));
+  mprintf("**********************************************************************\n");
 
   }
 
   else {
 
   
-  cleartimer(IOTmr);
-  cleartimer(DUALTmr);
+  gk_clearcputimer(IOTmr);
+  gk_clearcputimer(DUALTmr);
 
-  starttimer(IOTmr);
+  gk_startcputimer(IOTmr);
 
   
   if(mtype==0)
@@ -102,21 +102,21 @@ int main(idxtype argc, char *argv[])
 
   if (argc==3)  
   conmat = ReadMgcnums(argv[2]);
-  stoptimer(IOTmr);
+  gk_stopcputimer(IOTmr);
 
    
 
-  printf("**********************************************************************\n");
-  printf("%s", METISTITLE);
-  printf("Mesh Information ----------------------------------------------------\n");
-  printf("  Name: %s, #Elements: %d, #Nodes: %d, Etype: %s\n\n", argv[1], ne, nn, "Mixed");
-  printf("Forming Dual Graph... ----------------------------------------------\n");
+  mprintf("**********************************************************************\n");
+  mprintf("%s", METISTITLE);
+  mprintf("Mesh Information ----------------------------------------------------\n");
+  mprintf("  Name: %s, #Elements: %D, #Nodes: %D, Etype: %s\n\n", argv[1], ne, nn, "Mixed");
+  mprintf("Forming Dual Graph... ----------------------------------------------\n");
 
   xadj = idxmalloc(ne+1, "main: xadj");
   elms = idxsmalloc(ne+1, 0, "main: elms");
 
   
-  starttimer(DUALTmr);
+  gk_startcputimer(DUALTmr);
 
   if (argc==3){
   cnt=METIS_MixedMeshToDualCount(&ne, &nn, elmnts, elms, metype, &numflag, 
@@ -131,28 +131,28 @@ conmat, 0);
   adjncy = idxmalloc(cnt+1, "main: adjncy");
   METIS_MixedMeshToDual(&ne, &nn, elmnts, elms, metype, &numflag, xadj, adjncy, conmat, 0);
   } 
-  stoptimer(DUALTmr);
+  gk_stopcputimer(DUALTmr);
 
-  printf("  Dual Information: #Vertices: %d, #Edges: %d\n", ne, xadj[ne]/2);
+  mprintf("  Dual Information: #Vertices: %D, #Edges: %D\n", ne, xadj[ne]/2);
 
-  sprintf(fileout, "%s.dgraph", argv[1]);
-  starttimer(IOTmr);
+  msprintf(fileout, "%s.dgraph", argv[1]);
+  gk_startcputimer(IOTmr);
 
   if (mtype==0)
      WriteGraph(fileout, ne, xadj, adjncy);
   else
      WriteWgtGraph(fileout, ne, xadj, adjncy, weights);
-  stoptimer(IOTmr);
+  gk_stopcputimer(IOTmr);
 
 
-  printf("\nTiming Information --------------------------------------------------\n");
-  printf("  I/O:          \t\t %7.3f\n", gettimer(IOTmr));
-  printf("  Dual Creation:\t\t %7.3f\n", gettimer(DUALTmr));
-  printf("**********************************************************************\n");
+  mprintf("\nTiming Information --------------------------------------------------\n");
+  mprintf("  I/O:          \t\t %7.3f\n", gk_getcputimer(IOTmr));
+  mprintf("  Dual Creation:\t\t %7.3f\n", gk_getcputimer(DUALTmr));
+  mprintf("**********************************************************************\n");
 
   }
 
-  GKfree((void *)&elmnts, &xadj, &adjncy, &metype, &weights, &elms,  LTERM);
+  gk_free((void **)&elmnts, &xadj, &adjncy, &metype, &weights, &elms,  LTERM);
 }
 
 

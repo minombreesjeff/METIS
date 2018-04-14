@@ -20,22 +20,22 @@
 **************************************************************************/
 void InitTimers(CtrlType *ctrl)
 {
-  cleartimer(ctrl->TotalTmr);
-  cleartimer(ctrl->InitPartTmr);
-  cleartimer(ctrl->MatchTmr);
-  cleartimer(ctrl->ContractTmr);
-  cleartimer(ctrl->CoarsenTmr);
-  cleartimer(ctrl->UncoarsenTmr);
-  cleartimer(ctrl->RefTmr);
-  cleartimer(ctrl->ProjectTmr);
-  cleartimer(ctrl->SplitTmr);
-  cleartimer(ctrl->SepTmr);
-  cleartimer(ctrl->AuxTmr1);
-  cleartimer(ctrl->AuxTmr2);
-  cleartimer(ctrl->AuxTmr3);
-  cleartimer(ctrl->AuxTmr4);
-  cleartimer(ctrl->AuxTmr5);
-  cleartimer(ctrl->AuxTmr6);
+  gk_clearcputimer(ctrl->TotalTmr);
+  gk_clearcputimer(ctrl->InitPartTmr);
+  gk_clearcputimer(ctrl->MatchTmr);
+  gk_clearcputimer(ctrl->ContractTmr);
+  gk_clearcputimer(ctrl->CoarsenTmr);
+  gk_clearcputimer(ctrl->UncoarsenTmr);
+  gk_clearcputimer(ctrl->RefTmr);
+  gk_clearcputimer(ctrl->ProjectTmr);
+  gk_clearcputimer(ctrl->SplitTmr);
+  gk_clearcputimer(ctrl->SepTmr);
+  gk_clearcputimer(ctrl->AuxTmr1);
+  gk_clearcputimer(ctrl->AuxTmr2);
+  gk_clearcputimer(ctrl->AuxTmr3);
+  gk_clearcputimer(ctrl->AuxTmr4);
+  gk_clearcputimer(ctrl->AuxTmr5);
+  gk_clearcputimer(ctrl->AuxTmr6);
 }
 
 
@@ -45,30 +45,22 @@ void InitTimers(CtrlType *ctrl)
 **************************************************************************/
 void PrintTimers(CtrlType *ctrl)
 {
-  printf("\nTiming Information -------------------------------------------------");
-  printf("\n Multilevel: \t\t %7.3f", gettimer(ctrl->TotalTmr));
-  printf("\n     Coarsening: \t\t %7.3f", gettimer(ctrl->CoarsenTmr));
-  printf("\n            Matching: \t\t\t %7.3f", gettimer(ctrl->MatchTmr));
-  printf("\n            Contract: \t\t\t %7.3f", gettimer(ctrl->ContractTmr));
-  printf("\n     Initial Partition: \t %7.3f", gettimer(ctrl->InitPartTmr));
-  printf("\n   Construct Separator: \t %7.3f", gettimer(ctrl->SepTmr));
-  printf("\n     Uncoarsening: \t\t %7.3f", gettimer(ctrl->UncoarsenTmr));
-  printf("\n          Refinement: \t\t\t %7.3f", gettimer(ctrl->RefTmr));
-  printf("\n          Projection: \t\t\t %7.3f", gettimer(ctrl->ProjectTmr));
-  printf("\n     Splitting: \t\t %7.3f", gettimer(ctrl->SplitTmr));
-  printf("\n          AUX1: \t\t %7.3f", gettimer(ctrl->AuxTmr1));
-  printf("\n          AUX2: \t\t %7.3f", gettimer(ctrl->AuxTmr2));
-  printf("\n          AUX3: \t\t %7.3f", gettimer(ctrl->AuxTmr3));
-  printf("\n********************************************************************\n");
+  mprintf("\nTiming Information -------------------------------------------------");
+  mprintf("\n Multilevel: \t\t %7.3f", gk_getcputimer(ctrl->TotalTmr));
+  mprintf("\n     Coarsening: \t\t %7.3f", gk_getcputimer(ctrl->CoarsenTmr));
+  mprintf("\n            Matching: \t\t\t %7.3f", gk_getcputimer(ctrl->MatchTmr));
+  mprintf("\n            Contract: \t\t\t %7.3f", gk_getcputimer(ctrl->ContractTmr));
+  mprintf("\n     Initial Partition: \t %7.3f", gk_getcputimer(ctrl->InitPartTmr));
+  mprintf("\n   Construct Separator: \t %7.3f", gk_getcputimer(ctrl->SepTmr));
+  mprintf("\n     Uncoarsening: \t\t %7.3f", gk_getcputimer(ctrl->UncoarsenTmr));
+  mprintf("\n          Refinement: \t\t\t %7.3f", gk_getcputimer(ctrl->RefTmr));
+  mprintf("\n          Projection: \t\t\t %7.3f", gk_getcputimer(ctrl->ProjectTmr));
+  mprintf("\n     Splitting: \t\t %7.3f", gk_getcputimer(ctrl->SplitTmr));
+  mprintf("\n          AUX1: \t\t %7.3f", gk_getcputimer(ctrl->AuxTmr1));
+  mprintf("\n          AUX2: \t\t %7.3f", gk_getcputimer(ctrl->AuxTmr2));
+  mprintf("\n          AUX3: \t\t %7.3f", gk_getcputimer(ctrl->AuxTmr3));
+  mprintf("\n********************************************************************\n");
 }
 
-
-/*************************************************************************
-* This function returns the seconds
-**************************************************************************/
-double seconds(void)
-{
-  return((double) clock()/CLOCKS_PER_SEC);
-}
 
 

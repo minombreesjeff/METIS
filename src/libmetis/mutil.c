@@ -65,7 +65,7 @@ idxtype AreAllVwgtsAbove(idxtype ncon, float alpha, float *vwgt1, float beta, fl
 
 /*************************************************************************
 * This function computes the load imbalance over all the constrains
-* For now assume that we just want balanced partitionings
+* For now agk_fsume that we just want balanced partitionings
 **************************************************************************/ 
 float ComputeLoadImbalance(idxtype ncon, idxtype nparts, float *npwgts, float *tpwgts)
 {

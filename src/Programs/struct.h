@@ -14,7 +14,7 @@
 
 
 /*************************************************************************
-* The following data structure implements a string-2-int mapping
+* The following data structure implements a string-2-idxtype mapping
 * table used for parsing command-line options
 **************************************************************************/
 typedef struct {

@@ -15,7 +15,7 @@
 #define METISTITLE              "  METIS 5.0 Copyright 2001-06, Regents of the University of Minnesota\n\n"
 #define MAXLINE			1280000
 
-#define LTERM			(void **) 0	/* List terminator for GKfree() */
+#define LTERM			(void **) 0	/* List terminator for gk_free() */
 
 #define MAXNCON			16		/* The maximum number of constrains */
 #define MAXNOBJ			16		/* The maximum number of objectives */
@@ -112,7 +112,7 @@
 
 #define ORDER_UNBALANCE_FRACTION	1.10
 
-#define MMDSWITCH		200
+#define MMDSWITCH		        200
 
 #define HORIZONTAL_IMBALANCE		1.05
 

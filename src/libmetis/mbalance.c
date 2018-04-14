@@ -71,15 +71,15 @@ void MocGeneral2WayBalance(CtrlType *ctrl, GraphType *graph, float *tpwgts, floa
   }
 
   for (i=0; i<nvtxs; i++) {
-    qnum[i] = samax(ncon, nvwgt+i*ncon);
+    qnum[i] = gk_fargmax(ncon, nvwgt+i*ncon);
     qsizes[qnum[i]][where[i]]++;
   }
 
 /*
-  printf("Weight Distribution:    \t");
+  mprintf("Weight Distribution:    \t");
   for (i=0; i<ncon; i++) 
-    printf(" [%d %d]", qsizes[i][0], qsizes[i][1]); 
-  printf("\n");
+    mprintf(" [%D %D]", qsizes[i][0], qsizes[i][1]); 
+  mprintf("\n");
 */
 
   for (from=0; from<2; from++) {
@@ -89,7 +89,7 @@ void MocGeneral2WayBalance(CtrlType *ctrl, GraphType *graph, float *tpwgts, floa
           if (where[i] != from)
             continue;
 
-          k = samax2(ncon, nvwgt+i*ncon);
+          k = famax2(ncon, nvwgt+i*ncon);
           if (k == j && qsizes[qnum[i]][from] > qsizes[j][from] && nvwgt[i*ncon+qnum[i]] < 1.3*nvwgt[i*ncon+j]) {
             qsizes[qnum[i]][from]--;
             qsizes[j][from]++;
@@ -101,10 +101,10 @@ void MocGeneral2WayBalance(CtrlType *ctrl, GraphType *graph, float *tpwgts, floa
   }
 
 /*
-  printf("Weight Distribution (after):\t ");
+  mprintf("Weight Distribution (after):\t ");
   for (i=0; i<ncon; i++) 
-    printf(" [%d %d]", qsizes[i][0], qsizes[i][1]); 
-  printf("\n");
+    mprintf(" [%D %D]", qsizes[i][0], qsizes[i][1]); 
+  mprintf("\n");
 */
 
 
@@ -116,10 +116,10 @@ void MocGeneral2WayBalance(CtrlType *ctrl, GraphType *graph, float *tpwgts, floa
   mincutorder = -1;
 
   if (ctrl->dbglvl&DBG_REFINE) {
-    printf("Parts: [");
+    mprintf("Parts: [");
     for (l=0; l<ncon; l++)
-      printf("(%.3f, %.3f) ", npwgts[l], npwgts[ncon+l]);
-    printf("] T[%.3f %.3f], Nv-Nb[%5d, %5d]. ICut: %6d, LB: %.3f [B]\n", tpwgts[0], tpwgts[1], graph->nvtxs, graph->nbnd, graph->mincut, origbal);
+      mprintf("(%.3f, %.3f) ", npwgts[l], npwgts[ncon+l]);
+    mprintf("] T[%.3f %.3f], Nv-Nb[%5D, %5D]. ICut: %6D, LB: %.3f [B]\n", tpwgts[0], tpwgts[1], graph->nvtxs, graph->nbnd, graph->mincut, origbal);
   }
 
   idxset(nvtxs, -1, moved);
@@ -145,8 +145,8 @@ void MocGeneral2WayBalance(CtrlType *ctrl, GraphType *graph, float *tpwgts, floa
     if (from == -1 || (higain = PQueueGetMax(&parts[cnum][from])) == -1)
       break;
 
-    saxpy(ncon, 1.0, nvwgt+higain*ncon, 1, npwgts+to*ncon, 1);
-    saxpy(ncon, -1.0, nvwgt+higain*ncon, 1, npwgts+from*ncon, 1);
+    gk_faxpy(ncon, 1.0, nvwgt+higain*ncon, 1, npwgts+to*ncon, 1);
+    gk_faxpy(ncon, -1.0, nvwgt+higain*ncon, 1, npwgts+from*ncon, 1);
     newcut -= (ed[higain]-id[higain]);
     newbal = Compute2WayHLoadImbalance(ncon, npwgts, tpwgts);
 
@@ -160,8 +160,8 @@ void MocGeneral2WayBalance(CtrlType *ctrl, GraphType *graph, float *tpwgts, floa
     }
     else if (nswaps-mincutorder > limit) { /* We hit the limit, undo last move */
       newcut += (ed[higain]-id[higain]);
-      saxpy(ncon, 1.0, nvwgt+higain*ncon, 1, npwgts+from*ncon, 1);
-      saxpy(ncon, -1.0, nvwgt+higain*ncon, 1, npwgts+to*ncon, 1);
+      gk_faxpy(ncon, 1.0, nvwgt+higain*ncon, 1, npwgts+from*ncon, 1);
+      gk_faxpy(ncon, -1.0, nvwgt+higain*ncon, 1, npwgts+to*ncon, 1);
       break;
     }
 
@@ -170,10 +170,10 @@ void MocGeneral2WayBalance(CtrlType *ctrl, GraphType *graph, float *tpwgts, floa
     swaps[nswaps] = higain;
 
     if (ctrl->dbglvl&DBG_MOVEINFO) {
-      printf("Moved %6d from %d(%d). Gain: %5d, Cut: %5d, NPwgts: ", higain, from, cnum, ed[higain]-id[higain], newcut);
+      mprintf("Moved %6D from %D(%D). Gain: %5D, Cut: %5D, NPwgts: ", higain, from, cnum, ed[higain]-id[higain], newcut);
       for (l=0; l<ncon; l++) 
-        printf("(%.3f, %.3f) ", npwgts[l], npwgts[ncon+l]);
-      printf(", %.3f LB: %.3f\n", minbal, newbal);
+        mprintf("(%.3f, %.3f) ", npwgts[l], npwgts[ncon+l]);
+      mprintf(", %.3f LB: %.3f\n", minbal, newbal);
     }
 
 
@@ -220,8 +220,8 @@ void MocGeneral2WayBalance(CtrlType *ctrl, GraphType *graph, float *tpwgts, floa
     else if (ed[higain] > 0 && bndptr[higain] == -1)
       BNDInsert(nbnd, bndind,  bndptr, higain);
 
-    saxpy(ncon, 1.0, nvwgt+higain*ncon, 1, npwgts+to*ncon, 1);
-    saxpy(ncon, -1.0, nvwgt+higain*ncon, 1, npwgts+((to+1)%2)*ncon, 1);
+    gk_faxpy(ncon, 1.0, nvwgt+higain*ncon, 1, npwgts+to*ncon, 1);
+    gk_faxpy(ncon, -1.0, nvwgt+higain*ncon, 1, npwgts+((to+1)%2)*ncon, 1);
     for (j=xadj[higain]; j<xadj[higain+1]; j++) {
       k = adjncy[j];
 
@@ -236,10 +236,10 @@ void MocGeneral2WayBalance(CtrlType *ctrl, GraphType *graph, float *tpwgts, floa
   }
 
   if (ctrl->dbglvl&DBG_REFINE) {
-    printf("\tMincut: %6d at %5d, NBND: %6d, NPwgts: [", mincut, mincutorder, nbnd);
+    mprintf("\tMincut: %6D at %5D, NBND: %6D, NPwgts: [", mincut, mincutorder, nbnd);
     for (l=0; l<ncon; l++)
-      printf("(%.3f, %.3f) ", npwgts[l], npwgts[ncon+l]);
-    printf("], LB: %.3f\n", Compute2WayHLoadImbalance(ncon, npwgts, tpwgts));
+      mprintf("(%.3f, %.3f) ", npwgts[l], npwgts[ncon+l]);
+    mprintf("], LB: %.3f\n", Compute2WayHLoadImbalance(ncon, npwgts, tpwgts));
   }
 
   graph->mincut = mincut;

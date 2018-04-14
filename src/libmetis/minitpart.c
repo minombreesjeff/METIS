@@ -26,7 +26,7 @@ void MocInit2WayPartition(CtrlType *ctrl, GraphType *graph, float *tpwgts, float
   IFSET(ctrl->dbglvl, DBG_REFINE, ctrl->dbglvl -= DBG_REFINE);
   IFSET(ctrl->dbglvl, DBG_MOVEINFO, ctrl->dbglvl -= DBG_MOVEINFO);
 
-  IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->InitPartTmr));
+  IFSET(ctrl->dbglvl, DBG_TIME, gk_startcputimer(ctrl->InitPartTmr));
 
   switch (ctrl->IType) {
     case ITYPE_GGPKL:
@@ -42,8 +42,8 @@ void MocInit2WayPartition(CtrlType *ctrl, GraphType *graph, float *tpwgts, float
       errexit("Unknown initial partition type: %d\n", ctrl->IType);
   }
 
-  IFSET(ctrl->dbglvl, DBG_IPART, printf("Initial Cut: %d [%d]\n", graph->mincut, graph->where[0]));
-  IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->InitPartTmr));
+  IFSET(ctrl->dbglvl, DBG_IPART, mprintf("Initial Cut: %D [%D]\n", graph->mincut, graph->where[0]));
+  IFSET(ctrl->dbglvl, DBG_TIME, gk_stopcputimer(ctrl->InitPartTmr));
   ctrl->dbglvl = dbglvl;
 
 }
@@ -94,7 +94,7 @@ void MocGrowBisection(CtrlType *ctrl, GraphType *graph, float *tpwgts, float ubf
   graph->mincut = bestcut;
   idxcopy(nvtxs, bestwhere, where);
 
-  GKfree((void *)&bestwhere, LTERM);
+  gk_free((void **)&bestwhere, LTERM);
 }
 
 
@@ -131,7 +131,7 @@ void MocRandomBisection(CtrlType *ctrl, GraphType *graph, float *tpwgts, float u
     /* Partition by spliting the queues randomly */
     for (ii=0; ii<nvtxs; ii++) {
       i = perm[ii];
-      qnum = samax(ncon, nvwgt+i*ncon);
+      qnum = gk_fargmax(ncon, nvwgt+i*ncon);
       where[i] = counts[qnum];
       counts[qnum] = (counts[qnum]+1)%2;
     }
@@ -145,10 +145,10 @@ void MocRandomBisection(CtrlType *ctrl, GraphType *graph, float *tpwgts, float u
     MocFM_2WayEdgeRefine(ctrl, graph, tpwgts, 6); 
 
     /*
-    printf("Edgecut: %6d, NPwgts: [", graph->mincut);
+    mprintf("Edgecut: %6D, NPwgts: [", graph->mincut);
     for (i=0; i<graph->ncon; i++)
-      printf("(%.3f %.3f) ", graph->npwgts[i], graph->npwgts[graph->ncon+i]);
-    printf("]\n");
+      mprintf("(%.3f %.3f) ", graph->npwgts[i], graph->npwgts[graph->ncon+i]);
+    mprintf("]\n");
     */
 
     if (inbfs == 0 || bestcut >= graph->mincut) {
@@ -162,7 +162,7 @@ void MocRandomBisection(CtrlType *ctrl, GraphType *graph, float *tpwgts, float u
   graph->mincut = bestcut;
   idxcopy(nvtxs, bestwhere, where);
 
-  GKfree((void *)&bestwhere, &perm, LTERM);
+  gk_free((void **)&bestwhere, &perm, LTERM);
 }
 
 
@@ -206,10 +206,10 @@ void MocInit2WayBalance(CtrlType *ctrl, GraphType *graph, float *tpwgts)
   to = (from+1)%2;
 
   if (ctrl->dbglvl&DBG_REFINE) {
-    printf("Parts: [");
+    mprintf("Parts: [");
     for (l=0; l<ncon; l++)
-      printf("(%.3f, %.3f) ", npwgts[l], npwgts[ncon+l]);
-    printf("] T[%.3f %.3f], Nv-Nb[%5d, %5d]. ICut: %6d, LB: %.3f [B]\n", tpwgts[0], tpwgts[1], 
+      mprintf("(%.3f, %.3f) ", npwgts[l], npwgts[ncon+l]);
+    mprintf("] T[%.3f %.3f], Nv-Nb[%5D, %5D]. ICut: %6D, LB: %.3f [B]\n", tpwgts[0], tpwgts[1], 
            graph->nvtxs, graph->nbnd, graph->mincut, 
            Compute2WayHLoadImbalance(ncon, npwgts, tpwgts));
   }
@@ -225,7 +225,7 @@ void MocInit2WayBalance(CtrlType *ctrl, GraphType *graph, float *tpwgts)
 
   /* Compute the queues in which each vertex will be assigned to */
   for (i=0; i<nvtxs; i++)
-    qnum[i] = samax(ncon, nvwgt+i*ncon);
+    qnum[i] = gk_fargmax(ncon, nvwgt+i*ncon);
 
   /* Insert the nodes of the proper partition in the appropriate priority queue */
   RandomPermute(nvtxs, perm, 1);
@@ -253,18 +253,18 @@ void MocInit2WayBalance(CtrlType *ctrl, GraphType *graph, float *tpwgts)
       higain = PQueueGetMax(&parts[cnum][1]);
 
     mincut -= (ed[higain]-id[higain]);
-    saxpy(ncon, 1.0, nvwgt+higain*ncon, 1, npwgts+to*ncon, 1);
-    saxpy(ncon, -1.0, nvwgt+higain*ncon, 1, npwgts+from*ncon, 1);
+    gk_faxpy(ncon, 1.0, nvwgt+higain*ncon, 1, npwgts+to*ncon, 1);
+    gk_faxpy(ncon, -1.0, nvwgt+higain*ncon, 1, npwgts+from*ncon, 1);
 
     where[higain] = to;
 
     if (ctrl->dbglvl&DBG_MOVEINFO) {
-      printf("Moved %6d from %d(%d). [%5d] %5d, NPwgts: ", higain, from, cnum, ed[higain]-id[higain], mincut);
+      mprintf("Moved %6D from %D(%D). [%5D] %5D, NPwgts: ", higain, from, cnum, ed[higain]-id[higain], mincut);
       for (l=0; l<ncon; l++) 
-        printf("(%.3f, %.3f) ", npwgts[l], npwgts[ncon+l]);
-      printf(", LB: %.3f\n", Compute2WayHLoadImbalance(ncon, npwgts, tpwgts));
+        mprintf("(%.3f, %.3f) ", npwgts[l], npwgts[ncon+l]);
+      mprintf(", LB: %.3f\n", Compute2WayHLoadImbalance(ncon, npwgts, tpwgts));
       if (ed[higain] == 0 && id[higain] > 0)
-        printf("\t Pulled from the interior!\n");
+        mprintf("\t Pulled from the interior!\n");
     }
 
 
@@ -292,7 +292,7 @@ void MocInit2WayBalance(CtrlType *ctrl, GraphType *graph, float *tpwgts)
         }
         else { /* It must be in the boundary already */
           if (bndptr[k] == -1)
-            printf("What you thought was wrong!\n");
+            mprintf("What you thought was wrong!\n");
           PQueueUpdate(&parts[qnum[k]][0], k, oldgain, ed[k]-id[k]);
         }
       }
@@ -309,10 +309,10 @@ void MocInit2WayBalance(CtrlType *ctrl, GraphType *graph, float *tpwgts)
   }
 
   if (ctrl->dbglvl&DBG_REFINE) {
-    printf("\tMincut: %6d, NBND: %6d, NPwgts: ", mincut, nbnd);
+    mprintf("\tMincut: %6D, NBND: %6D, NPwgts: ", mincut, nbnd);
     for (l=0; l<ncon; l++)
-      printf("(%.3f, %.3f) ", npwgts[l], npwgts[ncon+l]);
-    printf(", LB: %.3f\n", Compute2WayHLoadImbalance(ncon, npwgts, tpwgts));
+      mprintf("(%.3f, %.3f) ", npwgts[l], npwgts[ncon+l]);
+    mprintf(", LB: %.3f\n", Compute2WayHLoadImbalance(ncon, npwgts, tpwgts));
   }
 
   graph->mincut = mincut;

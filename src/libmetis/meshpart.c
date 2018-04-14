@@ -20,7 +20,7 @@
 * graph using KMETIS and then assigning elements in a load balanced fashion.
 **************************************************************************/
 void METIS_PartMeshNodal(idxtype *ne, idxtype *nn, idxtype *elmnts, idxtype *etype, 
-idxtype *numflag,int *nparts, idxtype *edgecut, idxtype *epart, idxtype *npart)
+idxtype *numflag, idxtype *nparts, idxtype *edgecut, idxtype *epart, idxtype *npart)
 
 {
   idxtype i, j, k, me;
@@ -77,7 +77,7 @@ idxtype *numflag,int *nparts, idxtype *edgecut, idxtype *epart, idxtype *npart)
         }
       }
       /* Try to assign it first to the domain with most things in common */
-      j = iamax(nnbrs, nbrwgt);
+      j = idxargmax(nnbrs, nbrwgt);
       if (pwgts[nbrind[j]] < maxpwgt) {
         epart[i] = nbrind[j];
       }
@@ -90,7 +90,7 @@ idxtype *numflag,int *nparts, idxtype *edgecut, idxtype *epart, idxtype *npart)
           }
         }
         if (j == nnbrs) 
-          epart[i] = nbrind[iamax(nnbrs, nbrwgt)];
+          epart[i] = nbrind[idxargmax(nnbrs, nbrwgt)];
       }
       pwgts[epart[i]]++;
     }
@@ -99,7 +99,7 @@ idxtype *numflag,int *nparts, idxtype *edgecut, idxtype *epart, idxtype *npart)
   if (*numflag == 1)
     ChangeMesh2FNumbering2((*ne)*esize, elmnts, *ne, *nn, epart, npart);
 
-  GKfree((void *)&xadj, &adjncy, &pwgts, LTERM);
+  gk_free((void **)&xadj, &adjncy, &pwgts, LTERM);
 
 }
 
@@ -111,7 +111,7 @@ idxtype *numflag,int *nparts, idxtype *edgecut, idxtype *epart, idxtype *npart)
 * graph using KMETIS and then assigning elements in a load balanced fashion.
 **************************************************************************/
 void METIS_PartMixedMeshNodal(idxtype *ne, idxtype *nn, idxtype *elmnts, idxtype *etype, 
-idxtype *numflag,int *nparts, idxtype *edgecut, idxtype *epart, idxtype *npart)
+idxtype *numflag, idxtype *nparts, idxtype *edgecut, idxtype *epart, idxtype *npart)
 
 {
   idxtype i, j, k, me, tot;
@@ -173,7 +173,7 @@ idxtype *numflag,int *nparts, idxtype *edgecut, idxtype *epart, idxtype *npart)
         }
       }
       /* Try to assign it first to the domain with most things in common */
-      j = iamax(nnbrs, nbrwgt);
+      j = idxargmax(nnbrs, nbrwgt);
       if (pwgts[nbrind[j]] < maxpwgt) {
         epart[i] = nbrind[j];
       }
@@ -186,7 +186,7 @@ idxtype *numflag,int *nparts, idxtype *edgecut, idxtype *epart, idxtype *npart)
           }
         }
         if (j == nnbrs)
-          epart[i] = nbrind[iamax(nnbrs, nbrwgt)];
+          epart[i] = nbrind[idxargmax(nnbrs, nbrwgt)];
       }
       pwgts[epart[i]]++;
     }
@@ -195,7 +195,7 @@ idxtype *numflag,int *nparts, idxtype *edgecut, idxtype *epart, idxtype *npart)
   if (*numflag == 1)
     ChangeMesh2FNumbering2(tot, elmnts, *ne, *nn, epart, npart);
 
-  GKfree((void *)&xadj, &adjncy, &pwgts, &hash, LTERM);
+  gk_free((void **)&xadj, &adjncy, &pwgts, &hash, LTERM);
 
 }
 
@@ -281,7 +281,7 @@ idxtype wgtflag, idxtype * vwgt)
         }
       }
       /* Try to assign it first to the domain with most things in common */
-      j = iamax(nnbrs, nbrwgt);
+      j = idxargmax(nnbrs, nbrwgt);
       if (pwgts[nbrind[j]] < maxpwgt) {
         npart[i] = nbrind[j];
       }
@@ -302,7 +302,7 @@ idxtype wgtflag, idxtype * vwgt)
   if (*numflag == 1)
     ChangeMesh2FNumbering2((*ne)*esize, elmnts, *ne, *nn, epart, npart);
 
-  GKfree((void *)&xadj, &adjncy, &pwgts, &nptr, &nind, LTERM);
+  gk_free((void **)&xadj, &adjncy, &pwgts, &nptr, &nind, LTERM);
 
 }
 
@@ -405,7 +405,7 @@ idxtype *conmat, idxtype custom, idxtype wgtflag, idxtype *vwgt)
         }
       }
   /* Try to assign it first to the domain with most things in common */
-      j = iamax(nnbrs, nbrwgt);
+      j = idxargmax(nnbrs, nbrwgt);
       if (pwgts[nbrind[j]] < maxpwgt) {
         npart[i] = nbrind[j];
       }
@@ -426,7 +426,7 @@ idxtype *conmat, idxtype custom, idxtype wgtflag, idxtype *vwgt)
   if (*numflag == 1)
     ChangeMesh2FNumbering2((*ne)*esize, elmnts, *ne, *nn, epart, npart);
 
-  GKfree((void *)&xadj, &adjncy, &pwgts, &nptr, &nind, LTERM);
+  gk_free((void **)&xadj, &adjncy, &pwgts, &nptr, &nind, LTERM);
 
 }
 

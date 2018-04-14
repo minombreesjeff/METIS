@@ -40,7 +40,7 @@ void ComputePartitionInfo(GraphType *graph, idxtype nparts, idxtype *where)
     mustfree += 2;
   }
 
-  printf("%d-way Cut: %5d, Vol: %5d, ", nparts, ComputeCut(graph, where), ComputeVolume(graph, where));
+  mprintf("%D-way Cut: %5D, Vol: %5D, ", nparts, ComputeCut(graph, where), ComputeVolume(graph, where));
 
   /* Compute balance information */
   kpwgts = idxsmalloc(ncon*nparts, 0, "ComputePartitionInfo: kpwgts");
@@ -51,17 +51,17 @@ void ComputePartitionInfo(GraphType *graph, idxtype nparts, idxtype *where)
   }
 
   if (ncon == 1) {
-    printf("\tBalance: %5.3f out of %5.3f\n", 
-            1.0*nparts*kpwgts[idxamax(nparts, kpwgts)]/(1.0*idxsum(nparts, kpwgts)),
-            1.0*nparts*vwgt[idxamax(nvtxs, vwgt)]/(1.0*idxsum(nparts, kpwgts)));
+    mprintf("\tBalance: %5.3f out of %5.3f\n", 
+            1.0*nparts*kpwgts[idxargmax(nparts, kpwgts)]/(1.0*idxsum(nparts, kpwgts, 1)),
+            1.0*nparts*vwgt[idxargmax(nvtxs, vwgt)]/(1.0*idxsum(nparts, kpwgts, 1)));
   }
   else {
-    printf("\tBalance:");
+    mprintf("\tBalance:");
     for (j=0; j<ncon; j++) 
-      printf(" (%5.3f out of %5.3f)", 
-            1.0*nparts*kpwgts[ncon*idxamax_strd(nparts, kpwgts+j, ncon)+j]/(1.0*idxsum_strd(nparts, kpwgts+j, ncon)),
-            1.0*nparts*vwgt[ncon*idxamax_strd(nvtxs, vwgt+j, ncon)+j]/(1.0*idxsum_strd(nparts, kpwgts+j, ncon)));
-    printf("\n");
+      mprintf(" (%5.3f out of %5.3f)", 
+            1.0*nparts*kpwgts[ncon*idxargmax_strd(nparts, kpwgts+j, ncon)+j]/(1.0*idxsum(nparts, kpwgts+j, ncon)),
+            1.0*nparts*vwgt[ncon*idxargmax_strd(nvtxs, vwgt+j, ncon)+j]/(1.0*idxsum(nparts, kpwgts+j, ncon)));
+    mprintf("\n");
   }
 
 
@@ -87,23 +87,23 @@ void ComputePartitionInfo(GraphType *graph, idxtype nparts, idxtype *where)
   }
 
   for (i=0; i<nparts; i++)
-    kpwgts[i] = idxsum(nparts, padjncy+i*nparts);
-  printf("Min/Max/Avg/Bal # of adjacent     subdomains: %5d %5d %5.2f %7.3f\n",
-    kpwgts[idxamin(nparts, kpwgts)], kpwgts[idxamax(nparts, kpwgts)], 
-    1.0*idxsum(nparts, kpwgts)/(1.0*nparts), 
-    1.0*nparts*kpwgts[idxamax(nparts, kpwgts)]/(1.0*idxsum(nparts, kpwgts)));
+    kpwgts[i] = idxsum(nparts, padjncy+i*nparts, 1);
+  mprintf("Min/Max/Avg/Bal # of adjacent     subdomains: %5D %5D %5.2f %7.3f\n",
+    kpwgts[idxargmin(nparts, kpwgts)], kpwgts[idxargmax(nparts, kpwgts)], 
+    1.0*idxsum(nparts, kpwgts, 1)/(1.0*nparts), 
+    1.0*nparts*kpwgts[idxargmax(nparts, kpwgts)]/(1.0*idxsum(nparts, kpwgts, 1)));
 
   for (i=0; i<nparts; i++)
-    kpwgts[i] = idxsum(nparts, padjcut+i*nparts);
-  printf("Min/Max/Avg/Bal # of adjacent subdomain cuts: %5d %5d %5d %7.3f\n",
-    kpwgts[idxamin(nparts, kpwgts)], kpwgts[idxamax(nparts, kpwgts)], idxsum(nparts, kpwgts)/nparts, 
-    1.0*nparts*kpwgts[idxamax(nparts, kpwgts)]/(1.0*idxsum(nparts, kpwgts)));
+    kpwgts[i] = idxsum(nparts, padjcut+i*nparts, 1);
+  mprintf("Min/Max/Avg/Bal # of adjacent subdomain cuts: %5D %5D %5D %7.3f\n",
+    kpwgts[idxargmin(nparts, kpwgts)], kpwgts[idxargmax(nparts, kpwgts)], idxsum(nparts, kpwgts, 1)/nparts, 
+    1.0*nparts*kpwgts[idxargmax(nparts, kpwgts)]/(1.0*idxsum(nparts, kpwgts, 1)));
 
   for (i=0; i<nparts; i++)
-    kpwgts[i] = idxsum(nparts, padjwgt+i*nparts);
-  printf("Min/Max/Avg/Bal/Frac # of interface    nodes: %5d %5d %5d %7.3f %7.3f\n",
-    kpwgts[idxamin(nparts, kpwgts)], kpwgts[idxamax(nparts, kpwgts)], idxsum(nparts, kpwgts)/nparts, 
-    1.0*nparts*kpwgts[idxamax(nparts, kpwgts)]/(1.0*idxsum(nparts, kpwgts)), 1.0*idxsum(nparts, kpwgts)/(1.0*nvtxs));
+    kpwgts[i] = idxsum(nparts, padjwgt+i*nparts, 1);
+  mprintf("Min/Max/Avg/Bal/Frac # of interface    nodes: %5D %5D %5D %7.3f %7.3f\n",
+    kpwgts[idxargmin(nparts, kpwgts)], kpwgts[idxargmax(nparts, kpwgts)], idxsum(nparts, kpwgts, 1)/nparts, 
+    1.0*nparts*kpwgts[idxargmax(nparts, kpwgts)]/(1.0*idxsum(nparts, kpwgts, 1)), 1.0*idxsum(nparts, kpwgts, 1)/(1.0*nvtxs));
 
   tmpptr = graph->where;
   graph->where = where;
@@ -112,15 +112,15 @@ void ComputePartitionInfo(GraphType *graph, idxtype nparts, idxtype *where)
   graph->where = tmpptr;
 
   if (mustfree == 1 || mustfree == 3) {
-    GKfree((void *)&vwgt, LTERM);
+    gk_free((void **)&vwgt, LTERM);
     graph->vwgt = NULL;
   }
   if (mustfree == 2 || mustfree == 3) {
-    GKfree((void *)&adjwgt, LTERM);
+    gk_free((void **)&adjwgt, LTERM);
     graph->adjwgt = NULL;
   }
 
-  GKfree((void *)&kpwgts, &padjncy, &padjwgt, &padjcut, LTERM);
+  gk_free((void **)&kpwgts, &padjncy, &padjwgt, &padjcut, LTERM);
 }
 
 
@@ -150,7 +150,7 @@ void ComputePartitionInfoBipartite(GraphType *graph, idxtype nparts, idxtype *wh
     mustfree += 2;
   }
 
-  printf("%d-way Cut: %5d, Vol: %5d, ", nparts, ComputeCut(graph, where), ComputeVolume(graph, where));
+  mprintf("%D-way Cut: %5D, Vol: %5D, ", nparts, ComputeCut(graph, where), ComputeVolume(graph, where));
 
   /* Compute balance information */
   kpwgts = idxsmalloc(ncon*nparts, 0, "ComputePartitionInfo: kpwgts");
@@ -161,17 +161,17 @@ void ComputePartitionInfoBipartite(GraphType *graph, idxtype nparts, idxtype *wh
   }
 
   if (ncon == 1) {
-    printf("\tBalance: %5.3f out of %5.3f\n", 
-            1.0*nparts*kpwgts[idxamax(nparts, kpwgts)]/(1.0*idxsum(nparts, kpwgts)),
-            1.0*nparts*vwgt[idxamax(nvtxs, vwgt)]/(1.0*idxsum(nparts, kpwgts)));
+    mprintf("\tBalance: %5.3f out of %5.3f\n", 
+            1.0*nparts*kpwgts[idxargmax(nparts, kpwgts)]/(1.0*idxsum(nparts, kpwgts, 1)),
+            1.0*nparts*vwgt[idxargmax(nvtxs, vwgt)]/(1.0*idxsum(nparts, kpwgts, 1)));
   }
   else {
-    printf("\tBalance:");
+    mprintf("\tBalance:");
     for (j=0; j<ncon; j++) 
-      printf(" (%5.3f out of %5.3f)", 
-            1.0*nparts*kpwgts[ncon*idxamax_strd(nparts, kpwgts+j, ncon)+j]/(1.0*idxsum_strd(nparts, kpwgts+j, ncon)),
-            1.0*nparts*vwgt[ncon*idxamax_strd(nvtxs, vwgt+j, ncon)+j]/(1.0*idxsum_strd(nparts, kpwgts+j, ncon)));
-    printf("\n");
+      mprintf(" (%5.3f out of %5.3f)", 
+            1.0*nparts*kpwgts[ncon*idxargmax_strd(nparts, kpwgts+j, ncon)+j]/(1.0*idxsum(nparts, kpwgts+j, ncon)),
+            1.0*nparts*vwgt[ncon*idxargmax_strd(nvtxs, vwgt+j, ncon)+j]/(1.0*idxsum(nparts, kpwgts+j, ncon)));
+    mprintf("\n");
   }
 
 
@@ -197,34 +197,34 @@ void ComputePartitionInfoBipartite(GraphType *graph, idxtype nparts, idxtype *wh
   }
 
   for (i=0; i<nparts; i++)
-    kpwgts[i] = idxsum(nparts, padjncy+i*nparts);
-  printf("Min/Max/Avg/Bal # of adjacent     subdomains: %5d %5d %5d %7.3f\n",
-    kpwgts[idxamin(nparts, kpwgts)], kpwgts[idxamax(nparts, kpwgts)], idxsum(nparts, kpwgts)/nparts, 
-    1.0*nparts*kpwgts[idxamax(nparts, kpwgts)]/(1.0*idxsum(nparts, kpwgts)));
+    kpwgts[i] = idxsum(nparts, padjncy+i*nparts, 1);
+  mprintf("Min/Max/Avg/Bal # of adjacent     subdomains: %5D %5D %5D %7.3f\n",
+    kpwgts[idxargmin(nparts, kpwgts)], kpwgts[idxargmax(nparts, kpwgts)], idxsum(nparts, kpwgts, 1)/nparts, 
+    1.0*nparts*kpwgts[idxargmax(nparts, kpwgts)]/(1.0*idxsum(nparts, kpwgts, 1)));
 
   for (i=0; i<nparts; i++)
-    kpwgts[i] = idxsum(nparts, padjcut+i*nparts);
-  printf("Min/Max/Avg/Bal # of adjacent subdomain cuts: %5d %5d %5d %7.3f\n",
-    kpwgts[idxamin(nparts, kpwgts)], kpwgts[idxamax(nparts, kpwgts)], idxsum(nparts, kpwgts)/nparts, 
-    1.0*nparts*kpwgts[idxamax(nparts, kpwgts)]/(1.0*idxsum(nparts, kpwgts)));
+    kpwgts[i] = idxsum(nparts, padjcut+i*nparts, 1);
+  mprintf("Min/Max/Avg/Bal # of adjacent subdomain cuts: %5D %5D %5D %7.3f\n",
+    kpwgts[idxargmin(nparts, kpwgts)], kpwgts[idxargmax(nparts, kpwgts)], idxsum(nparts, kpwgts, 1)/nparts, 
+    1.0*nparts*kpwgts[idxargmax(nparts, kpwgts)]/(1.0*idxsum(nparts, kpwgts, 1)));
 
   for (i=0; i<nparts; i++)
-    kpwgts[i] = idxsum(nparts, padjwgt+i*nparts);
-  printf("Min/Max/Avg/Bal/Frac # of interface    nodes: %5d %5d %5d %7.3f %7.3f\n",
-    kpwgts[idxamin(nparts, kpwgts)], kpwgts[idxamax(nparts, kpwgts)], idxsum(nparts, kpwgts)/nparts, 
-    1.0*nparts*kpwgts[idxamax(nparts, kpwgts)]/(1.0*idxsum(nparts, kpwgts)), 1.0*idxsum(nparts, kpwgts)/(1.0*nvtxs));
+    kpwgts[i] = idxsum(nparts, padjwgt+i*nparts, 1);
+  mprintf("Min/Max/Avg/Bal/Frac # of interface    nodes: %5D %5D %5D %7.3f %7.3f\n",
+    kpwgts[idxargmin(nparts, kpwgts)], kpwgts[idxargmax(nparts, kpwgts)], idxsum(nparts, kpwgts, 1)/nparts, 
+    1.0*nparts*kpwgts[idxargmax(nparts, kpwgts)]/(1.0*idxsum(nparts, kpwgts, 1)), 1.0*idxsum(nparts, kpwgts, 1)/(1.0*nvtxs));
 
 
   if (mustfree == 1 || mustfree == 3) {
-    GKfree((void *)&vwgt, LTERM);
+    gk_free((void **)&vwgt, LTERM);
     graph->vwgt = NULL;
   }
   if (mustfree == 2 || mustfree == 3) {
-    GKfree((void *)&adjwgt, LTERM);
+    gk_free((void **)&adjwgt, LTERM);
     graph->adjwgt = NULL;
   }
 
-  GKfree((void *)&kpwgts, &padjncy, &padjwgt, &padjcut, LTERM);
+  gk_free((void **)&kpwgts, &padjncy, &padjwgt, &padjcut, LTERM);
 }
 
 
@@ -247,7 +247,7 @@ void ComputePartitionBalance(GraphType *graph, idxtype nparts, idxtype *where, f
   if (vwgt == NULL) {
     for (i=0; i<nvtxs; i++)
       kpwgts[where[i]]++;
-    ubvec[0] = 1.0*nparts*kpwgts[idxamax(nparts, kpwgts)]/(1.0*nvtxs);
+    ubvec[0] = 1.0*nparts*kpwgts[idxargmax(nparts, kpwgts)]/(1.0*nvtxs);
   }
   else {
     for (j=0; j<ncon; j++) {
@@ -255,11 +255,11 @@ void ComputePartitionBalance(GraphType *graph, idxtype nparts, idxtype *where, f
       for (i=0; i<graph->nvtxs; i++)
         kpwgts[where[i]] += vwgt[i*ncon+j];
 
-      ubvec[j] = 1.0*nparts*kpwgts[idxamax(nparts, kpwgts)]/(1.0*idxsum(nparts, kpwgts));
+      ubvec[j] = 1.0*nparts*kpwgts[idxargmax(nparts, kpwgts)]/(1.0*idxsum(nparts, kpwgts, 1));
     }
   }
 
-  GKfree((void *)&kpwgts, LTERM);
+  gk_free((void **)&kpwgts, LTERM);
 
 }
 
@@ -278,10 +278,40 @@ float ComputeElementBalance(idxtype ne, idxtype nparts, idxtype *where)
   for (i=0; i<ne; i++)
     kpwgts[where[i]]++;
 
-  balance = 1.0*nparts*kpwgts[idxamax(nparts, kpwgts)]/(1.0*idxsum(nparts, kpwgts));
+  balance = 1.0*nparts*kpwgts[idxargmax(nparts, kpwgts)]/(1.0*idxsum(nparts, kpwgts, 1));
 
-  GKfree((void *)&kpwgts, LTERM);
+  gk_free((void **)&kpwgts, LTERM);
 
   return balance;
 
 }
+
+
+
+/*************************************************************************
+* This function computes the balance of the partitioning
+**************************************************************************/
+void Moc_ComputePartitionBalance(GraphType *graph, idxtype nparts, idxtype *where, float *ubvec)
+{
+  idxtype i, j, nvtxs, ncon;
+  float *kpwgts, *nvwgt;
+  float balance;
+
+  nvtxs = graph->nvtxs;
+  ncon = graph->ncon;
+  nvwgt = graph->nvwgt;
+
+  kpwgts = gk_fmalloc(nparts, "ComputePartitionInfo: kpwgts");
+
+  for (j=0; j<ncon; j++) {
+    gk_fset(nparts, 0.0, kpwgts);
+    for (i=0; i<graph->nvtxs; i++)
+      kpwgts[where[i]] += nvwgt[i*ncon+j];
+
+    ubvec[j] = (float)nparts*kpwgts[gk_fargmax(nparts, kpwgts)]/gk_fsum(nparts, kpwgts, 1);
+  }
+
+  gk_free((void **)&kpwgts, LTERM);
+
+}
+

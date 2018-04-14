@@ -11,12 +11,12 @@
  * $Id: metislib.h,v 1.1 2002/08/10 06:29:31 karypis Exp $
  */
 
+#include <GKlib.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <ctype.h>
-#include <malloc.h>
 #include <math.h>
 #include <time.h>
 #include <string.h>
@@ -40,7 +40,7 @@
 
 
 #if defined(COMPILER_MSC)
-#define rint(x) ((int)((x)+0.5))  /* MSC does not have rint() function */
+#define rint(x) ((idxtype)((x)+0.5))  /* MSC does not have rint() function */
 #endif
 
 

@@ -43,12 +43,12 @@ void FM_2WayEdgeRefine(CtrlType *ctrl, GraphType *graph, idxtype *tpwgts, idxtyp
   limit = amin(amax(0.01*nvtxs, 15), 100);
   avgvwgt = amin((pwgts[0]+pwgts[1])/20, 2*(pwgts[0]+pwgts[1])/nvtxs);
 
-  tmp = graph->adjwgtsum[idxamax(nvtxs, graph->adjwgtsum)];
+  tmp = graph->adjwgtsum[idxargmax(nvtxs, graph->adjwgtsum)];
   PQueueInit(ctrl, &parts[0], nvtxs, tmp);
   PQueueInit(ctrl, &parts[1], nvtxs, tmp);
 
   IFSET(ctrl->dbglvl, DBG_REFINE, 
-     printf("Partitions: [%6d %6d] T[%6d %6d], Nv-Nb[%6d %6d]. ICut: %6d\n",
+     mprintf("Partitions: [%6D %6D] T[%6D %6D], Nv-Nb[%6D %6D]. ICut: %6D\n",
              pwgts[0], pwgts[1], tpwgts[0], tpwgts[1], graph->nvtxs, graph->nbnd, graph->mincut));
 
   origdiff = idxtype_abs(tpwgts[0]-pwgts[0]);
@@ -102,7 +102,7 @@ void FM_2WayEdgeRefine(CtrlType *ctrl, GraphType *graph, idxtype *tpwgts, idxtyp
       swaps[nswaps] = higain;
 
       IFSET(ctrl->dbglvl, DBG_MOVEINFO, 
-        printf("Moved %6d from %d. [%3d %3d] %5d [%4d %4d]\n", higain, from, ed[higain]-id[higain], vwgt[higain], newcut, pwgts[0], pwgts[1]));
+        mprintf("Moved %6D from %D. [%3D %3D] %5D [%4D %4D]\n", higain, from, ed[higain]-id[higain], vwgt[higain], newcut, pwgts[0], pwgts[1]));
 
       /**************************************************************
       * Update the id[i]/ed[i] values of the affected nodes
@@ -172,7 +172,7 @@ void FM_2WayEdgeRefine(CtrlType *ctrl, GraphType *graph, idxtype *tpwgts, idxtyp
     }
 
     IFSET(ctrl->dbglvl, DBG_REFINE, 
-      printf("\tMinimum cut: %6d at %5d, PWGTS: [%6d %6d], NBND: %6d\n", mincut, mincutorder, pwgts[0], pwgts[1], nbnd));
+      mprintf("\tMinimum cut: %6D at %5D, PWGTS: [%6D %6D], NBND: %6D\n", mincut, mincutorder, pwgts[0], pwgts[1], nbnd));
 
     graph->mincut = mincut;
     graph->nbnd = nbnd;

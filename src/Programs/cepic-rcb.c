@@ -35,7 +35,7 @@ int ComputeMapCost(idxtype nvtxs, idxtype nparts, idxtype *fepart, idxtype *cpar
 /*************************************************************************
 * Let the game begin
 **************************************************************************/
-int main(idxtype argc, char *argv[])
+int main(int argc, char *argv[])
 {
   idxtype i, j, istep, options[10], nn, ne, fstep, lstep, nparts, nboxes, u[3], dim, nchanges, ncomm;
   char filename[256];
@@ -48,7 +48,7 @@ int main(idxtype argc, char *argv[])
   long long int *ltmp;
 
   if (argc != 6) {
-    fprintf(stderr, "Usage: %s <nn> <ne> <fstep> <lstep> <nparts>\n", argv[0]);
+    mfprintf(stderr, "Usage: %s <nn> <ne> <fstep> <lstep> <nparts>\n", argv[0]);
     exit(0);
   }
 
@@ -58,35 +58,35 @@ int main(idxtype argc, char *argv[])
   lstep  = atoi(argv[4]);
   nparts = atoi(argv[5]);
 
-  printf("Reading %s, nn: %d, ne: %d, fstep: %d, lstep: %d, nparts: %d\n", filename, nn, ne, fstep, lstep, nparts);
+  mprintf("Reading %s, nn: %D, ne: %D, fstep: %D, lstep: %D, nparts: %D\n", filename, nn, ne, fstep, lstep, nparts);
 
-  mien = imalloc(4*ne, "main: mien");
-  mxyz = dmalloc(3*nn, "main: mxyz");
-  mrng = imalloc(4*ne, "main: mrng");
-  bxyz = dmalloc(6*ne*4, "main: bxyz");
+  mien = idxmalloc(4*ne, "main: mien");
+  mxyz = gk_dmalloc(3*nn, "main: mxyz");
+  mrng = idxmalloc(4*ne, "main: mrng");
+  bxyz = gk_dmalloc(6*ne*4, "main: bxyz");
 
-  fepart  = imalloc(nn, "main: fepart");
-  part    = imalloc(nn, "main: part");
-  oldpart = imalloc(nn, "main: oldpart");
-  sflag   = imalloc(nn, "main: sflag");
+  fepart  = idxmalloc(nn, "main: fepart");
+  part    = idxmalloc(nn, "main: part");
+  oldpart = idxmalloc(nn, "main: oldpart");
+  sflag   = idxmalloc(nn, "main: sflag");
 
-  bestdims  = ismalloc(2*nparts, -1, "main: bestdims");
+  bestdims  = idxsmalloc(2*nparts, -1, "main: bestdims");
 
-  xadj   = imalloc(nn+1, "main: xadj");
-  adjncy = imalloc(50*nn, "main: adjncy");
+  xadj   = idxmalloc(nn+1, "main: xadj");
+  adjncy = idxmalloc(50*nn, "main: adjncy");
 
 
   /*========================================================================
    * Read the initial mesh and setup the graph and contact information
    *========================================================================*/
-  sprintf(filename, "mien.%04d", fstep);
+  msprintf(filename, "mien.%04D", fstep);
   fpin = GKfopen(filename, "rb", "main: mien");
   fread(mien, sizeof(int), 4*ne, fpin);
   for (i=0; i<4*ne; i++)
     mien[i] = Flip_int32(mien[i]);
   GKfclose(fpin);
 
-  sprintf(filename, "mxyz.%04d", fstep);
+  msprintf(filename, "mxyz.%04D", fstep);
   fpin = GKfopen(filename, "rb", "main: mxyz");
   fread(mxyz, sizeof(double), 3*nn, fpin);
   for (i=0; i<3*nn; i++) {
@@ -94,9 +94,9 @@ int main(idxtype argc, char *argv[])
     *ltmp = Flip_int64(*ltmp);
   }
   GKfclose(fpin);
-  printf("%e %e %e\n", mxyz[3*0+0], mxyz[3*0+1], mxyz[3*0+2]);
+  mprintf("%e %e %e\n", mxyz[3*0+0], mxyz[3*0+1], mxyz[3*0+2]);
 
-  sprintf(filename, "mrng.%04d", fstep);
+  msprintf(filename, "mrng.%04D", fstep);
   fpin = GKfopen(filename, "rb", "main: mrng");
   fread(mrng, sizeof(int), 4*ne, fpin);
   for (i=0; i<4*ne; i++)
@@ -131,28 +131,28 @@ int main(idxtype argc, char *argv[])
     }
   }
 
-  printf("Contact Nodes: %d of %d\n", isum(nn, sflag), nn);
+  mprintf("Contact Nodes: %D of %D\n", isum(nn, sflag), nn);
 
 
   /*========================================================================
    * Compute the FE partition
    *========================================================================*/
-  numflag = mien[idxamin(4*ne, mien)];
+  numflag = mien[idxargmin(4*ne, mien)];
   METIS_MeshToNodal(&ne, &nn, mien, &etype, &numflag, xadj, adjncy);
 
   options[0] = 0;
   METIS_PartGraphVKway(&nn, xadj, adjncy, NULL, NULL, &wgtflag, &numflag, &nparts,
         options, &edgecut, fepart);
 
-  printf("K-way partitioning Volume: %d\n", edgecut);
+  mprintf("K-way partitioning Volume: %D\n", edgecut);
 
 
   /*========================================================================
    * Get into the loop in which you go over the different configurations
    *========================================================================*/
   for (istep=fstep; istep<=lstep; istep++) {
-    sprintf(filename, "mxyz.%04d", istep);
-    printf("Reading %s...............................................................\n", filename);
+    msprintf(filename, "mxyz.%04D", istep);
+    mprintf("Reading %s...............................................................\n", filename);
     fpin = GKfopen(filename, "rb", "main: mxyz");
     fread(mxyz, sizeof(double), 3*nn, fpin);
     for (i=0; i<3*nn; i++) {
@@ -161,7 +161,7 @@ int main(idxtype argc, char *argv[])
     }
     GKfclose(fpin);
 
-    sprintf(filename, "mrng.%04d", istep);
+    msprintf(filename, "mrng.%04D", istep);
     fpin = GKfopen(filename, "rb", "main: mrng");
     fread(mrng, sizeof(int), 4*ne, fpin);
     for (i=0; i<4*ne; i++)
@@ -193,7 +193,7 @@ int main(idxtype argc, char *argv[])
       }
     }
 
-    printf("Contact Nodes: %d of %d\n", isum(nn, sflag), nn);
+    mprintf("Contact Nodes: %D of %D\n", isum(nn, sflag), nn);
 
     /* Determine the bounding boxes of the surface elements */
     for (nboxes=0, i=0; i<ne; i++) {
@@ -274,9 +274,9 @@ int main(idxtype argc, char *argv[])
 
     ncomm = ComputeMapCost(nn, nparts, fepart, part);
 
-    printf("Contacting Elements: %d  Indices: %d  Nchanges: %d  MapCost: %d\n", nboxes, cntptr[nboxes]-nboxes, nchanges, ncomm);
+    mprintf("Contacting Elements: %D  Indices: %D  Nchanges: %D  MapCost: %D\n", nboxes, cntptr[nboxes]-nboxes, nchanges, ncomm);
 
-    GKfree((void *)&cntptr, &cntind, LTERM);
+    gk_free((void **)&cntptr, &cntind, LTERM);
   }
 
 }  
@@ -307,7 +307,7 @@ int ComputeMapCost(idxtype nvtxs, idxtype nparts, idxtype *fepart, idxtype *cpar
     }
   }
 
-printf("Contact points: %d\n", k);
+mprintf("Contact points: %D\n", k);
       
   ikeysort(nparts*nparts, cand);
 
@@ -327,7 +327,7 @@ printf("Contact points: %d\n", k);
       ncomm += cand[k].key;
   }
 
-printf("Ncomm: %d\n", ncomm);
+mprintf("Ncomm: %D\n", ncomm);
 
   return ncomm;
 

@@ -40,8 +40,8 @@ void Random_KWayEdgeRefine(CtrlType *ctrl, GraphType *graph, idxtype nparts, flo
   minwgt =  idxwspacemalloc(ctrl, nparts);
   maxwgt = idxwspacemalloc(ctrl, nparts);
   itpwgts = idxwspacemalloc(ctrl, nparts);
-  tvwgt = idxsum(nparts, pwgts);
-  ASSERT(tvwgt == idxsum(nvtxs, graph->vwgt));
+  tvwgt = idxsum(nparts, pwgts, 1);
+  ASSERT(tvwgt == idxsum(nvtxs, graph->vwgt, 1));
 
   for (i=0; i<nparts; i++) {
     itpwgts[i] = tpwgts[i]*tvwgt;
@@ -52,9 +52,9 @@ void Random_KWayEdgeRefine(CtrlType *ctrl, GraphType *graph, idxtype nparts, flo
   perm = idxwspacemalloc(ctrl, nvtxs);
 
   IFSET(ctrl->dbglvl, DBG_REFINE,
-     printf("Partitions: [%6d %6d]-[%6d %6d], Balance: %5.3f, Nv-Nb[%6d %6d]. Cut: %6d\n",
-             pwgts[idxamin(nparts, pwgts)], pwgts[idxamax(nparts, pwgts)], minwgt[0], maxwgt[0], 
-             1.0*nparts*pwgts[idxamax(nparts, pwgts)]/tvwgt, graph->nvtxs, graph->nbnd,
+     mprintf("Partitions: [%6D %6D]-[%6D %6D], Balance: %5.3f, Nv-Nb[%6D %6D]. Cut: %6D\n",
+             pwgts[idxargmin(nparts, pwgts)], pwgts[idxargmax(nparts, pwgts)], minwgt[0], maxwgt[0], 
+             1.0*nparts*pwgts[idxargmax(nparts, pwgts)]/tvwgt, graph->nvtxs, graph->nbnd,
              graph->mincut));
 
   for (pass=0; pass<npasses; pass++) {
@@ -117,7 +117,7 @@ void Random_KWayEdgeRefine(CtrlType *ctrl, GraphType *graph, idxtype nparts, flo
         *======================================================================*/
         graph->mincut -= myedegrees[k].ed-myrinfo->id;
 
-        IFSET(ctrl->dbglvl, DBG_MOVEINFO, printf("\t\tMoving %6d to %3d. Gain: %4d. Cut: %6d\n", i, to, myedegrees[k].ed-myrinfo->id, graph->mincut));
+        IFSET(ctrl->dbglvl, DBG_MOVEINFO, mprintf("\t\tMoving %6D to %3D. Gain: %4D. Cut: %6D\n", i, to, myedegrees[k].ed-myrinfo->id, graph->mincut));
 
         /* Update where, weight, and ID/ED information of the vertex you moved */
         where[i] = to;
@@ -197,9 +197,9 @@ void Random_KWayEdgeRefine(CtrlType *ctrl, GraphType *graph, idxtype nparts, flo
     graph->nbnd = nbnd;
 
     IFSET(ctrl->dbglvl, DBG_REFINE,
-       printf("\t[%6d %6d], Balance: %5.3f, Nb: %6d. Nmoves: %5d, Cut: %6d, Vol: %6d\n",
-               pwgts[idxamin(nparts, pwgts)], pwgts[idxamax(nparts, pwgts)],
-               1.0*nparts*pwgts[idxamax(nparts, pwgts)]/tvwgt, graph->nbnd, nmoves, graph->mincut, ComputeVolume(graph, where)));
+       mprintf("\t[%6D %6D], Balance: %5.3f, Nb: %6D. Nmoves: %5D, Cut: %6D, Vol: %6D\n",
+               pwgts[idxargmin(nparts, pwgts)], pwgts[idxargmax(nparts, pwgts)],
+               1.0*nparts*pwgts[idxargmax(nparts, pwgts)]/tvwgt, graph->nbnd, nmoves, graph->mincut, ComputeVolume(graph, where)));
 
     if (graph->mincut == oldcut)
       break;
@@ -244,8 +244,8 @@ void Greedy_KWayEdgeRefine(CtrlType *ctrl, GraphType *graph, idxtype nparts, flo
   minwgt =  idxwspacemalloc(ctrl, nparts);
   maxwgt = idxwspacemalloc(ctrl, nparts);
   itpwgts = idxwspacemalloc(ctrl, nparts);
-  tvwgt = idxsum(nparts, pwgts);
-  ASSERT(tvwgt == idxsum(nvtxs, graph->vwgt));
+  tvwgt = idxsum(nparts, pwgts, 1);
+  ASSERT(tvwgt == idxsum(nvtxs, graph->vwgt, 1));
 
   for (i=0; i<nparts; i++) {
     itpwgts[i] = tpwgts[i]*tvwgt;
@@ -256,12 +256,12 @@ void Greedy_KWayEdgeRefine(CtrlType *ctrl, GraphType *graph, idxtype nparts, flo
   perm = idxwspacemalloc(ctrl, nvtxs);
   moved = idxwspacemalloc(ctrl, nvtxs);
 
-  PQueueInit(ctrl, &queue, nvtxs, graph->adjwgtsum[idxamax(nvtxs, graph->adjwgtsum)]);
+  PQueueInit(ctrl, &queue, nvtxs, graph->adjwgtsum[idxargmax(nvtxs, graph->adjwgtsum)]);
 
   IFSET(ctrl->dbglvl, DBG_REFINE,
-     printf("Partitions: [%6d %6d]-[%6d %6d], Balance: %5.3f, Nv-Nb[%6d %6d]. Cut: %6d\n",
-             pwgts[idxamin(nparts, pwgts)], pwgts[idxamax(nparts, pwgts)], minwgt[0], maxwgt[0], 
-             1.0*nparts*pwgts[idxamax(nparts, pwgts)]/tvwgt, graph->nvtxs, graph->nbnd,
+     mprintf("Partitions: [%6D %6D]-[%6D %6D], Balance: %5.3f, Nv-Nb[%6D %6D]. Cut: %6D\n",
+             pwgts[idxargmin(nparts, pwgts)], pwgts[idxargmax(nparts, pwgts)], minwgt[0], maxwgt[0], 
+             1.0*nparts*pwgts[idxargmax(nparts, pwgts)]/tvwgt, graph->nvtxs, graph->nbnd,
              graph->mincut));
 
   for (pass=0; pass<npasses; pass++) {
@@ -330,7 +330,7 @@ void Greedy_KWayEdgeRefine(CtrlType *ctrl, GraphType *graph, idxtype nparts, flo
       *======================================================================*/
       graph->mincut -= myedegrees[k].ed-myrinfo->id;
 
-      IFSET(ctrl->dbglvl, DBG_MOVEINFO, printf("\t\tMoving %6d to %3d. Gain: %4d. Cut: %6d\n", i, to, myedegrees[k].ed-myrinfo->id, graph->mincut));
+      IFSET(ctrl->dbglvl, DBG_MOVEINFO, mprintf("\t\tMoving %6D to %3D. Gain: %4D. Cut: %6D\n", i, to, myedegrees[k].ed-myrinfo->id, graph->mincut));
 
       /* Update where, weight, and ID/ED information of the vertex you moved */
       where[i] = to;
@@ -427,9 +427,9 @@ void Greedy_KWayEdgeRefine(CtrlType *ctrl, GraphType *graph, idxtype nparts, flo
     graph->nbnd = nbnd;
 
     IFSET(ctrl->dbglvl, DBG_REFINE,
-       printf("\t[%6d %6d], Balance: %5.3f, Nb: %6d. Cut: %6d\n",
-               pwgts[idxamin(nparts, pwgts)], pwgts[idxamax(nparts, pwgts)],
-               1.0*nparts*pwgts[idxamax(nparts, pwgts)]/tvwgt, graph->nbnd, graph->mincut));
+       mprintf("\t[%6D %6D], Balance: %5.3f, Nb: %6D. Cut: %6D\n",
+               pwgts[idxargmin(nparts, pwgts)], pwgts[idxargmax(nparts, pwgts)],
+               1.0*nparts*pwgts[idxargmax(nparts, pwgts)]/tvwgt, graph->nbnd, graph->mincut));
 
     if (graph->mincut == oldcut)
       break;
@@ -474,8 +474,8 @@ void Greedy_KWayEdgeBalance(CtrlType *ctrl, GraphType *graph, idxtype nparts, fl
   minwgt =  idxwspacemalloc(ctrl, nparts);
   maxwgt = idxwspacemalloc(ctrl, nparts);
   itpwgts = idxwspacemalloc(ctrl, nparts);
-  tvwgt = idxsum(nparts, pwgts);
-  ASSERT(tvwgt == idxsum(nvtxs, graph->vwgt));
+  tvwgt = idxsum(nparts, pwgts, 1);
+  ASSERT(tvwgt == idxsum(nvtxs, graph->vwgt, 1));
 
   for (i=0; i<nparts; i++) {
     itpwgts[i] = tpwgts[i]*tvwgt;
@@ -486,12 +486,12 @@ void Greedy_KWayEdgeBalance(CtrlType *ctrl, GraphType *graph, idxtype nparts, fl
   perm = idxwspacemalloc(ctrl, nvtxs);
   moved = idxwspacemalloc(ctrl, nvtxs);
 
-  PQueueInit(ctrl, &queue, nvtxs, graph->adjwgtsum[idxamax(nvtxs, graph->adjwgtsum)]);
+  PQueueInit(ctrl, &queue, nvtxs, graph->adjwgtsum[idxargmax(nvtxs, graph->adjwgtsum)]);
 
   IFSET(ctrl->dbglvl, DBG_REFINE,
-     printf("Partitions: [%6d %6d]-[%6d %6d], Balance: %5.3f, Nv-Nb[%6d %6d]. Cut: %6d [B]\n",
-             pwgts[idxamin(nparts, pwgts)], pwgts[idxamax(nparts, pwgts)], minwgt[0], maxwgt[0], 
-             1.0*nparts*pwgts[idxamax(nparts, pwgts)]/tvwgt, graph->nvtxs, graph->nbnd,
+     mprintf("Partitions: [%6D %6D]-[%6D %6D], Balance: %5.3f, Nv-Nb[%6D %6D]. Cut: %6D [B]\n",
+             pwgts[idxargmin(nparts, pwgts)], pwgts[idxargmax(nparts, pwgts)], minwgt[0], maxwgt[0], 
+             1.0*nparts*pwgts[idxargmax(nparts, pwgts)]/tvwgt, graph->nvtxs, graph->nbnd,
              graph->mincut));
 
   for (pass=0; pass<npasses; pass++) {
@@ -558,7 +558,7 @@ void Greedy_KWayEdgeBalance(CtrlType *ctrl, GraphType *graph, idxtype nparts, fl
       *======================================================================*/
       graph->mincut -= myedegrees[k].ed-myrinfo->id;
 
-      IFSET(ctrl->dbglvl, DBG_MOVEINFO, printf("\t\tMoving %6d to %3d. Gain: %4d. Cut: %6d\n", i, to, myedegrees[k].ed-myrinfo->id, graph->mincut));
+      IFSET(ctrl->dbglvl, DBG_MOVEINFO, mprintf("\t\tMoving %6D to %3D. Gain: %4D. Cut: %6D\n", i, to, myedegrees[k].ed-myrinfo->id, graph->mincut));
 
       /* Update where, weight, and ID/ED information of the vertex you moved */
       where[i] = to;
@@ -655,9 +655,9 @@ void Greedy_KWayEdgeBalance(CtrlType *ctrl, GraphType *graph, idxtype nparts, fl
     graph->nbnd = nbnd;
 
     IFSET(ctrl->dbglvl, DBG_REFINE,
-       printf("\t[%6d %6d], Balance: %5.3f, Nb: %6d. Nmoves: %5d, Cut: %6d\n",
-               pwgts[idxamin(nparts, pwgts)], pwgts[idxamax(nparts, pwgts)],
-               1.0*nparts*pwgts[idxamax(nparts, pwgts)]/tvwgt, graph->nbnd, nmoves, graph->mincut));
+       mprintf("\t[%6D %6D], Balance: %5.3f, Nb: %6D. Nmoves: %5D, Cut: %6D\n",
+               pwgts[idxargmin(nparts, pwgts)], pwgts[idxargmax(nparts, pwgts)],
+               1.0*nparts*pwgts[idxargmax(nparts, pwgts)]/tvwgt, graph->nbnd, nmoves, graph->mincut));
   }
 
   PQueueFree(ctrl, &queue);

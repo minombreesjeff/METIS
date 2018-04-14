@@ -38,13 +38,13 @@ void *METIS_PartGraphForContact(idxtype *nvtxs, idxtype *xadj, idxtype *adjncy,
   /*---------------------------------------------------------------------
    * Allocate memory for the contact info type
    *---------------------------------------------------------------------*/
-  cinfo = (ContactInfoType *)GKmalloc(sizeof(ContactInfoType), "METIS_PartGraphForContact: cinfo");
+  cinfo = (ContactInfoType *)gk_malloc(sizeof(ContactInfoType), "METIS_PartGraphForContact: cinfo");
   cinfo->leafptr  = idxsmalloc(*nvtxs+1, 0, "METIS_PartGraphForContact: leafptr");
   cinfo->leafind  = idxsmalloc(*nvtxs, 0, "METIS_PartGraphForContact: leafind");
   cinfo->leafwgt  = idxsmalloc(*nvtxs, 0, "METIS_PartGraphForContact: leafwgt");
   cinfo->part     = idxsmalloc(*nvtxs, 0, "METIS_PartGraphForContact: part");
   leafpart = cinfo->leafpart = idxmalloc(*nvtxs, "METIS_PartGraphForContact: leafpart");
-  cinfo->dtree    = (DTreeNodeType *)GKmalloc(sizeof(DTreeNodeType)*(*nvtxs), "METIS_PartGraphForContact: cinfo->dtree");
+  cinfo->dtree    = (DTreeNodeType *)gk_malloc(sizeof(DTreeNodeType)*(*nvtxs), "METIS_PartGraphForContact: cinfo->dtree");
   cinfo->nvtxs    = *nvtxs;
 
   /*---------------------------------------------------------------------
@@ -75,7 +75,7 @@ void *METIS_PartGraphForContact(idxtype *nvtxs, idxtype *xadj, idxtype *adjncy,
   SetUpGraph(&graph, OP_KMETIS, *nvtxs, 2, xadj, adjncy, mcvwgt, NULL, 0);
   graph.vwgt = mcvwgt;
   ComputePartitionBalance(&graph, *nparts, part, lbvec);
-  printf("  %d-way Edge-Cut: %7d, Balance: %5.2f %5.2f\n", *nparts, ComputeCut(&graph, part), lbvec[0], lbvec[1]);
+  mprintf("  %D-way Edge-Cut: %7D, Balance: %5.2f %5.2f\n", *nparts, ComputeCut(&graph, part), lbvec[0], lbvec[1]);
 
 
   /*---------------------------------------------------------------------
@@ -85,12 +85,12 @@ void *METIS_PartGraphForContact(idxtype *nvtxs, idxtype *xadj, idxtype *adjncy,
   marker = idxsmalloc(*nvtxs, 0, "METIS_PartGraphForContact: marker");
 
   for (dim=0; dim<3; dim++) {
-    xyzcand[dim] = (DKeyValueType *)GKmalloc(sizeof(DKeyValueType)*(*nvtxs), "METIS_PartGraphForContact: xyzcand[dim]");
+    xyzcand[dim] = (DKeyValueType *)gk_malloc(sizeof(DKeyValueType)*(*nvtxs), "METIS_PartGraphForContact: xyzcand[dim]");
     for (i=0; i<*nvtxs; i++) {
       xyzcand[dim][i].key = xyzcoords[3*i+dim];
       xyzcand[dim][i].val = i;
     }
-    idkeysort_qsort(*nvtxs, xyzcand[dim]);
+    idkeysort(*nvtxs, xyzcand[dim]);
   }
 
 
@@ -100,7 +100,7 @@ void *METIS_PartGraphForContact(idxtype *nvtxs, idxtype *xadj, idxtype *adjncy,
                       &nnodes, &nlnodes, cinfo->dtree, leafpart, dtpart,
                       &nclean, &naclean, &ndirty, &maxdepth, marker);
 
-  printf("NNodes: %5d, NLNodes: %5d, NClean: %5d, NAClean: %5d, NDirty: %5d, MaxDepth: %3d\n", nnodes, nlnodes, nclean, naclean, ndirty, maxdepth);
+  mprintf("NNodes: %5D, NLNodes: %5D, NClean: %5D, NAClean: %5D, NDirty: %5D, MaxDepth: %3D\n", nnodes, nlnodes, nclean, naclean, ndirty, maxdepth);
 
 
   /*---------------------------------------------------------------------
@@ -112,7 +112,7 @@ void *METIS_PartGraphForContact(idxtype *nvtxs, idxtype *xadj, idxtype *adjncy,
     part[leafpart[i]] = dtpart[i];
 
   ComputePartitionBalance(cgraph, *nparts, part, lbvec);
-  printf("  %d-way Edge-Cut: %7d, Balance: %5.2f %5.2f\n", *nparts, ComputeCut(cgraph, part), lbvec[0], lbvec[1]);
+  mprintf("  %D-way Edge-Cut: %7D, Balance: %5.2f %5.2f\n", *nparts, ComputeCut(cgraph, part), lbvec[0], lbvec[1]);
 
 
   rwgtflag = 3;
@@ -122,7 +122,7 @@ void *METIS_PartGraphForContact(idxtype *nvtxs, idxtype *xadj, idxtype *adjncy,
                           part);
 
   ComputePartitionBalance(cgraph, *nparts, part, lbvec);
-  printf("  %d-way Edge-Cut: %7d, Balance: %5.2f %5.2f\n", *nparts, ComputeCut(cgraph, part), lbvec[0], lbvec[1]);
+  mprintf("  %D-way Edge-Cut: %7D, Balance: %5.2f %5.2f\n", *nparts, ComputeCut(cgraph, part), lbvec[0], lbvec[1]);
 
 
   /*---------------------------------------------------------------------
@@ -134,7 +134,7 @@ void *METIS_PartGraphForContact(idxtype *nvtxs, idxtype *xadj, idxtype *adjncy,
 
   ComputePartitionBalance(&graph, *nparts, part, lbvec);
   idxset(*nvtxs, 1, graph.vwgt);
-  printf("  %d-way Edge-Cut: %7d, Volume: %7d, Balance: %5.2f %5.2f\n", *nparts, 
+  mprintf("  %D-way Edge-Cut: %7D, Volume: %7D, Balance: %5.2f %5.2f\n", *nparts, 
            ComputeCut(&graph, part), ComputeVolume(&graph, part), lbvec[0], lbvec[1]);
 
 
@@ -147,7 +147,7 @@ void *METIS_PartGraphForContact(idxtype *nvtxs, idxtype *xadj, idxtype *adjncy,
                       &nnodes, &nlnodes, cinfo->dtree, leafpart, dtpart, 
                       &nclean, &naclean, &ndirty, &maxdepth, marker);
 
-  printf("NNodes: %5d, NLNodes: %5d, NClean: %5d, NAClean: %5d, NDirty: %5d, MaxDepth: %3d\n", nnodes, nlnodes, nclean, naclean, ndirty, maxdepth);
+  mprintf("NNodes: %5D, NLNodes: %5D, NClean: %5D, NAClean: %5D, NDirty: %5D, MaxDepth: %3D\n", nnodes, nlnodes, nclean, naclean, ndirty, maxdepth);
 
   
   /*---------------------------------------------------------------------
@@ -161,7 +161,7 @@ void *METIS_PartGraphForContact(idxtype *nvtxs, idxtype *xadj, idxtype *adjncy,
 
   CheckDTree(*nvtxs, xyzcoords, part, cinfo);
 
-  GKfree((void *)&mcvwgt, &dtpart, &xyzcand[0], &xyzcand[1], &xyzcand[2], &marker, &adjwgt, LTERM);
+  gk_free((void **)&mcvwgt, &dtpart, &xyzcand[0], &xyzcand[1], &xyzcand[2], &marker, &adjwgt, LTERM);
 
   if (*numflag == 1)
     Change2FNumbering(*nvtxs, xadj, adjncy, part);
@@ -207,14 +207,14 @@ void METIS_UpdateContactInfo(void *raw_cinfo, idxtype *nvtxs, double *xyzcoords,
     }
   }
 
-  printf("NChanges: %d\n", nchanges);
+  mprintf("NChanges: %D\n", nchanges);
 
   BuildDTLeafContents(cinfo, sflag);
 
 return;
 for (i=0; i<cinfo->nnodes; i++) {
   if (dtree[i].leafid != -1)
-    printf("%4d %4d %4d %4d\n", dtree[i].nvtxs, dtree[i].nsvtxs, dtree[i].leafid, dtree[i].partid);
+    mprintf("%4D %4D %4D %4D\n", dtree[i].nvtxs, dtree[i].nsvtxs, dtree[i].leafid, dtree[i].partid);
 }
 }
 
@@ -236,13 +236,13 @@ void *METIS_SetupContact0(idxtype *nvtxs, double *xyzcoords, idxtype *sflag,
   /*---------------------------------------------------------------------
    * Allocate memory for the contact info type
    *---------------------------------------------------------------------*/
-  cinfo = (ContactInfoType *)GKmalloc(sizeof(ContactInfoType), "METIS_PartGraphForContact: cinfo");
+  cinfo = (ContactInfoType *)gk_malloc(sizeof(ContactInfoType), "METIS_PartGraphForContact: cinfo");
   cinfo->leafptr  = idxsmalloc(*nvtxs+1, 0, "METIS_PartGraphForContact: leafptr");
   cinfo->leafind  = idxsmalloc(*nvtxs, 0, "METIS_PartGraphForContact: leafind");
   cinfo->leafwgt  = idxsmalloc(*nvtxs, 0, "METIS_PartGraphForContact: leafwgt");
   cinfo->part     = idxsmalloc(*nvtxs, 0, "METIS_PartGraphForContact: part");
   leafpart = cinfo->leafpart = idxmalloc(*nvtxs, "METIS_PartGraphForContact: leafpart");
-  cinfo->dtree    = (DTreeNodeType *)GKmalloc(sizeof(DTreeNodeType)*(*nvtxs), "METIS_PartGraphForContact: cinfo->dtree");
+  cinfo->dtree    = (DTreeNodeType *)gk_malloc(sizeof(DTreeNodeType)*(*nvtxs), "METIS_PartGraphForContact: cinfo->dtree");
   cinfo->nvtxs    = *nvtxs;
 
 
@@ -253,7 +253,7 @@ void *METIS_SetupContact0(idxtype *nvtxs, double *xyzcoords, idxtype *sflag,
   marker = idxsmalloc(*nvtxs, 0, "METIS_PartGraphForContact: marker");
 
   for (dim=0; dim<3; dim++) 
-    xyzcand[dim] = (DKeyValueType *)GKmalloc(sizeof(DKeyValueType)*(*nvtxs), "METIS_PartGraphForContact: xyzcand[dim]");
+    xyzcand[dim] = (DKeyValueType *)gk_malloc(sizeof(DKeyValueType)*(*nvtxs), "METIS_PartGraphForContact: xyzcand[dim]");
   for (ncontacts=0, i=0; i<*nvtxs; i++) {
     if (sflag[i]) {
       for (dim=0; dim<3; dim++) {
@@ -264,7 +264,7 @@ void *METIS_SetupContact0(idxtype *nvtxs, double *xyzcoords, idxtype *sflag,
     }
   }
   for (dim=0; dim<3; dim++) 
-    idkeysort_qsort(ncontacts, xyzcand[dim]);
+    idkeysort(ncontacts, xyzcand[dim]);
 
 
   nnodes = nlnodes = nclean = naclean = ndirty = maxdepth = 0;
@@ -272,7 +272,7 @@ void *METIS_SetupContact0(idxtype *nvtxs, double *xyzcoords, idxtype *sflag,
                       &nnodes, &nlnodes, cinfo->dtree, leafpart, dtpart, &nclean, 
                       &naclean, &ndirty, &maxdepth, marker);
 
-  printf("NNodes: %5d, NLNodes: %5d, NClean: %5d, NAClean: %5d, NDirty: %5d, MaxDepth: %3d\n", nnodes, nlnodes, nclean, naclean, ndirty, maxdepth);
+  mprintf("NNodes: %5D, NLNodes: %5D, NClean: %5D, NAClean: %5D, NDirty: %5D, MaxDepth: %3D\n", nnodes, nlnodes, nclean, naclean, ndirty, maxdepth);
 
 
   /*---------------------------------------------------------------------
@@ -286,11 +286,11 @@ void *METIS_SetupContact0(idxtype *nvtxs, double *xyzcoords, idxtype *sflag,
 
   CheckDTreeSurface(*nvtxs, xyzcoords, part, cinfo, sflag);
 
-  GKfree((void *)&dtpart, &xyzcand[0], &xyzcand[1], &xyzcand[2], &marker, LTERM);
+  gk_free((void **)&dtpart, &xyzcand[0], &xyzcand[1], &xyzcand[2], &marker, LTERM);
   
 /*
 for (i=0; i<nnodes; i++)
-  printf("%4d %2d %4d\n", i, cinfo->dtree[i].leafid, cinfo->dtree[i].nsvtxs);
+  mprintf("%4D %2D %4D\n", i, cinfo->dtree[i].leafid, cinfo->dtree[i].nsvtxs);
 */
 
   return (void *)cinfo;
@@ -314,13 +314,13 @@ void *METIS_SetupContact(idxtype *nvtxs, double *xyzcoords, idxtype *sflag,
   /*---------------------------------------------------------------------
    * Allocate memory for the contact info type
    *---------------------------------------------------------------------*/
-  cinfo = (ContactInfoType *)GKmalloc(sizeof(ContactInfoType), "METIS_PartGraphForContact: cinfo");
+  cinfo = (ContactInfoType *)gk_malloc(sizeof(ContactInfoType), "METIS_PartGraphForContact: cinfo");
   cinfo->leafptr  = idxsmalloc(*nvtxs+1, 0, "METIS_PartGraphForContact: leafptr");
   cinfo->leafind  = idxsmalloc(*nvtxs, 0, "METIS_PartGraphForContact: leafind");
   cinfo->leafwgt  = idxsmalloc(*nvtxs, 0, "METIS_PartGraphForContact: leafwgt");
   cinfo->part     = idxsmalloc(*nvtxs, 0, "METIS_PartGraphForContact: part");
   leafpart = cinfo->leafpart = idxmalloc(*nvtxs, "METIS_PartGraphForContact: leafpart");
-  cinfo->dtree    = (DTreeNodeType *)GKmalloc(sizeof(DTreeNodeType)*(*nvtxs), "METIS_PartGraphForContact: cinfo->dtree");
+  cinfo->dtree    = (DTreeNodeType *)gk_malloc(sizeof(DTreeNodeType)*(*nvtxs), "METIS_PartGraphForContact: cinfo->dtree");
   cinfo->nvtxs    = *nvtxs;
 
 
@@ -331,12 +331,12 @@ void *METIS_SetupContact(idxtype *nvtxs, double *xyzcoords, idxtype *sflag,
   marker = idxsmalloc(*nvtxs, 0, "METIS_PartGraphForContact: marker");
 
   for (dim=0; dim<3; dim++) {
-    xyzcand[dim] = (DKeyValueType *)GKmalloc(sizeof(DKeyValueType)*(*nvtxs), "METIS_PartGraphForContact: xyzcand[dim]");
+    xyzcand[dim] = (DKeyValueType *)gk_malloc(sizeof(DKeyValueType)*(*nvtxs), "METIS_PartGraphForContact: xyzcand[dim]");
     for (i=0; i<*nvtxs; i++) {
       xyzcand[dim][i].key = xyzcoords[3*i+dim];
       xyzcand[dim][i].val = i;
     }
-    idkeysort_qsort(*nvtxs, xyzcand[dim]);
+    idkeysort(*nvtxs, xyzcand[dim]);
   }
 
 
@@ -346,7 +346,7 @@ void *METIS_SetupContact(idxtype *nvtxs, double *xyzcoords, idxtype *sflag,
                       &nnodes, &nlnodes, cinfo->dtree, leafpart, dtpart, 
                       &nclean, &naclean, &ndirty, &maxdepth, marker);
 
-  printf("NNodes: %5d, NLNodes: %5d, NClean: %5d, NAClean: %5d, NDirty: %5d, MaxDepth: %3d\n", nnodes, nlnodes, nclean, naclean, ndirty, maxdepth);
+  mprintf("NNodes: %5D, NLNodes: %5D, NClean: %5D, NAClean: %5D, NDirty: %5D, MaxDepth: %3D\n", nnodes, nlnodes, nclean, naclean, ndirty, maxdepth);
 
 
   /*---------------------------------------------------------------------
@@ -360,11 +360,11 @@ void *METIS_SetupContact(idxtype *nvtxs, double *xyzcoords, idxtype *sflag,
 
   CheckDTree(*nvtxs, xyzcoords, part, cinfo);
 
-  GKfree((void *)&dtpart, &xyzcand[0], &xyzcand[1], &xyzcand[2], &marker, LTERM);
+  gk_free((void **)&dtpart, &xyzcand[0], &xyzcand[1], &xyzcand[2], &marker, LTERM);
   
 /*
 for (i=0; i<nnodes; i++)
-  printf("%4d %2d %4d\n", i, cinfo->dtree[i].leafid, cinfo->dtree[i].nsvtxs);
+  mprintf("%4D %2D %4D\n", i, cinfo->dtree[i].leafid, cinfo->dtree[i].nsvtxs);
 */
 
   return (void *)cinfo;
@@ -385,11 +385,11 @@ void METIS_FindContacts(void *raw_cinfo, idxtype *nboxes, double *boxcoords, idx
   cinfo = (ContactInfoType *)raw_cinfo;
 
   maxtncnts = 6*(*nboxes);
-  cntptr    = ismalloc(*nboxes+1, 0, "METIS_FindContacts: cntptr");
-  cntind    = imalloc(maxtncnts, "METIS_FindContacts: cntind");
-  auxcntind = imalloc(*nparts, "METIS_FindContacts: auxcntind");
-  stack     = imalloc(cinfo->nnodes, "METIS_FindContacts: stack");
-  marker    = ismalloc(*nparts, 0, "METIS_FindContacts: marker");
+  cntptr    = idxsmalloc(*nboxes+1, 0, "METIS_FindContacts: cntptr");
+  cntind    = idxmalloc(maxtncnts, "METIS_FindContacts: cntind");
+  auxcntind = idxmalloc(*nparts, "METIS_FindContacts: auxcntind");
+  stack     = idxmalloc(cinfo->nnodes, "METIS_FindContacts: stack");
+  marker    = idxsmalloc(*nparts, 0, "METIS_FindContacts: marker");
   
 
   /* Go through each box and determine its contacting partitions */
@@ -397,7 +397,7 @@ void METIS_FindContacts(void *raw_cinfo, idxtype *nboxes, double *boxcoords, idx
     ncnts = FindBoxContacts(cinfo, boxcoords+i*6, stack, auxcntind, marker);
 
     if (ncnts == 0)
-      printf("CSearchError: Box has no contacts!\n");
+      mprintf("CSearchError: Box has no contacts!\n");
   
     if (ncnts + tncnts >= maxtncnts) {
       maxtncnts += (tncnts+ncnts)*(*nboxes-i)/i;
@@ -413,7 +413,7 @@ void METIS_FindContacts(void *raw_cinfo, idxtype *nboxes, double *boxcoords, idx
   *r_cntptr = cntptr;
   *r_cntind = cntind;
 
-  GKfree((void *)&auxcntind, &stack, &marker, LTERM);
+  gk_free((void **)&auxcntind, &stack, &marker, LTERM);
 
 }
 
@@ -427,7 +427,7 @@ void METIS_FreeContactInfo(void *raw_cinfo)
 
   cinfo = (ContactInfoType *)raw_cinfo;
 
-  GKfree((void *)&(cinfo->leafptr), &(cinfo->leafind), &(cinfo->leafwgt), &(cinfo->part), &(cinfo->leafpart), &(cinfo->dtree), &cinfo, LTERM);
+  gk_free((void **)&(cinfo->leafptr), &(cinfo->leafind), &(cinfo->leafwgt), &(cinfo->part), &(cinfo->leafpart), &(cinfo->dtree), &cinfo, LTERM);
 }
 
 
@@ -443,9 +443,9 @@ GraphType *CreatePartitionGraphForContact(idxtype nvtxs, idxtype *xadj, idxtype 
   idxtype *ptr, *ind, *marker;
   GraphType *cgraph;
 
-  ptr    = ismalloc(cnvtxs+1, 0, "CreatePartitionGraph: ptr");
-  ind    = imalloc(nvtxs, "CreatePartitionGraph: ind");
-  marker = ismalloc(cnvtxs, -1, "CreatePartitionGraph: marker");
+  ptr    = idxsmalloc(cnvtxs+1, 0, "CreatePartitionGraph: ptr");
+  ind    = idxmalloc(nvtxs, "CreatePartitionGraph: ind");
+  marker = idxsmalloc(cnvtxs, -1, "CreatePartitionGraph: marker");
 
   cgraph = CreateGraph();
 
@@ -492,7 +492,7 @@ GraphType *CreatePartitionGraphForContact(idxtype nvtxs, idxtype *xadj, idxtype 
       marker[cadjncy[j]] = -1;
   }
 
-  GKfree((void *)&ptr, &ind, &marker, LTERM);
+  gk_free((void **)&ptr, &ind, &marker, LTERM);
 
   return cgraph;
 }
@@ -522,14 +522,14 @@ idxtype InduceDecissionTree(idxtype nvtxs, DKeyValueType **xyzcand, idxtype *sfl
 
 
   /* Determine overall pwgts */
-  tpwgts = ismalloc(nparts, 0, "InduceDecissionTree: tpwgts");
+  tpwgts = idxsmalloc(nparts, 0, "InduceDecissionTree: tpwgts");
 
   for (i=0; i<nvtxs; i++) {
     dtree[mynodeID].nsvtxs += (sflag[xyzcand[0][i].val] ? 1 : 0);
     tpwgts[part[xyzcand[0][i].val]]++;
   }
 
-  pid = iamax(nparts, tpwgts);
+  pid = idxargmax(nparts, tpwgts);
 
   /*-----------------------------------------------------------------------
    * Check the exit conditions
@@ -538,19 +538,19 @@ idxtype InduceDecissionTree(idxtype nvtxs, DKeyValueType **xyzcand, idxtype *sfl
   isleaf  = 0;
 
   if (nvtxs <= maxnvtxs && isclean) { /* Determine if single class */
-    //printf("LEAF1: %5d             Pure node!\n", nvtxs);
+    //mprintf("LEAF1: %5D             Pure node!\n", nvtxs);
     *r_nclean += nvtxs;
     isleaf = 1;
   }
   else if (nvtxs < minnvtxs) { /* Determine if too small to continue */
     for (k=0, i=0; i<nparts; i++)
       k += (tpwgts[i] > 0 ? 1 : 0);
-    //printf("LEAF3: %5d %5d       Skipping small node!\n", nvtxs, k);
+    //mprintf("LEAF3: %5D %5D       Skipping small node!\n", nvtxs, k);
     
     *r_ndirty += nvtxs*k;
     isleaf = 1;
   } else if (nvtxs < maxnvtxs && tpwgts[pid] >= (int)(minfrac*nvtxs)) { /* Determine if mostly one class */
-    //printf("LEAF2: %5d %5d %4d  Almost pure node!\n", nvtxs, tpwgts[iamax(nparts, tpwgts)], iamax(nparts, tpwgts));
+    //mprintf("LEAF2: %5D %5D %4D  Almost pure node!\n", nvtxs, tpwgts[idxargmax(nparts, tpwgts)], idxargmax(nparts, tpwgts));
     *r_naclean += nvtxs;
     isleaf = 1;
   } else  { /* Check if all coordinates are the same */
@@ -566,7 +566,7 @@ idxtype InduceDecissionTree(idxtype nvtxs, DKeyValueType **xyzcand, idxtype *sfl
     if (dim == 3) { /* All coordinates matched! Treat it as a dirty node! */
       for (k=0, i=0; i<nparts; i++)
         k += (tpwgts[i] > 0 ? 1 : 0);
-      printf("LEAF4: %5d %5d       Skipping same coord-nodes! (%d %d)\n", nvtxs, k, isclean, part[xyzcand[0][0].val]);
+      mprintf("LEAF4: %5D %5D       Skipping same coord-nodes! (%D %D)\n", nvtxs, k, isclean, part[xyzcand[0][0].val]);
     
       *r_ndirty += nvtxs*k;
       isleaf = 1;
@@ -583,7 +583,7 @@ idxtype InduceDecissionTree(idxtype nvtxs, DKeyValueType **xyzcand, idxtype *sfl
     dtree[mynodeID].partid = pid;
     dtree[mynodeID].left = dtree[mynodeID].right = -1;
 
-    GKfree((void *)tpwgts, LTERM);
+    gk_free((void **)&tpwgts, LTERM);
     return mynodeID;
   }
 
@@ -592,14 +592,14 @@ idxtype InduceDecissionTree(idxtype nvtxs, DKeyValueType **xyzcand, idxtype *sfl
   /*-----------------------------------------------------------------------
    * Find the best splitting point
    *-----------------------------------------------------------------------*/
-  pwgts[0] = imalloc(nparts, "InduceDecissionTree: pwgts[0]");
-  pwgts[1] = imalloc(nparts, "InduceDecissionTree: pwgts[1]");
+  pwgts[0] = idxmalloc(nparts, "InduceDecissionTree: pwgts[0]");
+  pwgts[1] = idxmalloc(nparts, "InduceDecissionTree: pwgts[1]");
 
   /* Go and scan each dimension */
   for (dim=0; dim<3; dim++) {
     /* Establish initial conditions for the scan */
-    icopy(nparts, tpwgts, pwgts[1]);
-    iset(nparts, 0, pwgts[0]);
+    idxcopy(nparts, tpwgts, pwgts[1]);
+    idxset(nparts, 0, pwgts[0]);
 
     sum2[0] = sum2[1] = 0.0;
     for (j=0; j<nparts; j++) 
@@ -627,7 +627,7 @@ idxtype InduceDecissionTree(idxtype nvtxs, DKeyValueType **xyzcand, idxtype *sfl
 
 #ifdef PRINTSTAT
     if (i == nvtxs-1)
-      printf("DTree: Initial Scan Along dim %d failed!\n", dim);
+      mprintf("DTree: Initial Scan Along dim %D failed!\n", dim);
 #endif
 
 
@@ -663,16 +663,16 @@ idxtype InduceDecissionTree(idxtype nvtxs, DKeyValueType **xyzcand, idxtype *sfl
         }
       }
 
-      //printf("%5d %f %f %f\n", nleft, newscore, sum2[0], sum2[1]);
+      //mprintf("%5D %f %f %f\n", nleft, newscore, sum2[0], sum2[1]);
     }
 
 #ifdef PRINTSTAT
     /* Print some Stats */
     if (scores[dim] >= 0) {
-      printf("Dim: %3d, Score: %f, Point: %f [%5d %5d] [%f %f]\n", dim, scores[dim], 
+      mprintf("Dim: %3D, Score: %f, Point: %f [%5D %5D] [%f %f]\n", dim, scores[dim], 
               points[dim], lnvtxs[dim], nvtxs-lnvtxs[dim], xyzcand[dim][0].key, xyzcand[dim][nvtxs-1].key);
-      icopy(nparts, tpwgts, pwgts[1]);
-      iset(nparts, 0, pwgts[0]);
+      idxcopy(nparts, tpwgts, pwgts[1]);
+      idxset(nparts, 0, pwgts[0]);
       for (i=0; i<lnvtxs[dim]; i++) {
         pid = part[xyzcand[dim][i].val];
         pwgts[0][pid]++;
@@ -680,7 +680,7 @@ idxtype InduceDecissionTree(idxtype nvtxs, DKeyValueType **xyzcand, idxtype *sfl
       }
       for (j=0; j<nparts; j++) 
         if (pwgts[0][j]+pwgts[1][j] > 0)
-          printf("%5d => %5d %5d\n", j, pwgts[0][j], pwgts[1][j]);
+          mprintf("%5D => %5D %5D\n", j, pwgts[0][j], pwgts[1][j]);
     }
 #endif
   }
@@ -704,7 +704,7 @@ idxtype InduceDecissionTree(idxtype nvtxs, DKeyValueType **xyzcand, idxtype *sfl
   dtree[mynodeID].dim   = bestdim;
   dtree[mynodeID].value = bestpoint;
 
-  //printf("BestDim: %d!\n", bestdim);
+  //mprintf("BestDim: %D!\n", bestdim);
 
   
   /*-----------------------------------------------------------------------
@@ -714,8 +714,8 @@ idxtype InduceDecissionTree(idxtype nvtxs, DKeyValueType **xyzcand, idxtype *sfl
   nright = nvtxs - nleft;
 
   for (dim=0; dim<3; dim++) {
-    lxyzcand[dim] = (DKeyValueType *)GKmalloc(sizeof(DKeyValueType)*nleft,  "InduceDecissionTree: lxyzcand[dim]");
-    rxyzcand[dim] = (DKeyValueType *)GKmalloc(sizeof(DKeyValueType)*nright, "InduceDecissionTree: rxyzcand[dim]");
+    lxyzcand[dim] = (DKeyValueType *)gk_malloc(sizeof(DKeyValueType)*nleft,  "InduceDecissionTree: lxyzcand[dim]");
+    rxyzcand[dim] = (DKeyValueType *)gk_malloc(sizeof(DKeyValueType)*nright, "InduceDecissionTree: rxyzcand[dim]");
   }
 
   /* Mark the left vertices */
@@ -735,7 +735,7 @@ idxtype InduceDecissionTree(idxtype nvtxs, DKeyValueType **xyzcand, idxtype *sfl
   for (i=0; i<nleft; i++) 
     marker[xyzcand[bestdim][i].val] = 0;
 
-  GKfree((void *)&tpwgts, &pwgts[0], &pwgts[1], LTERM);
+  gk_free((void **)&tpwgts, &pwgts[0], &pwgts[1], LTERM);
 
 
   dtree[mynodeID].left  = InduceDecissionTree(nleft, lxyzcand, sflag, nparts, part, maxnvtxs, 
@@ -747,7 +747,7 @@ idxtype InduceDecissionTree(idxtype nvtxs, DKeyValueType **xyzcand, idxtype *sfl
 
   *r_maxdepth += amax(lmaxdepth, rmaxdepth);
  
-  GKfree((void *)&lxyzcand[0], &lxyzcand[1], &lxyzcand[2], &rxyzcand[0], &rxyzcand[1], &rxyzcand[2], LTERM);
+  gk_free((void **)&lxyzcand[0], &lxyzcand[1], &lxyzcand[2], &rxyzcand[0], &rxyzcand[1], &rxyzcand[2], LTERM);
   
   return mynodeID;
 }
@@ -770,7 +770,7 @@ void BuildDTLeafContents(ContactInfoType *cinfo, idxtype *sflag)
   leafind  = cinfo->leafind;
   leafwgt  = cinfo->leafwgt;
 
-  cand = (KeyValueType *)GKmalloc(sizeof(KeyValueType)*nvtxs, "BuildDTLeafContents: cand");
+  cand = (KeyValueType *)gk_malloc(sizeof(KeyValueType)*nvtxs, "BuildDTLeafContents: cand");
 
   for (ncontacts=0, i=0; i<nvtxs; i++) {
     if (sflag[i]) {
@@ -778,11 +778,11 @@ void BuildDTLeafContents(ContactInfoType *cinfo, idxtype *sflag)
       cand[ncontacts++].val = part[i];
     }
   }
-  ikeyvalsort_qsort(ncontacts, cand);
+  ikeyvalsort(ncontacts, cand);
 
 /*
   for (i=0; i<ncontacts; i++)
-    printf("%4d %5d %5d\n", i, cand[i].key, cand[i].val);
+    mprintf("%4D %5D %5D\n", i, cand[i].key, cand[i].val);
 */
 
   idxset(nleafs, 0, leafptr);
@@ -811,32 +811,32 @@ void BuildDTLeafContents(ContactInfoType *cinfo, idxtype *sflag)
   MAKECSR(i, nleafs, leafptr);
 
   for (tcomm=0; i<nleafs; i++) {
-    tcomm += (leafptr[i+1]-leafptr[i]-1)*idxsum(leafptr[i+1]-leafptr[i], leafwgt+leafptr[i]);
+    tcomm += (leafptr[i+1]-leafptr[i]-1)*idxsum(leafptr[i+1]-leafptr[i], leafwgt+leafptr[i], 1);
 
 /*
     if (leafptr[i+1]-leafptr[i] > 1) {
-      printf("%4d, ", i);
+      mprintf("%4D, ", i);
       for (j=leafptr[i]; j<leafptr[i+1]; j++)
-        printf("[%3d %4d] ", leafind[j], leafwgt[j]);
-      printf("\n");
+        mprintf("[%3D %4D] ", leafind[j], leafwgt[j]);
+      mprintf("\n");
     }
 */
 
   }
       
 
-  printf("NLeafs: %d, NLeafIndices: %d, EstimComm: %d\n", nleafs, leafptr[nleafs], tcomm);
+  mprintf("NLeafs: %D, NLeafIndices: %D, EstimComm: %D\n", nleafs, leafptr[nleafs], tcomm);
 
 /*
 for (i=0; i<nleafs; i++) {
-  printf("Leaf: %d => ", i);
+  mprintf("Leaf: %D => ", i);
   for (j=leafptr[i]; j<leafptr[i+1]; j++)
-    printf("[%d %d] ", leafind[j], leafwgt[j]);
-  printf("\n");
+    mprintf("[%D %D] ", leafind[j], leafwgt[j]);
+  mprintf("\n");
 }
 */
 
-  GKfree((void *)&cand, LTERM);
+  gk_free((void **)&cand, LTERM);
 }
 
 
@@ -853,7 +853,7 @@ idxtype FindBoxContacts(ContactInfoType *cinfo, double *coords, idxtype *stack, 
   leafind = cinfo->leafind;
   dtree   = cinfo->dtree;
 
-//printf("%e %e %e %e %e %e\n", coords[0], coords[1], coords[2], coords[3], coords[4], coords[5]);
+//mprintf("%e %e %e %e %e %e\n", coords[0], coords[1], coords[2], coords[3], coords[4], coords[5]);
 
   stack[0] = 0;
   k = 1;
@@ -863,7 +863,7 @@ idxtype FindBoxContacts(ContactInfoType *cinfo, double *coords, idxtype *stack, 
 
     /* See if you hit a leaf */
     if ((leafid = dtree[root].leafid) != -1) {
-//printf("Got to a leaf....  %d %d %d\n", leafid, dtree[root].nsvtxs, leafptr[leafid+1]-leafptr[leafid]);
+//mprintf("Got to a leaf....  %D %D %D\n", leafid, dtree[root].nsvtxs, leafptr[leafid+1]-leafptr[leafid]);
 
       if (dtree[root].nsvtxs > 0) {
         /* Add unique processor IDs. */
@@ -873,32 +873,32 @@ idxtype FindBoxContacts(ContactInfoType *cinfo, double *coords, idxtype *stack, 
             marker[leafind[j]] = 1;
           }
         }
-//        printf("[%4d %4d %2d %2d] ", root, dtree[root].nsvtxs, dtree[root].partid, ncnts);
+//        mprintf("[%4D %4D %2D %2D] ", root, dtree[root].nsvtxs, dtree[root].partid, ncnts);
       }
 
       continue;
     }
 
-//printf("Making decissions... %d %e %d %d = > ", dtree[root].dim, dtree[root].value, dtree[root].left, dtree[root].right);
+//mprintf("Making decissions... %D %e %D %D = > ", dtree[root].dim, dtree[root].value, dtree[root].left, dtree[root].right);
 
     if (coords[dtree[root].dim] <= dtree[root].value) { /* min <= value */
       stack[k++] = dtree[root].left;
-//printf(" %d", stack[k-1]);
+//mprintf(" %D", stack[k-1]);
     }
     
     if (coords[3+dtree[root].dim] >= dtree[root].value) { /* max >= value */
       stack[k++] = dtree[root].right;
-//printf(" %d", stack[k-1]);
+//mprintf(" %D", stack[k-1]);
     }
 
-//printf("\n");
+//mprintf("\n");
 
   }
 
   for (i=0; i<ncnts; i++)
     marker[cntind[i]] = 0;
 
-//printf("\n");
+//mprintf("\n");
 
   return ncnts;
 
@@ -924,7 +924,7 @@ void CheckDTree(idxtype nvtxs, double *xyzcoords, idxtype *part, ContactInfoType
       root = (xyzcoords[3*i+dtree[root].dim] <= dtree[root].value ? dtree[root].left : dtree[root].right);
 
     if (cinfo->leafpart[i] != dtree[root].leafid)
-      printf("DTError! %4d %4d %4d %4d %4d\n", i, cinfo->leafpart[i], dtree[root].leafid, part[i], leafind[leafptr[dtree[root].leafid]]);
+      mprintf("DTError! %4D %4D %4D %4D %4D\n", i, cinfo->leafpart[i], dtree[root].leafid, part[i], leafind[leafptr[dtree[root].leafid]]);
   }
 
 }
@@ -951,64 +951,14 @@ void CheckDTreeSurface(idxtype nvtxs, double *xyzcoords, idxtype *part, ContactI
       root = (xyzcoords[3*i+dtree[root].dim] <= dtree[root].value ? dtree[root].left : dtree[root].right);
 
     if (cinfo->leafpart[i] != dtree[root].leafid)
-      printf("SDTError! %4d %4d %4d %4d %4d\n", i, cinfo->leafpart[i], dtree[root].leafid, part[i], leafind[leafptr[dtree[root].leafid]]);
+      mprintf("SDTError! %4D %4D %4D %4D %4D\n", i, cinfo->leafpart[i], dtree[root].leafid, part[i], leafind[leafptr[dtree[root].leafid]]);
   }
 
 }
 
 
 
-/*************************************************************************************
-* This function sort a set of keys 
-**************************************************************************************/
-void idkeysort_qsort(idxtype n, DKeyValueType *cand)
-{
-  qsort((void *)cand, n, sizeof(DKeyValueType), cmpr_idkey);
-}
 
-/*************************************************************************************
-* This function compares two DKeyValueType data-structures
-**************************************************************************************/
-idxtype cmpr_idkey(const void *v1, const void *v2)
-{
-  DKeyValueType *m1, *m2;
-
-  m1 = (DKeyValueType *)v1;
-  m2 = (DKeyValueType *)v2;
-
-  if (m1->key < m2->key)
-    return -1;
-  else if (m1->key > m2->key)
-    return +1;
-  else
-    return 0;
-}
-
-/*************************************************************************************
-* This function sort a set of keys 
-**************************************************************************************/
-void ikeyvalsort_qsort(idxtype n, KeyValueType *cand)
-{
-  qsort((void *)cand, n, sizeof(KeyValueType), cmpr_ikeyval);
-}
-
-/*************************************************************************************
-* This function compares two DKeyValueType data-structures
-**************************************************************************************/
-idxtype cmpr_ikeyval(const void *v1, const void *v2)
-{
-  KeyValueType *m1, *m2;
-  idxtype diff;
-
-  m1 = (KeyValueType *)v1;
-  m2 = (KeyValueType *)v2;
-
-  diff = m1->key - m2->key;
-  if (diff == 0)
-    diff = m1->val - m2->val;
-
-  return diff;
-}
 
 
 
@@ -1028,22 +978,22 @@ void *METIS_PartSurfForContactRCB(idxtype *nvtxs, double *xyzcoords, idxtype *sf
   /*---------------------------------------------------------------------
    * Allocate memory for the contact info type
    *---------------------------------------------------------------------*/
-  cinfo = (ContactInfoType *)GKmalloc(sizeof(ContactInfoType), "METIS_PartGraphForContact: cinfo");
+  cinfo = (ContactInfoType *)gk_malloc(sizeof(ContactInfoType), "METIS_PartGraphForContact: cinfo");
   cinfo->leafptr  = idxsmalloc(*nvtxs+1, 0, "METIS_PartGraphForContact: leafptr");
   cinfo->leafind  = idxsmalloc(*nvtxs, 0, "METIS_PartGraphForContact: leafind");
   cinfo->leafwgt  = idxsmalloc(*nvtxs, 0, "METIS_PartGraphForContact: leafwgt");
   cinfo->part     = idxsmalloc(*nvtxs, 0, "METIS_PartGraphForContact: part");
   cinfo->leafpart = idxmalloc(*nvtxs, "METIS_PartGraphForContact: leafpart");
-  cinfo->dtree    = (DTreeNodeType *)GKmalloc(sizeof(DTreeNodeType)*(*nvtxs), "METIS_PartGraphForContact: cinfo->dtree");
+  cinfo->dtree    = (DTreeNodeType *)gk_malloc(sizeof(DTreeNodeType)*(*nvtxs), "METIS_PartGraphForContact: cinfo->dtree");
 
   /*---------------------------------------------------------------------
    * Induce the decission tree
    *---------------------------------------------------------------------*/
-  myxyzcoords = dmalloc(3*(*nvtxs), "METIS_PartSurfForContactRCB: myxyzcoords");
+  myxyzcoords = gk_dmalloc(3*(*nvtxs), "METIS_PartSurfForContactRCB: myxyzcoords");
   marker = idxsmalloc(*nvtxs, 0, "METIS_PartGraphForContact: marker");
 
   for (dim=0; dim<3; dim++) {
-    xyzcand[dim] = (DKeyValueType *)GKmalloc(sizeof(DKeyValueType)*(*nvtxs), "METIS_PartGraphForContact: xyzcand[dim]");
+    xyzcand[dim] = (DKeyValueType *)gk_malloc(sizeof(DKeyValueType)*(*nvtxs), "METIS_PartGraphForContact: xyzcand[dim]");
 
     for (nsurf=0, i=0; i<*nvtxs; i++) {
       if (sflag[i]) {
@@ -1052,7 +1002,7 @@ void *METIS_PartSurfForContactRCB(idxtype *nvtxs, double *xyzcoords, idxtype *sf
         xyzcand[dim][nsurf].val  = nsurf++;
       }
     }
-    idkeysort_qsort(nsurf, xyzcand[dim]);
+    idkeysort(nsurf, xyzcand[dim]);
   }
 
   spart = idxsmalloc(nsurf, 0, "METIS_PartGraphForContact: spart");
@@ -1060,7 +1010,7 @@ void *METIS_PartSurfForContactRCB(idxtype *nvtxs, double *xyzcoords, idxtype *sf
   nnodes = nlnodes = 0;
   InduceRCBTree(nsurf, xyzcand, 0, *nparts, &nnodes, &nlnodes, cinfo->dtree, cinfo->leafpart, spart, marker, bestdims);
 
-  printf("NNodes: %5d, NLNodes: %5d\n", nnodes, nlnodes);
+  mprintf("NNodes: %5D, NLNodes: %5D\n", nnodes, nlnodes);
 
   /* Project the partition back to the original space */
   for (nsurf=0, i=0; i<*nvtxs; i++) 
@@ -1081,7 +1031,7 @@ void *METIS_PartSurfForContactRCB(idxtype *nvtxs, double *xyzcoords, idxtype *sf
 
   CheckDTree(nsurf, myxyzcoords, spart, cinfo);
 
-  GKfree((void *)&xyzcand[0], &xyzcand[1], &xyzcand[2], &myxyzcoords, &marker, &spart, LTERM);
+  gk_free((void **)&xyzcand[0], &xyzcand[1], &xyzcand[2], &myxyzcoords, &marker, &spart, LTERM);
   
   for (i=0; i<cinfo->nnodes; i++)
     bestdims[i] = cinfo->dtree[i].dim;
@@ -1113,7 +1063,7 @@ idxtype InduceRCBTree(idxtype nvtxs, DKeyValueType **xyzcand, idxtype firstPID, 
    * Check the exit conditions
    *-----------------------------------------------------------------------*/
   if (nparts == 1) {
-    //printf("Pid:%d, Size:%d\n", firstPID, nvtxs);
+    //mprintf("Pid:%D, Size:%D\n", firstPID, nvtxs);
     for (i=0; i<nvtxs; i++) {
       leafpart[xyzcand[0][i].val] = *r_nlnodes;
       part[xyzcand[0][i].val]     = firstPID;
@@ -1149,7 +1099,7 @@ idxtype InduceRCBTree(idxtype nvtxs, DKeyValueType **xyzcand, idxtype firstPID, 
 
   if (rnvtxs <= 0) {
     if (bestdim != -1)
-      printf("Finding a dimension for %d points...\n", nvtxs);
+      mprintf("Finding a dimension for %D points...\n", nvtxs);
 
     lnparts = nparts/2;
     rnparts = nparts - lnparts;
@@ -1171,14 +1121,14 @@ idxtype InduceRCBTree(idxtype nvtxs, DKeyValueType **xyzcand, idxtype firstPID, 
   dtree[mynodeID].value = bestpoint = (xyzcand[bestdim][lnvtxs-1].key+xyzcand[bestdim][lnvtxs].key)/2;
 
   /* Print some Stats */
-  //printf("Dim: %3d, Point: %f [%5d %5d] [%3d %3d]\n", bestdim, bestpoint, lnvtxs, rnvtxs, lnparts, rnparts);
+  //mprintf("Dim: %3D, Point: %f [%5D %5D] [%3D %3D]\n", bestdim, bestpoint, lnvtxs, rnvtxs, lnparts, rnparts);
 
   /*-----------------------------------------------------------------------
    * Ok, now go and do the split 
    *-----------------------------------------------------------------------*/
   for (dim=0; dim<3; dim++) {
-    lxyzcand[dim] = (DKeyValueType *)GKmalloc(sizeof(DKeyValueType)*lnvtxs,  "InduceDecissionTree: lxyzcand[dim]");
-    rxyzcand[dim] = (DKeyValueType *)GKmalloc(sizeof(DKeyValueType)*rnvtxs, "InduceDecissionTree: rxyzcand[dim]");
+    lxyzcand[dim] = (DKeyValueType *)gk_malloc(sizeof(DKeyValueType)*lnvtxs,  "InduceDecissionTree: lxyzcand[dim]");
+    rxyzcand[dim] = (DKeyValueType *)gk_malloc(sizeof(DKeyValueType)*rnvtxs, "InduceDecissionTree: rxyzcand[dim]");
   }
 
   /* Mark the left vertices */
@@ -1204,7 +1154,7 @@ idxtype InduceRCBTree(idxtype nvtxs, DKeyValueType **xyzcand, idxtype firstPID, 
   dtree[mynodeID].right = InduceRCBTree(rnvtxs, rxyzcand, firstPID+lnparts, rnparts, r_nnodes, r_nlnodes, 
                                 dtree, leafpart, part, marker, oldBestDims);
 
-  GKfree((void *)&lxyzcand[0], &lxyzcand[1], &lxyzcand[2], &rxyzcand[0], &rxyzcand[1], &rxyzcand[2], LTERM);
+  gk_free((void **)&lxyzcand[0], &lxyzcand[1], &lxyzcand[2], &rxyzcand[0], &rxyzcand[1], &rxyzcand[2], LTERM);
   
   return mynodeID;
 }

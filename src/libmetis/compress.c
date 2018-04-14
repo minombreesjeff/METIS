@@ -24,7 +24,7 @@ void CompressGraph(CtrlType *ctrl, GraphType *graph, idxtype nvtxs, idxtype *xad
 
   mark = idxsmalloc(nvtxs, -1, "CompressGraph: mark");
   map = idxsmalloc(nvtxs, -1, "CompressGraph: map");
-  keys = (KeyValueType *)GKmalloc(nvtxs*sizeof(KeyValueType), "CompressGraph: keys");
+  keys = (KeyValueType *)gk_malloc(nvtxs*sizeof(KeyValueType), "CompressGraph: keys");
 
   /* Compute a key for each adjacency list */
   for (i=0; i<nvtxs; i++) {
@@ -71,23 +71,24 @@ void CompressGraph(CtrlType *ctrl, GraphType *graph, idxtype nvtxs, idxtype *xad
     }
   }
 
-  /* printf("Original: %6d, Compressed: %6d\n", nvtxs, cnvtxs); */
+  /* mprintf("Original: %6D, Compressed: %6D\n", nvtxs, cnvtxs); */
 
 
   InitGraph(graph);
 
   if (cnvtxs >= COMPRESSION_FRACTION*nvtxs) {
-    graph->nvtxs = nvtxs;
+    graph->nvtxs  = nvtxs;
     graph->nedges = xadj[nvtxs];
-    graph->ncon = 1;
-    graph->xadj = xadj;
-    graph->adjncy = adjncy;
+    graph->ncon   = 1;
+    graph->xadj      = xadj;
+    graph->free_xadj = 0;
+    graph->adjncy      = adjncy;
+    graph->free_adjncy = 0;
 
-    graph->gdata = idxmalloc(3*nvtxs+graph->nedges, "CompressGraph: gdata");
-    graph->vwgt    	= graph->gdata;
-    graph->adjwgtsum    = graph->gdata+nvtxs;
-    graph->cmap		= graph->gdata+2*nvtxs;
-    graph->adjwgt	= graph->gdata+3*nvtxs;
+    graph->vwgt    	= idxmalloc(nvtxs, "CompressGraph: vwgt");
+    graph->adjwgtsum    = idxmalloc(nvtxs, "CompressGraph: adjwgtsum");
+    graph->cmap		= idxmalloc(nvtxs, "CompressGraph: cmap");
+    graph->adjwgt	= idxmalloc(graph->nedges, "CompressGraph: adjwgt");
 
     idxset(nvtxs, 1, graph->vwgt);
     idxset(graph->nedges, 1, graph->adjwgt);
@@ -106,13 +107,12 @@ void CompressGraph(CtrlType *ctrl, GraphType *graph, idxtype nvtxs, idxtype *xad
     }
 
     /* Allocate memory for the compressed graph*/
-    graph->gdata = idxmalloc(4*cnvtxs+1 + 2*cnedges, "CompressGraph: gdata");
-    cxadj = graph->xadj		= graph->gdata;
-    cvwgt = graph->vwgt         = graph->gdata + cnvtxs+1;
-    graph->adjwgtsum        	= graph->gdata + 2*cnvtxs+1;
-    graph->cmap                 = graph->gdata + 3*cnvtxs+1;
-    cadjncy = graph->adjncy     = graph->gdata + 4*cnvtxs+1;
-    graph->adjwgt            	= graph->gdata + 4*cnvtxs+1 + cnedges;
+    cxadj = graph->xadj		= idxmalloc(cnvtxs+1, "CompressGraph: xadj");
+    cvwgt = graph->vwgt         = idxmalloc(cnvtxs, "CompressGraph: vwgt");
+    graph->adjwgtsum        	= idxmalloc(cnvtxs, "CompressGraph: adjwgtsum");
+    graph->cmap                 = idxmalloc(cnvtxs, "CompressGraph: cmap");
+    cadjncy = graph->adjncy     = idxmalloc(cnedges, "CompressGraph: adjncy");
+    graph->adjwgt            	= idxmalloc(cnedges, "CompressGraph: adjwgt");
 
     /* Now go and compress the graph */
     idxset(nvtxs, -1, mark);
@@ -146,7 +146,7 @@ void CompressGraph(CtrlType *ctrl, GraphType *graph, idxtype nvtxs, idxtype *xad
 
   }
 
-  GKfree((void *)&keys, &map, &mark, LTERM);
+  gk_free((void **)&keys, &map, &mark, LTERM);
 }
 
 
@@ -155,10 +155,11 @@ void CompressGraph(CtrlType *ctrl, GraphType *graph, idxtype nvtxs, idxtype *xad
 * This function prunes all the vertices in a graph with degree greater 
 * than factor*average
 **************************************************************************/
-void PruneGraph(CtrlType *ctrl, GraphType *graph, idxtype nvtxs, idxtype *xadj, idxtype *adjncy, idxtype *iperm, float factor)
+void PruneGraph(CtrlType *ctrl, GraphType *graph, idxtype nvtxs, idxtype *xadj, 
+                idxtype *adjncy, idxtype *iperm, float factor)
 {
   idxtype i, j, k, l, nlarge, pnvtxs, pnedges;
-  idxtype *pxadj, *padjncy, *padjwgt, *pvwgt;
+  idxtype *pxadj, *padjncy, *padjwgt;
   idxtype *perm;
 
   perm = idxmalloc(nvtxs, "PruneGraph: perm");
@@ -178,7 +179,7 @@ void PruneGraph(CtrlType *ctrl, GraphType *graph, idxtype nvtxs, idxtype *xadj, 
     }
   }
 
-  /* printf("Pruned %d vertices\n", nlarge); */
+  /* mprintf("Pruned %D vertices\n", nlarge); */
 
   InitGraph(graph);
 
@@ -186,14 +187,15 @@ void PruneGraph(CtrlType *ctrl, GraphType *graph, idxtype nvtxs, idxtype *xadj, 
     graph->nvtxs = nvtxs;
     graph->nedges = xadj[nvtxs];
     graph->ncon = 1;
-    graph->xadj = xadj;
-    graph->adjncy = adjncy;
+    graph->xadj      = xadj;
+    graph->free_xadj = 0;
+    graph->adjncy      = adjncy;
+    graph->free_adjncy = 0;
 
-    graph->gdata = idxmalloc(3*nvtxs+graph->nedges, "CompressGraph: gdata");
-    graph->vwgt    	= graph->gdata;
-    graph->adjwgtsum    = graph->gdata+nvtxs;
-    graph->cmap		= graph->gdata+2*nvtxs;
-    graph->adjwgt	= graph->gdata+3*nvtxs;
+    graph->vwgt    	= idxmalloc(nvtxs, "PruneGraph: vwgt");
+    graph->adjwgtsum    = idxmalloc(nvtxs, "PruneGraph: adjwgtsum");
+    graph->cmap		= idxmalloc(nvtxs, "PruneGraph: cmap");
+    graph->adjwgt	= idxmalloc(graph->nedges, "PruneGraph: adjwgt");
 
     idxset(nvtxs, 1, graph->vwgt);
     idxset(graph->nedges, 1, graph->adjwgt);
@@ -205,14 +207,13 @@ void PruneGraph(CtrlType *ctrl, GraphType *graph, idxtype nvtxs, idxtype *xadj, 
       graph->label[i] = i;
   }
   else { /* Prune the graph */
-    /* Allocate memory for the compressed graph*/
-    graph->gdata = idxmalloc(4*pnvtxs+1 + 2*pnedges, "PruneGraph: gdata");
-    pxadj = graph->xadj		= graph->gdata;
-    graph->vwgt         	= graph->gdata + pnvtxs+1;
-    graph->adjwgtsum        	= graph->gdata + 2*pnvtxs+1;
-    graph->cmap                 = graph->gdata + 3*pnvtxs+1;
-    padjncy = graph->adjncy     = graph->gdata + 4*pnvtxs+1;
-    graph->adjwgt            	= graph->gdata + 4*pnvtxs+1 + pnedges;
+    /* Allocate memory for the prunned graph*/
+    pxadj = graph->xadj		= idxmalloc(pnvtxs+1, "PruneGraph: xadj");
+    graph->vwgt                 = idxmalloc(pnvtxs, "PruneGraph: vwgt");
+    graph->adjwgtsum        	= idxmalloc(pnvtxs, "PruneGraph: adjwgtsum");
+    graph->cmap                 = idxmalloc(pnvtxs, "PruneGraph: cmap");
+    padjncy = graph->adjncy     = idxmalloc(pnedges, "PruneGraph: adjncy");
+    graph->adjwgt            	= idxmalloc(pnedges, "PruneGraph: adjwgt");
 
     pxadj[0] = pnedges = l = 0;
     for (i=0; i<nvtxs; i++) {
@@ -240,7 +241,7 @@ void PruneGraph(CtrlType *ctrl, GraphType *graph, idxtype nvtxs, idxtype *xadj, 
       graph->label[i] = i;
   }
 
-  GKfree((void *)perm, LTERM);
+  gk_free((void **)&perm, LTERM);
 
 }
 

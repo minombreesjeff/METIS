@@ -12,54 +12,57 @@
  *
  */
 
+#ifndef _LIBMETIS_PROTO_H_
+#define _LIBMETIS_PROTO_H_
+
 /* balance.c */
 void Balance2Way(CtrlType *, GraphType *, idxtype *, float);
 void Bnd2WayBalance(CtrlType *, GraphType *, idxtype *);
 void General2WayBalance(CtrlType *, GraphType *, idxtype *);
 
 /* bucketsort.c */
-void BucketSortKeysInc(int, int, idxtype *, idxtype *, idxtype *);
+void BucketSortKeysInc(idxtype, idxtype, idxtype *, idxtype *, idxtype *);
 
 /* ccgraph.c */
-void CreateCoarseGraph(CtrlType *, GraphType *, int, idxtype *, idxtype *);
-void CreateCoarseGraphNoMask(CtrlType *, GraphType *, int, idxtype *, idxtype *);
-void CreateCoarseGraph_NVW(CtrlType *, GraphType *, int, idxtype *, idxtype *);
-GraphType *SetUpCoarseGraph(GraphType *, int, int);
-void ReAdjustMemory(GraphType *, GraphType *, int);
+void CreateCoarseGraph(CtrlType *, GraphType *, idxtype, idxtype *, idxtype *);
+void CreateCoarseGraphNoMask(CtrlType *, GraphType *, idxtype, idxtype *, idxtype *);
+void CreateCoarseGraph_NVW(CtrlType *, GraphType *, idxtype, idxtype *, idxtype *);
+GraphType *SetUpCoarseGraph(GraphType *, idxtype, idxtype);
+void ReAdjustMemory(GraphType *, GraphType *, idxtype);
 
 /* coarsen.c */
 GraphType *Coarsen2Way(CtrlType *, GraphType *);
 
 /* compress.c */
-void CompressGraph(CtrlType *, GraphType *, int, idxtype *, idxtype *, idxtype *, idxtype *);
-void PruneGraph(CtrlType *, GraphType *, int, idxtype *, idxtype *, idxtype *, float);
+void CompressGraph(CtrlType *, GraphType *, idxtype, idxtype *, idxtype *, idxtype *, idxtype *);
+void PruneGraph(CtrlType *, GraphType *, idxtype, idxtype *, idxtype *, idxtype *, float);
 
 /* debug.c */
 idxtype ComputeCut(GraphType *, idxtype *);
 idxtype ComputeMaxCut(GraphType *graph, idxtype nparts, idxtype *where);
 idxtype CheckBnd(GraphType *);
 idxtype CheckBnd2(GraphType *);
-idxtype CheckNodeBnd(GraphType *, int);
+idxtype CheckNodeBnd(GraphType *, idxtype);
 idxtype CheckRInfo(RInfoType *);
 idxtype CheckNodePartitionParams(GraphType *);
 idxtype IsSeparable(GraphType *);
 
 /* estmem.c */
-void EstimateCFraction(int, idxtype *, idxtype *, float *, float *);
-idxtype ComputeCoarseGraphSize(int, idxtype *, idxtype *, int, idxtype *, idxtype *, idxtype *);
+void EstimateCFraction(idxtype, idxtype *, idxtype *, float *, float *);
+idxtype ComputeCoarseGraphSize(idxtype, idxtype *, idxtype *, idxtype, idxtype *, idxtype *, idxtype *);
 
 /* fm.c */
-void FM_2WayEdgeRefine(CtrlType *, GraphType *, idxtype *, int);
+void FM_2WayEdgeRefine(CtrlType *, GraphType *, idxtype *, idxtype);
 
 /* fortran.c */
-void Change2CNumbering(int, idxtype *, idxtype *);
-void Change2FNumbering(int, idxtype *, idxtype *, idxtype *);
-void Change2FNumbering2(int, idxtype *, idxtype *);
-void Change2FNumberingOrder(int, idxtype *, idxtype *, idxtype *, idxtype *);
-void ChangeMesh2CNumbering(int, idxtype *);
-void ChangeMesh2FNumbering(int, idxtype *, int, idxtype *, idxtype *);
-void ChangeMesh2FNumbering2(int, idxtype *, int, int, idxtype *, idxtype *);
-void ChangeMesh2FNumbering3(int, idxtype *);
+void Change2CNumbering(idxtype, idxtype *, idxtype *);
+void Change2FNumbering(idxtype, idxtype *, idxtype *, idxtype *);
+void Change2FNumbering2(idxtype, idxtype *, idxtype *);
+void Change2FNumberingOrder(idxtype, idxtype *, idxtype *, idxtype *, idxtype *);
+void ChangeMesh2CNumbering(idxtype, idxtype *);
+void ChangeMesh2FNumbering(idxtype, idxtype *, idxtype, idxtype *, idxtype *);
+void ChangeMesh2FNumbering2(idxtype, idxtype *, idxtype, idxtype, idxtype *, idxtype *);
+void ChangeMesh2FNumbering3(idxtype, idxtype *);
 
 /* frename.c */
 void METIS_PARTGRAPHRECURSIVE(idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *); 
@@ -94,10 +97,10 @@ void METIS_PARTMESHNODAL(idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, 
 void metis_partmeshnodal(idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *);
 void metis_partmeshnodal_(idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *);
 void metis_partmeshnodal__(idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *);
-void METIS_PARTMESHDUAL(idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, int, idxtype *);
-void metis_partmeshdual(idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, int, idxtype *);
-void metis_partmeshdual_(idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, int, idxtype *);
-void metis_partmeshdual__(idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, int, idxtype *);
+void METIS_PARTMESHDUAL(idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype, idxtype *);
+void metis_partmeshdual(idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype, idxtype *);
+void metis_partmeshdual_(idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype, idxtype *);
+void metis_partmeshdual__(idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype, idxtype *);
 void METIS_MESHTONODAL(idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *);
 void metis_meshtonodal(idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *);
 void metis_meshtonodal_(idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *);
@@ -128,14 +131,13 @@ void metis_wpartgraphvkway_(idxtype *, idxtype *, idxtype *, idxtype *, idxtype 
 void metis_wpartgraphvkway__(idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, float *, idxtype *, idxtype *, idxtype *);
 
 /* graph.c */
-void SetUpGraph(GraphType *, int, int, int, idxtype *, idxtype *, idxtype *, idxtype *, int);
-void SetUpGraphKway(GraphType *, int, idxtype *, idxtype *);
-void SetUpGraph2(GraphType *, int, int, idxtype *, idxtype *, float *, idxtype *);
-void VolSetUpGraph(GraphType *, int, int, int, idxtype *, idxtype *, idxtype *, idxtype *, int);
+void SetUpGraph(GraphType *, idxtype, idxtype, idxtype, idxtype *, idxtype *, idxtype *, idxtype *, idxtype);
+void SetUpGraph2(GraphType *, idxtype, idxtype, idxtype *, idxtype *, float *, idxtype *);
+void VolSetUpGraph(GraphType *, idxtype, idxtype, idxtype, idxtype *, idxtype *, idxtype *, idxtype *, idxtype);
 void RandomizeGraph(GraphType *);
-idxtype IsConnectedSubdomain(CtrlType *, GraphType *, int, int);
-idxtype IsConnected(CtrlType *, GraphType *, int);
-idxtype IsConnected2(GraphType *, int);
+idxtype IsConnectedSubdomain(CtrlType *, GraphType *, idxtype, idxtype);
+idxtype IsConnected(CtrlType *, GraphType *, idxtype);
+idxtype IsConnected2(GraphType *, idxtype);
 idxtype FindComponents(CtrlType *, GraphType *, idxtype *, idxtype *);
 
 /* initpart.c */
@@ -146,47 +148,47 @@ void GrowBisectionNode(CtrlType *, GraphType *, float);
 void RandomBisection(CtrlType *, GraphType *, idxtype *, float);
 
 /* kmetis.c */
-idxtype MlevelKWayPartitioning(CtrlType *, GraphType *, int, idxtype *, float *, float);
+idxtype MlevelKWayPartitioning(CtrlType *, GraphType *, idxtype, idxtype *, float *, float);
 
 /* kvmetis.c */
-idxtype MlevelVolKWayPartitioning(CtrlType *, GraphType *, int, idxtype *, float *, float);
+idxtype MlevelVolKWayPartitioning(CtrlType *, GraphType *, idxtype, idxtype *, float *, float);
 
 /* kwayfm.c */
-void Random_KWayEdgeRefine(CtrlType *, GraphType *, int, float *, float, int, int);
-void Greedy_KWayEdgeRefine(CtrlType *, GraphType *, int, float *, float, int);
-void Greedy_KWayEdgeBalance(CtrlType *, GraphType *, int, float *, float, int);
+void Random_KWayEdgeRefine(CtrlType *, GraphType *, idxtype, float *, float, idxtype, idxtype);
+void Greedy_KWayEdgeRefine(CtrlType *, GraphType *, idxtype, float *, float, idxtype);
+void Greedy_KWayEdgeBalance(CtrlType *, GraphType *, idxtype, float *, float, idxtype);
 
 /* kwayrefine.c */
-void RefineKWay(CtrlType *, GraphType *, GraphType *, int, float *, float);
-void RefineKWayRefinement(CtrlType *, GraphType *, GraphType *, int, float *, float);
-void AllocateKWayPartitionMemory(CtrlType *, GraphType *, int);
-void ComputeKWayPartitionParams(CtrlType *, GraphType *, int);
-void ProjectKWayPartition(CtrlType *, GraphType *, int);
-idxtype IsBalanced(idxtype *, int, float *, float);
-void ComputeKWayBoundary(CtrlType *, GraphType *, int);
-void ComputeKWayBalanceBoundary(CtrlType *, GraphType *, int);
+void RefineKWay(CtrlType *, GraphType *, GraphType *, idxtype, float *, float);
+void RefineKWayRefinement(CtrlType *, GraphType *, GraphType *, idxtype, float *, float);
+void AllocateKWayPartitionMemory(CtrlType *, GraphType *, idxtype);
+void ComputeKWayPartitionParams(CtrlType *, GraphType *, idxtype);
+void ProjectKWayPartition(CtrlType *, GraphType *, idxtype);
+idxtype IsBalanced(idxtype *, idxtype, float *, float);
+void ComputeKWayBoundary(CtrlType *, GraphType *, idxtype);
+void ComputeKWayBalanceBoundary(CtrlType *, GraphType *, idxtype);
 
 /* kwayvolfm.c */
-void Random_KWayVolRefine(CtrlType *, GraphType *, int, float *, float, int, int);
-void Random_KWayVolRefineMConn(CtrlType *, GraphType *, int, float *, float, int, int);
-void Greedy_KWayVolBalance(CtrlType *, GraphType *, int, float *, float, int);
-void Greedy_KWayVolBalanceMConn(CtrlType *, GraphType *, int, float *, float, int);
-void KWayVolUpdate(CtrlType *, GraphType *, int, int, int, idxtype *, idxtype *, idxtype *);
-void ComputeKWayVolume(GraphType *, int, idxtype *, idxtype *, idxtype *);
+void Random_KWayVolRefine(CtrlType *, GraphType *, idxtype, float *, float, idxtype, idxtype);
+void Random_KWayVolRefineMConn(CtrlType *, GraphType *, idxtype, float *, float, idxtype, idxtype);
+void Greedy_KWayVolBalance(CtrlType *, GraphType *, idxtype, float *, float, idxtype);
+void Greedy_KWayVolBalanceMConn(CtrlType *, GraphType *, idxtype, float *, float, idxtype);
+void KWayVolUpdate(CtrlType *, GraphType *, idxtype, idxtype, idxtype, idxtype *, idxtype *, idxtype *);
+void ComputeKWayVolume(GraphType *, idxtype, idxtype *, idxtype *, idxtype *);
 idxtype ComputeVolume(GraphType *, idxtype *);
-void CheckVolKWayPartitionParams(CtrlType *, GraphType *, int);
-void ComputeVolSubDomainGraph(GraphType *, int, idxtype *, idxtype *);
-void EliminateVolSubDomainEdges(CtrlType *, GraphType *, int, float *);
-void EliminateVolComponents(CtrlType *, GraphType *, int, float *, float);
+void CheckVolKWayPartitionParams(CtrlType *, GraphType *, idxtype);
+void ComputeVolSubDomainGraph(GraphType *, idxtype, idxtype *, idxtype *);
+void EliminateVolSubDomainEdges(CtrlType *, GraphType *, idxtype, float *);
+void EliminateVolComponents(CtrlType *, GraphType *, idxtype, float *, float);
 
 /* kwayvolrefine.c */
-void RefineVolKWay(CtrlType *, GraphType *, GraphType *, int, float *, float);
-void AllocateVolKWayPartitionMemory(CtrlType *, GraphType *, int);
-void ComputeVolKWayPartitionParams(CtrlType *, GraphType *, int);
-void ComputeKWayVolGains(CtrlType *, GraphType *, int);
-void ProjectVolKWayPartition(CtrlType *, GraphType *, int);
-void ComputeVolKWayBoundary(CtrlType *, GraphType *, int);
-void ComputeVolKWayBalanceBoundary(CtrlType *, GraphType *, int);
+void RefineVolKWay(CtrlType *, GraphType *, GraphType *, idxtype, float *, float);
+void AllocateVolKWayPartitionMemory(CtrlType *, GraphType *, idxtype);
+void ComputeVolKWayPartitionParams(CtrlType *, GraphType *, idxtype);
+void ComputeKWayVolGains(CtrlType *, GraphType *, idxtype);
+void ProjectVolKWayPartition(CtrlType *, GraphType *, idxtype);
+void ComputeVolKWayBoundary(CtrlType *, GraphType *, idxtype);
+void ComputeVolKWayBalanceBoundary(CtrlType *, GraphType *, idxtype);
 
 /* match.c */
 void Match_RM(CtrlType *, GraphType *);
@@ -201,52 +203,53 @@ void MocGeneral2WayBalance(CtrlType *, GraphType *, float *, float);
 /* mbalance2.c */
 void MocBalance2Way2(CtrlType *, GraphType *, float *, float *);
 void MocGeneral2WayBalance2(CtrlType *, GraphType *, float *, float *);
-void SelectQueue3(int, float *, float *, idxtype *, idxtype *, PQueueType [MAXNCON][2], float *);
+void SelectQueue3(idxtype, float *, float *, idxtype *, idxtype *, PQueueType [MAXNCON][2], float *);
 
 /* mcoarsen.c */
 GraphType *MCCoarsen2Way(CtrlType *, GraphType *);
 
 /* memory.c */
-void AllocateWorkSpace(CtrlType *, GraphType *, int);
+void AllocateWorkSpace(CtrlType *, GraphType *, idxtype);
 void FreeWorkSpace(CtrlType *, GraphType *);
 idxtype WspaceAvail(CtrlType *);
-idxtype *idxwspacemalloc(CtrlType *, int);
-void idxwspacefree(CtrlType *, int);
-float *fwspacemalloc(CtrlType *, int);
-void fwspacefree(CtrlType *, int);
+idxtype *idxwspacemalloc(CtrlType *, idxtype);
+void idxwspacefree(CtrlType *, idxtype);
+float *fwspacemalloc(CtrlType *, idxtype);
+void fwspacefree(CtrlType *, idxtype);
 GraphType *CreateGraph(void);
 void InitGraph(GraphType *);
-void FreeGraph(GraphType *);
+void FreeRData(GraphType *);
+void FreeGraph(GraphType *, int flag);
 
 /* mesh.c */
 idxtype GENDUALMETIS_COUNT(idxtype , idxtype , idxtype , idxtype *, idxtype *);
-void GENDUALMETIS(int, int, int, idxtype *, idxtype *, idxtype *, idxtype *adjncy);
-void TRINODALMETIS(int, int, idxtype *, idxtype *, idxtype *adjncy);
-void TETNODALMETIS(int, int, idxtype *, idxtype *, idxtype *adjncy);
-void HEXNODALMETIS(int, int, idxtype *, idxtype *, idxtype *adjncy);
-void QUADNODALMETIS(int, int, idxtype *, idxtype *, idxtype *adjncy);
-void LINENODALMETIS(int, int, idxtype *, idxtype *, idxtype *adjncy);
+void GENDUALMETIS(idxtype, idxtype, idxtype, idxtype *, idxtype *, idxtype *, idxtype *adjncy);
+void TRINODALMETIS(idxtype, idxtype, idxtype *, idxtype *, idxtype *adjncy);
+void TETNODALMETIS(idxtype, idxtype, idxtype *, idxtype *, idxtype *adjncy);
+void HEXNODALMETIS(idxtype, idxtype, idxtype *, idxtype *, idxtype *adjncy);
+void QUADNODALMETIS(idxtype, idxtype, idxtype *, idxtype *, idxtype *adjncy);
+void LINENODALMETIS(idxtype, idxtype, idxtype *, idxtype *, idxtype *adjncy);
 
 /* meshpart.c */
 
 /* mfm.c */
-void MocFM_2WayEdgeRefine(CtrlType *, GraphType *, float *, int);
-void SelectQueue(int, float *, float *, idxtype *, idxtype *, PQueueType [MAXNCON][2]);
-idxtype BetterBalance(int, float *, float *, float *);
-float Compute2WayHLoadImbalance(int, float *, float *);
-void Compute2WayHLoadImbalanceVec(int, float *, float *, float *);
+void MocFM_2WayEdgeRefine(CtrlType *, GraphType *, float *, idxtype);
+void SelectQueue(idxtype, float *, float *, idxtype *, idxtype *, PQueueType [MAXNCON][2]);
+idxtype BetterBalance(idxtype, float *, float *, float *);
+float Compute2WayHLoadImbalance(idxtype, float *, float *);
+void Compute2WayHLoadImbalanceVec(idxtype, float *, float *, float *);
 
 /* mfm2.c */
-void MocFM_2WayEdgeRefine2(CtrlType *, GraphType *, float *, float *, int);
-void SelectQueue2(int, float *, float *, idxtype *, idxtype *, PQueueType [MAXNCON][2], float *);
-idxtype IsBetter2wayBalance(int, float *, float *, float *);
+void MocFM_2WayEdgeRefine2(CtrlType *, GraphType *, float *, float *, idxtype);
+void SelectQueue2(idxtype, float *, float *, idxtype *, idxtype *, PQueueType [MAXNCON][2], float *);
+idxtype IsBetter2wayBalance(idxtype, float *, float *, float *);
 
 /* mincover.o */
-void MinCover(idxtype *, idxtype *, int, int, idxtype *, idxtype *);
-idxtype MinCover_Augment(idxtype *, idxtype *, int, idxtype *, idxtype *, idxtype *, int);
-void MinCover_Decompose(idxtype *, idxtype *, int, int, idxtype *, idxtype *, idxtype *);
-void MinCover_ColDFS(idxtype *, idxtype *, int, idxtype *, idxtype *, int);
-void MinCover_RowDFS(idxtype *, idxtype *, int, idxtype *, idxtype *, int);
+void MinCover(idxtype *, idxtype *, idxtype, idxtype, idxtype *, idxtype *);
+idxtype MinCover_Augment(idxtype *, idxtype *, idxtype, idxtype *, idxtype *, idxtype *, idxtype);
+void MinCover_Decompose(idxtype *, idxtype *, idxtype, idxtype, idxtype *, idxtype *, idxtype *);
+void MinCover_ColDFS(idxtype *, idxtype *, idxtype, idxtype *, idxtype *, idxtype);
+void MinCover_RowDFS(idxtype *, idxtype *, idxtype, idxtype *, idxtype *, idxtype);
 
 /* minitpart.c */
 void MocInit2WayPartition(CtrlType *, GraphType *, float *, float);
@@ -265,44 +268,44 @@ idxtype SelectQueueOneWay2(idxtype ncon, float *pto, PQueueType queues[MAXNCON][
 
 
 /* mkmetis.c */
-idxtype MCMlevelKWayPartitioning(CtrlType *, GraphType *, int, idxtype *, float *);
+idxtype MCMlevelKWayPartitioning(CtrlType *, GraphType *, idxtype, idxtype *, float *);
 
 /* mkwayfmh.c */
-void MCRandom_KWayEdgeRefineHorizontal(CtrlType *, GraphType *, int, float *, int);
-void MCGreedy_KWayEdgeBalanceHorizontal(CtrlType *, GraphType *, int, float *, int);
-idxtype AreAllHVwgtsBelow(int, float, float *, float, float *, float *);
-idxtype AreAllHVwgtsAbove(int, float, float *, float, float *, float *);
-void ComputeHKWayLoadImbalance(int, int, float *, float *);
-idxtype MocIsHBalanced(int, int, float *, float *);
-idxtype IsHBalanceBetterFT(int, int, float *, float *, float *, float *);
-idxtype IsHBalanceBetterTT(int, int, float *, float *, float *, float *);
+void MCRandom_KWayEdgeRefineHorizontal(CtrlType *, GraphType *, idxtype, float *, idxtype);
+void MCGreedy_KWayEdgeBalanceHorizontal(CtrlType *, GraphType *, idxtype, float *, idxtype);
+idxtype AreAllHVwgtsBelow(idxtype, float, float *, float, float *, float *);
+idxtype AreAllHVwgtsAbove(idxtype, float, float *, float, float *, float *);
+void ComputeHKWayLoadImbalance(idxtype, idxtype, float *, float *);
+idxtype MocIsHBalanced(idxtype, idxtype, float *, float *);
+idxtype IsHBalanceBetterFT(idxtype, idxtype, float *, float *, float *, float *);
+idxtype IsHBalanceBetterTT(idxtype, idxtype, float *, float *, float *, float *);
 
 /* mkwayrefine.c */
-void MocRefineKWayHorizontal(CtrlType *, GraphType *, GraphType *, int, float *);
-void MocAllocateKWayPartitionMemory(CtrlType *, GraphType *, int);
-void MocComputeKWayPartitionParams(CtrlType *, GraphType *, int);
-void MocProjectKWayPartition(CtrlType *, GraphType *, int);
-void MocComputeKWayBalanceBoundary(CtrlType *, GraphType *, int);
+void MocRefineKWayHorizontal(CtrlType *, GraphType *, GraphType *, idxtype, float *);
+void MocAllocateKWayPartitionMemory(CtrlType *, GraphType *, idxtype);
+void MocComputeKWayPartitionParams(CtrlType *, GraphType *, idxtype);
+void MocProjectKWayPartition(CtrlType *, GraphType *, idxtype);
+void MocComputeKWayBalanceBoundary(CtrlType *, GraphType *, idxtype);
 
 /* mmatch.c */
 void MCMatch_RM(CtrlType *, GraphType *);
 void MCMatch_HEM(CtrlType *, GraphType *);
 void MCMatch_SHEM(CtrlType *, GraphType *);
-void MCMatch_SHEBM(CtrlType *, GraphType *, int);
-void MCMatch_SBHEM(CtrlType *, GraphType *, int);
-float BetterVBalance(int, int, float *, float *, float *);
-idxtype AreAllVwgtsBelowFast(int, float *, float *, float);
+void MCMatch_SHEBM(CtrlType *, GraphType *, idxtype);
+void MCMatch_SBHEM(CtrlType *, GraphType *, idxtype);
+float BetterVBalance(idxtype, idxtype, float *, float *, float *);
+idxtype AreAllVwgtsBelowFast(idxtype, float *, float *, float);
 
 /* mmd.c */
-void genmmd(int, idxtype *, idxtype *, idxtype *, idxtype *, idxtype , idxtype *, idxtype *, idxtype *, idxtype *, int, idxtype *);
-void mmdelm(int, idxtype *xadj, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, int, int);
-idxtype  mmdint(int, idxtype *xadj, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *);
-void mmdnum(int, idxtype *, idxtype *, idxtype *);
-void mmdupd(int, int, idxtype *, idxtype *, int, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, int, idxtype *tag);
+void genmmd(idxtype, idxtype *, idxtype *, idxtype *, idxtype *, idxtype , idxtype *, idxtype *, idxtype *, idxtype *, idxtype, idxtype *);
+void mmdelm(idxtype, idxtype *xadj, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype, idxtype);
+idxtype mmdint(idxtype, idxtype *xadj, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *);
+void mmdnum(idxtype, idxtype *, idxtype *, idxtype *);
+void mmdupd(idxtype, idxtype, idxtype *, idxtype *, idxtype, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype, idxtype *tag);
 
 /* mpmetis.c */
-idxtype MCMlevelRecursiveBisection(CtrlType *, GraphType *, int, idxtype *, float, int);
-idxtype MCHMlevelRecursiveBisection(CtrlType *, GraphType *, int, idxtype *, float *, int);
+idxtype MCMlevelRecursiveBisection(CtrlType *, GraphType *, idxtype, idxtype *, float, idxtype);
+idxtype MCHMlevelRecursiveBisection(CtrlType *, GraphType *, idxtype, idxtype *, float *, idxtype);
 void MCMlevelEdgeBisection(CtrlType *, GraphType *, float *, float);
 void MCHMlevelEdgeBisection(CtrlType *, GraphType *, float *, float *);
 
@@ -316,45 +319,46 @@ void MocProject2WayPartition(CtrlType *, GraphType *);
 void MocRefine2Way2(CtrlType *, GraphType *, GraphType *, float *, float *);
 
 /* mutil.c */
-idxtype AreAllVwgtsBelow(int, float, float *, float, float *, float);
-idxtype AreAnyVwgtsBelow(int, float, float *, float, float *, float);
-idxtype AreAllVwgtsAbove(int, float, float *, float, float *, float);
-float ComputeLoadImbalance(int, int, float *, float *);
-idxtype AreAllBelow(int, float *, float *);
+idxtype AreAllVwgtsBelow(idxtype, float, float *, float, float *, float);
+idxtype AreAnyVwgtsBelow(idxtype, float, float *, float, float *, float);
+idxtype AreAllVwgtsAbove(idxtype, float, float *, float, float *, float);
+float ComputeLoadImbalance(idxtype, idxtype, float *, float *);
+idxtype AreAllBelow(idxtype, float *, float *);
 
 /* myqsort.c */
-void iidxsort(int, idxtype *);
-void iintsort(int, idxtype *);
-void ikeysort(int, KeyValueType *);
-void ikeyvalsort(int, KeyValueType *);
+void iidxsort(size_t, idxtype *);
+void ikeysort(size_t, KeyValueType *);
+void ikeyvalsort(size_t, KeyValueType *);
+void idkeysort(size_t, DKeyValueType *);
+
 
 /* ometis.c */
-void MlevelNestedDissection(CtrlType *, GraphType *, idxtype *, float, int);
-void MlevelNestedDissectionCC(CtrlType *, GraphType *, idxtype *, float, int);
+void MlevelNestedDissection(CtrlType *, GraphType *, idxtype *, float, idxtype);
+void MlevelNestedDissectionCC(CtrlType *, GraphType *, idxtype *, float, idxtype);
 void MlevelNodeBisectionMultiple(CtrlType *, GraphType *, idxtype *, float);
 void MlevelNodeBisection(CtrlType *, GraphType *, idxtype *, float);
 void SplitGraphOrder(CtrlType *, GraphType *, GraphType *, GraphType *);
-void MMDOrder(CtrlType *, GraphType *, idxtype *, int);
-idxtype SplitGraphOrderCC(CtrlType *, GraphType *, GraphType *, int, idxtype *, idxtype *);
+void MMDOrder(CtrlType *, GraphType *, idxtype *, idxtype);
+idxtype SplitGraphOrderCC(CtrlType *, GraphType *, GraphType *, idxtype, idxtype *, idxtype *);
 
 /* parmetis.c */
-void MlevelNestedDissectionP(CtrlType *, GraphType *, idxtype *, int, int, int, idxtype *);
+void MlevelNestedDissectionP(CtrlType *, GraphType *, idxtype *, idxtype, idxtype, idxtype, idxtype *);
 
 /* pmetis.c */
-idxtype MlevelRecursiveBisection(CtrlType *, GraphType *, int, idxtype *, float *, float, int);
+idxtype MlevelRecursiveBisection(CtrlType *, GraphType *, idxtype, idxtype *, float *, float, idxtype);
 void MlevelEdgeBisection(CtrlType *, GraphType *, idxtype *, float);
 void SplitGraphPart(CtrlType *, GraphType *, GraphType *, GraphType *);
-void SetUpSplitGraph(GraphType *, GraphType *, int, int);
+void SetUpSplitGraph(GraphType *, GraphType *, idxtype, idxtype);
 
 /* pqueue.c */
-void PQueueInit(CtrlType *ctrl, PQueueType *, int, int);
+void PQueueInit(CtrlType *ctrl, PQueueType *, idxtype, idxtype);
 void PQueueReset(PQueueType *);
 void PQueueFree(CtrlType *ctrl, PQueueType *);
 idxtype PQueueGetSize(PQueueType *);
-idxtype PQueueInsert(PQueueType *, int, int);
-idxtype PQueueDelete(PQueueType *, int, int);
-idxtype PQueueUpdate(PQueueType *, int, int, int);
-void PQueueUpdateUp(PQueueType *, int, int, int);
+idxtype PQueueInsert(PQueueType *, idxtype, idxtype);
+idxtype PQueueDelete(PQueueType *, idxtype, idxtype);
+idxtype PQueueUpdate(PQueueType *, idxtype, idxtype, idxtype);
+void PQueueUpdateUp(PQueueType *, idxtype, idxtype, idxtype);
 idxtype PQueueGetMax(PQueueType *);
 idxtype PQueueSeeMax(PQueueType *);
 idxtype PQueueGetKey(PQueueType *);
@@ -372,11 +376,11 @@ void ConstructMinCoverSeparator0(CtrlType *, GraphType *, float);
 void ConstructMinCoverSeparator(CtrlType *, GraphType *, float);
 
 /* sfm.c */
-void FM_2WayNodeRefine(CtrlType *, GraphType *, float, int);
-void FM_2WayNodeRefineEqWgt(CtrlType *, GraphType *, int);
-void FM_2WayNodeRefine_OneSided(CtrlType *, GraphType *, float, int);
+void FM_2WayNodeRefine(CtrlType *, GraphType *, float, idxtype);
+void FM_2WayNodeRefineEqWgt(CtrlType *, GraphType *, idxtype);
+void FM_2WayNodeRefine_OneSided(CtrlType *, GraphType *, float, idxtype);
 void FM_2WayNodeBalance(CtrlType *, GraphType *, float);
-idxtype ComputeMaxNodeGain(int, idxtype *, idxtype *, idxtype *);
+idxtype ComputeMaxNodeGain(idxtype, idxtype *, idxtype *, idxtype *);
 
 /* srefine.c */
 void Refine2WayNode(CtrlType *, GraphType *, GraphType *, float);
@@ -385,67 +389,41 @@ void Compute2WayNodePartitionParams(CtrlType *, GraphType *);
 void Project2WayNodePartition(CtrlType *, GraphType *);
 
 /* stat.c */
-void ComputePartitionInfo(GraphType *, int, idxtype *);
-void ComputePartitionInfoBipartite(GraphType *, int, idxtype *);
-void ComputePartitionBalance(GraphType *, int, idxtype *, float *);
-float ComputeElementBalance(int, int, idxtype *);
+void ComputePartitionInfo(GraphType *, idxtype, idxtype *);
+void ComputePartitionInfoBipartite(GraphType *, idxtype, idxtype *);
+void ComputePartitionBalance(GraphType *, idxtype, idxtype *, float *);
+float ComputeElementBalance(idxtype, idxtype, idxtype *);
 
 /* subdomains.c */
-void Random_KWayEdgeRefineMConn(CtrlType *, GraphType *, int, float *, float, int, int);
-void Greedy_KWayEdgeBalanceMConn(CtrlType *, GraphType *, int, float *, float, int);
-void PrintSubDomainGraph(GraphType *, int, idxtype *);
-void ComputeSubDomainGraph(GraphType *, int, idxtype *, idxtype *);
-void EliminateSubDomainEdges(CtrlType *, GraphType *, int, float *);
-void MoveGroupMConn(CtrlType *, GraphType *, idxtype *, idxtype *, int, int, int, idxtype *);
-void EliminateComponents(CtrlType *, GraphType *, int, float *, float);
-void MoveGroup(CtrlType *, GraphType *, int, int, int, idxtype *, idxtype *);
+void Random_KWayEdgeRefineMConn(CtrlType *, GraphType *, idxtype, float *, float, idxtype, idxtype);
+void Greedy_KWayEdgeBalanceMConn(CtrlType *, GraphType *, idxtype, float *, float, idxtype);
+void PrintSubDomainGraph(GraphType *, idxtype, idxtype *);
+void ComputeSubDomainGraph(GraphType *, idxtype, idxtype *, idxtype *);
+void EliminateSubDomainEdges(CtrlType *, GraphType *, idxtype, float *);
+void MoveGroupMConn(CtrlType *, GraphType *, idxtype *, idxtype *, idxtype, idxtype, idxtype, idxtype *);
+void EliminateComponents(CtrlType *, GraphType *, idxtype, float *, float);
+void MoveGroup(CtrlType *, GraphType *, idxtype, idxtype, idxtype, idxtype *, idxtype *);
 
 /* timing.c */
 void InitTimers(CtrlType *);
 void PrintTimers(CtrlType *);
-double seconds(void);
 
 /* util.c */
-void errexit(char *,...);
-idxtype *imalloc(size_t, char *);
-idxtype *idxmalloc(size_t, char *);
-float *fmalloc(size_t, char *);
-double *dmalloc(size_t, char *);
-idxtype *ismalloc(size_t, int, char *);
-idxtype *idxsmalloc(size_t, idxtype, char *);
-double *dsmalloc(size_t, double, char *);
-void *GKmalloc(size_t, char *);
-void GKfree(void **,...); 
-idxtype *iset(size_t n, idxtype val, idxtype *x);
-idxtype *idxset(size_t n, idxtype val, idxtype *x);
-double *dset(size_t n, double val, double *x);
-float *sset(size_t n, float val, float *x);
-idxtype iamax(size_t, idxtype *);
-idxtype idxamax(size_t, idxtype *);
-idxtype idxamax_strd(size_t, idxtype *, int);
-idxtype samax(size_t, float *);
-idxtype samax2(size_t, float *);
-idxtype idxamin(size_t, idxtype *);
-idxtype samin(size_t, float *);
-idxtype idxsum(size_t, idxtype *);
-idxtype idxsum_strd(size_t, idxtype *, int);
-void idxadd(size_t, idxtype *, idxtype *);
-idxtype charsum(size_t, char *);
-idxtype isum(size_t, idxtype *);
-float ssum(size_t, float *);
-float ssum_strd(size_t n, float *x, int);
-void sscale(size_t n, float, float *x);
-float snorm2(size_t, float *);
-float sdot(size_t n, float *, float *);
-void saxpy(size_t, float, float *, int, float *, int);
-void RandomPermute(size_t, idxtype *, int);
-double drand48();
-void srand48(long);
-idxtype ispow2(int);
-void InitRandom(int);
-idxtype log2i(int);
-FILE *GKfopen(char *fname, char *mode, char *msg);
-void GKfclose(FILE *fp);
+GK_XMALLOC_PROTO(idxmalloc, idxtype)
+GK_XREALLOC_PROTO(idxrealloc, idxtype)
+GK_XSMALLOC_PROTO(idxsmalloc, idxtype)
+GK_SET_PROTO(idxset, idxtype)
+GK_ARGMAX_PROTO(idxargmax, idxtype)
+GK_ARGMIN_PROTO(idxargmin, idxtype)
+GK_SUM_PROTO(idxsum, idxtype, idxtype)
+GK_AXPY_PROTO(idxaxpy, idxtype)
+
+idxtype idxargmax_strd(size_t, idxtype *, idxtype);
+idxtype famax2(size_t, float *);
+void RandomPermute(size_t, idxtype *, idxtype);
+void InitRandom(idxtype);
+idxtype strtoidx(const char *nptr, char **endptr, int base);
+
 
 
 
@@ -461,28 +439,10 @@ void GKfclose(FILE *fp);
 * Programs Directory
 ****************************************************************/
 
-/* io.c */
-void ReadGraph(GraphType *, char *, idxtype *);
-void WritePartition(char *, idxtype *, int, int);
-void WriteMeshPartition(char *, int, int, idxtype *, int, idxtype *);
-void WritePermutation(char *, idxtype *, int);
-idxtype CheckGraph(GraphType *);
-idxtype MeshType(char *);
-idxtype *ReadWgt(char *, idxtype *, idxtype *, idxtype *);
-idxtype *ReadMesh(char *, idxtype *, idxtype *, idxtype *);
-idxtype *ReadMeshWgt(char *, idxtype *, idxtype *, idxtype *, idxtype *);
-idxtype *ReadMixedMesh(char *, idxtype *, idxtype *, idxtype *);
-idxtype *ReadMixedMeshWgt(char *, idxtype *, idxtype *, idxtype *, idxtype *);
-void WriteGraph(char *, int, idxtype *, idxtype *);
-idxtype MixedElements(char *);
-idxtype *ReadMgcnums(char *);
-void WriteWgtGraph(char *, idxtype , idxtype *, idxtype *, idxtype *);
-
-
 /* smbfactor.c */
 void ComputeFillIn(GraphType *, idxtype *);
 idxtype ComputeFillIn2(GraphType *, idxtype *);
-idxtype smbfct(int, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *);
+idxtype smbfct(idxtype, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *);
 
 /* kfmetis.c */
 void BalanceFillIn(CtrlType *ctrl, GraphType *graph, idxtype nparts, idxtype *part);
@@ -519,10 +479,6 @@ idxtype FindBoxContacts(ContactInfoType *cinfo, double *coords, idxtype *stack, 
 void BuildDTLeafContents(ContactInfoType *cinfo, idxtype *sflag);
 void  CheckDTree(idxtype nvtxs, double *xyzcoords, idxtype *part, ContactInfoType *cinfo);
 void  CheckDTreeSurface(idxtype nvtxs, double *xyzcoords, idxtype *part, ContactInfoType *cinfo, idxtype *sflag);
-void idkeysort_qsort(idxtype n, DKeyValueType *cand);
-idxtype cmpr_idkey(const void *v1, const void *v2);
-void ikeyvalsort_qsort(idxtype n, KeyValueType *cand);
-idxtype cmpr_ikeyval(const void *v1, const void *v2);
 void *METIS_PartSurfForContactRCB(idxtype *nvtxs, double *xyzcoords, idxtype *sflag,
                 idxtype *nparts, idxtype *part, idxtype *bestdims);
 idxtype InduceRCBTree(idxtype nvtxs, DKeyValueType **xyzcand, idxtype firstPID, idxtype nparts,
@@ -540,23 +496,14 @@ idxtype MCMlevelKWayRefinement(CtrlType *ctrl, GraphType *graph, idxtype nparts,
       float *rubvec);
 
 
+/* streamio.c */
+int mprintf(char *format,...);
+int msprintf(char *str, char *format,...);
+int mfprintf(FILE *stream, char *format,...);
+int mscanf(char *format,...);
+int msscanf(char *str, char *format,...);
+int mfscanf(FILE *stream, char *format,...);
 
-/* idkeysort.o */
-void idkeysort(idxtype total_elems, DKeyValueType *pbase);
 
 
-
-/***************************************************************
-* Test Directory
-****************************************************************/
-void Test_PartGraph(int, idxtype *, idxtype *);
-idxtype VerifyPart(int, idxtype *, idxtype *, idxtype *, idxtype *, int, int, idxtype *);
-idxtype VerifyWPart(int, idxtype *, idxtype *, idxtype *, idxtype *, int, float *, int, idxtype *);
-void Test_PartGraphV(int, idxtype *, idxtype *);
-idxtype VerifyPartV(int, idxtype *, idxtype *, idxtype *, idxtype *, int, int, idxtype *);
-idxtype VerifyWPartV(int, idxtype *, idxtype *, idxtype *, idxtype *, int, float *, int, idxtype *);
-void Test_PartGraphmC(int, idxtype *, idxtype *);
-idxtype VerifyPartmC(int, int, idxtype *, idxtype *, idxtype *, idxtype *, int, float *, int, idxtype *);
-void Test_ND(int, idxtype *, idxtype *);
-idxtype VerifyND(int, idxtype *, idxtype *);
-
+#endif

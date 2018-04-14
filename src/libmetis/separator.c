@@ -37,7 +37,8 @@ void ConstructSeparator(CtrlType *ctrl, GraphType *graph, float ubfactor)
       where[j] = 2;
   }
 
-  GKfree((void *)&graph->rdata, LTERM);
+  FreeRData(graph);
+
   Allocate2WayNodePartitionMemory(ctrl, graph);
   idxcopy(nvtxs, where, graph->where);
   idxwspacefree(ctrl, nvtxs);
@@ -136,14 +137,14 @@ void ConstructMinCoverSeparator0(CtrlType *ctrl, GraphType *graph, float ubfacto
     MinCover(bxadj, badjncy, bnvtxs[0], bnvtxs[1], cover, &csize);
 
     IFSET(ctrl->dbglvl, DBG_SEPINFO,
-      printf("Nvtxs: %6d, [%5d %5d], Cut: %6d, SS: [%6d %6d], Cover: %6d\n", nvtxs, graph->pwgts[0], graph->pwgts[1], graph->mincut, bnvtxs[0], bnvtxs[1]-bnvtxs[0], csize));
+      mprintf("Nvtxs: %6D, [%5D %5D], Cut: %6D, SS: [%6D %6D], Cover: %6D\n", nvtxs, graph->pwgts[0], graph->pwgts[1], graph->mincut, bnvtxs[0], bnvtxs[1]-bnvtxs[0], csize));
 
     for (i=0; i<csize; i++) {
       j = ivmap[cover[i]];
       where[j] = 2;
     }
 
-    GKfree((void *)&bxadj, &badjncy, LTERM);
+    gk_free((void **)&bxadj, &badjncy, LTERM);
 
     for (i=0; i<nbnd; i++)
       bndptr[bndind[i]] = -1;
@@ -156,7 +157,7 @@ void ConstructMinCoverSeparator0(CtrlType *ctrl, GraphType *graph, float ubfacto
   }
   else {
     IFSET(ctrl->dbglvl, DBG_SEPINFO,
-      printf("Nvtxs: %6d, [%5d %5d], Cut: %6d, SS: [%6d %6d], Cover: %6d\n", nvtxs, graph->pwgts[0], graph->pwgts[1], graph->mincut, 0, 0, 0));
+      mprintf("Nvtxs: %6D, [%5D %5D], Cut: %6D, SS: [%6D %6D], Cover: %6D\n", nvtxs, graph->pwgts[0], graph->pwgts[1], graph->mincut, 0, 0, 0));
   }
 
   idxwspacefree(ctrl, nvtxs);
@@ -251,23 +252,24 @@ void ConstructMinCoverSeparator(CtrlType *ctrl, GraphType *graph, float ubfactor
     MinCover(bxadj, badjncy, bnvtxs[0], bnvtxs[1], cover, &csize);
 
     IFSET(ctrl->dbglvl, DBG_SEPINFO,
-      printf("Nvtxs: %6d, [%5d %5d], Cut: %6d, SS: [%6d %6d], Cover: %6d\n", nvtxs, graph->pwgts[0], graph->pwgts[1], graph->mincut, bnvtxs[0], bnvtxs[1]-bnvtxs[0], csize));
+      mprintf("Nvtxs: %6D, [%5D %5D], Cut: %6D, SS: [%6D %6D], Cover: %6D\n", nvtxs, graph->pwgts[0], graph->pwgts[1], graph->mincut, bnvtxs[0], bnvtxs[1]-bnvtxs[0], csize));
 
     for (i=0; i<csize; i++) {
       j = ivmap[cover[i]];
       where[j] = 2;
     }
 
-    GKfree((void *)&bxadj, &badjncy, LTERM);
+    gk_free((void **)&bxadj, &badjncy, LTERM);
   }
   else {
     IFSET(ctrl->dbglvl, DBG_SEPINFO,
-      printf("Nvtxs: %6d, [%5d %5d], Cut: %6d, SS: [%6d %6d], Cover: %6d\n", nvtxs, graph->pwgts[0], graph->pwgts[1], graph->mincut, 0, 0, 0));
+      mprintf("Nvtxs: %6D, [%5D %5D], Cut: %6D, SS: [%6D %6D], Cover: %6D\n", nvtxs, graph->pwgts[0], graph->pwgts[1], graph->mincut, 0, 0, 0));
   }
 
   /* Prepare to refine the vertex separator */
   idxcopy(nvtxs, graph->where, vmap);
-  GKfree((void *)&graph->rdata, LTERM);
+
+  FreeRData(graph);
 
   Allocate2WayNodePartitionMemory(ctrl, graph);
   idxcopy(nvtxs, vmap, graph->where);

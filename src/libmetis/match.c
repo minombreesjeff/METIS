@@ -25,7 +25,7 @@ void Match_RM(CtrlType *ctrl, GraphType *graph)
   idxtype *xadj, *vwgt, *adjncy, *adjwgt;
   idxtype *match, *cmap, *perm;
 
-  IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->MatchTmr));
+  IFSET(ctrl->dbglvl, DBG_TIME, gk_startcputimer(ctrl->MatchTmr));
 
   nvtxs = graph->nvtxs;
   xadj = graph->xadj;
@@ -60,7 +60,7 @@ void Match_RM(CtrlType *ctrl, GraphType *graph)
     }
   }
 
-  IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->MatchTmr));
+  IFSET(ctrl->dbglvl, DBG_TIME, gk_stopcputimer(ctrl->MatchTmr));
 
   CreateCoarseGraph(ctrl, graph, cnvtxs, match, perm);
 
@@ -78,7 +78,7 @@ void Match_RM_NVW(CtrlType *ctrl, GraphType *graph)
   idxtype *xadj, *adjncy;
   idxtype *match, *cmap, *perm;
 
-  IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->MatchTmr));
+  IFSET(ctrl->dbglvl, DBG_TIME, gk_startcputimer(ctrl->MatchTmr));
 
   nvtxs = graph->nvtxs;
   xadj = graph->xadj;
@@ -111,7 +111,7 @@ void Match_RM_NVW(CtrlType *ctrl, GraphType *graph)
     }
   }
 
-  IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->MatchTmr));
+  IFSET(ctrl->dbglvl, DBG_TIME, gk_stopcputimer(ctrl->MatchTmr));
 
   CreateCoarseGraph_NVW(ctrl, graph, cnvtxs, match, perm);
 
@@ -130,7 +130,7 @@ void Match_HEM(CtrlType *ctrl, GraphType *graph)
   idxtype *xadj, *vwgt, *adjncy, *adjwgt;
   idxtype *match, *cmap, *perm;
 
-  IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->MatchTmr));
+  IFSET(ctrl->dbglvl, DBG_TIME, gk_startcputimer(ctrl->MatchTmr));
 
   nvtxs = graph->nvtxs;
   xadj = graph->xadj;
@@ -167,7 +167,7 @@ void Match_HEM(CtrlType *ctrl, GraphType *graph)
     }
   }
 
-  IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->MatchTmr));
+  IFSET(ctrl->dbglvl, DBG_TIME, gk_stopcputimer(ctrl->MatchTmr));
 
   CreateCoarseGraph(ctrl, graph, cnvtxs, match, perm);
 
@@ -186,7 +186,7 @@ void Match_SHEM(CtrlType *ctrl, GraphType *graph)
   idxtype *xadj, *vwgt, *adjncy, *adjwgt;
   idxtype *match, *cmap, *degrees, *perm, *tperm;
 
-  IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->MatchTmr));
+  IFSET(ctrl->dbglvl, DBG_TIME, gk_startcputimer(ctrl->MatchTmr));
 
   nvtxs = graph->nvtxs;
   xadj = graph->xadj;
@@ -254,7 +254,7 @@ void Match_SHEM(CtrlType *ctrl, GraphType *graph)
     }
   }
 
-  IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->MatchTmr));
+  IFSET(ctrl->dbglvl, DBG_TIME, gk_stopcputimer(ctrl->MatchTmr));
 
   idxwspacefree(ctrl, nvtxs);  /* degrees */
   idxwspacefree(ctrl, nvtxs);  /* tperm */

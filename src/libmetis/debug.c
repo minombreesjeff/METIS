@@ -46,7 +46,7 @@ idxtype ComputeMaxCut(GraphType *graph, idxtype nparts, idxtype *where)
   idxtype i, j, maxcut;
   idxtype *cuts;
 
-  cuts = ismalloc(nparts, 0, "ComputeMaxCut: cuts");
+  cuts = idxsmalloc(nparts, 0, "ComputeMaxCut: cuts");
 
   if (graph->adjwgt == NULL) {
     for (i=0; i<graph->nvtxs; i++) {
@@ -63,11 +63,11 @@ idxtype ComputeMaxCut(GraphType *graph, idxtype nparts, idxtype *where)
     }
   }
 
-  maxcut = cuts[iamax(nparts, cuts)];
+  maxcut = cuts[idxargmax(nparts, cuts)];
 
-  printf("%d => %d\n", iamax(nparts, cuts), maxcut);
+  mprintf("%D => %D\n", idxargmax(nparts, cuts), maxcut);
 
-  free(cuts);
+  gk_free((void **)&cuts, LTERM);
 
   return maxcut;
 }
@@ -231,14 +231,14 @@ idxtype CheckNodePartitionParams(GraphType *graph)
           edegrees[other] += vwgt[adjncy[j]];
       }
       if (edegrees[0] != graph->nrinfo[i].edegrees[0] || edegrees[1] != graph->nrinfo[i].edegrees[1]) {
-        printf("Something wrong with edegrees: %d %d %d %d %d\n", i, edegrees[0], edegrees[1], graph->nrinfo[i].edegrees[0], graph->nrinfo[i].edegrees[1]);
+        mprintf("Something wrong with edegrees: %D %D %D %D %D\n", i, edegrees[0], edegrees[1], graph->nrinfo[i].edegrees[0], graph->nrinfo[i].edegrees[1]);
         return 0;
       }
     }
   }
 
   if (pwgts[0] != graph->pwgts[0] || pwgts[1] != graph->pwgts[1] || pwgts[2] != graph->pwgts[2])
-    printf("Something wrong with part-weights: %d %d %d %d %d %d\n", pwgts[0], pwgts[1], pwgts[2], graph->pwgts[0], graph->pwgts[1], graph->pwgts[2]);
+    mprintf("Something wrong with part-weights: %D %D %D %D %D %D\n", pwgts[0], pwgts[1], pwgts[2], graph->pwgts[0], graph->pwgts[1], graph->pwgts[2]);
 
   return 1;
 }

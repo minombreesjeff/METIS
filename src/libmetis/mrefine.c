@@ -25,7 +25,7 @@ void MocRefine2Way(CtrlType *ctrl, GraphType *orggraph, GraphType *graph, float 
   for (i=0; i<graph->ncon; i++)
     tubvec[i] = 1.0;
 
-  IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->UncoarsenTmr));
+  IFSET(ctrl->dbglvl, DBG_TIME, gk_startcputimer(ctrl->UncoarsenTmr));
 
   /* Compute the parameters of the coarsest graph */
   MocCompute2WayPartitionParams(ctrl, graph);
@@ -33,7 +33,7 @@ void MocRefine2Way(CtrlType *ctrl, GraphType *orggraph, GraphType *graph, float 
   for (;;) {
     ASSERT(CheckBnd(graph));
 
-    IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->RefTmr));
+    IFSET(ctrl->dbglvl, DBG_TIME, gk_startcputimer(ctrl->RefTmr));
     switch (ctrl->RType) {
       case RTYPE_FM:
         MocBalance2Way(ctrl, graph, tpwgts, 1.03);
@@ -46,21 +46,21 @@ void MocRefine2Way(CtrlType *ctrl, GraphType *orggraph, GraphType *graph, float 
       default:
         errexit("Unknown refinement type: %d\n", ctrl->RType);
     }
-    IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->RefTmr));
+    IFSET(ctrl->dbglvl, DBG_TIME, gk_stopcputimer(ctrl->RefTmr));
 
     if (graph == orggraph)
       break;
 
     graph = graph->finer;
-    IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->ProjectTmr));
+    IFSET(ctrl->dbglvl, DBG_TIME, gk_startcputimer(ctrl->ProjectTmr));
     MocProject2WayPartition(ctrl, graph);
-    IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->ProjectTmr));
+    IFSET(ctrl->dbglvl, DBG_TIME, gk_stopcputimer(ctrl->ProjectTmr));
   }
 
   MocBalance2Way(ctrl, graph, tpwgts, 1.01);
   MocFM_2WayEdgeRefine(ctrl, graph, tpwgts, 8); 
 
-  IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->UncoarsenTmr));
+  IFSET(ctrl->dbglvl, DBG_TIME, gk_stopcputimer(ctrl->UncoarsenTmr));
 }
 
 
@@ -74,14 +74,12 @@ void MocAllocate2WayPartitionMemory(CtrlType *ctrl, GraphType *graph)
   nvtxs = graph->nvtxs;
   ncon = graph->ncon;
 
-  graph->rdata = idxmalloc(5*nvtxs, "Allocate2WayPartitionMemory: rdata");
-  graph->where		= graph->rdata;
-  graph->id		= graph->rdata + nvtxs;
-  graph->ed		= graph->rdata + 2*nvtxs;
-  graph->bndptr		= graph->rdata + 3*nvtxs;
-  graph->bndind		= graph->rdata + 4*nvtxs;
-
-  graph->npwgts 	= fmalloc(2*ncon, "npwgts");
+  graph->npwgts	= gk_fmalloc(2*ncon, "MocAllocate2WayPartitionMemory: npwgts");
+  graph->where	= idxmalloc(nvtxs, "MocAllocate2WayPartitionMemory: where");
+  graph->id   	= idxmalloc(nvtxs, "MocAllocate2WayPartitionMemory: id");
+  graph->ed   	= idxmalloc(nvtxs, "MocAllocate2WayPartitionMemory: ed");
+  graph->bndptr	= idxmalloc(nvtxs, "MocAllocate2WayPartitionMemory: bndptr");
+  graph->bndind	= idxmalloc(nvtxs, "MocAllocate2WayPartitionMemory: bndind");
 }
 
 
@@ -105,7 +103,7 @@ void MocCompute2WayPartitionParams(CtrlType *ctrl, GraphType *graph)
   adjwgt = graph->adjwgt;
 
   where = graph->where;
-  npwgts = sset(2*ncon, 0.0, graph->npwgts);
+  npwgts = gk_fset(2*ncon, 0.0, graph->npwgts);
   id = idxset(nvtxs, 0, graph->id);
   ed = idxset(nvtxs, 0, graph->ed);
   bndptr = idxset(nvtxs, -1, graph->bndptr);
@@ -119,7 +117,7 @@ void MocCompute2WayPartitionParams(CtrlType *ctrl, GraphType *graph)
   for (i=0; i<nvtxs; i++) {
     ASSERT(where[i] >= 0 && where[i] <= 1);
     me = where[i];
-    saxpy(ncon, 1.0, nvwgt+i*ncon, 1, npwgts+me*ncon, 1);
+    gk_faxpy(ncon, 1.0, nvwgt+i*ncon, 1, npwgts+me*ncon, 1);
 
     for (j=xadj[i]; j<xadj[i+1]; j++) {
       if (me == where[adjncy[j]])
@@ -210,9 +208,9 @@ void MocProject2WayPartition(CtrlType *ctrl, GraphType *graph)
 
   graph->mincut = cgraph->mincut;
   graph->nbnd = nbnd;
-  scopy(2*graph->ncon, cgraph->npwgts, graph->npwgts);
+  gk_fcopy(2*graph->ncon, cgraph->npwgts, graph->npwgts);
 
-  FreeGraph(graph->coarser);
+  FreeGraph(graph->coarser, 1);
   graph->coarser = NULL;
 
 }

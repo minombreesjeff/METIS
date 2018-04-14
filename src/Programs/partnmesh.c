@@ -20,16 +20,16 @@
 /*************************************************************************
 * Let the game begin
 **************************************************************************/
-int main(idxtype argc, char *argv[])
+int main(int argc, char *argv[])
 {
   idxtype i, j, ne, nn, etype, mtype, numflag=0, nparts, edgecut;
   idxtype *elmnts, *epart, *npart, *metype, *weights;
-  timer IOTmr, DUALTmr;
+  double IOTmr, DUALTmr;
   char etypestr[5][5] = {"TRI", "TET", "HEX", "QUAD", "LINE"};
   GraphType graph;
 
   if (argc != 3) {
-    printf("Usage: %s <meshfile> <nparts>\n",argv[0]);
+    mprintf("Usage: %s <meshfile> <nparts>\n",argv[0]);
     exit(0);
   }
 
@@ -37,19 +37,19 @@ int main(idxtype argc, char *argv[])
 
   nparts = atoi(argv[2]);
   if (nparts < 2) {
-    printf("nparts must be greater than one.\n");
+    mprintf("nparts must be greater than one.\n");
     exit(0);
   }
    
-  cleartimer(IOTmr);
-  cleartimer(DUALTmr);
+  gk_clearcputimer(IOTmr);
+  gk_clearcputimer(DUALTmr);
  
   mtype=MeshType(argv[1]);
   ne=MixedElements(argv[1]);
   metype = idxmalloc(ne, "main: metype");
   weights = idxmalloc(ne, "main: weights");
 
-  starttimer(IOTmr);
+  gk_startcputimer(IOTmr);
  
   if(mtype==1)
        elmnts = ReadMesh(argv[1], &ne, &nn, &etype);
@@ -60,41 +60,41 @@ int main(idxtype argc, char *argv[])
   else
        elmnts = ReadMixedMeshWgt(argv[1], &ne, &nn, metype, weights);
 
-  stoptimer(IOTmr);
+  gk_stopcputimer(IOTmr);
 
   epart = idxmalloc(ne, "main: epart");
   npart = idxmalloc(nn, "main: npart");
 
-  printf("**********************************************************************\n");
-  printf("%s", METISTITLE);
-  printf("Mesh Information ----------------------------------------------------\n");
+  mprintf("**********************************************************************\n");
+  mprintf("%s", METISTITLE);
+  mprintf("Mesh Information ----------------------------------------------------\n");
   if (mtype==1)
-  printf("  Name: %s, #Elements: %d, #Nodes: %d, Etype: %s\n\n", argv[1], ne, nn, etypestr[etype-1]);
+  mprintf("  Name: %s, #Elements: %D, #Nodes: %D, Etype: %s\n\n", argv[1], ne, nn, etypestr[etype-1]);
   else
-  printf("  Name: %s, #Elements: %d, #Nodes: %d, Etype: %s\n\n", argv[1], ne, nn, "Mixed");
-  printf("Partitioning Nodal Graph... -----------------------------------------\n");
+  mprintf("  Name: %s, #Elements: %D, #Nodes: %D, Etype: %s\n\n", argv[1], ne, nn, "Mixed");
+  mprintf("Partitioning Nodal Graph... -----------------------------------------\n");
 
 
-  starttimer(DUALTmr);
+  gk_startcputimer(DUALTmr);
   
   if (mtype==1 || mtype==3)
   METIS_PartMeshNodal(&ne, &nn, elmnts, &etype, &numflag, &nparts, &edgecut, epart, npart);
   else 
   METIS_PartMixedMeshNodal(&ne, &nn, elmnts, metype, &numflag, &nparts, &edgecut, epart, npart);
   
-  stoptimer(DUALTmr);
+  gk_stopcputimer(DUALTmr);
 
-  printf("  %d-way Edge-Cut: %7d, Balance: %5.2f\n", nparts, edgecut, ComputeElementBalance(ne, nparts, epart));
+  mprintf("  %D-way Edge-Cut: %7D, Balance: %5.2f\n", nparts, edgecut, ComputeElementBalance(ne, nparts, epart));
 
-  starttimer(IOTmr);
+  gk_startcputimer(IOTmr);
   WriteMeshPartition(argv[1], nparts, ne, epart, nn, npart);
-  stoptimer(IOTmr);
+  gk_stopcputimer(IOTmr);
 
 
-  printf("\nTiming Information --------------------------------------------------\n");
-  printf("  I/O:          \t\t %7.3f\n", gettimer(IOTmr));
-  printf("  Partitioning: \t\t %7.3f\n", gettimer(DUALTmr));
-  printf("**********************************************************************\n");
+  mprintf("\nTiming Information --------------------------------------------------\n");
+  mprintf("  I/O:          \t\t %7.3f\n", gk_getcputimer(IOTmr));
+  mprintf("  Partitioning: \t\t %7.3f\n", gk_getcputimer(DUALTmr));
+  mprintf("**********************************************************************\n");
 
 /*
   graph.nvtxs = ne;
@@ -107,10 +107,10 @@ int main(idxtype argc, char *argv[])
 
   ComputePartitionInfo(&graph, nparts, epart);
 
-  GKfree((void *)&graph.xadj, &graph.adjncy, &graph.vwgt, &graph.adjwgt, LTERM);
+  gk_free((void **)&graph.xadj, &graph.adjncy, &graph.vwgt, &graph.adjwgt, LTERM);
 */
 
-  GKfree((void *)&elmnts, &epart, &npart, &metype, &weights,  LTERM);
+  gk_free((void **)&elmnts, &epart, &npart, &metype, &weights,  LTERM);
 
 }
 

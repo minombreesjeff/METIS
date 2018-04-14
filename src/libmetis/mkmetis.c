@@ -47,7 +47,7 @@ void METIS_mCPartGraphKway(idxtype *nvtxs, idxtype *ncon, idxtype *xadj, idxtype
     ctrl.dbglvl = options[OPTION_DBGLVL];
   }
   ctrl.optype = OP_KMETIS;
-  ctrl.CoarsenTo = amax((*nvtxs)/(20*log2i(*nparts)), 30*(*nparts));
+  ctrl.CoarsenTo = amax((*nvtxs)/(20*gk_log2(*nparts)), 30*(*nparts));
 
   ctrl.nmaxvwgt = 1.5/(1.0*ctrl.CoarsenTo);
 
@@ -56,11 +56,11 @@ void METIS_mCPartGraphKway(idxtype *nvtxs, idxtype *ncon, idxtype *xadj, idxtype
   AllocateWorkSpace(&ctrl, &graph, *nparts);
 
   IFSET(ctrl.dbglvl, DBG_TIME, InitTimers(&ctrl));
-  IFSET(ctrl.dbglvl, DBG_TIME, starttimer(ctrl.TotalTmr));
+  IFSET(ctrl.dbglvl, DBG_TIME, gk_startcputimer(ctrl.TotalTmr));
 
   *edgecut = MCMlevelKWayPartitioning(&ctrl, &graph, *nparts, part, rubvec);
 
-  IFSET(ctrl.dbglvl, DBG_TIME, stoptimer(ctrl.TotalTmr));
+  IFSET(ctrl.dbglvl, DBG_TIME, gk_stopcputimer(ctrl.TotalTmr));
   IFSET(ctrl.dbglvl, DBG_TIME, PrintTimers(&ctrl));
 
   FreeWorkSpace(&ctrl, &graph);
@@ -82,7 +82,7 @@ idxtype MCMlevelKWayPartitioning(CtrlType *ctrl, GraphType *graph, idxtype npart
 
   cgraph = MCCoarsen2Way(ctrl, graph);
 
-  IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->InitPartTmr));
+  IFSET(ctrl->dbglvl, DBG_TIME, gk_startcputimer(ctrl->InitPartTmr));
   MocAllocateKWayPartitionMemory(ctrl, cgraph, nparts);
 
   options[0] = 1; 
@@ -106,8 +106,8 @@ idxtype MCMlevelKWayPartitioning(CtrlType *ctrl, GraphType *graph, idxtype npart
           rubvec, options, &edgecut, cgraph->where);
 
 
-  IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->InitPartTmr));
-  IFSET(ctrl->dbglvl, DBG_IPART, printf("Initial %d-way partitioning cut: %d\n", nparts, edgecut));
+  IFSET(ctrl->dbglvl, DBG_TIME, gk_stopcputimer(ctrl->InitPartTmr));
+  IFSET(ctrl->dbglvl, DBG_IPART, mprintf("Initial %D-way partitioning cut: %D\n", nparts, edgecut));
 
   IFSET(ctrl->dbglvl, DBG_KWAYPINFO, ComputePartitionInfo(cgraph, nparts, cgraph->where));
 
@@ -115,7 +115,7 @@ idxtype MCMlevelKWayPartitioning(CtrlType *ctrl, GraphType *graph, idxtype npart
 
   idxcopy(graph->nvtxs, graph->where, part);
 
-  GKfree((void *)&graph->nvwgt, &graph->npwgts, &graph->gdata, &graph->rdata, LTERM);
+  FreeGraph(graph, 0);
 
   return graph->mincut;
 

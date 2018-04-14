@@ -23,7 +23,7 @@ void AllocateWorkSpace(CtrlType *ctrl, GraphType *graph, idxtype nparts)
   ctrl->wspace.pmat = NULL;
 
   if (ctrl->optype == OP_KMETIS) {
-    ctrl->wspace.edegrees = (EDegreeType *)GKmalloc(graph->nedges*sizeof(EDegreeType), "AllocateWorkSpace: edegrees");
+    ctrl->wspace.edegrees = (EDegreeType *)gk_malloc(graph->nedges*sizeof(EDegreeType), "AllocateWorkSpace: edegrees");
     ctrl->wspace.vedegrees = NULL;
     ctrl->wspace.auxcore = (idxtype *)ctrl->wspace.edegrees;
 
@@ -50,7 +50,7 @@ void AllocateWorkSpace(CtrlType *ctrl, GraphType *graph, idxtype nparts)
   }
   else if (ctrl->optype == OP_KVMETIS) {
     ctrl->wspace.edegrees = NULL;
-    ctrl->wspace.vedegrees = (VEDegreeType *)GKmalloc(graph->nedges*sizeof(VEDegreeType), "AllocateWorkSpace: vedegrees");
+    ctrl->wspace.vedegrees = (VEDegreeType *)gk_malloc(graph->nedges*sizeof(VEDegreeType), "AllocateWorkSpace: vedegrees");
     ctrl->wspace.auxcore = (idxtype *)ctrl->wspace.vedegrees;
 
     ctrl->wspace.pmat = idxmalloc(nparts*nparts, "AllocateWorkSpace: pmat");
@@ -86,7 +86,7 @@ void AllocateWorkSpace(CtrlType *ctrl, GraphType *graph, idxtype nparts)
 **************************************************************************/
 void FreeWorkSpace(CtrlType *ctrl, GraphType *graph)
 {
-  GKfree((void *)&ctrl->wspace.edegrees, &ctrl->wspace.vedegrees, &ctrl->wspace.core, &ctrl->wspace.pmat, LTERM);
+  gk_free((void **)&ctrl->wspace.edegrees, &ctrl->wspace.vedegrees, &ctrl->wspace.core, &ctrl->wspace.pmat, LTERM);
 }
 
 /*************************************************************************
@@ -155,7 +155,7 @@ GraphType *CreateGraph(void)
 {
   GraphType *graph;
 
-  graph = (GraphType *)GKmalloc(sizeof(GraphType), "CreateCoarseGraph: graph");
+  graph = (GraphType *)gk_malloc(sizeof(GraphType), "CreateCoarseGraph: graph");
 
   InitGraph(graph);
 
@@ -169,38 +169,108 @@ GraphType *CreateGraph(void)
 **************************************************************************/
 void InitGraph(GraphType *graph) 
 {
-  graph->gdata = graph->rdata = NULL;
+  /* graph size constants */
+  graph->nvtxs     = -1;
+  graph->nedges    = -1;
+  graph->ncon      = -1;
+  graph->mincut    = -1;
+  graph->minvol    = -1;
+  graph->nbnd      = -1;
 
-  graph->nvtxs = graph->nedges = -1;
-  graph->mincut = graph->minvol = -1;
-
-  graph->xadj = graph->vwgt = graph->adjncy = graph->adjwgt = NULL;
+  /* memory for the graph structure */
+  graph->xadj      = NULL;
+  graph->vwgt      = NULL;
+  graph->nvwgt     = NULL;
+  graph->vsize     = NULL;
+  graph->adjncy    = NULL;
+  graph->adjwgt    = NULL;
   graph->adjwgtsum = NULL;
-  graph->label = NULL;
-  graph->cmap = NULL;
+  graph->label     = NULL;
+  graph->cmap      = NULL;
+  graph->coords    = NULL;
 
-  graph->where = graph->pwgts = NULL;
-  graph->id = graph->ed = NULL;
-  graph->bndptr = graph->bndind = NULL;
-  graph->rinfo = NULL;
-  graph->vrinfo = NULL;
-  graph->nrinfo = NULL;
+  /* by default these are set to true, but the can be explicitly changed afterwards */
+  graph->free_xadj   = 1;
+  graph->free_vwgt   = 1;
+  graph->free_vsize  = 1;
+  graph->free_adjncy = 1;
+  graph->free_adjwgt = 1;
 
-  graph->ncon = -1;
-  graph->nvwgt = NULL;
-  graph->npwgts = NULL;
 
-  graph->vsize = NULL;
+  /* memory for the partition/refinement structure */
+  graph->where     = NULL;
+  graph->pwgts     = NULL;
+  graph->npwgts    = NULL;
+  graph->id        = NULL;
+  graph->ed        = NULL;
+  graph->bndptr    = NULL;
+  graph->bndind    = NULL;
+  graph->rinfo     = NULL;
+  graph->vrinfo    = NULL;
+  graph->nrinfo    = NULL;
 
-  graph->coarser = graph->finer = NULL;
+  /* linked-list structure */
+  graph->coarser   = NULL;
+  graph->finer     = NULL;
+}
+
+
+
+/*************************************************************************
+* This function allocates memory for the requested fields of the graph's
+* structure (i.e., not partition/refinement structure). 
+* The size of these fields is determined by the size of the graph itself
+* The fields should be provided as a comma-separated string with no spaces
+* For example 
+*   AllocGraphFields(&graph, "xadj,adjncy,vwgt")
+**************************************************************************/
+void AllocGraphFields(GraphType *graph, char *fields)
+{
+  char *sptr, *eptr;
 
 }
+
+
+/*************************************************************************
+* This function frees the refinement/partition memory
+* any memory stored in a graph
+**************************************************************************/
+void FreeRData(GraphType *graph) 
+{
+  /* free partition/refinement structure */
+  gk_free((void **)&graph->where, &graph->pwgts, &graph->npwgts, &graph->id,
+    &graph->ed, &graph->bndptr, &graph->bndind, &graph->rinfo, &graph->vrinfo,
+    &graph->nrinfo, LTERM);
+}
+
 
 /*************************************************************************
 * This function deallocates any memory stored in a graph
 **************************************************************************/
-void FreeGraph(GraphType *graph) 
+void FreeGraph(GraphType *graph, int flag) 
 {
-  GKfree((void *)&graph->gdata, &graph->nvwgt, &graph->rdata, &graph->npwgts, &graph, LTERM);
+  
+  /* free graph structure */
+  if (graph->free_xadj)
+    gk_free((void **)&graph->xadj, LTERM);
+  if (graph->free_vwgt)
+    gk_free((void **)&graph->vwgt, LTERM);
+  if (graph->free_vsize)
+    gk_free((void **)&graph->vsize, LTERM);
+  if (graph->free_adjncy)
+    gk_free((void **)&graph->adjncy, LTERM);
+  if (graph->free_adjwgt)
+    gk_free((void **)&graph->adjwgt, LTERM);
+    
+  gk_free((void **)&graph->nvwgt, &graph->adjwgtsum, &graph->label, &graph->cmap, 
+    &graph->coords, LTERM);
+
+  /* free partition/refinement structure */
+  gk_free((void **)&graph->where, &graph->pwgts, &graph->npwgts, &graph->id,
+    &graph->ed, &graph->bndptr, &graph->bndind, &graph->rinfo, &graph->vrinfo,
+    &graph->nrinfo, LTERM);
+
+  if (flag)
+    gk_free((void **)&graph, LTERM);
 }
 

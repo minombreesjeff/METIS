@@ -26,14 +26,14 @@ void METIS_PartGraphRecursive(idxtype *nvtxs, idxtype *xadj, idxtype *adjncy, id
   idxtype i;
   float *tpwgts;
 
-  tpwgts = fmalloc(*nparts, "KMETIS: tpwgts");
+  tpwgts = gk_fmalloc(*nparts, "KMETIS: tpwgts");
   for (i=0; i<*nparts; i++) 
     tpwgts[i] = 1.0/(1.0*(*nparts));
 
   METIS_WPartGraphRecursive(nvtxs, xadj, adjncy, vwgt, adjwgt, wgtflag, numflag, nparts, 
                             tpwgts, options, edgecut, part);
 
-  GKfree((void *)&tpwgts, LTERM);
+  gk_free((void **)&tpwgts, LTERM);
 }
 
 
@@ -70,9 +70,9 @@ void METIS_WPartGraphRecursive(idxtype *nvtxs, idxtype *xadj, idxtype *adjncy, i
   }
   ctrl.optype = OP_PMETIS;
   ctrl.CoarsenTo = 20;
-  ctrl.maxvwgt = 1.5*(idxsum(*nvtxs, graph.vwgt)/ctrl.CoarsenTo);
+  ctrl.maxvwgt = 1.5*(idxsum(*nvtxs, graph.vwgt, 1)/ctrl.CoarsenTo);
 
-  mytpwgts = fmalloc(*nparts, "PWMETIS: mytpwgts");
+  mytpwgts = gk_fmalloc(*nparts, "PWMETIS: mytpwgts");
   for (i=0; i<*nparts; i++) 
     mytpwgts[i] = tpwgts[i];
 
@@ -81,15 +81,15 @@ void METIS_WPartGraphRecursive(idxtype *nvtxs, idxtype *xadj, idxtype *adjncy, i
   AllocateWorkSpace(&ctrl, &graph, *nparts);
 
   IFSET(ctrl.dbglvl, DBG_TIME, InitTimers(&ctrl));
-  IFSET(ctrl.dbglvl, DBG_TIME, starttimer(ctrl.TotalTmr));
+  IFSET(ctrl.dbglvl, DBG_TIME, gk_startcputimer(ctrl.TotalTmr));
 
   *edgecut = MlevelRecursiveBisection(&ctrl, &graph, *nparts, part, mytpwgts, 1.000, 0);
 
-  IFSET(ctrl.dbglvl, DBG_TIME, stoptimer(ctrl.TotalTmr));
+  IFSET(ctrl.dbglvl, DBG_TIME, gk_stopcputimer(ctrl.TotalTmr));
   IFSET(ctrl.dbglvl, DBG_TIME, PrintTimers(&ctrl));
 
   FreeWorkSpace(&ctrl, &graph);
-  GKfree((void *)&mytpwgts, LTERM);
+  gk_free((void **)&mytpwgts, LTERM);
 
   if (*numflag == 1)
     Change2FNumbering(*nvtxs, xadj, adjncy, part);
@@ -100,7 +100,9 @@ void METIS_WPartGraphRecursive(idxtype *nvtxs, idxtype *xadj, idxtype *adjncy, i
 /*************************************************************************
 * This function takes a graph and produces a bisection of it
 **************************************************************************/
-idxtype MlevelRecursiveBisection(CtrlType *ctrl, GraphType *graph, idxtype nparts, idxtype *part, float *tpwgts, float ubfactor, idxtype fpart)
+idxtype MlevelRecursiveBisection(CtrlType *ctrl, GraphType *graph, 
+          idxtype nparts, idxtype *part, float *tpwgts, float ubfactor, 
+          idxtype fpart)
 {
   idxtype i, j, nvtxs, cut, tvwgt, tpwgts2[2];
   idxtype *label, *where;
@@ -109,19 +111,19 @@ idxtype MlevelRecursiveBisection(CtrlType *ctrl, GraphType *graph, idxtype npart
 
   nvtxs = graph->nvtxs;
   if (nvtxs == 0) {
-    printf("\t***Cannot bisect a graph with 0 vertices!\n\t***You are trying to partition a graph into too many parts!\n");
+    mprintf("\t***Cannot bisect a graph with 0 vertices!\n\t***You are trying to partition a graph into too many parts!\n");
     return 0;
   }
 
   /* Determine the weights of the partitions */
-  tvwgt = idxsum(nvtxs, graph->vwgt);
-  tpwgts2[0] = tvwgt*ssum(nparts/2, tpwgts);
+  tvwgt = idxsum(nvtxs, graph->vwgt, 1);
+  tpwgts2[0] = tvwgt*gk_fsum(nparts/2, tpwgts, 1);
   tpwgts2[1] = tvwgt-tpwgts2[0];
 
   MlevelEdgeBisection(ctrl, graph, tpwgts2, ubfactor);
   cut = graph->mincut;
 
-  /* printf("%5d %5d %5d [%5d %f]\n", tpwgts2[0], tpwgts2[1], cut, tvwgt, ssum(nparts/2, tpwgts));*/
+  /* mprintf("%5D %5D %5D [%5D %f]\n", tpwgts2[0], tpwgts2[1], cut, tvwgt, gk_fsum(nparts/2, tpwgts, 1));*/
 
   label = graph->label;
   where = graph->where;
@@ -130,21 +132,21 @@ idxtype MlevelRecursiveBisection(CtrlType *ctrl, GraphType *graph, idxtype npart
 
   if (nparts > 2) {
     SplitGraphPart(ctrl, graph, &lgraph, &rgraph);
-    /* printf("%d %d\n", lgraph.nvtxs, rgraph.nvtxs); */
+    /* mprintf("%D %D\n", lgraph.nvtxs, rgraph.nvtxs); */
   }
 
 
   /* Free the memory of the top level graph */
-  GKfree((void *)&graph->gdata, &graph->rdata, &graph->label, LTERM);
+  FreeGraph(graph, 0);
 
   /* Scale the fractions in the tpwgts according to the true weight */
-  wsum = ssum(nparts/2, tpwgts);
-  sscale(nparts/2, 1.0/wsum, tpwgts);
-  sscale(nparts-nparts/2, 1.0/(1.0-wsum), tpwgts+nparts/2);
+  wsum = gk_fsum(nparts/2, tpwgts, 1);
+  gk_fscale(nparts/2, 1.0/wsum, tpwgts, 1);
+  gk_fscale(nparts-nparts/2, 1.0/(1.0-wsum), tpwgts+nparts/2, 1);
   /*
   for (i=0; i<nparts; i++)
-    printf("%5.3f ", tpwgts[i]);
-  printf("[%5.3f]\n", wsum);
+    mprintf("%5.3f ", tpwgts[i]);
+  mprintf("[%5.3f]\n", wsum);
   */
 
   /* Do the recursive call */
@@ -154,11 +156,10 @@ idxtype MlevelRecursiveBisection(CtrlType *ctrl, GraphType *graph, idxtype npart
   }
   else if (nparts == 3) {
     cut += MlevelRecursiveBisection(ctrl, &rgraph, nparts-nparts/2, part, tpwgts+nparts/2, ubfactor, fpart+nparts/2);
-    GKfree((void *)&lgraph.gdata, &lgraph.label, LTERM);
+    FreeGraph(&lgraph, 0);
   }
 
   return cut;
-
 }
 
 
@@ -197,7 +198,7 @@ void SplitGraphPart(CtrlType *ctrl, GraphType *graph, GraphType *lgraph, GraphTy
   float *nvwgt, *snvwgt[2], *npwgts;
 
 
-  IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->SplitTmr));
+  IFSET(ctrl->dbglvl, DBG_TIME, gk_startcputimer(ctrl->SplitTmr));
 
   nvtxs = graph->nvtxs;
   ncon = graph->ncon;
@@ -297,7 +298,7 @@ void SplitGraphPart(CtrlType *ctrl, GraphType *graph, GraphType *lgraph, GraphTy
   lgraph->nedges = snedges[0];
   rgraph->nedges = snedges[1];
 
-  IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->SplitTmr));
+  IFSET(ctrl->dbglvl, DBG_TIME, gk_stopcputimer(ctrl->SplitTmr));
 
   idxwspacefree(ctrl, nvtxs);
 }
@@ -314,28 +315,16 @@ void SetUpSplitGraph(GraphType *graph, GraphType *sgraph, idxtype snvtxs, idxtyp
   sgraph->ncon = graph->ncon;
 
   /* Allocate memory for the splitted graph */
-  if (graph->ncon == 1) {
-    sgraph->gdata = idxmalloc(4*snvtxs+1 + 2*snedges, "SetUpSplitGraph: gdata");
+  sgraph->xadj        = idxmalloc(snvtxs+1, "SetUpSplitGraph: xadj");
+  sgraph->adjwgtsum   = idxmalloc(snvtxs,   "SetUpSplitGraph: adjwgtsum");
+  sgraph->cmap        = idxmalloc(snvtxs,   "SetUpSplitGraph: cmap");
+  sgraph->adjncy      = idxmalloc(snedges,  "SetUpSplitGraph: adjncy");
+  sgraph->adjwgt      = idxmalloc(snedges,  "SetUpSplitGraph: adjwgt");
+  sgraph->label	      = idxmalloc(snvtxs,   "SetUpSplitGraph: label");
 
-    sgraph->xadj        = sgraph->gdata;
-    sgraph->vwgt        = sgraph->gdata + snvtxs+1;
-    sgraph->adjwgtsum   = sgraph->gdata + 2*snvtxs+1;
-    sgraph->cmap        = sgraph->gdata + 3*snvtxs+1;
-    sgraph->adjncy      = sgraph->gdata + 4*snvtxs+1;
-    sgraph->adjwgt      = sgraph->gdata + 4*snvtxs+1 + snedges;
-  }
-  else {
-    sgraph->gdata = idxmalloc(3*snvtxs+1 + 2*snedges, "SetUpSplitGraph: gdata");
-
-    sgraph->xadj        = sgraph->gdata;
-    sgraph->adjwgtsum   = sgraph->gdata + snvtxs+1;
-    sgraph->cmap        = sgraph->gdata + 2*snvtxs+1;
-    sgraph->adjncy      = sgraph->gdata + 3*snvtxs+1;
-    sgraph->adjwgt      = sgraph->gdata + 3*snvtxs+1 + snedges;
-
-    sgraph->nvwgt       = fmalloc(graph->ncon*snvtxs, "SetUpSplitGraph: nvwgt");
-  }
-
-  sgraph->label	= idxmalloc(snvtxs, "SetUpSplitGraph: sgraph->label");
+  if (graph->ncon == 1) 
+    sgraph->vwgt      = idxmalloc(snvtxs,   "SetUpSplitGraph: vwgt");
+  else 
+    sgraph->nvwgt     = gk_fmalloc(graph->ncon*snvtxs, "SetUpSplitGraph: nvwgt");
 }
 

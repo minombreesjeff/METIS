@@ -26,14 +26,14 @@ void METIS_PartGraphVKway(idxtype *nvtxs, idxtype *xadj, idxtype *adjncy, idxtyp
   idxtype i;
   float *tpwgts;
 
-  tpwgts = fmalloc(*nparts, "KMETIS: tpwgts");
+  tpwgts = gk_fmalloc(*nparts, "KMETIS: tpwgts");
   for (i=0; i<*nparts; i++) 
     tpwgts[i] = 1.0/(1.0*(*nparts));
 
   METIS_WPartGraphVKway(nvtxs, xadj, adjncy, vwgt, vsize, wgtflag, numflag, nparts, 
                        tpwgts, options, volume, part);
 
-  GKfree((void *)&tpwgts, LTERM);
+  gk_free((void **)&tpwgts, LTERM);
 }
 
 
@@ -66,19 +66,19 @@ void METIS_WPartGraphVKway(idxtype *nvtxs, idxtype *xadj, idxtype *adjncy, idxty
     ctrl.dbglvl = options[OPTION_DBGLVL];
   }
   ctrl.optype = OP_KVMETIS;
-  ctrl.CoarsenTo = amax((*nvtxs)/(40*log2i(*nparts)), 20*(*nparts));
-  ctrl.maxvwgt = 1.5*((graph.vwgt ? idxsum(*nvtxs, graph.vwgt) : (*nvtxs))/ctrl.CoarsenTo);
+  ctrl.CoarsenTo = amax((*nvtxs)/(40*gk_log2(*nparts)), 20*(*nparts));
+  ctrl.maxvwgt = 1.5*((graph.vwgt ? idxsum(*nvtxs, graph.vwgt, 1) : (*nvtxs))/ctrl.CoarsenTo);
 
   InitRandom(-1);
 
   AllocateWorkSpace(&ctrl, &graph, *nparts);
 
   IFSET(ctrl.dbglvl, DBG_TIME, InitTimers(&ctrl));
-  IFSET(ctrl.dbglvl, DBG_TIME, starttimer(ctrl.TotalTmr));
+  IFSET(ctrl.dbglvl, DBG_TIME, gk_startcputimer(ctrl.TotalTmr));
 
   *volume = MlevelVolKWayPartitioning(&ctrl, &graph, *nparts, part, tpwgts, 1.03);
 
-  IFSET(ctrl.dbglvl, DBG_TIME, stoptimer(ctrl.TotalTmr));
+  IFSET(ctrl.dbglvl, DBG_TIME, gk_stopcputimer(ctrl.TotalTmr));
   IFSET(ctrl.dbglvl, DBG_TIME, PrintTimers(&ctrl));
 
   FreeWorkSpace(&ctrl, &graph);
@@ -100,7 +100,7 @@ idxtype MlevelVolKWayPartitioning(CtrlType *ctrl, GraphType *graph, idxtype npar
 
   cgraph = Coarsen2Way(ctrl, graph);
 
-  IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->InitPartTmr));
+  IFSET(ctrl->dbglvl, DBG_TIME, gk_startcputimer(ctrl->InitPartTmr));
   AllocateVolKWayPartitionMemory(ctrl, cgraph, nparts);
 
   options[0] = 1; 
@@ -113,8 +113,8 @@ idxtype MlevelVolKWayPartitioning(CtrlType *ctrl, GraphType *graph, idxtype npar
                             cgraph->adjwgt, &wgtflag, &numflag, &nparts, tpwgts, options, 
                             &edgecut, cgraph->where);
 
-  IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->InitPartTmr));
-  IFSET(ctrl->dbglvl, DBG_IPART, printf("Initial %d-way partitioning cut: %d\n", nparts, edgecut));
+  IFSET(ctrl->dbglvl, DBG_TIME, gk_stopcputimer(ctrl->InitPartTmr));
+  IFSET(ctrl->dbglvl, DBG_IPART, mprintf("Initial %D-way partitioning cut: %D\n", nparts, edgecut));
 
   IFSET(ctrl->dbglvl, DBG_KWAYPINFO, ComputePartitionInfo(cgraph, nparts, cgraph->where));
 
@@ -122,7 +122,7 @@ idxtype MlevelVolKWayPartitioning(CtrlType *ctrl, GraphType *graph, idxtype npar
 
   idxcopy(graph->nvtxs, graph->where, part);
 
-  GKfree((void *)&graph->gdata, &graph->rdata, LTERM);
+  FreeGraph(graph, 0);
 
   return graph->minvol;
 

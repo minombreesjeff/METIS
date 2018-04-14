@@ -26,14 +26,14 @@ void METIS_RefineGraphKway(idxtype *nvtxs, idxtype *xadj, idxtype *adjncy, idxty
   idxtype i;
   float *tpwgts;
 
-  tpwgts = fmalloc(*nparts, "KMETIS: tpwgts");
+  tpwgts = gk_fmalloc(*nparts, "KMETIS: tpwgts");
   for (i=0; i<*nparts; i++) 
     tpwgts[i] = 1.0/(1.0*(*nparts));
 
   METIS_WRefineGraphKway(nvtxs, xadj, adjncy, vwgt, adjwgt, wgtflag, numflag, nparts, 
                          tpwgts, options, edgecut, part);
 
-  GKfree((void *)&tpwgts, LTERM);
+  gk_free((void **)&tpwgts, LTERM);
 }
 
 
@@ -67,7 +67,7 @@ void METIS_WRefineGraphKway(idxtype *nvtxs, idxtype *xadj, idxtype *adjncy, idxt
     ctrl.dbglvl = options[OPTION_DBGLVL];
   }
   ctrl.optype = OP_KMETIS;
-  ctrl.CoarsenTo = amax((*nvtxs)/(40*log2i(*nparts)), 20*(*nparts));
+  ctrl.CoarsenTo = amax((*nvtxs)/(40*gk_log2(*nparts)), 20*(*nparts));
   ctrl.maxvwgt = 0; /* GK-MOD: Ensure that no coarsening will take place */
 
   InitRandom(-1);
@@ -75,11 +75,11 @@ void METIS_WRefineGraphKway(idxtype *nvtxs, idxtype *xadj, idxtype *adjncy, idxt
   AllocateWorkSpace(&ctrl, &graph, *nparts);
 
   IFSET(ctrl.dbglvl, DBG_TIME, InitTimers(&ctrl));
-  IFSET(ctrl.dbglvl, DBG_TIME, starttimer(ctrl.TotalTmr));
+  IFSET(ctrl.dbglvl, DBG_TIME, gk_startcputimer(ctrl.TotalTmr));
 
   *edgecut = MlevelKWayRefinement(&ctrl, &graph, *nparts, part, tpwgts, 1.03);
 
-  IFSET(ctrl.dbglvl, DBG_TIME, stoptimer(ctrl.TotalTmr));
+  IFSET(ctrl.dbglvl, DBG_TIME, gk_stopcputimer(ctrl.TotalTmr));
   IFSET(ctrl.dbglvl, DBG_TIME, PrintTimers(&ctrl));
 
   FreeWorkSpace(&ctrl, &graph);
@@ -101,7 +101,7 @@ idxtype MlevelKWayRefinement(CtrlType *ctrl, GraphType *graph, idxtype nparts, i
 
   cgraph = Coarsen2Way(ctrl, graph);
 
-  IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->InitPartTmr));
+  IFSET(ctrl->dbglvl, DBG_TIME, gk_startcputimer(ctrl->InitPartTmr));
   AllocateKWayPartitionMemory(ctrl, cgraph, nparts);
 
   if (cgraph->nvtxs != graph->nvtxs)
@@ -114,7 +114,7 @@ idxtype MlevelKWayRefinement(CtrlType *ctrl, GraphType *graph, idxtype nparts, i
 
   idxcopy(graph->nvtxs, graph->where, part);
 
-  GKfree((void *)&graph->gdata, &graph->rdata, LTERM);
+  FreeGraph(graph, 0);
 
   return graph->mincut;
 

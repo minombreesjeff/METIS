@@ -46,13 +46,13 @@ void PQueueInit(CtrlType *ctrl, PQueueType *queue, idxtype maxnodes, idxtype max
     ncore = 2 + (sizeof(ListNodeType)/sizeof(idxtype))*maxnodes + (sizeof(ListNodeType *)/sizeof(idxtype))*j;
 
     if (WspaceAvail(ctrl) > ncore) {
-      queue->nodes = (ListNodeType *)idxwspacemalloc(ctrl, (sizeof(ListNodeType)/sizeof(idxtype))*maxnodes);
-      queue->buckets = (ListNodeType **)idxwspacemalloc(ctrl, (sizeof(ListNodeType *)/sizeof(idxtype))*j);
+      queue->nodes    = (ListNodeType *)idxwspacemalloc(ctrl, (sizeof(ListNodeType)/sizeof(idxtype))*maxnodes);
+      queue->buckets  = (ListNodeType **)idxwspacemalloc(ctrl, (sizeof(ListNodeType *)/sizeof(idxtype))*j);
       queue->mustfree = 0;
     }
     else { /* Not enough memory in the wspace, allocate it */
-      queue->nodes = (ListNodeType *)idxmalloc((sizeof(ListNodeType)/sizeof(idxtype))*maxnodes, "PQueueInit: queue->nodes");
-      queue->buckets = (ListNodeType **)idxmalloc((sizeof(ListNodeType *)/sizeof(idxtype))*j, "PQueueInit: queue->buckets");
+      queue->nodes    = (ListNodeType *)gk_malloc(maxnodes*sizeof(ListNodeType), "PQueueInit: queue->nodes");
+      queue->buckets  = (ListNodeType **)gk_malloc(j*sizeof(ListNodeType *), "PQueueInit: queue->buckets");
       queue->mustfree = 1;
     }
 
@@ -70,7 +70,6 @@ void PQueueInit(CtrlType *ctrl, PQueueType *queue, idxtype maxnodes, idxtype max
     queue->locator = idxwspacemalloc(ctrl, maxnodes);
     idxset(maxnodes, -1, queue->locator);
   }
-
 }
 
 
@@ -107,7 +106,7 @@ void PQueueFree(CtrlType *ctrl, PQueueType *queue)
   if (queue->type == 1) {
     if (queue->mustfree) {
       queue->buckets -= queue->ngainspan;  
-      GKfree((void *)&queue->nodes, &queue->buckets, LTERM);
+      gk_free((void **)&queue->nodes, &queue->buckets, LTERM);
     } 
     else {
       idxwspacefree(ctrl, sizeof(ListNodeType *)*(queue->ngainspan+queue->pgainspan+1)/sizeof(idxtype));

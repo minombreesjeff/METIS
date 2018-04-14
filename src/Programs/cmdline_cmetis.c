@@ -17,7 +17,7 @@
 /*-------------------------------------------------------------------
  * Command-line options 
  *-------------------------------------------------------------------*/
-static struct option long_options[] = {
+static struct gk_option long_options[] = {
   {"mtype",          1,      0,      CMD_MTYPE},
   {"itype",          1,      0,      CMD_ITYPE},
   {"rtype",          1,      0,      CMD_RTYPE},
@@ -41,7 +41,7 @@ static struct option long_options[] = {
 /*-------------------------------------------------------------------
  * Mappings for the various parameter values
  *-------------------------------------------------------------------*/
-static StringMapType mtype_options[] = {
+static gk_StringMap_t mtype_options[] = {
  {"rm",                 MTYPE_RM},
  {"hem",                MTYPE_HEM},
  {"shem",               MTYPE_SHEM},
@@ -51,14 +51,14 @@ static StringMapType mtype_options[] = {
 };
 
 
-static StringMapType itype_options[] = {
+static gk_StringMap_t itype_options[] = {
  {"greedy",              ITYPE_GGPKL},
  {"random",              ITYPE_RANDOM},
  {NULL,                 0}
 };
 
 
-static StringMapType rtype_options[] = {
+static gk_StringMap_t rtype_options[] = {
  {"fm",            RTYPE_FM},
  {NULL,                 0}
 };
@@ -129,10 +129,10 @@ static char shorthelpstr[][100] = {
 /*************************************************************************
 * This is the entry point of the command-line argument parser
 **************************************************************************/
-void parse_cmdline(ParamType *params, idxtype argc, char *argv[])
+void parse_cmdline(ParamType *params, int argc, char *argv[])
 {
-  idxtype i, j, k;
-  idxtype c, option_index;
+  int i, j, k;
+  int c, option_index;
 
   /* initialize the params data structure */
   params->mtype         = PMETIS_CTYPE;
@@ -149,22 +149,22 @@ void parse_cmdline(ParamType *params, idxtype argc, char *argv[])
 
 
   /* Parse the command line arguments  */
-  while ((c = getopt_long_only(argc, argv, "", long_options, &option_index)) != -1) {
+  while ((c = gk_getopt_long_only(argc, argv, "", long_options, &option_index)) != -1) {
     switch (c) {
       case CMD_MTYPE:
-        if (optarg)
-          if ((params->mtype = GetStringID(mtype_options, optarg)) == -1)
-            errexit("Invalid option -%s=%s\n", long_options[option_index].name, optarg);
+        if (gk_optarg)
+          if ((params->mtype = gk_GetStringID(mtype_options, gk_optarg)) == -1)
+            errexit("Invalid option -%s=%s\n", long_options[option_index].name, gk_optarg);
         break;
       case CMD_ITYPE:
-        if (optarg)
-          if ((params->itype = GetStringID(itype_options, optarg)) == -1)
-            errexit("Invalid option -%s=%s\n", long_options[option_index].name, optarg);
+        if (gk_optarg)
+          if ((params->itype = gk_GetStringID(itype_options, gk_optarg)) == -1)
+            errexit("Invalid option -%s=%s\n", long_options[option_index].name, gk_optarg);
         break;
       case CMD_RTYPE:
-        if (optarg)
-          if ((params->rtype = GetStringID(rtype_options, optarg)) == -1)
-            errexit("Invalid option -%s=%s\n", long_options[option_index].name, optarg);
+        if (gk_optarg)
+          if ((params->rtype = gk_GetStringID(rtype_options, gk_optarg)) == -1)
+            errexit("Invalid option -%s=%s\n", long_options[option_index].name, gk_optarg);
         break;
 
       case CMD_BALANCE:
@@ -173,35 +173,35 @@ void parse_cmdline(ParamType *params, idxtype argc, char *argv[])
 
 
       case CMD_SEED:
-        if (optarg) params->seed = atoi(optarg);
+        if (gk_optarg) params->seed = atoi(gk_optarg);
         break;
 
       case CMD_DBGLVL:
-        if (optarg) params->dbglvl = atoi(optarg);
+        if (gk_optarg) params->dbglvl = atoi(gk_optarg);
         break;
 
       case CMD_HELP:
         for (i=0; strlen(helpstr[i]) > 0; i++)
-          printf("%s\n", helpstr[i]);
+          mprintf("%s\n", helpstr[i]);
         exit(0);
         break;
       case '?':
       default:
-        printf("Illegal command-line option(s)\nUse %s -help for a summary of the options.\n", argv[0]);
+        mprintf("Illegal command-line option(s)\nUse %s -help for a summary of the options.\n", argv[0]);
         exit(0);
     }
   }
 
-  if (argc-optind != 3) {
-    printf("Missing parameters.");
+  if (argc-gk_optind != 3) {
+    mprintf("Missing parameters.");
     for (i=0; strlen(shorthelpstr[i]) > 0; i++)
-      printf("%s\n", shorthelpstr[i]);
+      mprintf("%s\n", shorthelpstr[i]);
     exit(0);
   }
 
-  params->filename    = strdup(argv[optind++]);
-  params->xyzfilename = strdup(argv[optind++]);
-  params->nparts      = atoi(argv[optind++]);
+  params->filename    = strdup(argv[gk_optind++]);
+  params->xyzfilename = strdup(argv[gk_optind++]);
+  params->nparts      = atoi(argv[gk_optind++]);
     
 }
 

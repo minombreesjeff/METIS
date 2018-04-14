@@ -63,21 +63,21 @@ idxtype CheckGraph(GraphType *graph)
       maxewgt = (adjwgt[j] > maxewgt) ? adjwgt[j] : maxewgt;
 
       if (i == k) {
-        printf("Vertex %d contains a self-loop (i.e., diagonal entry in the matrix)!\n", i);
+        mprintf("Vertex %D contains a self-loop (i.e., diagonal entry in the matrix)!\n", i);
         err++;
       }
       else {
         for (l=xadj[k]; l<xadj[k+1]; l++) {
           if (adjncy[l] == i) {
             if (adjwgt != NULL && adjwgt[l] != adjwgt[j]) {
-              printf("Edges (%d %d) and (%d %d) do not have the same weight! %d %d\n", i,k,k,i, adjwgt[l], adjwgt[j]);
+              mprintf("Edges (%D %D) and (%D %D) do not have the same weight! %D %D\n", i,k,k,i, adjwgt[l], adjwgt[j]);
               err++;
             }
             break;
           }
         }
         if (l == xadj[k+1]) {
-          printf("Missing edge: (%d %d)!\n", k, i);
+          mprintf("Missing edge: (%D %D)!\n", k, i);
           err++;
         }
       }
@@ -86,7 +86,7 @@ idxtype CheckGraph(GraphType *graph)
         htable[k]++;
       }
       else {
-        printf("Edge %d from vertex %d is repeated %d times\n", k, i, htable[k]++);
+        mprintf("Edge %D from vertex %D is repeated %D times\n", k, i, htable[k]++);
         err++;
       }
     }
@@ -99,27 +99,27 @@ idxtype CheckGraph(GraphType *graph)
   if (ncon > 1) {
     for (j=0; j<ncon; j++) {
       if (fabs(ntvwgts[j] - 1.0) > 0.0001) {
-        printf("Normalized vwgts don't sum to one.  Weight %d = %.8f.\n", j, ntvwgts[j]);
+        mprintf("Normalized vwgts don't sum to one.  Weight %D = %.8f.\n", j, ntvwgts[j]);
         err++;
       }
     }
   }
 
 /*
-  printf("errs: %d, adjncy: [%d %d], adjwgt: [%d %d]\n",
+  mprintf("errs: %D, adjncy: [%D %D], adjwgt: [%D %D]\n",
   err, minedge, maxedge, minewgt, maxewgt);
   if (ncon > 1) {
     for (j=0; j<ncon; j++)
-      printf("[%.5f %.5f] ", minvwgt[j], maxvwgt[j]);
-    printf("\n");
+      mprintf("[%.5f %.5f] ", minvwgt[j], maxvwgt[j]);
+    mprintf("\n");
   }
 */
  
   if (err > 0) { 
-    printf("A total of %d errors exist in the input file. Correct them, and run again!\n", err);
+    mprintf("A total of %D errors exist in the input file. Correct them, and run again!\n", err);
   }
 
-  GKfree((void *)&htable, LTERM);
+  gk_free((void **)&htable, LTERM);
   return (err == 0 ? 1 : 0);
 }
 

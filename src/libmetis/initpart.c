@@ -24,7 +24,7 @@ void Init2WayPartition(CtrlType *ctrl, GraphType *graph, idxtype *tpwgts, float 
   IFSET(ctrl->dbglvl, DBG_REFINE, ctrl->dbglvl -= DBG_REFINE);
   IFSET(ctrl->dbglvl, DBG_MOVEINFO, ctrl->dbglvl -= DBG_MOVEINFO);
 
-  IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->InitPartTmr));
+  IFSET(ctrl->dbglvl, DBG_TIME, gk_startcputimer(ctrl->InitPartTmr));
 
   switch (ctrl->IType) {
     case ITYPE_GGPKL:
@@ -40,8 +40,8 @@ void Init2WayPartition(CtrlType *ctrl, GraphType *graph, idxtype *tpwgts, float 
       errexit("Unknown initial partition type: %d\n", ctrl->IType);
   }
 
-  IFSET(ctrl->dbglvl, DBG_IPART, printf("Initial Cut: %d\n", graph->mincut));
-  IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->InitPartTmr));
+  IFSET(ctrl->dbglvl, DBG_IPART, mprintf("Initial Cut: %D\n", graph->mincut));
+  IFSET(ctrl->dbglvl, DBG_TIME, gk_stopcputimer(ctrl->InitPartTmr));
   ctrl->dbglvl = dbglvl;
 
 /*
@@ -61,13 +61,13 @@ void InitSeparator(CtrlType *ctrl, GraphType *graph, float ubfactor)
   IFSET(ctrl->dbglvl, DBG_REFINE, ctrl->dbglvl -= DBG_REFINE);
   IFSET(ctrl->dbglvl, DBG_MOVEINFO, ctrl->dbglvl -= DBG_MOVEINFO);
 
-  IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->InitPartTmr));
+  IFSET(ctrl->dbglvl, DBG_TIME, gk_startcputimer(ctrl->InitPartTmr));
 
   GrowBisectionNode(ctrl, graph, ubfactor);
   Compute2WayNodePartitionParams(ctrl, graph);
 
-  IFSET(ctrl->dbglvl, DBG_IPART, printf("Initial Sep: %d\n", graph->mincut));
-  IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->InitPartTmr));
+  IFSET(ctrl->dbglvl, DBG_IPART, mprintf("Initial Sep: %D\n", graph->mincut));
+  IFSET(ctrl->dbglvl, DBG_TIME, gk_stopcputimer(ctrl->InitPartTmr));
 
   ctrl->dbglvl = dbglvl;
 
@@ -101,7 +101,7 @@ void GrowBisection(CtrlType *ctrl, GraphType *graph, idxtype *tpwgts, float ubfa
   queue = idxmalloc(nvtxs, "BisectGraph: queue");
   touched = idxmalloc(nvtxs, "BisectGraph: touched");
 
-  ASSERTP(tpwgts[0]+tpwgts[1] == idxsum(nvtxs, vwgt), ("%d %d\n", tpwgts[0]+tpwgts[1], idxsum(nvtxs, vwgt)));
+  ASSERTP(tpwgts[0]+tpwgts[1] == idxsum(nvtxs, vwgt, 1), ("%d %d\n", tpwgts[0]+tpwgts[1], idxsum(nvtxs, vwgt, 1)));
 
   maxpwgt[0] = ubfactor*tpwgts[0];
   maxpwgt[1] = ubfactor*tpwgts[1];
@@ -178,13 +178,13 @@ void GrowBisection(CtrlType *ctrl, GraphType *graph, idxtype *tpwgts, float ubfa
     * Do some partition refinement 
     **************************************************************/
     Compute2WayPartitionParams(ctrl, graph);
-    /*printf("IPART: %3d [%5d %5d] [%5d %5d] %5d\n", graph->nvtxs, pwgts[0], pwgts[1], graph->pwgts[0], graph->pwgts[1], graph->mincut); */
+    /*mprintf("IPART: %3D [%5D %5D] [%5D %5D] %5D\n", graph->nvtxs, pwgts[0], pwgts[1], graph->pwgts[0], graph->pwgts[1], graph->mincut); */
 
     Balance2Way(ctrl, graph, tpwgts, ubfactor);
-    /*printf("BPART: [%5d %5d] %5d\n", graph->pwgts[0], graph->pwgts[1], graph->mincut);*/
+    /*mprintf("BPART: [%5D %5D] %5D\n", graph->pwgts[0], graph->pwgts[1], graph->mincut);*/
 
     FM_2WayEdgeRefine(ctrl, graph, tpwgts, 4);
-    /*printf("RPART: [%5d %5d] %5d\n", graph->pwgts[0], graph->pwgts[1], graph->mincut);*/
+    /*mprintf("RPART: [%5D %5D] %5D\n", graph->pwgts[0], graph->pwgts[1], graph->mincut);*/
 
     if (inbfs == 0 || bestcut > graph->mincut) {
       bestcut = graph->mincut;
@@ -197,7 +197,7 @@ void GrowBisection(CtrlType *ctrl, GraphType *graph, idxtype *tpwgts, float ubfa
   graph->mincut = bestcut;
   idxcopy(nvtxs, bestwhere, where);
 
-  GKfree((void *)&bestwhere, &queue, &touched, LTERM);
+  gk_free((void **)&bestwhere, &queue, &touched, LTERM);
 }
 
 
@@ -226,7 +226,7 @@ void GrowBisectionNode(CtrlType *ctrl, GraphType *graph, float ubfactor)
   queue = idxmalloc(nvtxs, "BisectGraph: queue");
   touched = idxmalloc(nvtxs, "BisectGraph: touched");
 
-  tpwgts[0] = idxsum(nvtxs, vwgt);
+  tpwgts[0] = idxsum(nvtxs, vwgt, 1);
   tpwgts[1] = tpwgts[0]/2;
   tpwgts[0] -= tpwgts[1];
 
@@ -235,16 +235,16 @@ void GrowBisectionNode(CtrlType *ctrl, GraphType *graph, float ubfactor)
   minpwgt[0] = (1.0/ubfactor)*tpwgts[0];
   minpwgt[1] = (1.0/ubfactor)*tpwgts[1];
 
-  /* Allocate memory for graph->rdata. Allocate sufficient memory for both edge and node */
-  graph->rdata = idxmalloc(5*nvtxs+3, "GrowBisectionNode: graph->rdata");
-  graph->pwgts    = graph->rdata;
-  graph->where    = graph->rdata + 3;
-  graph->bndptr   = graph->rdata + nvtxs + 3;
-  graph->bndind   = graph->rdata + 2*nvtxs + 3;
-  graph->nrinfo   = (NRInfoType *)(graph->rdata + 3*nvtxs + 3);
-  graph->id       = graph->rdata + 3*nvtxs + 3;
-  graph->ed       = graph->rdata + 4*nvtxs + 3;
+  /* Allocate refinement memory. Allocate sufficient memory for both edge and node */
+  graph->pwgts  = idxmalloc(3, "GrowBisectionNode: pwgts");
+  graph->where  = idxmalloc(nvtxs, "GrowBisectionNode: where");
+  graph->bndptr = idxmalloc(nvtxs, "GrowBisectionNode: bndptr");
+  graph->bndind = idxmalloc(nvtxs, "GrowBisectionNode: bndind");
+  graph->id     = idxmalloc(nvtxs, "GrowBisectionNode: id");
+  graph->ed     = idxmalloc(nvtxs, "GrowBisectionNode: ed");
+  graph->nrinfo = (NRInfoType *)gk_malloc(nvtxs*sizeof(NRInfoType), "GrowBisectionNode: nrinfo");
   
+
   where = graph->where;
   bndind = graph->bndind;
 
@@ -323,7 +323,7 @@ void GrowBisectionNode(CtrlType *ctrl, GraphType *graph, float ubfactor)
     Compute2WayNodePartitionParams(ctrl, graph); 
     FM_2WayNodeRefine(ctrl, graph, ubfactor, 6);
 
-    /* printf("ISep: [%d %d %d] %d\n", graph->pwgts[0], graph->pwgts[1], graph->pwgts[2], bestcut); */
+    /* mprintf("ISep: [%D %D %D] %D\n", graph->pwgts[0], graph->pwgts[1], graph->pwgts[2], bestcut); */
 
     if (inbfs == 0 || bestcut > graph->mincut) {
       bestcut = graph->mincut;
@@ -336,7 +336,7 @@ void GrowBisectionNode(CtrlType *ctrl, GraphType *graph, float ubfactor)
 
   Compute2WayNodePartitionParams(ctrl, graph); 
 
-  GKfree((void *)&bestwhere, &queue, &touched, LTERM);
+  gk_free((void **)&bestwhere, &queue, &touched, LTERM);
 }
 
 
@@ -364,7 +364,7 @@ void RandomBisection(CtrlType *ctrl, GraphType *graph, idxtype *tpwgts, float ub
   bestwhere = idxmalloc(nvtxs, "BisectGraph: bestwhere");
   perm = idxmalloc(nvtxs, "BisectGraph: queue");
 
-  ASSERTP(tpwgts[0]+tpwgts[1] == idxsum(nvtxs, vwgt), ("%d %d\n", tpwgts[0]+tpwgts[1], idxsum(nvtxs, vwgt)));
+  ASSERTP(tpwgts[0]+tpwgts[1] == idxsum(nvtxs, vwgt, 1), ("%d %d\n", tpwgts[0]+tpwgts[1], idxsum(nvtxs, vwgt, 1)));
 
   maxpwgt[0] = ubfactor*tpwgts[0];
   maxpwgt[1] = ubfactor*tpwgts[1];
@@ -397,13 +397,13 @@ void RandomBisection(CtrlType *ctrl, GraphType *graph, idxtype *tpwgts, float ub
     * Do some partition refinement 
     **************************************************************/
     Compute2WayPartitionParams(ctrl, graph);
-    /* printf("IPART: %3d [%5d %5d] [%5d %5d] %5d\n", graph->nvtxs, pwgts[0], pwgts[1], graph->pwgts[0], graph->pwgts[1], graph->mincut); */
+    /* mprintf("IPART: %3D [%5D %5D] [%5D %5D] %5D\n", graph->nvtxs, pwgts[0], pwgts[1], graph->pwgts[0], graph->pwgts[1], graph->mincut); */
 
     Balance2Way(ctrl, graph, tpwgts, ubfactor);
-    /* printf("BPART: [%5d %5d] %5d\n", graph->pwgts[0], graph->pwgts[1], graph->mincut); */
+    /* mprintf("BPART: [%5D %5D] %5D\n", graph->pwgts[0], graph->pwgts[1], graph->mincut); */
 
     FM_2WayEdgeRefine(ctrl, graph, tpwgts, 4);
-    /* printf("RPART: [%5d %5d] %5d\n", graph->pwgts[0], graph->pwgts[1], graph->mincut); */
+    /* mprintf("RPART: [%5D %5D] %5D\n", graph->pwgts[0], graph->pwgts[1], graph->mincut); */
 
     if (inbfs==0 || bestcut > graph->mincut) {
       bestcut = graph->mincut;
@@ -416,7 +416,7 @@ void RandomBisection(CtrlType *ctrl, GraphType *graph, idxtype *tpwgts, float ub
   graph->mincut = bestcut;
   idxcopy(nvtxs, bestwhere, where);
 
-  GKfree((void *)&bestwhere, &perm, LTERM);
+  gk_free((void **)&bestwhere, &perm, LTERM);
 }
 
 

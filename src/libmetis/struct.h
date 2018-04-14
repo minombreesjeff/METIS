@@ -12,10 +12,10 @@
  */
 
 
-#define MAXIDX	(1<<8*sizeof(idxtype)-2)
+#define MAXIDX	((idxtype)1<<(8*sizeof(idxtype))-2)
 
 /*************************************************************************
-* The following data structure stores int-val - double-key pairs
+* The following data structure stores idxtype-val - double-key pairs
 **************************************************************************/
 typedef struct {
   idxtype dim;
@@ -31,7 +31,7 @@ typedef struct {
 
 
 /*************************************************************************
-* The following data structure stores int-val - double-key pairs
+* The following data structure stores idxtype-val - double-key pairs
 **************************************************************************/
 typedef struct {
   idxtype nvtxs;
@@ -45,7 +45,7 @@ typedef struct {
 
 
 /*************************************************************************
-* The following data structure stores int-key - double-value pairs
+* The following data structure stores idxtype-key - double-value pairs
 **************************************************************************/
 typedef struct {
   double key;
@@ -183,16 +183,18 @@ typedef struct nrinfodef NRInfoType;
 * This data structure holds the input graph
 **************************************************************************/
 struct graphdef {
-  idxtype *gdata, *rdata;	/* Memory pools for graph and refinement data.
-                                   This is where memory is allocated and used
-                                   the rest of the fields in this structure */
-
-  idxtype nvtxs, nedges;		/* The # of vertices and edges in the graph */
+  idxtype nvtxs, nedges;	/* The # of vertices and edges in the graph */
   idxtype *xadj;		/* Pointers to the locally stored vertices */
   idxtype *vwgt;		/* Vertex weights */
   idxtype *vsize;		/* Vertex sizes for min-volume formulation */
   idxtype *adjncy;		/* Array that stores the adjacency lists of nvtxs */
   idxtype *adjwgt;		/* Array that stores the weights of the adjacency lists */
+
+
+  /* These are to keep track control if the corresponding fields correspond to
+     application or library memory */
+  int free_xadj, free_vwgt, free_vsize, free_adjncy, free_adjwgt;
+
 
   double *coords;               /* x, y, and z, Coordinates */
 
@@ -233,11 +235,6 @@ typedef struct graphdef GraphType;
 
 
 
-/*************************************************************************
-* The following data type implements a timer
-**************************************************************************/
-typedef double timer;
-
 
 /*************************************************************************
 * The following structure stores information used by Metis
@@ -258,8 +255,8 @@ struct controldef {
   WorkSpaceType wspace;		/* Work Space Informations */
 
   /* Various Timers */
-  timer TotalTmr, InitPartTmr, MatchTmr, ContractTmr, CoarsenTmr, UncoarsenTmr, 
-        SepTmr, RefTmr, ProjectTmr, SplitTmr, AuxTmr1, AuxTmr2, AuxTmr3, AuxTmr4, AuxTmr5, AuxTmr6;
+  double TotalTmr, InitPartTmr, MatchTmr, ContractTmr, CoarsenTmr, UncoarsenTmr, 
+         SepTmr, RefTmr, ProjectTmr, SplitTmr, AuxTmr1, AuxTmr2, AuxTmr3, AuxTmr4, AuxTmr5, AuxTmr6;
 
 };
 

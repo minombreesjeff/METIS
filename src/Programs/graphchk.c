@@ -19,14 +19,14 @@
 /*************************************************************************
 * Let the game begin
 **************************************************************************/
-int main(idxtype argc, char *argv[])
+int main(int argc, char *argv[])
 {
   GraphType graph;
   char filename[256];
   idxtype wgtflag;
 
   if (argc != 2) {
-    printf("Usage: %s <GraphFile>\n", argv[0]);
+    mprintf("Usage: %s <GraphFile>\n", argv[0]);
     exit(0);
   }
     
@@ -34,25 +34,25 @@ int main(idxtype argc, char *argv[])
 
   ReadGraph(&graph, filename, &wgtflag);
   if (graph.nvtxs == 0) {
-    printf("Empty graph!\n");
+    mprintf("Empty graph!\n");
     exit(0);
   }
 
-  printf("**********************************************************************\n");
-  printf("%s", METISTITLE);
-  printf("Graph Information ---------------------------------------------------\n");
-  printf("  Name: %s, #Vertices: %d, #Edges: %d\n\n", filename, graph.nvtxs, graph.nedges/2);
-  printf("Checking Graph... ---------------------------------------------------\n");
+  mprintf("**********************************************************************\n");
+  mprintf("%s", METISTITLE);
+  mprintf("Graph Information ---------------------------------------------------\n");
+  mprintf("  Name: %s, #Vertices: %D, #Edges: %D\n\n", filename, graph.nvtxs, graph.nedges/2);
+  mprintf("Checking Graph... ---------------------------------------------------\n");
 
   if (CheckGraph(&graph))
-    printf("   The format of the graph is correct!\n");
+    mprintf("   The format of the graph is correct!\n");
   else
-    printf("   The format of the graph is incorrect!\n");
+    mprintf("   The format of the graph is incorrect!\n");
 
-  printf("\n**********************************************************************\n");
+  mprintf("\n**********************************************************************\n");
 
 
-  GKfree((void *)&graph.xadj, &graph.adjncy, &graph.vwgt, &graph.adjwgt, LTERM);
+  gk_free((void **)&graph.xadj, &graph.adjncy, &graph.vwgt, &graph.adjwgt, LTERM);
 }  
 
 

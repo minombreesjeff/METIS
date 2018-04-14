@@ -1,5 +1,5 @@
-
 SHELL = /bin/sh
+usegdb=1
 
 #*************************************************************************
 # System-specific compilation flags
@@ -152,7 +152,7 @@ endif
 # Makefile.in is different for different project.
 #**************************************************************************
 # Version of the build/source
-VERNUM   = 5.0pre1
+VERNUM   = 5.0pre2
 PKGNAME  = metis-$(VERNUM)
 
 # Create the build directory if it does not exist
@@ -165,10 +165,15 @@ endif
 BINDIR=
 
 TOPDIR      = ..
+
 BUILDDIR    = $(TOPDIR)/build/$(systype)-$(cputype)
 LIBBUILDDIR = $(BUILDDIR)/libmetis
 PRGBUILDDIR = $(BUILDDIR)/programs
 TSTBUILDDIR = $(BUILDDIR)/test
+
+GKLIBDIR      = $(TOPDIR)/GKlib
+GKLIBINCDIR   = $(GKLIBDIR)/trunk
+GKLIBBUILDDIR = $(GKLIBDIR)/builds/$(systype)-$(cputype)
 
 $(shell mkdir -p $(BUILDDIR))
 $(shell mkdir -p $(LIBBUILDDIR))
@@ -176,10 +181,8 @@ $(shell mkdir -p $(PRGBUILDDIR))
 $(shell mkdir -p $(TSTBUILDDIR))
 
 
-#GKLIBINCDIR   = ../../../../GKlib/trunk/
-#GKLIBBUILDDIR = ../../../../GKlib/builds/$(systype)-$(cputype)
 
-INCLUDES = -I./ -I$(TOPDIR)/include #-I$(TOPDIR)/config #-I$(GKLIBINCDIR) 
+INCLUDES = -I./ -I$(TOPDIR)/include -I$(GKLIBINCDIR) #-I$(TOPDIR)/config 
 CFLAGS   = $(COPTIONS) $(OPTFLAGS) $(INCLUDES)
 
 

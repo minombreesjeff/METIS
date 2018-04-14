@@ -21,13 +21,13 @@ void MocRefineKWayHorizontal(CtrlType *ctrl, GraphType *orggraph, GraphType *gra
        float *ubvec)
 {
 
-  IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->UncoarsenTmr));
+  IFSET(ctrl->dbglvl, DBG_TIME, gk_startcputimer(ctrl->UncoarsenTmr));
 
   /* Compute the parameters of the coarsest graph */
   MocComputeKWayPartitionParams(ctrl, graph, nparts);
 
   for (;;) {
-    IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->RefTmr));
+    IFSET(ctrl->dbglvl, DBG_TIME, gk_startcputimer(ctrl->RefTmr));
 
     if (!MocIsHBalanced(graph->ncon, nparts, graph->npwgts, ubvec)) {
       MocComputeKWayBalanceBoundary(ctrl, graph, nparts);
@@ -37,15 +37,15 @@ void MocRefineKWayHorizontal(CtrlType *ctrl, GraphType *orggraph, GraphType *gra
 
     MCRandom_KWayEdgeRefineHorizontal(ctrl, graph, nparts, ubvec, 10); 
 
-    IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->RefTmr));
+    IFSET(ctrl->dbglvl, DBG_TIME, gk_stopcputimer(ctrl->RefTmr));
 
     if (graph == orggraph)
       break;
 
     graph = graph->finer;
-    IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->ProjectTmr));
+    IFSET(ctrl->dbglvl, DBG_TIME, gk_startcputimer(ctrl->ProjectTmr));
     MocProjectKWayPartition(ctrl, graph, nparts);
-    IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->ProjectTmr));
+    IFSET(ctrl->dbglvl, DBG_TIME, gk_stopcputimer(ctrl->ProjectTmr));
   }
 
   if (!MocIsHBalanced(graph->ncon, nparts, graph->npwgts, ubvec)) {
@@ -55,7 +55,7 @@ void MocRefineKWayHorizontal(CtrlType *ctrl, GraphType *orggraph, GraphType *gra
     MCRandom_KWayEdgeRefineHorizontal(ctrl, graph, nparts, ubvec, 10); 
   }
 
-  IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->UncoarsenTmr));
+  IFSET(ctrl->dbglvl, DBG_TIME, gk_stopcputimer(ctrl->UncoarsenTmr));
 }
 
 
@@ -66,20 +66,18 @@ void MocRefineKWayHorizontal(CtrlType *ctrl, GraphType *orggraph, GraphType *gra
 **************************************************************************/
 void MocAllocateKWayPartitionMemory(CtrlType *ctrl, GraphType *graph, idxtype nparts)
 {
-  idxtype nvtxs, ncon, pad64;
+  idxtype nvtxs, ncon;
 
   nvtxs = graph->nvtxs;
   ncon = graph->ncon;
 
-  pad64 = (3*nvtxs)%2;
+  graph->where  = idxmalloc(nvtxs, "MocAllocateKWayPartitionMemory: where");
+  graph->bndptr = idxmalloc(nvtxs, "MocAllocateKWayPartitionMemory: bndptr");
+  graph->bndind = idxmalloc(nvtxs, "MocAllocateKWayPartitionMemory: bndind");
 
-  graph->rdata = idxmalloc(3*nvtxs+(sizeof(RInfoType)/sizeof(idxtype))*nvtxs+pad64, "AllocateKWayPartitionMemory: rdata");
-  graph->where          = graph->rdata;
-  graph->bndptr         = graph->rdata + nvtxs;
-  graph->bndind         = graph->rdata + 2*nvtxs;
-  graph->rinfo          = (RInfoType *)(graph->rdata + 3*nvtxs + pad64);
+  graph->npwgts = gk_fmalloc(ncon*nparts, "MocAllocateKWayPartitionMemory: npwgts");
 
-  graph->npwgts         = fmalloc(ncon*nparts, "MocAllocateKWayPartitionMemory: npwgts");
+  graph->rinfo  = (RInfoType *)gk_malloc(nvtxs*sizeof(RInfoType), "MocAllocateKWayPartitionMemory: rinfo");
 }
 
 
@@ -102,7 +100,7 @@ void MocComputeKWayPartitionParams(CtrlType *ctrl, GraphType *graph, idxtype npa
   adjwgt = graph->adjwgt;
 
   where = graph->where;
-  npwgts = sset(ncon*nparts, 0.0, graph->npwgts);
+  npwgts = gk_fset(ncon*nparts, 0.0, graph->npwgts);
   bndind = graph->bndind;
   bndptr = idxset(nvtxs, -1, graph->bndptr);
   rinfo = graph->rinfo;
@@ -115,7 +113,7 @@ void MocComputeKWayPartitionParams(CtrlType *ctrl, GraphType *graph, idxtype npa
   nbnd = mincut = 0;
   for (i=0; i<nvtxs; i++) {
     me = where[i];
-    saxpy(ncon, 1.0, nvwgt+i*ncon, 1, npwgts+me*ncon, 1);
+    gk_faxpy(ncon, 1.0, nvwgt+i*ncon, 1, npwgts+me*ncon, 1);
 
     myrinfo = rinfo+i;
     myrinfo->id = myrinfo->ed = myrinfo->ndegrees = 0;
@@ -257,11 +255,11 @@ void MocProjectKWayPartition(CtrlType *ctrl, GraphType *graph, idxtype nparts)
     }
   }
 
-  scopy(graph->ncon*nparts, cgraph->npwgts, graph->npwgts);
+  gk_fcopy(graph->ncon*nparts, cgraph->npwgts, graph->npwgts);
   graph->mincut = cgraph->mincut;
   graph->nbnd = nbnd;
 
-  FreeGraph(graph->coarser);
+  FreeGraph(graph->coarser, 1);
   graph->coarser = NULL;
 
   idxwspacefree(ctrl, nparts);

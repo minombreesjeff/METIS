@@ -3,11 +3,12 @@ include ../Makefile.in
 CURBUILDDIR = $(LIBBUILDDIR)
 
 OBJS      = $(patsubst %.c, $(CURBUILDDIR)/%$(OBJEXT), $(wildcard *.c))
-HEADERS   = $(wildcard *.h) $(TOPDIR)/include/metis.h 
+HEADERS   = $(wildcard *.h) $(TOPDIR)/include/metis.h  $(wildcard $(GKLIBINCDIR)/*.h)
 
+GKLIBOBJS = $(wildcard $(GKLIBBUILDDIR)/*$(OBJEXT))
 
-$(BUILDDIR)/libmetis$(LIBEXT): $(OBJS) 
-	$(AR) $(OBJS) 
+$(BUILDDIR)/libmetis$(LIBEXT): $(OBJS) $(GKLIBOBJS)
+	$(AR) $(OBJS) $(GKLIBOBJS)
 	$(RANLIB) 
 
 clean:

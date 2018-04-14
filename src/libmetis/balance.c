@@ -72,10 +72,10 @@ void Bnd2WayBalance(CtrlType *ctrl, GraphType *graph, idxtype *tpwgts)
   to = (from+1)%2;
 
   IFSET(ctrl->dbglvl, DBG_REFINE, 
-     printf("Partitions: [%6d %6d] T[%6d %6d], Nv-Nb[%6d %6d]. ICut: %6d [B]\n",
+     mprintf("Partitions: [%6D %6D] T[%6D %6D], Nv-Nb[%6D %6D]. ICut: %6D [B]\n",
              pwgts[0], pwgts[1], tpwgts[0], tpwgts[1], graph->nvtxs, graph->nbnd, graph->mincut));
 
-  tmp = graph->adjwgtsum[idxamax(nvtxs, graph->adjwgtsum)];
+  tmp = graph->adjwgtsum[idxargmax(nvtxs, graph->adjwgtsum)];
   PQueueInit(ctrl, &parts, nvtxs, tmp);
 
   idxset(nvtxs, -1, moved);
@@ -110,7 +110,7 @@ void Bnd2WayBalance(CtrlType *ctrl, GraphType *graph, idxtype *tpwgts)
     moved[higain] = nswaps;
 
     IFSET(ctrl->dbglvl, DBG_MOVEINFO, 
-      printf("Moved %6d from %d. [%3d %3d] %5d [%4d %4d]\n", higain, from, ed[higain]-id[higain], vwgt[higain], mincut, pwgts[0], pwgts[1]));
+      mprintf("Moved %6D from %D. [%3D %3D] %5D [%4D %4D]\n", higain, from, ed[higain]-id[higain], vwgt[higain], mincut, pwgts[0], pwgts[1]));
 
     /**************************************************************
     * Update the id[i]/ed[i] values of the affected nodes
@@ -149,7 +149,7 @@ void Bnd2WayBalance(CtrlType *ctrl, GraphType *graph, idxtype *tpwgts)
   }
 
   IFSET(ctrl->dbglvl, DBG_REFINE, 
-    printf("\tMinimum cut: %6d, PWGTS: [%6d %6d], NBND: %6d\n", mincut, pwgts[0], pwgts[1], nbnd));
+    mprintf("\tMinimum cut: %6D, PWGTS: [%6D %6D], NBND: %6D\n", mincut, pwgts[0], pwgts[1], nbnd));
 
   graph->mincut = mincut;
   graph->nbnd = nbnd;
@@ -198,10 +198,10 @@ void General2WayBalance(CtrlType *ctrl, GraphType *graph, idxtype *tpwgts)
   to = (from+1)%2;
 
   IFSET(ctrl->dbglvl, DBG_REFINE, 
-     printf("Partitions: [%6d %6d] T[%6d %6d], Nv-Nb[%6d %6d]. ICut: %6d [B]\n",
+     mprintf("Partitions: [%6D %6D] T[%6D %6D], Nv-Nb[%6D %6D]. ICut: %6D [B]\n",
              pwgts[0], pwgts[1], tpwgts[0], tpwgts[1], graph->nvtxs, graph->nbnd, graph->mincut));
 
-  tmp = graph->adjwgtsum[idxamax(nvtxs, graph->adjwgtsum)];
+  tmp = graph->adjwgtsum[idxargmax(nvtxs, graph->adjwgtsum)];
   PQueueInit(ctrl, &parts, nvtxs, tmp);
 
   idxset(nvtxs, -1, moved);
@@ -233,7 +233,7 @@ void General2WayBalance(CtrlType *ctrl, GraphType *graph, idxtype *tpwgts)
     moved[higain] = nswaps;
 
     IFSET(ctrl->dbglvl, DBG_MOVEINFO, 
-      printf("Moved %6d from %d. [%3d %3d] %5d [%4d %4d]\n", higain, from, ed[higain]-id[higain], vwgt[higain], mincut, pwgts[0], pwgts[1]));
+      mprintf("Moved %6D from %D. [%3D %3D] %5D [%4D %4D]\n", higain, from, ed[higain]-id[higain], vwgt[higain], mincut, pwgts[0], pwgts[1]));
 
     /**************************************************************
     * Update the id[i]/ed[i] values of the affected nodes
@@ -264,7 +264,7 @@ void General2WayBalance(CtrlType *ctrl, GraphType *graph, idxtype *tpwgts)
   }
 
   IFSET(ctrl->dbglvl, DBG_REFINE, 
-    printf("\tMinimum cut: %6d, PWGTS: [%6d %6d], NBND: %6d\n", mincut, pwgts[0], pwgts[1], nbnd));
+    mprintf("\tMinimum cut: %6D, PWGTS: [%6D %6D], NBND: %6D\n", mincut, pwgts[0], pwgts[1], nbnd));
 
   graph->mincut = mincut;
   graph->nbnd = nbnd;

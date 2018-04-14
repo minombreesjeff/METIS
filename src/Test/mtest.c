@@ -15,13 +15,15 @@
 
 #include <metis.h>
 #include <metislib.h>
+#include "../libmetis/proto.h"
+#include "proto.h"
 
 
 
 /*************************************************************************
 * Let the game begin
 **************************************************************************/
-int main(idxtype argc, char *argv[])
+int main(int argc, char *argv[])
 {
   idxtype i, nparts, options[10];
   idxtype *part;
@@ -31,16 +33,16 @@ int main(idxtype argc, char *argv[])
 
 
   if (argc != 2) {
-    printf("Usage: %s <GraphFile>\n",argv[0]);
+    mprintf("Usage: %s <GraphFile>\n",argv[0]);
     exit(0);
   }
     
   ReadGraph(&graph, argv[1], &wgtflag);
 
-  printf("**********************************************************************\n");
-  printf("%s", METISTITLE);
-  printf("Graph Information ---------------------------------------------------\n");
-  printf("  Name: %s, #Vertices: %d, #Edges: %d\n", argv[1], graph.nvtxs, graph.nedges/2);
+  mprintf("**********************************************************************\n");
+  mprintf("%s", METISTITLE);
+  mprintf("Graph Information ---------------------------------------------------\n");
+  mprintf("  Name: %s, #Vertices: %D, #Edges: %D\n", argv[1], graph.nvtxs, graph.nedges/2);
 
   Test_PartGraph(graph.nvtxs, graph.xadj, graph.adjncy);
 
@@ -50,11 +52,11 @@ int main(idxtype argc, char *argv[])
 
   Test_ND(graph.nvtxs, graph.xadj, graph.adjncy);
 
-  printf("\n---------------------------------------------------------------------\n");
-  printf(" Testing completed.\n");
-  printf("**********************************************************************\n");
+  mprintf("\n---------------------------------------------------------------------\n");
+  mprintf(" Testing completed.\n");
+  mprintf("**********************************************************************\n");
 
-  GKfree((void *)&graph.xadj, &graph.adjncy, &graph.vwgt, &graph.adjwgt, LTERM);
+  gk_free((void **)&graph.xadj, &graph.adjncy, &graph.vwgt, &graph.adjwgt, LTERM);
 }  
 
 
@@ -101,7 +103,7 @@ void Test_PartGraph(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
 
 
   /*===========================================================================*/
-  printf("\nTesting METIS_PartGraphRecursive ------------------------------------\n  ");
+  mprintf("\nTesting METIS_PartGraphRecursive ------------------------------------\n  ");
   tstnum = 1;
 
 /**/
@@ -111,9 +113,9 @@ void Test_PartGraph(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                            &nparts, options, &edgecut, part);
 
   if ((rcode = VerifyPart(nvtxs, xadj, adjncy, NULL, NULL, nparts, edgecut, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -124,9 +126,9 @@ void Test_PartGraph(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                            &nparts, options, &edgecut, part);
 
   if ((rcode = VerifyPart(nvtxs, xadj, adjncy, NULL, adjwgt, nparts, edgecut, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -137,9 +139,9 @@ void Test_PartGraph(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                            &nparts, options, &edgecut, part);
 
   if ((rcode = VerifyPart(nvtxs, xadj, adjncy, vwgt, NULL, nparts, edgecut, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -150,9 +152,9 @@ void Test_PartGraph(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                            &nparts, options, &edgecut, part);
 
   if ((rcode = VerifyPart(nvtxs, xadj, adjncy, vwgt, adjwgt, nparts, edgecut, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -163,9 +165,9 @@ void Test_PartGraph(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                            &nparts, options, &edgecut, part);
 
   if ((rcode = VerifyPart(nvtxs, xadj, adjncy, vwgt, adjwgt, nparts, edgecut, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -176,17 +178,17 @@ void Test_PartGraph(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                            &nparts, options, &edgecut, part);
 
   if ((rcode = VerifyPart(nvtxs, xadj, adjncy, vwgt, adjwgt, nparts, edgecut, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
-  printf("\n");
+  mprintf("\n");
 
 
  
   /*===========================================================================*/
-  printf("\nTesting METIS_WPartGraphRecursive -----------------------------------\n  ");
+  mprintf("\nTesting METIS_WPartGraphRecursive -----------------------------------\n  ");
   tstnum = 1;
 
 
@@ -197,9 +199,9 @@ void Test_PartGraph(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                            &nparts, tpwgts, options, &edgecut, part);
 
   if ((rcode = VerifyWPart(nvtxs, xadj, adjncy, NULL, NULL, nparts, tpwgts, edgecut, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -210,9 +212,9 @@ void Test_PartGraph(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                            &nparts, tpwgts, options, &edgecut, part);
 
   if ((rcode = VerifyWPart(nvtxs, xadj, adjncy, NULL, adjwgt, nparts, tpwgts, edgecut, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -223,9 +225,9 @@ void Test_PartGraph(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                            &nparts, tpwgts, options, &edgecut, part);
 
   if ((rcode = VerifyWPart(nvtxs, xadj, adjncy, vwgt, NULL, nparts, tpwgts, edgecut, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -236,9 +238,9 @@ void Test_PartGraph(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                            &nparts, tpwgts, options, &edgecut, part);
 
   if ((rcode = VerifyWPart(nvtxs, xadj, adjncy, vwgt, adjwgt, nparts, tpwgts, edgecut, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -249,9 +251,9 @@ void Test_PartGraph(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                            &nparts, tpwgts, options, &edgecut, part);
 
   if ((rcode = VerifyWPart(nvtxs, xadj, adjncy, vwgt, adjwgt, nparts, tpwgts, edgecut, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -262,17 +264,17 @@ void Test_PartGraph(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                            &nparts, tpwgts, options, &edgecut, part);
 
   if ((rcode = VerifyWPart(nvtxs, xadj, adjncy, vwgt, adjwgt, nparts, tpwgts, edgecut, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
-  printf("\n");
+  mprintf("\n");
 
 
 
   /*===========================================================================*/
-  printf("\nTesting METIS_PartGraphKway -----------------------------------------\n  ");
+  mprintf("\nTesting METIS_PartGraphKway -----------------------------------------\n  ");
   tstnum = 1;
 
 /**/
@@ -282,9 +284,9 @@ void Test_PartGraph(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                       &nparts, options, &edgecut, part);
 
   if ((rcode = VerifyPart(nvtxs, xadj, adjncy, NULL, NULL, nparts, edgecut, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -295,9 +297,9 @@ void Test_PartGraph(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                       &nparts, options, &edgecut, part);
 
   if ((rcode = VerifyPart(nvtxs, xadj, adjncy, NULL, adjwgt, nparts, edgecut, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -308,9 +310,9 @@ void Test_PartGraph(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                       &nparts, options, &edgecut, part);
 
   if ((rcode = VerifyPart(nvtxs, xadj, adjncy, vwgt, NULL, nparts, edgecut, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -321,9 +323,9 @@ void Test_PartGraph(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                       &nparts, options, &edgecut, part);
 
   if ((rcode = VerifyPart(nvtxs, xadj, adjncy, vwgt, adjwgt, nparts, edgecut, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -334,9 +336,9 @@ void Test_PartGraph(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                       &nparts, options, &edgecut, part);
 
   if ((rcode = VerifyPart(nvtxs, xadj, adjncy, vwgt, adjwgt, nparts, edgecut, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -347,9 +349,9 @@ void Test_PartGraph(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                       &nparts, options, &edgecut, part);
 
   if ((rcode = VerifyPart(nvtxs, xadj, adjncy, vwgt, adjwgt, nparts, edgecut, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -360,9 +362,9 @@ void Test_PartGraph(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                       &nparts, options, &edgecut, part);
 
   if ((rcode = VerifyPart(nvtxs, xadj, adjncy, vwgt, adjwgt, nparts, edgecut, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -373,17 +375,17 @@ void Test_PartGraph(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                       &nparts, options, &edgecut, part);
 
   if ((rcode = VerifyPart(nvtxs, xadj, adjncy, vwgt, adjwgt, nparts, edgecut, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
-  printf("\n");
+  mprintf("\n");
 
 
  
   /*===========================================================================*/
-  printf("\nTesting METIS_WPartGraphKway ----------------------------------------\n  ");
+  mprintf("\nTesting METIS_WPartGraphKway ----------------------------------------\n  ");
   tstnum = 1;
 
 
@@ -394,9 +396,9 @@ void Test_PartGraph(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                        &nparts, tpwgts, options, &edgecut, part);
 
   if ((rcode = VerifyWPart(nvtxs, xadj, adjncy, NULL, NULL, nparts, tpwgts, edgecut, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -407,9 +409,9 @@ void Test_PartGraph(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                        &nparts, tpwgts, options, &edgecut, part);
 
   if ((rcode = VerifyWPart(nvtxs, xadj, adjncy, NULL, adjwgt, nparts, tpwgts, edgecut, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -420,9 +422,9 @@ void Test_PartGraph(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                        &nparts, tpwgts, options, &edgecut, part);
 
   if ((rcode = VerifyWPart(nvtxs, xadj, adjncy, vwgt, NULL, nparts, tpwgts, edgecut, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -433,9 +435,9 @@ void Test_PartGraph(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                        &nparts, tpwgts, options, &edgecut, part);
 
   if ((rcode = VerifyWPart(nvtxs, xadj, adjncy, vwgt, adjwgt, nparts, tpwgts, edgecut, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -446,9 +448,9 @@ void Test_PartGraph(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                        &nparts, tpwgts, options, &edgecut, part);
 
   if ((rcode = VerifyWPart(nvtxs, xadj, adjncy, vwgt, adjwgt, nparts, tpwgts, edgecut, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -459,9 +461,9 @@ void Test_PartGraph(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                        &nparts, tpwgts, options, &edgecut, part);
 
   if ((rcode = VerifyWPart(nvtxs, xadj, adjncy, vwgt, adjwgt, nparts, tpwgts, edgecut, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -472,9 +474,9 @@ void Test_PartGraph(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                        &nparts, tpwgts, options, &edgecut, part);
 
   if ((rcode = VerifyWPart(nvtxs, xadj, adjncy, vwgt, adjwgt, nparts, tpwgts, edgecut, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -485,14 +487,14 @@ void Test_PartGraph(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                        &nparts, tpwgts, options, &edgecut, part);
 
   if ((rcode = VerifyWPart(nvtxs, xadj, adjncy, vwgt, adjwgt, nparts, tpwgts, edgecut, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
-  printf("\n");
+  mprintf("\n");
 
-  GKfree((void *)&vwgt, &adjwgt, &part, LTERM);
+  gk_free((void **)&vwgt, &adjwgt, &part, LTERM);
 }
 
 
@@ -506,7 +508,7 @@ int VerifyPart(idxtype nvtxs, idxtype *xadj, idxtype *adjncy, idxtype *vwgt,
   idxtype i, j, k, cut, vfree=0, efree=0, rcode=0;
   idxtype *pwgts;
 
-  if (part[idxamax(nvtxs, part)] != nparts-1)
+  if (part[idxargmax(nvtxs, part)] != nparts-1)
     return 1;  /* the total number of partitions is different than nparts */
 
   /* compute the cut and the pwgts */
@@ -529,16 +531,16 @@ int VerifyPart(idxtype nvtxs, idxtype *xadj, idxtype *adjncy, idxtype *vwgt,
   if (cut != 2*edgecut)
     rcode = 2;
 
-  if (nparts*pwgts[idxamax(nparts, pwgts)] > 1.10*idxsum(nparts, pwgts))
+  if (nparts*pwgts[idxargmax(nparts, pwgts)] > 1.10*idxsum(nparts, pwgts, 1))
     rcode = 3;
 
   if (vfree)
-    GKfree((void *)&vwgt, LTERM);
+    gk_free((void **)&vwgt, LTERM);
 
   if (efree)
-    GKfree((void *)&adjwgt, LTERM);
+    gk_free((void **)&adjwgt, LTERM);
 
-  GKfree((void *)&pwgts, LTERM);
+  gk_free((void **)&pwgts, LTERM);
 
   MALLOC_CHECK(NULL);
 
@@ -555,7 +557,7 @@ int VerifyWPart(idxtype nvtxs, idxtype *xadj, idxtype *adjncy, idxtype *vwgt,
   idxtype i, j, k, tvwgt, cut, vfree=0, efree=0, rcode=0;
   idxtype *pwgts;
 
-  if (part[idxamax(nvtxs, part)] != nparts-1) 
+  if (part[idxargmax(nvtxs, part)] != nparts-1) 
     return 1;  /* the total number of partitions is different than nparts */
 
   /* compute the cut and the pwgts */
@@ -578,7 +580,7 @@ int VerifyWPart(idxtype nvtxs, idxtype *xadj, idxtype *adjncy, idxtype *vwgt,
   if (cut != 2*edgecut)
     rcode = 2;
 
-  tvwgt = idxsum(nparts, pwgts);
+  tvwgt = idxsum(nparts, pwgts, 1);
   for (i=0; i<nparts; i++) {
     if (pwgts[i] > 1.10*tpwgts[i]*tvwgt) {
       rcode = 3;
@@ -587,12 +589,12 @@ int VerifyWPart(idxtype nvtxs, idxtype *xadj, idxtype *adjncy, idxtype *vwgt,
   }
 
   if (vfree)
-    GKfree((void *)&vwgt, LTERM);
+    gk_free((void **)&vwgt, LTERM);
 
   if (efree)
-    GKfree((void *)&adjwgt, LTERM);
+    gk_free((void **)&adjwgt, LTERM);
 
-  GKfree((void *)&pwgts, LTERM);
+  gk_free((void **)&pwgts, LTERM);
 
   MALLOC_CHECK(NULL);
 
@@ -630,7 +632,7 @@ void Test_PartGraphV(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
 
 
   /*===========================================================================*/
-  printf("\nTesting METIS_PartGraphVKway ----------------------------------------\n  ");
+  mprintf("\nTesting METIS_PartGraphVKway ----------------------------------------\n  ");
   tstnum = 1;
 
 /**/
@@ -640,9 +642,9 @@ void Test_PartGraphV(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                        &nparts, options, &totalv, part);
 
   if ((rcode = VerifyPartV(nvtxs, xadj, adjncy, NULL, NULL, nparts, totalv, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -653,9 +655,9 @@ void Test_PartGraphV(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                        &nparts, options, &totalv, part);
 
   if ((rcode = VerifyPartV(nvtxs, xadj, adjncy, NULL, vsize, nparts, totalv, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -666,9 +668,9 @@ void Test_PartGraphV(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                        &nparts, options, &totalv, part);
 
   if ((rcode = VerifyPartV(nvtxs, xadj, adjncy, vwgt, NULL, nparts, totalv, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -679,9 +681,9 @@ void Test_PartGraphV(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                        &nparts, options, &totalv, part);
 
   if ((rcode = VerifyPartV(nvtxs, xadj, adjncy, vwgt, vsize, nparts, totalv, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -692,9 +694,9 @@ void Test_PartGraphV(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                        &nparts, options, &totalv, part);
 
   if ((rcode = VerifyPartV(nvtxs, xadj, adjncy, vwgt, vsize, nparts, totalv, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -705,9 +707,9 @@ void Test_PartGraphV(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                        &nparts, options, &totalv, part);
 
   if ((rcode = VerifyPartV(nvtxs, xadj, adjncy, vwgt, vsize, nparts, totalv, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -718,17 +720,17 @@ void Test_PartGraphV(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                        &nparts, options, &totalv, part);
 
   if ((rcode = VerifyPartV(nvtxs, xadj, adjncy, vwgt, vsize, nparts, totalv, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
-  printf("\n");
+  mprintf("\n");
 
 
  
   /*===========================================================================*/
-  printf("\nTesting METIS_WPartGraphVKway ---------------------------------------\n  ");
+  mprintf("\nTesting METIS_WPartGraphVKway ---------------------------------------\n  ");
   tstnum = 1;
 
 
@@ -739,9 +741,9 @@ void Test_PartGraphV(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                         &nparts, tpwgts, options, &totalv, part);
 
   if ((rcode = VerifyWPartV(nvtxs, xadj, adjncy, NULL, NULL, nparts, tpwgts, totalv, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -752,9 +754,9 @@ void Test_PartGraphV(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                         &nparts, tpwgts, options, &totalv, part);
 
   if ((rcode = VerifyWPartV(nvtxs, xadj, adjncy, NULL, vsize, nparts, tpwgts, totalv, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -765,9 +767,9 @@ void Test_PartGraphV(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                         &nparts, tpwgts, options, &totalv, part);
 
   if ((rcode = VerifyWPartV(nvtxs, xadj, adjncy, vwgt, NULL, nparts, tpwgts, totalv, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -778,9 +780,9 @@ void Test_PartGraphV(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                         &nparts, tpwgts, options, &totalv, part);
 
   if ((rcode = VerifyWPartV(nvtxs, xadj, adjncy, vwgt, vsize, nparts, tpwgts, totalv, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -791,9 +793,9 @@ void Test_PartGraphV(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                         &nparts, tpwgts, options, &totalv, part);
 
   if ((rcode = VerifyWPartV(nvtxs, xadj, adjncy, vwgt, vsize, nparts, tpwgts, totalv, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -804,9 +806,9 @@ void Test_PartGraphV(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                         &nparts, tpwgts, options, &totalv, part);
 
   if ((rcode = VerifyWPartV(nvtxs, xadj, adjncy, vwgt, vsize, nparts, tpwgts, totalv, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -817,15 +819,15 @@ void Test_PartGraphV(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                         &nparts, tpwgts, options, &totalv, part);
 
   if ((rcode = VerifyWPartV(nvtxs, xadj, adjncy, vwgt, vsize, nparts, tpwgts, totalv, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
-  printf("\n");
+  mprintf("\n");
 
 
-  GKfree((void *)&vwgt, &vsize, &part, LTERM);
+  gk_free((void **)&vwgt, &vsize, &part, LTERM);
 }
 
 
@@ -838,7 +840,7 @@ int VerifyPartV(idxtype nvtxs, idxtype *xadj, idxtype *adjncy, idxtype *vwgt,
   idxtype i, j, k, ttlv, vfree=0, efree=0, rcode=0;
   idxtype *pwgts, *marker;
 
-  if (part[idxamax(nvtxs, part)] != nparts-1)
+  if (part[idxargmax(nvtxs, part)] != nparts-1)
     return 1;  /* the total number of partitions is different than nparts */
 
   /* compute the cut and the pwgts */
@@ -867,16 +869,16 @@ int VerifyPartV(idxtype nvtxs, idxtype *xadj, idxtype *adjncy, idxtype *vwgt,
   if (ttlv != totalv)
     rcode = 2;
 
-  if (nparts*pwgts[idxamax(nparts, pwgts)] > 1.05*idxsum(nparts, pwgts))
+  if (nparts*pwgts[idxargmax(nparts, pwgts)] > 1.05*idxsum(nparts, pwgts, 1))
     rcode = 3;
 
   if (vfree)
-    GKfree((void *)&vwgt, LTERM);
+    gk_free((void **)&vwgt, LTERM);
 
   if (efree)
-    GKfree((void *)&vsize, LTERM);
+    gk_free((void **)&vsize, LTERM);
 
-  GKfree((void *)&pwgts, &marker, LTERM);
+  gk_free((void **)&pwgts, &marker, LTERM);
 
   MALLOC_CHECK(NULL);
 
@@ -888,12 +890,13 @@ int VerifyPartV(idxtype nvtxs, idxtype *xadj, idxtype *adjncy, idxtype *vwgt,
 * This function verifies that the partitioning was computed correctly
 **************************************************************************/
 int VerifyWPartV(idxtype nvtxs, idxtype *xadj, idxtype *adjncy, idxtype *vwgt, 
-                idxtype *vsize, idxtype nparts, float *tpwgts, idxtype totalv, idxtype *part)
+                idxtype *vsize, idxtype nparts, float *tpwgts, idxtype totalv, 
+                idxtype *part)
 {
   idxtype i, j, k, tvwgt, ttlv, vfree=0, efree=0, rcode=0;
   idxtype *pwgts, *marker;
 
-  if (part[idxamax(nvtxs, part)] != nparts-1) 
+  if (part[idxargmax(nvtxs, part)] != nparts-1) 
     return 1;  /* the total number of partitions is different than nparts */
 
   /* compute the cut and the pwgts */
@@ -922,7 +925,7 @@ int VerifyWPartV(idxtype nvtxs, idxtype *xadj, idxtype *adjncy, idxtype *vwgt,
   if (ttlv != totalv)
     rcode = 2;
 
-  tvwgt = idxsum(nparts, pwgts);
+  tvwgt = idxsum(nparts, pwgts, 1);
   for (i=0; i<nparts; i++) {
     if (pwgts[i] > 1.05*tpwgts[i]*tvwgt) {
       rcode = 3;
@@ -931,12 +934,12 @@ int VerifyWPartV(idxtype nvtxs, idxtype *xadj, idxtype *adjncy, idxtype *vwgt,
   }
 
   if (vfree)
-    GKfree((void *)&vwgt, LTERM);
+    gk_free((void **)&vwgt, LTERM);
 
   if (efree)
-    GKfree((void *)&vsize, LTERM);
+    gk_free((void **)&vsize, LTERM);
 
-  GKfree((void *)&pwgts, &marker, LTERM);
+  gk_free((void **)&pwgts, &marker, LTERM);
 
   MALLOC_CHECK(NULL);
 
@@ -983,7 +986,7 @@ void Test_PartGraphmC(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
 
 
   /*===========================================================================*/
-  printf("\nTesting METIS_mCPartGraphRecursive ----------------------------------\n  ");
+  mprintf("\nTesting METIS_mCPartGraphRecursive ----------------------------------\n  ");
   tstnum = 1;
 
 /**/
@@ -994,9 +997,9 @@ void Test_PartGraphmC(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                              &nparts, options, &edgecut, part);
 
   if ((rcode = VerifyPartmC(nvtxs, ncon, xadj, adjncy, vwgt, NULL, nparts, ubvec, edgecut, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -1008,9 +1011,9 @@ void Test_PartGraphmC(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                              &nparts, options, &edgecut, part);
 
   if ((rcode = VerifyPartmC(nvtxs, ncon, xadj, adjncy, vwgt, adjwgt, nparts, ubvec, edgecut, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -1022,9 +1025,9 @@ void Test_PartGraphmC(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                              &nparts, options, &edgecut, part);
 
   if ((rcode = VerifyPartmC(nvtxs, ncon, xadj, adjncy, vwgt, adjwgt, nparts, ubvec, edgecut, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -1036,9 +1039,9 @@ void Test_PartGraphmC(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                              &nparts, options, &edgecut, part);
 
   if ((rcode = VerifyPartmC(nvtxs, ncon, xadj, adjncy, vwgt, adjwgt, nparts, ubvec, edgecut, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -1050,9 +1053,9 @@ void Test_PartGraphmC(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                              &nparts, options, &edgecut, part);
 
   if ((rcode = VerifyPartmC(nvtxs, ncon, xadj, adjncy, vwgt, adjwgt, nparts, ubvec, edgecut, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -1064,9 +1067,9 @@ void Test_PartGraphmC(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                              &nparts, options, &edgecut, part);
 
   if ((rcode = VerifyPartmC(nvtxs, ncon, xadj, adjncy, vwgt, adjwgt, nparts, ubvec, edgecut, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -1078,9 +1081,9 @@ void Test_PartGraphmC(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                              &nparts, options, &edgecut, part);
 
   if ((rcode = VerifyPartmC(nvtxs, ncon, xadj, adjncy, vwgt, adjwgt, nparts, ubvec, edgecut, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -1092,9 +1095,9 @@ void Test_PartGraphmC(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                              &nparts, options, &edgecut, part);
 
   if ((rcode = VerifyPartmC(nvtxs, ncon, xadj, adjncy, vwgt, adjwgt, nparts, ubvec, edgecut, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -1106,9 +1109,9 @@ void Test_PartGraphmC(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                              &nparts, options, &edgecut, part);
 
   if ((rcode = VerifyPartmC(nvtxs, ncon, xadj, adjncy, vwgt, adjwgt, nparts, ubvec, edgecut, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -1120,12 +1123,12 @@ void Test_PartGraphmC(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                              &nparts, options, &edgecut, part);
 
   if ((rcode = VerifyPartmC(nvtxs, ncon, xadj, adjncy, vwgt, adjwgt, nparts, ubvec, edgecut, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
-  printf("\n  ");
+  mprintf("\n  ");
 
 /**/
   numflag = 0; wgtflag = 1; nparts = 10;
@@ -1135,9 +1138,9 @@ void Test_PartGraphmC(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                              &nparts, options, &edgecut, part);
 
   if ((rcode = VerifyPartmC(nvtxs, ncon, xadj, adjncy, vwgt, adjwgt, nparts, ubvec, edgecut, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -1149,16 +1152,16 @@ void Test_PartGraphmC(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                              &nparts, options, &edgecut, part);
 
   if ((rcode = VerifyPartmC(nvtxs, ncon, xadj, adjncy, vwgt, adjwgt, nparts, ubvec, edgecut, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
-  printf("\n");
+  mprintf("\n");
 
 
 
-  printf("\nTesting METIS_mCPartGraphKway ---------------------------------------\n  ");
+  mprintf("\nTesting METIS_mCPartGraphKway ---------------------------------------\n  ");
   tstnum = 1;
 
 /**/
@@ -1169,9 +1172,9 @@ void Test_PartGraphmC(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                         &nparts, ubvec, options, &edgecut, part);
 
   if ((rcode = VerifyPartmC(nvtxs, ncon, xadj, adjncy, vwgt, NULL, nparts, ubvec, edgecut, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -1183,9 +1186,9 @@ void Test_PartGraphmC(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                         &nparts, ubvec, options, &edgecut, part);
 
   if ((rcode = VerifyPartmC(nvtxs, ncon, xadj, adjncy, vwgt, adjwgt, nparts, ubvec, edgecut, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -1197,9 +1200,9 @@ void Test_PartGraphmC(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                         &nparts, ubvec, options, &edgecut, part);
 
   if ((rcode = VerifyPartmC(nvtxs, ncon, xadj, adjncy, vwgt, adjwgt, nparts, ubvec, edgecut, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -1211,9 +1214,9 @@ void Test_PartGraphmC(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                         &nparts, ubvec, options, &edgecut, part);
 
   if ((rcode = VerifyPartmC(nvtxs, ncon, xadj, adjncy, vwgt, adjwgt, nparts, ubvec, edgecut, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -1225,9 +1228,9 @@ void Test_PartGraphmC(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                         &nparts, ubvec, options, &edgecut, part);
 
   if ((rcode = VerifyPartmC(nvtxs, ncon, xadj, adjncy, vwgt, adjwgt, nparts, ubvec, edgecut, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -1239,9 +1242,9 @@ void Test_PartGraphmC(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                         &nparts, ubvec, options, &edgecut, part);
 
   if ((rcode = VerifyPartmC(nvtxs, ncon, xadj, adjncy, vwgt, adjwgt, nparts, ubvec, edgecut, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -1253,9 +1256,9 @@ void Test_PartGraphmC(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                         &nparts, ubvec, options, &edgecut, part);
 
   if ((rcode = VerifyPartmC(nvtxs, ncon, xadj, adjncy, vwgt, adjwgt, nparts, ubvec, edgecut, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -1267,9 +1270,9 @@ void Test_PartGraphmC(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                         &nparts, ubvec, options, &edgecut, part);
 
   if ((rcode = VerifyPartmC(nvtxs, ncon, xadj, adjncy, vwgt, adjwgt, nparts, ubvec, edgecut, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -1281,9 +1284,9 @@ void Test_PartGraphmC(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                         &nparts, ubvec, options, &edgecut, part);
 
   if ((rcode = VerifyPartmC(nvtxs, ncon, xadj, adjncy, vwgt, adjwgt, nparts, ubvec, edgecut, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -1295,12 +1298,12 @@ void Test_PartGraphmC(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                         &nparts, ubvec, options, &edgecut, part);
 
   if ((rcode = VerifyPartmC(nvtxs, ncon, xadj, adjncy, vwgt, adjwgt, nparts, ubvec, edgecut, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
-  printf("\n  ");
+  mprintf("\n  ");
 
 /**/
   numflag = 0; wgtflag = 1; nparts = 10;
@@ -1310,9 +1313,9 @@ void Test_PartGraphmC(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                         &nparts, ubvec, options, &edgecut, part);
 
   if ((rcode = VerifyPartmC(nvtxs, ncon, xadj, adjncy, vwgt, adjwgt, nparts, ubvec, edgecut, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -1324,9 +1327,9 @@ void Test_PartGraphmC(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                         &nparts, ubvec, options, &edgecut, part);
 
   if ((rcode = VerifyPartmC(nvtxs, ncon, xadj, adjncy, vwgt, adjwgt, nparts, ubvec, edgecut, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -1338,9 +1341,9 @@ void Test_PartGraphmC(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                         &nparts, ubvec, options, &edgecut, part);
 
   if ((rcode = VerifyPartmC(nvtxs, ncon, xadj, adjncy, vwgt, adjwgt, nparts, ubvec, edgecut, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -1352,15 +1355,15 @@ void Test_PartGraphmC(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
                         &nparts, ubvec, options, &edgecut, part);
 
   if ((rcode = VerifyPartmC(nvtxs, ncon, xadj, adjncy, vwgt, adjwgt, nparts, ubvec, edgecut, part)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
-  printf("\n");
+  mprintf("\n");
 
-  GKfree((void *)&vwgt, &adjwgt, &part, LTERM);
+  gk_free((void **)&vwgt, &adjwgt, &part, LTERM);
 }
 
 
@@ -1375,7 +1378,7 @@ int VerifyPartmC(idxtype nvtxs, idxtype ncon, idxtype *xadj, idxtype *adjncy, id
   idxtype *pwgts;
   float lb;
 
-  if (part[idxamax(nvtxs, part)] != nparts-1)
+  if (part[idxargmax(nvtxs, part)] != nparts-1)
     return 1;  /* the total number of partitions is different than nparts */
 
   if (adjwgt == NULL) {
@@ -1395,33 +1398,33 @@ int VerifyPartmC(idxtype nvtxs, idxtype ncon, idxtype *xadj, idxtype *adjncy, id
     rcode = 2;
 
 /*
-printf("\n");
+mprintf("\n");
 for (i=0; i<nparts; i++) {
   for (j=0; j<ncon; j++) 
-    printf("%5d ", pwgts[i*ncon+j]);
-  printf("\n");
+    mprintf("%5D ", pwgts[i*ncon+j]);
+  mprintf("\n");
 }
-printf("---------------------------------\n");
+mprintf("---------------------------------\n");
 for (j=0; j<ncon; j++) 
-  printf("%5d ", idxsum_strd(nparts, pwgts+j, ncon));
-printf("\n---------------------------------\n");
+  mprintf("%5D ", idxsum(nparts, pwgts+j, ncon));
+mprintf("\n---------------------------------\n");
 for (j=0; j<ncon; j++) 
-  printf("%5d ", pwgts[ncon*idxamax_strd(nparts, pwgts+j, ncon)+j]);
-printf("\n%d %d\n", idxsum(ncon*nvtxs, vwgt), idxsum(ncon*nparts, pwgts));
+  mprintf("%5D ", pwgts[ncon*idxargmax_strd(nparts, pwgts+j, ncon)+j]);
+mprintf("\n%D %D\n", idxsum(ncon*nvtxs, vwgt, 1), idxsum(ncon*nparts, pwgts, 1));
 */
 
   for (i=0; i<ncon; i++) {
-    lb = 1.0*nparts*pwgts[ncon*idxamax_strd(nparts, pwgts+i, ncon)+i]/(1.0*idxsum_strd(nparts, pwgts+i, ncon));
-    /*printf("[%3.2f]", lb);*/
+    lb = 1.0*nparts*pwgts[ncon*idxargmax_strd(nparts, pwgts+i, ncon)+i]/(1.0*idxsum(nparts, pwgts+i, ncon));
+    /*mprintf("[%3.2f]", lb);*/
     if (lb > ubvec[i])
       rcode = 3;
   }
 
 
   if (efree)
-    GKfree((void *)&adjwgt, LTERM);
+    gk_free((void **)&adjwgt, LTERM);
 
-  GKfree((void *)&pwgts, LTERM);
+  gk_free((void **)&pwgts, LTERM);
 
   MALLOC_CHECK(NULL);
 
@@ -1449,7 +1452,7 @@ void Test_ND(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
 
 
   /*===========================================================================*/
-  printf("\nTesting METIS_EdgeND ------------------------------------------------\n  ");
+  mprintf("\nTesting METIS_EdgeND ------------------------------------------------\n  ");
   tstnum = 1;
 
 /**/
@@ -1458,9 +1461,9 @@ void Test_ND(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
   METIS_EdgeND(&nvtxs, xadj, adjncy, &numflag, options, perm, iperm);
 
   if ((rcode = VerifyND(nvtxs, perm, iperm)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -1470,9 +1473,9 @@ void Test_ND(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
   METIS_EdgeND(&nvtxs, xadj, adjncy, &numflag, options, perm, iperm);
 
   if ((rcode = VerifyND(nvtxs, perm, iperm)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -1482,17 +1485,17 @@ void Test_ND(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
   METIS_EdgeND(&nvtxs, xadj, adjncy, &numflag, options, perm, iperm);
 
   if ((rcode = VerifyND(nvtxs, perm, iperm)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
-  printf("\n");
+  mprintf("\n");
 
 
 
   /*===========================================================================*/
-  printf("\nTesting METIS_NodeND ------------------------------------------------\n  ");
+  mprintf("\nTesting METIS_NodeND ------------------------------------------------\n  ");
   tstnum = 1;
 
 /**/
@@ -1501,9 +1504,9 @@ void Test_ND(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
   METIS_NodeND(&nvtxs, xadj, adjncy, &numflag, options, perm, iperm);
 
   if ((rcode = VerifyND(nvtxs, perm, iperm)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -1514,9 +1517,9 @@ void Test_ND(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
   METIS_NodeND(&nvtxs, xadj, adjncy, &numflag, options, perm, iperm);
 
   if ((rcode = VerifyND(nvtxs, perm, iperm)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -1527,9 +1530,9 @@ void Test_ND(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
   METIS_NodeND(&nvtxs, xadj, adjncy, &numflag, options, perm, iperm);
 
   if ((rcode = VerifyND(nvtxs, perm, iperm)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -1540,9 +1543,9 @@ void Test_ND(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
   METIS_NodeND(&nvtxs, xadj, adjncy, &numflag, options, perm, iperm);
 
   if ((rcode = VerifyND(nvtxs, perm, iperm)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -1553,9 +1556,9 @@ void Test_ND(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
   METIS_NodeND(&nvtxs, xadj, adjncy, &numflag, options, perm, iperm);
 
   if ((rcode = VerifyND(nvtxs, perm, iperm)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -1566,9 +1569,9 @@ void Test_ND(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
   METIS_NodeND(&nvtxs, xadj, adjncy, &numflag, options, perm, iperm);
 
   if ((rcode = VerifyND(nvtxs, perm, iperm)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -1579,9 +1582,9 @@ void Test_ND(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
   METIS_NodeND(&nvtxs, xadj, adjncy, &numflag, options, perm, iperm);
 
   if ((rcode = VerifyND(nvtxs, perm, iperm)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -1592,9 +1595,9 @@ void Test_ND(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
   METIS_NodeND(&nvtxs, xadj, adjncy, &numflag, options, perm, iperm);
 
   if ((rcode = VerifyND(nvtxs, perm, iperm)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -1605,9 +1608,9 @@ void Test_ND(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
   METIS_NodeND(&nvtxs, xadj, adjncy, &numflag, options, perm, iperm);
 
   if ((rcode = VerifyND(nvtxs, perm, iperm)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -1618,12 +1621,12 @@ void Test_ND(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
   METIS_NodeND(&nvtxs, xadj, adjncy, &numflag, options, perm, iperm);
 
   if ((rcode = VerifyND(nvtxs, perm, iperm)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
-  printf("\n  ");
+  mprintf("\n  ");
 
 /**/
   numflag = 0; 
@@ -1632,9 +1635,9 @@ void Test_ND(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
   METIS_NodeND(&nvtxs, xadj, adjncy, &numflag, options, perm, iperm);
 
   if ((rcode = VerifyND(nvtxs, perm, iperm)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -1645,9 +1648,9 @@ void Test_ND(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
   METIS_NodeND(&nvtxs, xadj, adjncy, &numflag, options, perm, iperm);
 
   if ((rcode = VerifyND(nvtxs, perm, iperm)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -1658,17 +1661,17 @@ void Test_ND(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
   METIS_NodeND(&nvtxs, xadj, adjncy, &numflag, options, perm, iperm);
 
   if ((rcode = VerifyND(nvtxs, perm, iperm)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
-  printf("\n");
+  mprintf("\n");
 
 
 
   /*===========================================================================*/
-  printf("\nTesting METIS_NodeWND -----------------------------------------------\n  ");
+  mprintf("\nTesting METIS_NodeWND -----------------------------------------------\n  ");
   tstnum = 1;
 
 /**/
@@ -1677,9 +1680,9 @@ void Test_ND(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
   METIS_NodeWND(&nvtxs, xadj, adjncy, vwgt, &numflag, options, perm, iperm);
 
   if ((rcode = VerifyND(nvtxs, perm, iperm)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -1689,9 +1692,9 @@ void Test_ND(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
   METIS_NodeWND(&nvtxs, xadj, adjncy, vwgt, &numflag, options, perm, iperm);
 
   if ((rcode = VerifyND(nvtxs, perm, iperm)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -1701,9 +1704,9 @@ void Test_ND(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
   METIS_NodeWND(&nvtxs, xadj, adjncy, vwgt, &numflag, options, perm, iperm);
 
   if ((rcode = VerifyND(nvtxs, perm, iperm)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -1713,9 +1716,9 @@ void Test_ND(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
   METIS_NodeWND(&nvtxs, xadj, adjncy, vwgt, &numflag, options, perm, iperm);
 
   if ((rcode = VerifyND(nvtxs, perm, iperm)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -1725,9 +1728,9 @@ void Test_ND(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
   METIS_NodeWND(&nvtxs, xadj, adjncy, vwgt, &numflag, options, perm, iperm);
 
   if ((rcode = VerifyND(nvtxs, perm, iperm)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
 
@@ -1737,15 +1740,15 @@ void Test_ND(idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
   METIS_NodeWND(&nvtxs, xadj, adjncy, vwgt, &numflag, options, perm, iperm);
 
   if ((rcode = VerifyND(nvtxs, perm, iperm)) == 0)
-    printf("[%d:ok]", tstnum++);
+    mprintf("[%D:ok]", tstnum++);
   else
-    printf("[%d:err-%d]", tstnum++, rcode);
+    mprintf("[%D:err-%D]", tstnum++, rcode);
   fflush(stdout);
 
-  printf("\n");
+  mprintf("\n");
 
 
-  GKfree((void *)&vwgt, &perm, &iperm, LTERM);
+  gk_free((void **)&vwgt, &perm, &iperm, LTERM);
 }
 
 

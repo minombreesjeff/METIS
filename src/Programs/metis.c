@@ -19,7 +19,7 @@
 /*************************************************************************
 * Let the game begin
 **************************************************************************/
-int main(idxtype argc, char *argv[])
+int main(int argc, char *argv[])
 {
   idxtype i, nparts, OpType, options[10], nbytes;
   idxtype *part, *perm, *iperm, *sizes;
@@ -29,7 +29,7 @@ int main(idxtype argc, char *argv[])
 
 
   if (argc != 11) {
-    printf("Usage: %s <GraphFile> <Nparts> <Mtype> <Rtype> <IPtype> <Oflags> <Pfactor> <Nseps> <OPtype> <Options> \n",argv[0]);
+    mprintf("Usage: %s <GraphFile> <Nparts> <Mtype> <Rtype> <IPtype> <Oflags> <Pfactor> <Nseps> <OPtype> <Options> \n",argv[0]);
     exit(0);
   }
     
@@ -47,20 +47,20 @@ int main(idxtype argc, char *argv[])
 
   ReadGraph(&graph, filename, &wgtflag);
   if (graph.nvtxs <= 0) {
-    printf("Empty graph. Nothing to do.\n");
+    mprintf("Empty graph. Nothing to do.\n");
     exit(0);
   }
-  printf("Partitioning a graph with %d vertices and %d edges\n", graph.nvtxs, graph.nedges/2);
+  mprintf("Partitioning a graph with %D vertices and %D edges\n", graph.nvtxs, graph.nedges/2);
 
   METIS_EstimateMemory(&graph.nvtxs, graph.xadj, graph.adjncy, &numflag, &OpType, &nbytes);
-  printf("Metis will need %d Mbytes\n", nbytes/(1024*1024));
+  mprintf("Metis will need %D Mbytes\n", nbytes/(1024*1024));
 
   part = perm = iperm = NULL;
 
   options[0] = 1;
   switch (OpType) {
     case OP_PMETIS:
-      printf("Recursive Partitioning... ------------------------------------------\n");
+      mprintf("Recursive Partitioning... ------------------------------------------\n");
       part = idxmalloc(graph.nvtxs, "main: part");
 
       METIS_PartGraphRecursive(&graph.nvtxs, graph.xadj, graph.adjncy, graph.vwgt, graph.adjwgt, 
@@ -68,13 +68,13 @@ int main(idxtype argc, char *argv[])
 
       IFSET(options[OPTION_DBGLVL], DBG_OUTPUT, WritePartition(filename, part, graph.nvtxs, nparts)); 
 
-      printf("  %d-way Edge-Cut: %7d\n", nparts, edgecut);
+      mprintf("  %D-way Edge-Cut: %7D\n", nparts, edgecut);
       ComputePartitionInfo(&graph, nparts, part);
 
-      GKfree((void *)&part, LTERM);
+      gk_free((void **)&part, LTERM);
       break;
     case OP_KMETIS:
-      printf("K-way Partitioning... -----------------------------------------------\n");
+      mprintf("K-way Partitioning... -----------------------------------------------\n");
       part = idxmalloc(graph.nvtxs, "main: part");
 
       METIS_PartGraphKway(&graph.nvtxs, graph.xadj, graph.adjncy, graph.vwgt, graph.adjwgt, 
@@ -82,15 +82,15 @@ int main(idxtype argc, char *argv[])
 
       IFSET(options[OPTION_DBGLVL], DBG_OUTPUT, WritePartition(filename, part, graph.nvtxs, nparts)); 
 
-      printf("  %d-way Edge-Cut: %7d\n", nparts, edgecut);
+      mprintf("  %D-way Edge-Cut: %7D\n", nparts, edgecut);
       ComputePartitionInfo(&graph, nparts, part);
 
-      GKfree((void *)&part, LTERM);
+      gk_free((void **)&part, LTERM);
       break;
     case OP_OEMETIS:
-      GKfree((void *)&graph.vwgt, &graph.adjwgt, LTERM);
+      gk_free((void **)&graph.vwgt, &graph.adjwgt, LTERM);
 
-      printf("Edge-based Nested Dissection Ordering... ----------------------------\n");
+      mprintf("Edge-based Nested Dissection Ordering... ----------------------------\n");
       perm = idxmalloc(graph.nvtxs, "main: perm");
       iperm = idxmalloc(graph.nvtxs, "main: iperm");
 
@@ -100,12 +100,12 @@ int main(idxtype argc, char *argv[])
 
       ComputeFillIn(&graph, iperm);
 
-      GKfree((void *)&perm, &iperm, LTERM);
+      gk_free((void **)&perm, &iperm, LTERM);
       break;
     case OP_ONMETIS:
-      GKfree((void *)&graph.vwgt, &graph.adjwgt, LTERM);
+      gk_free((void **)&graph.vwgt, &graph.adjwgt, LTERM);
 
-      printf("Node-based Nested Dissection Ordering... ----------------------------\n");
+      mprintf("Node-based Nested Dissection Ordering... ----------------------------\n");
       perm = idxmalloc(graph.nvtxs, "main: perm");
       iperm = idxmalloc(graph.nvtxs, "main: iperm");
 
@@ -115,12 +115,12 @@ int main(idxtype argc, char *argv[])
 
       ComputeFillIn(&graph, iperm);
 
-      GKfree((void *)&perm, &iperm, LTERM);
+      gk_free((void **)&perm, &iperm, LTERM);
       break;
     case OP_ONWMETIS:
-      GKfree((void *)&graph.adjwgt, LTERM);
+      gk_free((void **)&graph.adjwgt, LTERM);
 
-      printf("WNode-based Nested Dissection Ordering... ---------------------------\n");
+      mprintf("WNode-based Nested Dissection Ordering... ---------------------------\n");
       perm = idxmalloc(graph.nvtxs, "main: perm");
       iperm = idxmalloc(graph.nvtxs, "main: iperm");
 
@@ -130,12 +130,12 @@ int main(idxtype argc, char *argv[])
 
       ComputeFillIn(&graph, iperm);
 
-      GKfree((void *)&perm, &iperm, LTERM);
+      gk_free((void **)&perm, &iperm, LTERM);
       break;
     case 6:
-      GKfree((void *)&graph.vwgt, &graph.adjwgt, LTERM);
+      gk_free((void **)&graph.vwgt, &graph.adjwgt, LTERM);
 
-      printf("Node-based Nested Dissection Ordering... ----------------------------\n");
+      mprintf("Node-based Nested Dissection Ordering... ----------------------------\n");
       perm = idxmalloc(graph.nvtxs, "main: perm");
       iperm = idxmalloc(graph.nvtxs, "main: iperm");
       sizes = idxmalloc(2*nparts, "main: sizes");
@@ -147,13 +147,13 @@ int main(idxtype argc, char *argv[])
       ComputeFillIn(&graph, iperm);
 
       for (i=0; i<2*nparts-1; i++)
-        printf("%d ", sizes[i]);
-      printf("\n");
+        mprintf("%D ", sizes[i]);
+      mprintf("\n");
 
-      GKfree((void *)&perm, &iperm, &sizes, LTERM);
+      gk_free((void **)&perm, &iperm, &sizes, LTERM);
       break;
     case 7:
-      printf("K-way Vol Partitioning... -------------------------------------------\n");
+      mprintf("K-way Vol Partitioning... -------------------------------------------\n");
       part = idxmalloc(graph.nvtxs, "main: part");
 
       METIS_PartGraphVKway(&graph.nvtxs, graph.xadj, graph.adjncy, graph.vwgt, NULL, 
@@ -161,13 +161,13 @@ int main(idxtype argc, char *argv[])
 
       IFSET(options[OPTION_DBGLVL], DBG_OUTPUT, WritePartition(filename, part, graph.nvtxs, nparts)); 
 
-      printf("  %d-way Volume: %7d\n", nparts, edgecut);
+      mprintf("  %D-way Volume: %7D\n", nparts, edgecut);
       ComputePartitionInfo(&graph, nparts, part);
 
-      GKfree((void *)&part, LTERM);
+      gk_free((void **)&part, LTERM);
       break;
     case 9:
-      printf("K-way Partitioning (with vwgts)... ----------------------------------\n");
+      mprintf("K-way Partitioning (with vwgts)... ----------------------------------\n");
       part = idxmalloc(graph.nvtxs, "main: part");
       graph.vwgt = idxmalloc(graph.nvtxs, "main: graph.vwgt");
       for (i=0; i<graph.nvtxs; i++)
@@ -179,10 +179,10 @@ int main(idxtype argc, char *argv[])
 
       IFSET(options[OPTION_DBGLVL], DBG_OUTPUT, WritePartition(filename, part, graph.nvtxs, nparts)); 
 
-      printf("  %d-way Edge-Cut: %7d\n", nparts, edgecut);
+      mprintf("  %D-way Edge-Cut: %7D\n", nparts, edgecut);
       ComputePartitionInfo(&graph, nparts, part);
 
-      GKfree((void *)&part, LTERM);
+      gk_free((void **)&part, LTERM);
       break;
     case 10:
       break;
@@ -190,7 +190,7 @@ int main(idxtype argc, char *argv[])
       errexit("Unknown");
   }
 
-  GKfree((void *)&graph.xadj, &graph.adjncy, &graph.vwgt, &graph.adjwgt, LTERM);
+  gk_free((void **)&graph.xadj, &graph.adjncy, &graph.vwgt, &graph.adjwgt, LTERM);
 }  
 
 

@@ -19,113 +19,65 @@
 void SetUpGraph(GraphType *graph, idxtype OpType, idxtype nvtxs, idxtype ncon,
        idxtype *xadj, idxtype *adjncy, idxtype *vwgt, idxtype *adjwgt, idxtype wgtflag)
 {
-  idxtype i, j, k, sum, gsize;
+  idxtype i, j, k, sum;
   float *nvwgt;
   idxtype tvwgt[MAXNCON];
 
-/* The following does some optimizations that after a while get hard to follow.
-   If uncommented, it will affect kfmetis.
-  if (OpType == OP_KMETIS && ncon == 1 && (wgtflag&2) == 0 && (wgtflag&1) == 0) {
-    SetUpGraphKway(graph, nvtxs, xadj, adjncy);
-    return;
-  }
-*/
 
   InitGraph(graph);
 
-  graph->nvtxs = nvtxs;
+  graph->nvtxs  = nvtxs;
   graph->nedges = xadj[nvtxs];
-  graph->ncon = ncon;
-  graph->xadj = xadj;
-  graph->adjncy = adjncy;
+  graph->ncon   = ncon;
 
+  graph->xadj        = xadj;
+  graph->free_xadj   = 0;
+
+  graph->adjncy      = adjncy;
+  graph->free_adjncy = 0;
+
+  /* setup the vertex weights */
   if (ncon == 1) { /* We are in the non mC mode */
-    gsize = 0; 
-    if ((wgtflag&2) == 0)
-      gsize += nvtxs;
-    if ((wgtflag&1) == 0)
-      gsize += graph->nedges;
-
-    gsize += 2*nvtxs;
-
-    graph->gdata = idxmalloc(gsize, "SetUpGraph: gdata");
-
-    /* Create the vertex/edge weight vectors if they are not supplied */
-    gsize = 0;
     if ((wgtflag&2) == 0) {
-      vwgt = graph->vwgt = idxset(nvtxs, 1, graph->gdata);
-      gsize += nvtxs;
+      vwgt = graph->vwgt = idxsmalloc(nvtxs, 1, "SetUpGraph: vwgt");
     }
-    else
-      graph->vwgt = vwgt;
-
-    if ((wgtflag&1) == 0) {
-      adjwgt = graph->adjwgt = idxset(graph->nedges, 1, graph->gdata+gsize);
-      gsize += graph->nedges;
+    else {
+      graph->vwgt      = vwgt;
+      graph->free_vwgt = 0;
     }
-    else
-      graph->adjwgt = adjwgt;
-
-
-    /* Compute the initial values of the adjwgtsum */
-    graph->adjwgtsum = graph->gdata + gsize;
-    gsize += nvtxs;
-
-    for (i=0; i<nvtxs; i++) {
-      sum = 0;
-      for (j=xadj[i]; j<xadj[i+1]; j++)
-        sum += adjwgt[j];
-      graph->adjwgtsum[i] = sum;
-    }
-
-    graph->cmap = graph->gdata + gsize;
-    gsize += nvtxs;
-
   }
   else {  /* Set up the graph in MOC mode */
-    gsize = 0; 
-    if ((wgtflag&1) == 0)
-      gsize += graph->nedges;
-
-    gsize += 2*nvtxs;
-
-    graph->gdata = idxmalloc(gsize, "SetUpGraph: gdata");
-    gsize = 0;
-
     for (i=0; i<ncon; i++) 
-      tvwgt[i] = idxsum_strd(nvtxs, vwgt+i, ncon);
+      tvwgt[i] = idxsum(nvtxs, vwgt+i, ncon);
     
-    nvwgt = graph->nvwgt = fmalloc(ncon*nvtxs, "SetUpGraph: nvwgt");
+    nvwgt = graph->nvwgt = gk_fmalloc(ncon*nvtxs, "SetUpGraph: nvwgt");
 
     for (i=0; i<nvtxs; i++) {
       for (j=0; j<ncon; j++) 
         nvwgt[i*ncon+j] = (1.0*vwgt[i*ncon+j])/(1.0*tvwgt[j]);
     }
-
-
-    /* Create the edge weight vectors if they are not supplied */
-    if ((wgtflag&1) == 0) {
-      adjwgt = graph->adjwgt = idxset(graph->nedges, 1, graph->gdata+gsize);
-      gsize += graph->nedges;
-    }
-    else
-      graph->adjwgt = adjwgt;
-
-    /* Compute the initial values of the adjwgtsum */
-    graph->adjwgtsum = graph->gdata + gsize;
-    gsize += nvtxs;
-
-    for (i=0; i<nvtxs; i++) {
-      sum = 0;
-      for (j=xadj[i]; j<xadj[i+1]; j++)
-        sum += adjwgt[j];
-      graph->adjwgtsum[i] = sum;
-    }
-
-    graph->cmap = graph->gdata + gsize;
-    gsize += nvtxs;
-
   }
+
+  /* setup the edge weights */
+  if ((wgtflag&1) == 0) {
+    adjwgt = graph->adjwgt = idxsmalloc(graph->nedges, 1, "SetUpGraph: adjwgt");
+  }
+  else {
+    graph->adjwgt      = adjwgt;
+    graph->free_adjwgt = 0;
+  }
+
+  /* Compute the initial values of the adjwgtsum */
+  graph->adjwgtsum = idxmalloc(nvtxs, "SetUpGraph: adjwgtsum");
+
+  for (i=0; i<nvtxs; i++) {
+    for (sum=0, j=xadj[i]; j<xadj[i+1]; j++)
+      sum += adjwgt[j];
+    graph->adjwgtsum[i] = sum;
+  }
+
+  graph->cmap = idxmalloc(nvtxs, "SetUpGraph: cmap");
+
 
   if (OpType != OP_KMETIS && OpType != OP_KVMETIS) {
     graph->label = idxmalloc(nvtxs, "SetUpGraph: label");
@@ -137,39 +89,12 @@ void SetUpGraph(GraphType *graph, idxtype OpType, idxtype nvtxs, idxtype ncon,
 }
 
 
-/*************************************************************************
-* This function sets up the graph from the user input
-**************************************************************************/
-void SetUpGraphKway(GraphType *graph, idxtype nvtxs, idxtype *xadj, idxtype *adjncy)
-{
-  idxtype i;
-
-  InitGraph(graph);
-
-  graph->nvtxs = nvtxs;
-  graph->nedges = xadj[nvtxs];
-  graph->ncon = 1;
-  graph->xadj = xadj;
-  graph->vwgt = NULL;
-  graph->adjncy = adjncy;
-  graph->adjwgt = NULL;
-
-  graph->coords = NULL;
-
-  graph->gdata = idxmalloc(2*nvtxs, "SetUpGraph: gdata");
-  graph->adjwgtsum = graph->gdata;
-  graph->cmap = graph->gdata + nvtxs;
-
-  /* Compute the initial values of the adjwgtsum */
-  for (i=0; i<nvtxs; i++) 
-    graph->adjwgtsum[i] = xadj[i+1]-xadj[i];
-
-}
-
 
 
 /*************************************************************************
-* This function sets up the graph from the user input
+* This function sets up the graph from the user input. The difference 
+* from the previous routine is that the vertex weights came already in
+* a normalized fashion.
 **************************************************************************/
 void SetUpGraph2(GraphType *graph, idxtype nvtxs, idxtype ncon, idxtype *xadj, 
        idxtype *adjncy, float *nvwgt, idxtype *adjwgt)
@@ -178,28 +103,32 @@ void SetUpGraph2(GraphType *graph, idxtype nvtxs, idxtype ncon, idxtype *xadj,
 
   InitGraph(graph);
 
-  graph->nvtxs = nvtxs;
+  graph->nvtxs  = nvtxs;
   graph->nedges = xadj[nvtxs];
-  graph->ncon = ncon;
-  graph->xadj = xadj;
-  graph->adjncy = adjncy;
-  graph->adjwgt = adjwgt;
+  graph->ncon   = ncon;
 
-  graph->nvwgt = fmalloc(nvtxs*ncon, "SetUpGraph2: graph->nvwgt");
-  scopy(nvtxs*ncon, nvwgt, graph->nvwgt);
+  graph->xadj        = xadj;
+  graph->free_xadj   = 0;
 
-  graph->gdata = idxmalloc(2*nvtxs, "SetUpGraph: gdata");
+  graph->adjncy      = adjncy;
+  graph->free_adjncy = 0;
+
+  graph->adjwgt      = adjwgt;
+  graph->free_adjwgt = 0;
+
+  graph->nvwgt = gk_fmalloc(nvtxs*ncon, "SetUpGraph2: graph->nvwgt");
+  gk_fcopy(nvtxs*ncon, nvwgt, graph->nvwgt);
+
 
   /* Compute the initial values of the adjwgtsum */
-  graph->adjwgtsum = graph->gdata;
+  graph->adjwgtsum = idxmalloc(nvtxs, "SetUpGraph2: adjwgtsum");
   for (i=0; i<nvtxs; i++) {
-    sum = 0;
-    for (j=xadj[i]; j<xadj[i+1]; j++)
+    for (sum=0, j=xadj[i]; j<xadj[i+1]; j++)
       sum += adjwgt[j];
     graph->adjwgtsum[i] = sum;
   }
 
-  graph->cmap = graph->gdata+nvtxs;
+  graph->cmap = idxmalloc(nvtxs, "SetUpGraph2: cmap");
 
   graph->label = idxmalloc(nvtxs, "SetUpGraph: label");
   for (i=0; i<nvtxs; i++)
@@ -214,130 +143,74 @@ void SetUpGraph2(GraphType *graph, idxtype nvtxs, idxtype ncon, idxtype *xadj,
 void VolSetUpGraph(GraphType *graph, idxtype OpType, idxtype nvtxs, idxtype ncon, idxtype *xadj, 
                    idxtype *adjncy, idxtype *vwgt, idxtype *vsize, idxtype wgtflag)
 {
-  idxtype i, j, k, sum, gsize;
+  idxtype i, j, k, sum;
   idxtype *adjwgt;
   float *nvwgt;
   idxtype tvwgt[MAXNCON];
 
   InitGraph(graph);
 
-  graph->nvtxs = nvtxs;
+  graph->nvtxs  = nvtxs;
   graph->nedges = xadj[nvtxs];
-  graph->ncon = ncon;
-  graph->xadj = xadj;
-  graph->adjncy = adjncy;
+  graph->ncon   = ncon;
 
+  graph->xadj      = xadj;
+  graph->free_xadj = 0;
+
+  graph->adjncy      = adjncy;
+  graph->free_adjncy = 0;
+
+  /* Setup the vwgt/vwgt */
   if (ncon == 1) { /* We are in the non mC mode */
-    gsize = graph->nedges;  /* This is for the edge weights */
-    if ((wgtflag&2) == 0)
-      gsize += nvtxs; /* vwgts */
-    if ((wgtflag&1) == 0)
-      gsize += nvtxs; /* vsize */
-
-    gsize += 2*nvtxs;
-
-    graph->gdata = idxmalloc(gsize, "SetUpGraph: gdata");
-
-    /* Create the vertex/edge weight vectors if they are not supplied */
-    gsize = 0;
     if ((wgtflag&2) == 0) {
-      vwgt = graph->vwgt = idxset(nvtxs, 1, graph->gdata);
-      gsize += nvtxs;
+      vwgt = graph->vwgt = idxsmalloc(nvtxs, 1, "VolSetUpGraph: vwgt");
     }
-    else
-      graph->vwgt = vwgt;
-
-    if ((wgtflag&1) == 0) {
-      vsize = graph->vsize = idxset(nvtxs, 1, graph->gdata);
-      gsize += nvtxs;
+    else {
+      graph->vwgt      = vwgt;
+      graph->free_vwgt = 0;
     }
-    else
-      graph->vsize = vsize;
-
-    /* Allocate memory for edge weights and initialize them to the sum of the vsize */
-    adjwgt = graph->adjwgt = graph->gdata+gsize;
-    gsize += graph->nedges;
-
-    for (i=0; i<nvtxs; i++) {
-      for (j=xadj[i]; j<xadj[i+1]; j++)
-        adjwgt[j] = 1+vsize[i]+vsize[adjncy[j]];
-    }
-
-
-    /* Compute the initial values of the adjwgtsum */
-    graph->adjwgtsum = graph->gdata + gsize;
-    gsize += nvtxs;
-
-    for (i=0; i<nvtxs; i++) {
-      sum = 0;
-      for (j=xadj[i]; j<xadj[i+1]; j++)
-        sum += adjwgt[j];
-      graph->adjwgtsum[i] = sum;
-    }
-
-    graph->cmap = graph->gdata + gsize;
-    gsize += nvtxs;
-
   }
   else {  /* Set up the graph in MOC mode */
-    gsize = graph->nedges; 
-    if ((wgtflag&1) == 0)
-      gsize += nvtxs;
-
-    gsize += 2*nvtxs;
-
-    graph->gdata = idxmalloc(gsize, "SetUpGraph: gdata");
-    gsize = 0;
-
-    /* Create the normalized vertex weights along each constrain */
-    if ((wgtflag&2) == 0) 
-      vwgt = idxsmalloc(nvtxs, 1, "SetUpGraph: vwgt");
-
+    /* Create the normalized vertex weights along each constraint */
     for (i=0; i<ncon; i++) 
-      tvwgt[i] = idxsum_strd(nvtxs, vwgt+i, ncon);
+      tvwgt[i] = idxsum(nvtxs, vwgt+i, ncon);
     
-    nvwgt = graph->nvwgt = fmalloc(ncon*nvtxs, "SetUpGraph: nvwgt");
+    nvwgt = graph->nvwgt = gk_fmalloc(ncon*nvtxs, "SetUpGraph: nvwgt");
 
     for (i=0; i<nvtxs; i++) {
       for (j=0; j<ncon; j++) 
         nvwgt[i*ncon+j] = (1.0*vwgt[i*ncon+j])/(1.0*tvwgt[j]);
     }
-    if ((wgtflag&2) == 0) 
-      GKfree((void *)&vwgt, LTERM);
-
-
-    /* Create the vsize vector if it is not supplied */
-    if ((wgtflag&1) == 0) {
-      vsize = graph->vsize = idxset(nvtxs, 1, graph->gdata);
-      gsize += nvtxs;
-    }
-    else
-      graph->vsize = vsize;
-
-    /* Allocate memory for edge weights and initialize them to the sum of the vsize */
-    adjwgt = graph->adjwgt = graph->gdata+gsize;
-    gsize += graph->nedges;
-
-    for (i=0; i<nvtxs; i++) {
-      for (j=xadj[i]; j<xadj[i+1]; j++)
-        adjwgt[j] = 1+vsize[i]+vsize[adjncy[j]];
-    }
-
-    /* Compute the initial values of the adjwgtsum */
-    graph->adjwgtsum = graph->gdata + gsize;
-    gsize += nvtxs;
-
-    for (i=0; i<nvtxs; i++) {
-      sum = 0;
-      for (j=xadj[i]; j<xadj[i+1]; j++)
-        sum += adjwgt[j];
-      graph->adjwgtsum[i] = sum;
-    }
-
-    graph->cmap = graph->gdata + gsize;
-    gsize += nvtxs;
-
   }
+
+
+  /* Setup the vsize */
+  if ((wgtflag&1) == 0) {
+    vsize = graph->vsize = idxsmalloc(nvtxs, 1, "VolSetUpGraph: vsize");
+  }
+  else {
+    graph->vsize      = vsize;
+    graph->free_vsize = 0;
+  }
+
+  /* Allocate memory for edge weights and initialize them to the sum of the vsize */
+  adjwgt = graph->adjwgt = idxmalloc(graph->nedges, "VolSetUpGraph: adjwgt");
+  for (i=0; i<nvtxs; i++) {
+    for (j=xadj[i]; j<xadj[i+1]; j++)
+      adjwgt[j] = 1+vsize[i]+vsize[adjncy[j]];
+  }
+
+
+  /* Compute the initial values of the adjwgtsum */
+  graph->adjwgtsum = idxmalloc(nvtxs, "VolSetUpGraph: adjwgtsum");
+  for (i=0; i<nvtxs; i++) {
+    for (sum=0, j=xadj[i]; j<xadj[i+1]; j++)
+      sum += adjwgt[j];
+    graph->adjwgtsum[i] = sum;
+  }
+
+  graph->cmap = idxmalloc(nvtxs, "VolSetUpGraph: cmap");
+
 
   if (OpType != OP_KVMETIS) {
     graph->label = idxmalloc(nvtxs, "SetUpGraph: label");
@@ -431,21 +304,21 @@ idxtype IsConnectedSubdomain(CtrlType *ctrl, GraphType *graph, idxtype pid, idxt
   cptr[++ncmps] = first;
 
   if (ncmps > 1 && report) {
-    printf("The graph has %d connected components in partition %d:\t", ncmps, pid);
+    mprintf("The graph has %D connected components in partition %D:\t", ncmps, pid);
     for (i=0; i<ncmps; i++) {
       wgt = 0;
       for (j=cptr[i]; j<cptr[i+1]; j++)
         wgt += graph->vwgt[queue[j]];
-      printf("[%5d %5d] ", cptr[i+1]-cptr[i], wgt);
+      mprintf("[%5D %5D] ", cptr[i+1]-cptr[i], wgt);
       /*
       if (cptr[i+1]-cptr[i] == 1)
-        printf("[%d %d] ", queue[cptr[i]], xadj[queue[cptr[i]]+1]-xadj[queue[cptr[i]]]);
+        mprintf("[%D %D] ", queue[cptr[i]], xadj[queue[cptr[i]]+1]-xadj[queue[cptr[i]]]);
       */
     }
-    printf("\n");
+    mprintf("\n");
   }
 
-  GKfree((void *)&touched, &queue, &cptr, LTERM);
+  gk_free((void **)&touched, &queue, &cptr, LTERM);
 
   return (ncmps == 1 ? 1 : 0);
 }
@@ -482,7 +355,7 @@ idxtype IsConnected(CtrlType *ctrl, GraphType *graph, idxtype report)
   }
 
   if (first != nvtxs && report)
-    printf("The graph is not connected. It has %d disconnected vertices!\n", nvtxs-first);
+    mprintf("The graph is not connected. It has %D disconnected vertices!\n", nvtxs-first);
 
   return (first == nvtxs ? 1 : 0);
 }
@@ -536,15 +409,15 @@ idxtype IsConnected2(GraphType *graph, idxtype report)
   cptr[++ncmps] = first;
 
   if (ncmps > 1 && report) {
-    printf("%d connected components:\t", ncmps);
+    mprintf("%D connected components:\t", ncmps);
     for (i=0; i<ncmps; i++) {
       if (cptr[i+1]-cptr[i] > 200)
-        printf("[%5d] ", cptr[i+1]-cptr[i]);
+        mprintf("[%5D] ", cptr[i+1]-cptr[i]);
     }
-    printf("\n");
+    mprintf("\n");
   }
 
-  GKfree((void *)&touched, &queue, &cptr, LTERM);
+  gk_free((void **)&touched, &queue, &cptr, LTERM);
 
   return (ncmps == 1 ? 1 : 0);
 }
@@ -610,7 +483,7 @@ idxtype FindComponents(CtrlType *ctrl, GraphType *graph, idxtype *cptr, idxtype 
   }
   cptr[++ncmps] = first;
 
-  GKfree((void *)&touched, LTERM);
+  gk_free((void **)&touched, LTERM);
 
   return ncmps;
 }
