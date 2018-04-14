@@ -19,7 +19,7 @@
 * This algorithm assembles the graph to all the processors and preceed
 * serially.
 **************************************************************************/
-int Moc_Diffusion(CtrlType *ctrl, GraphType *graph, idxtype *vtxdist,
+int Mc_Diffusion(CtrlType *ctrl, GraphType *graph, idxtype *vtxdist,
   idxtype *where, idxtype *home, WorkSpaceType *wspace, int npasses)
 {
   int h, i, j;
@@ -81,7 +81,7 @@ int Moc_Diffusion(CtrlType *ctrl, GraphType *graph, idxtype *vtxdist,
   ehome =      pack + 7*nvtxs;
 
   wsize = amax(sizeof(float)*nparts*6, sizeof(idxtype)*(nvtxs+nparts*2+1));
-  workspace = (float *)GKmalloc(wsize, "Moc_Diffusion: workspace");
+  workspace = (float *)GKmalloc(wsize, "Mc_Diffusion: workspace");
   degrees = GKmalloc(nedges*sizeof(EdgeType), "Mc_Diffusion: degrees");
   rinfo = graph->rinfo = GKmalloc(nvtxs*sizeof(RInfoType), "Mc_Diffusion: rinfo");
 
@@ -292,8 +292,8 @@ int Moc_Diffusion(CtrlType *ctrl, GraphType *graph, idxtype *vtxdist,
     /*****************************/
     /* perform serial refinement */
     /*****************************/
-    Moc_ComputeSerialPartitionParams(graph, nparts, degrees);
-    Moc_SerialKWayAdaptRefine(graph, nparts, home, ctrl->ubvec, 10);
+    Mc_ComputeSerialPartitionParams(graph, nparts, degrees);
+    Mc_SerialKWayAdaptRefine(graph, nparts, home, ctrl->ubvec, 10);
 
 
     /****************************/
@@ -332,7 +332,7 @@ int Moc_Diffusion(CtrlType *ctrl, GraphType *graph, idxtype *vtxdist,
 
     me = idxamin(nparts, match);  
     if (match[me] == 0) {
-if (ctrl->mype == PE) printf("WARNING: empty subdomain %d in Moc_Diffusion\n", me);
+if (ctrl->mype == PE) printf("WARNING: empty subdomain %d in Mc_Diffusion\n", me);
       you = idxamax(nparts, match);  
       for (i=0; i<nvtxs; i++) {
         if (where[i] == you) {

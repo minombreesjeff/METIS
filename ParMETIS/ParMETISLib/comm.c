@@ -22,12 +22,12 @@ void CommInterfaceData(CtrlType *ctrl, GraphType *graph, idxtype *data,
   idxtype *peind, *sendptr, *sendind, *recvptr, *recvind;
 
   firstvtx = graph->vtxdist[ctrl->mype];
-  nnbrs = graph->nnbrs;
-  peind = graph->peind;
-  sendptr = graph->sendptr;
-  sendind = graph->sendind;
-  recvptr = graph->recvptr;
-  recvind = graph->recvind;
+  nnbrs    = graph->nnbrs;
+  peind    = graph->peind;
+  sendptr  = graph->sendptr;
+  sendind  = graph->sendind;
+  recvptr  = graph->recvptr;
+  recvind  = graph->recvind;
 
   /* Issue the receives first */
   for (i=0; i<nnbrs; i++) {

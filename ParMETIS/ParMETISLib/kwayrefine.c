@@ -19,7 +19,7 @@
 /*************************************************************************
 * This function projects a partition.
 **************************************************************************/
-void Moc_ProjectPartition(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
+void Mc_ProjectPartition(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
 {
   int i, nvtxs, nnbrs = -1, firstvtx, cfirstvtx;
   idxtype *match, *cmap, *where, *cwhere;
@@ -30,14 +30,14 @@ void Moc_ProjectPartition(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspac
 
   IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->ProjectTmr));
 
-  cgraph = graph->coarser;
-  cwhere = cgraph->where;
+  cgraph    = graph->coarser;
+  cwhere    = cgraph->where;
   cfirstvtx = cgraph->vtxdist[ctrl->mype];
 
-  nvtxs = graph->nvtxs;
-  match = graph->match;
-  cmap = graph->cmap;
-  where = graph->where = idxmalloc(nvtxs+graph->nrecv, "ProjectPartition: graph->where");
+  nvtxs    = graph->nvtxs;
+  match    = graph->match;
+  cmap     = graph->cmap;
+  where    = graph->where = idxmalloc(nvtxs+graph->nrecv, "ProjectPartition: graph->where");
   firstvtx = graph->vtxdist[ctrl->mype];
 
 
@@ -128,56 +128,46 @@ void Moc_ProjectPartition(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspac
 /*************************************************************************
 * This function computes the initial id/ed 
 **************************************************************************/
-void Moc_ComputePartitionParams(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
+void Mc_ComputePartitionParams(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
 {
-  int h, i, j, k;
-  int nvtxs, ncon;
-  int firstvtx, lastvtx;
-  idxtype *xadj, *ladjncy, *adjwgt, *vtxdist;
+  int h, i, j, k, nvtxs, ncon, firstvtx, lastvtx;
+  idxtype *xadj, *ladjncy, *adjwgt, *vtxdist, *where;
   float *lnpwgts, *gnpwgts;
-  idxtype *where, *swhere, *rwhere;
   RInfoType *rinfo, *myrinfo;
   EdgeType *edegrees;
   int me, other;
 
   IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->KWayInitTmr));
 
-
-  nvtxs = graph->nvtxs;
-  ncon = graph->ncon;
-
+  nvtxs   = graph->nvtxs;
+  ncon    = graph->ncon;
   vtxdist = graph->vtxdist;
-  xadj = graph->xadj;
+  xadj    = graph->xadj;
   ladjncy = graph->adjncy;
-  adjwgt = graph->adjwgt;
+  adjwgt  = graph->adjwgt;
+  where   = graph->where;
 
-  where = graph->where;
-  rinfo = graph->rinfo = (RInfoType *)GKmalloc(sizeof(RInfoType)*nvtxs, "CPP: rinfo");
-  lnpwgts = graph->lnpwgts = fmalloc(ctrl->nparts*ncon, "CPP: lnpwgts");
+  rinfo   = graph->rinfo   = (RInfoType *)GKmalloc(sizeof(RInfoType)*nvtxs, "CPP: rinfo");
+  lnpwgts = graph->lnpwgts = fsmalloc(ctrl->nparts*ncon, 0.0, "CPP: lnpwgts");
   gnpwgts = graph->gnpwgts = fmalloc(ctrl->nparts*ncon, "CPP: gnpwgts");
 
-  sset(ctrl->nparts*ncon, 0, lnpwgts);
-
   firstvtx = vtxdist[ctrl->mype];
-  lastvtx = vtxdist[ctrl->mype+1];
+  lastvtx  = vtxdist[ctrl->mype+1];
 
   /*------------------------------------------------------------
   / Send/Receive the where information of interface vertices
   /------------------------------------------------------------*/
-  swhere = wspace->indices;
-  rwhere = where + nvtxs;
-
-  CommInterfaceData(ctrl, graph, where, swhere, rwhere); 
+  CommInterfaceData(ctrl, graph, where, wspace->indices, where+nvtxs); 
 
 #ifdef DEBUG_COMPUTEPPARAM
   PrintVector(ctrl, nvtxs, firstvtx, where, "where");
 #endif
 
-  ASSERT(ctrl, wspace->nlarge >= xadj[nvtxs]);
 
   /*------------------------------------------------------------
   / Compute now the id/ed degrees
   /------------------------------------------------------------*/
+  ASSERT(ctrl, wspace->nlarge >= xadj[nvtxs]);
   graph->lmincut = 0;
   for (i=0; i<nvtxs; i++) {
     me = where[i];
@@ -186,7 +176,7 @@ void Moc_ComputePartitionParams(CtrlType *ctrl, GraphType *graph, WorkSpaceType 
     for (h=0; h<ncon; h++)
       lnpwgts[me*ncon+h] += graph->nvwgt[i*ncon+h];
 
-    myrinfo->degrees = wspace->degrees + xadj[i];
+    myrinfo->degrees  = wspace->degrees + xadj[i];
     myrinfo->ndegrees = myrinfo->id = myrinfo->ed = 0;
 
     for (j=xadj[i]; j<xadj[i+1]; j++) {

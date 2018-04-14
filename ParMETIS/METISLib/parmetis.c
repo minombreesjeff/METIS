@@ -186,7 +186,6 @@ void METIS_NodeNDP(int nvtxs, idxtype *xadj, idxtype *adjncy, int npes,
 }
 
 
-
 /*************************************************************************
 * This function takes a graph and produces a bisection of it
 **************************************************************************/
@@ -253,8 +252,6 @@ void MlevelNestedDissectionP(CtrlType *ctrl, GraphType *graph, idxtype *order, i
 }
 
 
-
-
 /*************************************************************************
 * This function is the entry point for ONWMETIS. It requires weights on the
 * vertices. It is for the case that the matrix has been pre-compressed.
@@ -270,24 +267,24 @@ void METIS_NodeComputeSeparator(int *nvtxs, idxtype *xadj, idxtype *adjncy, idxt
   tvwgt = idxsum(*nvtxs, graph.vwgt);
 
   if (options[0] == 0) {  /* Use the default parameters */
-    ctrl.CType = ONMETIS_CTYPE;
-    ctrl.IType = ONMETIS_ITYPE;
-    ctrl.RType = ONMETIS_RTYPE;
+    ctrl.CType  = ONMETIS_CTYPE;
+    ctrl.IType  = ONMETIS_ITYPE;
+    ctrl.RType  = ONMETIS_RTYPE;
     ctrl.dbglvl = ONMETIS_DBGLVL;
   }
   else {
-    ctrl.CType = options[OPTION_CTYPE];
-    ctrl.IType = options[OPTION_ITYPE];
-    ctrl.RType = options[OPTION_RTYPE];
+    ctrl.CType  = options[OPTION_CTYPE];
+    ctrl.IType  = options[OPTION_ITYPE];
+    ctrl.RType  = options[OPTION_RTYPE];
     ctrl.dbglvl = options[OPTION_DBGLVL];
   }
 
-  ctrl.oflags  = 0;
-  ctrl.pfactor = 0;
-  ctrl.nseps = 1;
-  ctrl.optype = OP_ONMETIS;
+  ctrl.oflags    = 0;
+  ctrl.pfactor   = 0;
+  ctrl.nseps     = 5;
+  ctrl.optype    = OP_ONMETIS;
   ctrl.CoarsenTo = amin(100, *nvtxs-1);
-  ctrl.maxvwgt = 1.5*tvwgt/ctrl.CoarsenTo;
+  ctrl.maxvwgt   = 1.5*tvwgt/ctrl.CoarsenTo;
 
   InitRandom(options[7]);
 
@@ -310,7 +307,6 @@ void METIS_NodeComputeSeparator(int *nvtxs, idxtype *xadj, idxtype *adjncy, idxt
   FreeWorkSpace(&ctrl, &graph);
 
 }
-
 
 
 /*************************************************************************
@@ -340,12 +336,12 @@ void METIS_EdgeComputeSeparator(int *nvtxs, idxtype *xadj, idxtype *adjncy, idxt
     ctrl.dbglvl = options[OPTION_DBGLVL];
   }
 
-  ctrl.oflags  = 0;
-  ctrl.pfactor = 0;
-  ctrl.nseps = 1;
-  ctrl.optype = OP_OEMETIS;
+  ctrl.oflags    = 0;
+  ctrl.pfactor   = 0;
+  ctrl.nseps     = 5;
+  ctrl.optype    = OP_OEMETIS;
   ctrl.CoarsenTo = amin(100, *nvtxs-1);
-  ctrl.maxvwgt = 1.5*tvwgt/ctrl.CoarsenTo;
+  ctrl.maxvwgt   = 1.5*tvwgt/ctrl.CoarsenTo;
 
   InitRandom(options[7]);
 
@@ -454,7 +450,6 @@ printf("\n");
   if (*numflag == 1)
     Change2FNumbering(*nvtxs, xadj, adjncy, part);
 }
-
 
 
 /*************************************************************************

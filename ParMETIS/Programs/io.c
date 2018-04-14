@@ -115,10 +115,8 @@ void ParallelReadGraph(GraphType *graph, char *filename, MPI_Comm comm)
   /*******************************************/
   if (mype == npes-1) {
     maxnvtxs = 0;
-    for (i=0; i<npes; i++) {
-      maxnvtxs = (maxnvtxs < vtxdist[i+1]-vtxdist[i]) ?
-      vtxdist[i+1]-vtxdist[i] : maxnvtxs;
-    }
+    for (i=0; i<npes; i++) 
+      maxnvtxs = (maxnvtxs < vtxdist[i+1]-vtxdist[i] ? vtxdist[i+1]-vtxdist[i] : maxnvtxs);
 
     your_xadj = idxmalloc(maxnvtxs+1, "your_xadj");
     your_vwgt = idxmalloc(maxnvtxs*ncon, "your_vwgt");
@@ -163,8 +161,7 @@ void ParallelReadGraph(GraphType *graph, char *filename, MPI_Comm comm)
       }
 
       MAKECSR(i, your_nvtxs, your_xadj);
-      maxnedges = (maxnedges < your_xadj[your_nvtxs]) ?
-      your_xadj[your_nvtxs] : maxnedges;
+      maxnedges = (maxnedges < your_xadj[your_nvtxs] ? your_xadj[your_nvtxs] : maxnedges);
 
       if (pe < npes-1) {
         MPI_Send((void *)your_xadj, your_nvtxs+1, IDX_DATATYPE, pe, 0, comm);
@@ -283,7 +280,7 @@ void ParallelReadGraph(GraphType *graph, char *filename, MPI_Comm comm)
 /*************************************************************************
 * This function writes a distributed graph to file
 **************************************************************************/
-void Moc_ParallelWriteGraph(CtrlType *ctrl, GraphType *graph, char *filename,
+void Mc_ParallelWriteGraph(CtrlType *ctrl, GraphType *graph, char *filename,
      int nparts, int testset)
 {
   int h, i, j;
@@ -527,7 +524,7 @@ void ReadMetisGraph(char *filename, int *r_nvtxs, idxtype **r_xadj, idxtype **r_
 /*************************************************************************
 * This function reads the CSR matrix
 **************************************************************************/
-void Moc_SerialReadGraph(GraphType *graph, char *filename, int *wgtflag, MPI_Comm comm)
+void Mc_SerialReadGraph(GraphType *graph, char *filename, int *wgtflag, MPI_Comm comm)
 {
   int i, k, l, npes, mype;
   int nvtxs, ncon, nobj, fmt;
@@ -544,7 +541,7 @@ void Moc_SerialReadGraph(GraphType *graph, char *filename, int *wgtflag, MPI_Com
   if (mype == 0) {
     ssize = idxsmalloc(npes, 0, "ReadGraph: ssize");
 
-    Moc_SerialReadMetisGraph(filename, &nvtxs, &ncon, &nobj, &fmt, &gxadj, &gvwgt,
+    Mc_SerialReadMetisGraph(filename, &nvtxs, &ncon, &nobj, &fmt, &gxadj, &gvwgt,
 	&gadjncy, &gadjwgt, wgtflag);
 
     printf("Nvtxs: %d, Nedges: %d\n", nvtxs, gxadj[nvtxs]);
@@ -678,7 +675,7 @@ void Moc_SerialReadGraph(GraphType *graph, char *filename, int *wgtflag, MPI_Com
 /*************************************************************************
 * This function reads the spd matrix
 **************************************************************************/
-void Moc_SerialReadMetisGraph(char *filename, int *r_nvtxs, int *r_ncon, int *r_nobj,
+void Mc_SerialReadMetisGraph(char *filename, int *r_nvtxs, int *r_ncon, int *r_nobj,
 	int *r_fmt, idxtype **r_xadj, idxtype **r_vwgt, idxtype **r_adjncy,
 	idxtype **r_adjwgt, int *wgtflag)
 {
@@ -719,7 +716,7 @@ void Moc_SerialReadMetisGraph(char *filename, int *r_nvtxs, int *r_ncon, int *r_
   nobj = (nobj == 0 ? 1 : nobj);
 
   xadj = idxmalloc(nvtxs+1, "ReadGraph: xadj");
-  adjncy = idxmalloc(nedges, "Moc_ReadGraph: adjncy");
+  adjncy = idxmalloc(nedges, "Mc_ReadGraph: adjncy");
   vwgt = (readvw ? idxmalloc(ncon*nvtxs, "RG: vwgt") : NULL);
   adjwgt = (readew ? idxmalloc(nobj*nedges, "RG: adjwgt") : NULL);
 
@@ -777,7 +774,6 @@ void Moc_SerialReadMetisGraph(char *filename, int *r_nvtxs, int *r_ncon, int *r_
 
 
 
-
 /*************************************************************************
 * This function writes out a partition vector
 **************************************************************************/
@@ -814,6 +810,46 @@ void WritePVector(char *gname, idxtype *vtxdist, idxtype *part, MPI_Comm comm)
   }
   else
     MPI_Send((void *)part, vtxdist[mype+1]-vtxdist[mype], IDX_DATATYPE, 0, 1, comm); 
+
+}
+
+
+/*************************************************************************
+* This function writes out the ordering vector
+**************************************************************************/
+void WriteOVector(char *gname, idxtype *vtxdist, idxtype *order, MPI_Comm comm)
+{
+  int i, j, k, l, rnvtxs, npes, mype, penum;
+  FILE *fpout;
+  idxtype *rorder;
+  char orderfile[256];
+  MPI_Status status;
+
+  MPI_Comm_size(comm, &npes);
+  MPI_Comm_rank(comm, &mype);
+
+  if (mype == 0) {
+    sprintf(orderfile, "%s.order.%d", gname, npes);
+    if ((fpout = fopen(orderfile, "w")) == NULL) 
+      errexit("Failed to open file %s", orderfile);
+
+    for (i=0; i<vtxdist[1]; i++)
+      fprintf(fpout, "%d\n", order[i]);
+
+    for (penum=1; penum<npes; penum++) {
+      rnvtxs = vtxdist[penum+1]-vtxdist[penum];
+      rorder = idxmalloc(rnvtxs, "rorder");
+      MPI_Recv((void *)rorder, rnvtxs, IDX_DATATYPE, penum, 1, comm, &status);
+
+      for (i=0; i<rnvtxs; i++)
+        fprintf(fpout, "%d\n", rorder[i]);
+
+      free(rorder);
+    }
+    fclose(fpout);
+  }
+  else
+    MPI_Send((void *)order, vtxdist[mype+1]-vtxdist[mype], IDX_DATATYPE, 0, 1, comm); 
 
 }
 

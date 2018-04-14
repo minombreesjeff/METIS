@@ -113,6 +113,7 @@ struct workspacedef {
   int maxcore;
 
   int nlarge;				/* The size of 'Large' */
+  int nparts, npes;                     /* The size of the different p* vectors */
 
   KeyValueType *pairs;			/* Large pair array used during setup */
   idxtype *indices;			/* Large array of indxtype used for various purposes */
@@ -213,6 +214,8 @@ struct graphdef {
   NRInfoType *nrinfo;
   int nsep;  			/* The number of vertices in the separator */
   idxtype *sepind;		/* The indices of the vertices in the separator */
+  idxtype *hmarker;             /* Marker for halo nodes (i.e, nodes 2 steps ways
+                                   from the boundary) */
 
   int lmincut, mincut;
 
@@ -241,8 +244,12 @@ struct controldef {
   int dbglvl;			/* Controls the debuging output of the program */
   int nparts;			/* The number of partitions */
   int foldf;			/* What is the folding factor */
-  int ipart;			/* The type of initial partitioning */
-  int xyztype;			/* The type of coordinate indexing */
+  int mtype;                    /* The matching type */
+  int ipart;			/* The initial partitioning type */
+  int rtype;                    /* The refinement type */
+  int xyztype;			/* The coordinate indexing type */
+  int nseps;                    /* The number of separators to compute at each bisection */
+  float ubfrac;                 /* The max/avg fraction for separator bisections */
   int seed;			/* Random number seed */
   int sync;			/* Random number seed */
   float *tpwgts;		/* Target subdomain weights */

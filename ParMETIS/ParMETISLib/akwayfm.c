@@ -20,7 +20,7 @@
 /*************************************************************************
 * This function performs k-way refinement
 **************************************************************************/
-void Moc_KWayAdaptiveRefine(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace, int npasses)
+void Mc_KWayAdaptiveRefine(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace, int npasses)
 {
   int h, i, ii, iii, j, k, c;
   int pass, nvtxs, nedges, ncon;
@@ -152,7 +152,7 @@ void Moc_KWayAdaptiveRefine(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wsp
     FastRandomPermute(nclean, perm+ndirty, 0);
 
     /* check to see if the partitioning is imbalanced */
-    Moc_ComputeParallelBalance(ctrl, graph, graph->where, lbvec);
+    Mc_ComputeParallelBalance(ctrl, graph, graph->where, lbvec);
     ubavg = savg(ncon, ubvec);
     lbavg = savg(ncon, lbvec);
     imbalanced = (lbavg > ubavg) ? 1 : 0;

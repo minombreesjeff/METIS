@@ -19,7 +19,7 @@
 /*************************************************************************
 * This function setsup the CtrlType structure
 **************************************************************************/
-GraphType *Moc_SetUpGraph(CtrlType *ctrl, int ncon, idxtype *vtxdist, idxtype *xadj, 
+GraphType *Mc_SetUpGraph(CtrlType *ctrl, int ncon, idxtype *vtxdist, idxtype *xadj, 
                           idxtype *vwgt, idxtype *adjncy, idxtype *adjwgt, int *wgtflag)
 {
   int i, j;
@@ -103,32 +103,27 @@ void SetUpCtrl(CtrlType *ctrl, int nparts, int dbglvl, MPI_Comm comm)
 **************************************************************************/
 void ChangeNumbering(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy, idxtype *part, int npes, int mype, int from)
 {
-  int i, nvtxs, nedges;
+  int i, nvtxs;
+
+  nvtxs = vtxdist[mype+1]-vtxdist[mype];
 
   if (from == 1) {  /* Change it from 1 to 0 */
     for (i=0; i<npes+1; i++)
       vtxdist[i]--;
 
-    nvtxs = vtxdist[mype+1]-vtxdist[mype];
     for (i=0; i<nvtxs+1; i++) 
       xadj[i]--;
-
-    nedges = xadj[nvtxs];
-    for (i=0; i<nedges; i++) 
+    for (i=0; i<xadj[nvtxs]; i++) 
       adjncy[i]--;
   }
   else {  /* Change it from 0 to 1 */
-    nvtxs = vtxdist[mype+1]-vtxdist[mype];
-    nedges = xadj[nvtxs];
-
     for (i=0; i<npes+1; i++) 
       vtxdist[i]++;
 
+    for (i=0; i<xadj[nvtxs]; i++) 
+      adjncy[i]++; 
     for (i=0; i<nvtxs+1; i++) 
       xadj[i]++; 
-
-    for (i=0; i<nedges; i++) 
-      adjncy[i]++; 
 
     for (i=0; i<nvtxs; i++)
       part[i]++;
@@ -140,48 +135,9 @@ void ChangeNumbering(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy, idxtype *
 /*************************************************************************
 * This function changes the numbering from 1 to 0 or 0 to 1
 **************************************************************************/
-void ChangeNumberingMesh(idxtype *elmdist, idxtype *elements, idxtype *xadj, 
-                         idxtype *adjncy, idxtype *part, int npes, int mype, 
-			 int elmntlen, int from)
-{
-  int i, nelms, nedges;
-
-  if (from == 1) {  /* Change it from 1 to 0 */
-    for (i=0; i<npes+1; i++)
-      elmdist[i]--;
-
-    for (i=0; i<elmntlen; i++) 
-      elements[i]--;
-  }
-  else {  /* Change it from 0 to 1 */
-    nelms = elmdist[mype+1]-elmdist[mype];
-    nedges = xadj[nelms];
-
-    for (i=0; i<npes+1; i++) 
-      elmdist[i]++;
-
-    for (i=0; i<elmntlen; i++) 
-      elements[i]++;
-
-    for (i=0; i<nelms+1; i++) 
-      xadj[i]++; 
-
-    for (i=0; i<nedges; i++) 
-      adjncy[i]++; 
-
-    if (part != NULL)
-      for (i=0; i<nelms; i++)
-        part[i]++;
-  }
-}
-
-
-/*************************************************************************
-* This function changes the numbering from 1 to 0 or 0 to 1
-**************************************************************************/
-void ChangeNumberingMesh2(idxtype *elmdist, idxtype *eptr, idxtype *eind, 
-                          idxtype *xadj, idxtype *adjncy, idxtype *part, 
-			  int npes, int mype, int from)
+void ChangeNumberingMesh(idxtype *elmdist, idxtype *eptr, idxtype *eind, 
+                         idxtype *xadj, idxtype *adjncy, idxtype *part, 
+			 int npes, int mype, int from)
 {
   int i, nelms;
 
@@ -193,7 +149,6 @@ void ChangeNumberingMesh2(idxtype *elmdist, idxtype *eptr, idxtype *eind,
 
     for (i=0; i<nelms+1; i++) 
       eptr[i]--;
-
     for (i=0; i<eptr[nelms]; i++) 
       eind[i]--;
   }
@@ -201,17 +156,15 @@ void ChangeNumberingMesh2(idxtype *elmdist, idxtype *eptr, idxtype *eind,
     for (i=0; i<npes+1; i++) 
       elmdist[i]++;
 
+    for (i=0; i<eptr[nelms]; i++) 
+      eind[i]++;
     for (i=0; i<nelms+1; i++) 
       eptr[i]++;
 
-    for (i=0; i<eptr[nelms]; i++) 
-      eind[i]++;
-
-    for (i=0; i<nelms+1; i++) 
-      xadj[i]++; 
-
     for (i=0; i<xadj[nelms]; i++) 
       adjncy[i]++; 
+    for (i=0; i<nelms+1; i++) 
+      xadj[i]++; 
 
     if (part != NULL)
       for (i=0; i<nelms; i++)

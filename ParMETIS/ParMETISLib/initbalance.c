@@ -42,7 +42,7 @@ void Balance_Partition(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
   IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->InitPartTmr));
 
   vtxdist = graph->vtxdist;
-  agraph = Moc_AssembleAdaptiveGraph(ctrl, graph, wspace);
+  agraph = Mc_AssembleAdaptiveGraph(ctrl, graph, wspace);
   nvtxs = cgraph.nvtxs = agraph->nvtxs;
   nedges = cgraph.nedges = agraph->nedges;
   ncon = cgraph.ncon = agraph->ncon;
@@ -106,7 +106,7 @@ void Balance_Partition(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
   /****************************************/
   /****************************************/
 
-  IFSET(ctrl->dbglvl, DBG_REFINEINFO, Moc_ComputeSerialBalance(ctrl, agraph, agraph->where, lbvec));
+  IFSET(ctrl->dbglvl, DBG_REFINEINFO, Mc_ComputeSerialBalance(ctrl, agraph, agraph->where, lbvec));
   IFSET(ctrl->dbglvl, DBG_REFINEINFO, rprintf(ctrl, "input cut: %d, balance: ", ComputeSerialEdgeCut(agraph)));
   for (i=0; i<agraph->ncon; i++)
     IFSET(ctrl->dbglvl, DBG_REFINEINFO, rprintf(ctrl, "%.3f ", lbvec[i]));
@@ -185,12 +185,12 @@ void Balance_Partition(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
 
       /* I'm picking the left branch */
       if (srmype < fpe+lnpes/2) {
-        Moc_KeepPart(agraph, wspace, part, 0);
+        Mc_KeepPart(agraph, wspace, part, 0);
         lnpes = lnpes/2;
         lnparts = lnparts/2;
       }
       else {
-        Moc_KeepPart(agraph, wspace, part, 1);
+        Mc_KeepPart(agraph, wspace, part, 1);
         fpart = fpart + lnparts/2;
         fpe = fpe + lnpes/2;
         lnpes = lnpes - lnpes/2;
@@ -224,7 +224,7 @@ void Balance_Partition(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
     MPI_Allreduce((void *)lwhere, (void *)part, nvtxs, IDX_DATATYPE, MPI_SUM, srcomm);
 
     edgecut = ComputeSerialEdgeCut(&cgraph);
-    Moc_ComputeSerialBalance(ctrl, &cgraph, part, lbvec);
+    Mc_ComputeSerialBalance(ctrl, &cgraph, part, lbvec);
     lbsum = ssum(ncon, lbvec);
     MPI_Allreduce((void *)&edgecut, (void *)&max_cut, 1, MPI_INT, MPI_MAX, ipcomm);
     MPI_Allreduce((void *)&lbsum, (void *)&min_lbsum, 1, MPI_FLOAT, MPI_MIN, ipcomm);
@@ -264,7 +264,7 @@ void Balance_Partition(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
 
     if (ncon == 1) {
       rating = WavefrontDiffusion(&myctrl, agraph, home);
-      Moc_ComputeSerialBalance(ctrl, &cgraph, part, lbvec);
+      Mc_ComputeSerialBalance(ctrl, &cgraph, part, lbvec);
       lbsum = ssum(ncon, lbvec);
 
       /* Determine which PE computed the best partitioning */
@@ -295,7 +295,7 @@ void Balance_Partition(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
       }
     }
     else {
-      Moc_Diffusion(&myctrl, agraph, graph->vtxdist, agraph->where, home, wspace, N_MOC_GD_PASSES);
+      Mc_Diffusion(&myctrl, agraph, graph->vtxdist, agraph->where, home, wspace, N_MOC_GD_PASSES);
     }
   }
 
@@ -306,7 +306,7 @@ void Balance_Partition(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
       /********************************************************************/
       my_cut = (float) ComputeSerialEdgeCut(&cgraph);
       my_totalv = (float) Mc_ComputeSerialTotalV(&cgraph, home);
-      Moc_ComputeSerialBalance(ctrl, &cgraph, part, lbvec);
+      Mc_ComputeSerialBalance(ctrl, &cgraph, part, lbvec);
       my_balance = ssum(cgraph.ncon, lbvec);
       my_balance /= (float) cgraph.ncon;
       my_cost = ctrl->ipc_factor * my_cut + REDIST_WGT * ctrl->redist_base * my_totalv;
@@ -363,7 +363,7 @@ void Balance_Partition(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
 /*************************************************************************
 * This function assembles the graph into a single processor
 **************************************************************************/
-GraphType *Moc_AssembleAdaptiveGraph(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
+GraphType *Mc_AssembleAdaptiveGraph(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
 {
   int i, j, k, l, gnvtxs, nvtxs, ncon, gnedges, nedges, gsize;
   idxtype *xadj, *vwgt, *vsize, *adjncy, *adjwgt, *vtxdist, *imap;

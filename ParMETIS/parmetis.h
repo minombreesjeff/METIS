@@ -40,6 +40,7 @@ typedef short idxtype;
 **************************************************************************/
 #define PARMETIS_MAJOR_VERSION        3
 #define PARMETIS_MINOR_VERSION        1
+#define PARMETIS_SUBMINOR_VERSION     1
 
 
 /*************************************************************************
@@ -92,7 +93,6 @@ void __cdecl ParMETIS_V3_RefineKway(
 	     idxtype *adjwgt, int *wgtflag, int *numflag, int *ncon, int *nparts, 
 	     float *tpwgts, float *ubvec, int *options, int *edgecut, 
 	     idxtype *part, MPI_Comm *comm);
-
 
 
 /*------------------------------------------------------------------
@@ -188,6 +188,16 @@ void __cdecl PARDAMETIS(
 #endif
 
 
+/*************************************************************************
+* Various constants used for the different parameters
+**************************************************************************/
+/* Matching types */
+#define PARMETIS_MTYPE_LOCAL    1
+#define PARMETIS_MTYPE_GLOBAL   2
 
+/* Refinement types */
+#define PARMETIS_RTYPE_RANDOM    1
+#define PARMETIS_RTYPE_GREEDY    2
+#define PARMETIS_RTYPE_2PHASE    3
 
 #endif 

@@ -16,7 +16,7 @@
 /*************************************************************************
 * This function performs k-way refinement
 **************************************************************************/
-void Moc_SerialKWayAdaptRefine(GraphType *graph, int nparts, idxtype *home,
+void Mc_SerialKWayAdaptRefine(GraphType *graph, int nparts, idxtype *home,
      float *orgubvec, int npasses)
 {
   int i, ii, iii, j, k;
@@ -229,7 +229,7 @@ MPI_Comm_rank(MPI_COMM_WORLD, &mype);
 /*************************************************************************
 * This function computes the initial id/ed
 **************************************************************************/
-void Moc_ComputeSerialPartitionParams(GraphType *graph, int nparts,
+void Mc_ComputeSerialPartitionParams(GraphType *graph, int nparts,
      EdgeType *degrees)
 {
   int i, j, k;
@@ -507,7 +507,7 @@ int SSMIncKeyCmp(const void *fptr, const void *sptr)
 /*************************************************************************
 * This function performs an edge-based FM refinement
 **************************************************************************/
-void Moc_Serial_FM_2WayRefine(GraphType *graph, float *tpwgts, int npasses)
+void Mc_Serial_FM_2WayRefine(GraphType *graph, float *tpwgts, int npasses)
 {
   int i, ii, j, k;
   int kwgt, nvtxs, ncon, nbnd, nswaps, from, to, pass, limit, tmp, cnum;
@@ -803,7 +803,7 @@ float Serial_Compute2WayHLoadImbalance(int ncon, float *npwgts, float *tpwgts)
 /*************************************************************************
 * This function performs an edge-based FM refinement
 **************************************************************************/
-void Moc_Serial_Balance2Way(GraphType *graph, float *tpwgts, float lbfactor)
+void Mc_Serial_Balance2Way(GraphType *graph, float *tpwgts, float lbfactor)
 {
   int i, ii, j, k, kwgt, nvtxs, ncon, nbnd, nswaps, from, to, limit, tmp, cnum;
   idxtype *xadj, *adjncy, *adjwgt, *where, *id, *ed, *bndptr, *bndind;
@@ -1002,7 +1002,7 @@ void Moc_Serial_Balance2Way(GraphType *graph, float *tpwgts, float lbfactor)
 * It moves vertices from the domain that is overweight to the one that
 * is underweight.
 **************************************************************************/
-void Moc_Serial_Init2WayBalance(GraphType *graph, float *tpwgts)
+void Mc_Serial_Init2WayBalance(GraphType *graph, float *tpwgts)
 {
   int i, ii, j, k;
   int kwgt, nvtxs, nbnd, ncon, nswaps, from, to, cnum, tmp;
@@ -1150,7 +1150,7 @@ int Serial_SelectQueueOneWay(int ncon, float *npwgts, float *tpwgts, int from,
 /*************************************************************************
 * This function computes the initial id/ed
 **************************************************************************/
-void Moc_Serial_Compute2WayPartitionParams(GraphType *graph)
+void Mc_Serial_Compute2WayPartitionParams(GraphType *graph)
 {
   int i, j, me, nvtxs, ncon, nbnd, mincut;
   idxtype *xadj, *adjncy, *adjwgt;

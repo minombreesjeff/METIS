@@ -20,7 +20,7 @@
 /*************************************************************************
 * This function is the driver to the multi-constraint partitioning algorithm.
 **************************************************************************/
-void Moc_Global_Partition(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
+void Mc_Global_Partition(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
 {
   int i, ncon, nparts;
   float ftmp, ubavg, lbavg, lbvec[MAXNCON];
@@ -48,10 +48,10 @@ void Moc_Global_Partition(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspac
 
     /* Done with coarsening. Find a partition */
     graph->where = idxmalloc(graph->nvtxs+graph->nrecv, "graph->where");
-    Moc_InitPartition_RB(ctrl, graph, wspace);
+    Mc_InitPartition_RB(ctrl, graph, wspace);
 
     if (ctrl->dbglvl&DBG_PROGRESS) {
-      Moc_ComputeParallelBalance(ctrl, graph, graph->where, lbvec);
+      Mc_ComputeParallelBalance(ctrl, graph, graph->where, lbvec);
       rprintf(ctrl, "nvtxs: %10d, balance: ", graph->gnvtxs);
       for (i=0; i<graph->ncon; i++) 
         rprintf(ctrl, "%.3f ", lbvec[i]);
@@ -60,17 +60,17 @@ void Moc_Global_Partition(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspac
 
     /* In case no coarsening took place */
     if (graph->finer == NULL) {
-      Moc_ComputePartitionParams(ctrl, graph, wspace);
-      Moc_KWayFM(ctrl, graph, wspace, NGR_PASSES);
+      Mc_ComputePartitionParams(ctrl, graph, wspace);
+      Mc_KWayFM(ctrl, graph, wspace, NGR_PASSES);
     }
   }
   else {
-    Moc_GlobalMatch_Balance(ctrl, graph, wspace);
+    Mc_GlobalMatch_Balance(ctrl, graph, wspace);
 
-    Moc_Global_Partition(ctrl, graph->coarser, wspace);
+    Mc_Global_Partition(ctrl, graph->coarser, wspace);
 
-    Moc_ProjectPartition(ctrl, graph, wspace);
-    Moc_ComputePartitionParams(ctrl, graph, wspace);
+    Mc_ProjectPartition(ctrl, graph, wspace);
+    Mc_ComputePartitionParams(ctrl, graph, wspace);
 
     if (graph->ncon > 1 && graph->level < 3) {
       for (i=0; i<ncon; i++) {
@@ -85,21 +85,21 @@ void Moc_Global_Partition(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspac
 
       if (lbavg > ubavg + 0.035) {
         if (ctrl->dbglvl&DBG_PROGRESS) {
-          Moc_ComputeParallelBalance(ctrl, graph, graph->where, lbvec);
+          Mc_ComputeParallelBalance(ctrl, graph, graph->where, lbvec);
           rprintf(ctrl, "nvtxs: %10d, cut: %8d, balance: ", graph->gnvtxs, graph->mincut);
           for (i=0; i<graph->ncon; i++) 
             rprintf(ctrl, "%.3f ", lbvec[i]);
           rprintf(ctrl, "\n");
 	}
 
-        Moc_KWayBalance(ctrl, graph, wspace, graph->ncon);
+        Mc_KWayBalance(ctrl, graph, wspace, graph->ncon);
       }
     }
 
-    Moc_KWayFM(ctrl, graph, wspace, NGR_PASSES);
+    Mc_KWayFM(ctrl, graph, wspace, NGR_PASSES);
 
     if (ctrl->dbglvl&DBG_PROGRESS) {
-      Moc_ComputeParallelBalance(ctrl, graph, graph->where, lbvec);
+      Mc_ComputeParallelBalance(ctrl, graph, graph->where, lbvec);
       rprintf(ctrl, "nvtxs: %10d, cut: %8d, balance: ", graph->gnvtxs, graph->mincut);
       for (i=0; i<graph->ncon; i++) 
         rprintf(ctrl, "%.3f ", lbvec[i]);

@@ -51,14 +51,14 @@ void Adaptive_Partition(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
     graph->where = idxsmalloc(graph->nvtxs+graph->nrecv, -1, "graph->where");
     idxcopy(graph->nvtxs, graph->home, graph->where);
 
-    Moc_ComputeParallelBalance(ctrl, graph, graph->where, lbvec);
+    Mc_ComputeParallelBalance(ctrl, graph, graph->where, lbvec);
     lbavg = savg(graph->ncon, lbvec);
 
     if (lbavg > ubavg + 0.035 && ctrl->partType != REFINE_PARTITION)
       Balance_Partition(ctrl, graph, wspace);
 
     if (ctrl->dbglvl&DBG_PROGRESS) {
-      Moc_ComputeParallelBalance(ctrl, graph, graph->where, lbvec);
+      Mc_ComputeParallelBalance(ctrl, graph, graph->where, lbvec);
       rprintf(ctrl, "nvtxs: %10d, balance: ", graph->gnvtxs);
       for (i=0; i<graph->ncon; i++) 
         rprintf(ctrl, "%.3f ", lbvec[i]);
@@ -67,9 +67,9 @@ void Adaptive_Partition(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
 
     /* check if no coarsening took place */
     if (graph->finer == NULL) {
-      Moc_ComputePartitionParams(ctrl, graph, wspace);
-      Moc_KWayBalance(ctrl, graph, wspace, graph->ncon);
-      Moc_KWayAdaptiveRefine(ctrl, graph, wspace, NGR_PASSES);
+      Mc_ComputePartitionParams(ctrl, graph, wspace);
+      Mc_KWayBalance(ctrl, graph, wspace, graph->ncon);
+      Mc_KWayAdaptiveRefine(ctrl, graph, wspace, NGR_PASSES);
     }
   }
   else {
@@ -82,7 +82,7 @@ void Adaptive_Partition(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
         break;
       case DISCOUPLED:
       default:
-        Moc_GlobalMatch_Balance(ctrl, graph, wspace);
+        Mc_GlobalMatch_Balance(ctrl, graph, wspace);
         break;
     }
 
@@ -91,22 +91,22 @@ void Adaptive_Partition(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
     /********************************/
     /* project partition and refine */
     /********************************/
-    Moc_ProjectPartition(ctrl, graph, wspace);
-    Moc_ComputePartitionParams(ctrl, graph, wspace);
+    Mc_ProjectPartition(ctrl, graph, wspace);
+    Mc_ComputePartitionParams(ctrl, graph, wspace);
 
     if (graph->ncon > 1 && graph->level < 4) {
-      Moc_ComputeParallelBalance(ctrl, graph, graph->where, lbvec);
+      Mc_ComputeParallelBalance(ctrl, graph, graph->where, lbvec);
       lbavg = savg(graph->ncon, lbvec);
 
       if (lbavg > ubavg + 0.025) {
-        Moc_KWayBalance(ctrl, graph, wspace, graph->ncon);
+        Mc_KWayBalance(ctrl, graph, wspace, graph->ncon);
       }
     }
 
-    Moc_KWayAdaptiveRefine(ctrl, graph, wspace, NGR_PASSES);
+    Mc_KWayAdaptiveRefine(ctrl, graph, wspace, NGR_PASSES);
 
     if (ctrl->dbglvl&DBG_PROGRESS) {
-      Moc_ComputeParallelBalance(ctrl, graph, graph->where, lbvec);
+      Mc_ComputeParallelBalance(ctrl, graph, graph->where, lbvec);
       rprintf(ctrl, "nvtxs: %10d, cut: %8d, balance: ", graph->gnvtxs, graph->mincut);
       for (i=0; i<graph->ncon; i++) 
         rprintf(ctrl, "%.3f ", lbvec[i]);

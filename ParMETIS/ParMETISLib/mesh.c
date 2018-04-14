@@ -32,7 +32,7 @@ void ParMETIS_V3_Mesh2Dual(idxtype *elmdist, idxtype *eptr, idxtype *eind,
   idxtype *gnptr, *gnind, *nptr, *nind, *myxadj, *myadjncy = NULL;
   idxtype *sbuffer, *rbuffer, *htable;
   KeyValueType *nodelist, *recvbuffer;
-  idxtype ind[200], wgt[200];
+  idxtype maxcount, *ind, *wgt;
   int gmaxnode, gminnode;
   CtrlType ctrl;
 
@@ -45,7 +45,7 @@ void ParMETIS_V3_Mesh2Dual(idxtype *elmdist, idxtype *eptr, idxtype *eind,
   nelms = elmdist[mype+1]-elmdist[mype];
 
   if (*numflag == 1) 
-    ChangeNumberingMesh2(elmdist, eptr, eind, NULL, NULL, NULL, npes, mype, 1);
+    ChangeNumberingMesh(elmdist, eptr, eind, NULL, NULL, NULL, npes, mype, 1);
 
   mask = (1<<11)-1;
 
@@ -258,6 +258,10 @@ void ParMETIS_V3_Mesh2Dual(idxtype *elmdist, idxtype *eptr, idxtype *eind,
   firstelm = elmdist[mype];
 
   /* Two passes -- in first pass, simply find out the memory requirements */
+  maxcount = 200;
+  ind = idxmalloc(maxcount, "ParMETIS_V3_Mesh2Dual: ind");
+  wgt = idxmalloc(maxcount, "ParMETIS_V3_Mesh2Dual: wgt");
+
   for (pass=0; pass<2; pass++) {
     for (i=0; i<nelms; i++) {
       for (count=0, j=eptr[i]; j<eptr[i+1]; j++) {
@@ -291,6 +295,23 @@ void ParMETIS_V3_Mesh2Dual(idxtype *elmdist, idxtype *eptr, idxtype *eind,
               }
 	    }
           }
+
+          /* Adjust the memory. 
+             This will be replaced by a idxrealloc() when GKlib will be incorporated */
+          if (count == maxcount-1) {
+            idxtype *tmpptr;
+
+            tmpptr = idxmalloc(2*maxcount, "ParMETIS_V3_Mesh2Dual: tmpptr");
+            idxcopy(maxcount, ind, tmpptr);
+            ind = tmpptr;
+
+            tmpptr = idxmalloc(2*maxcount, "ParMETIS_V3_Mesh2Dual: tmpptr");
+            idxcopy(maxcount, wgt, tmpptr);
+            wgt = tmpptr;
+
+            maxcount *= 2;
+          }
+
         }
       }
 
@@ -321,12 +342,12 @@ void ParMETIS_V3_Mesh2Dual(idxtype *elmdist, idxtype *eptr, idxtype *eind,
     eind[i] = nmap[eind[i]] + gminnode;
 
   if (*numflag == 1) 
-    ChangeNumberingMesh2(elmdist, eptr, eind, myxadj, myadjncy, NULL, npes, mype, 0);
+    ChangeNumberingMesh(elmdist, eptr, eind, myxadj, myadjncy, NULL, npes, mype, 0);
 
   /* do not free nodelist, recvbuffer, rbuffer */
   GKfree((void **)&scounts, (void **)&nodedist, (void **)&nmap, (void **)&sbuffer, 
          (void **)&htable, (void **)&nptr, (void **)&nind, (void **)&gnptr, 
-	 (void **)&gnind, (void **)&auxarray, LTERM);
+	 (void **)&gnind, (void **)&auxarray, &ind, &wgt, LTERM);
 
   FreeCtrl(&ctrl);
 

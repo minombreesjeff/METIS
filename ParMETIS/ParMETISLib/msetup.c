@@ -12,7 +12,7 @@
  *
  */
 
-#include <parmetis.h>
+#include <parmetislib.h>
 
 
 

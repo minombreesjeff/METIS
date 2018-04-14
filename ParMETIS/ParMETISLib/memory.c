@@ -15,35 +15,48 @@
 #include <parmetislib.h>
 
 
-/*************************************************************************
-* This function allocate various pools of memory
-**************************************************************************/
-void PreAllocateMemory(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
+/*************************************************************************/
+/*! This function allocate various pools of memory */
+/*************************************************************************/
+void AllocateWSpace(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
 {
   wspace->nlarge  = 2*graph->nedges;
+  wspace->nparts  = ctrl->nparts;
+  wspace->npes    = ctrl->npes;
 
   wspace->maxcore = 8*graph->nedges+1;
-  wspace->core    = idxmalloc(wspace->maxcore, "PreAllocateMemory: wspace->core");
+  wspace->core    = idxmalloc(wspace->maxcore, "AllocateWSpace: wspace->core");
 
   wspace->pairs   = (KeyValueType *)wspace->core;
   wspace->indices = (idxtype *)(wspace->pairs + wspace->nlarge);
   wspace->degrees = (EdgeType *)(wspace->indices + wspace->nlarge);
 
 
-  wspace->pv1 = idxmalloc(ctrl->nparts+ctrl->npes+1, "PreAllocateMemory: wspace->pv?");
-  wspace->pv2 = idxmalloc(ctrl->nparts+ctrl->npes+1, "PreAllocateMemory: wspace->pv?");
-  wspace->pv3 = idxmalloc(ctrl->nparts+ctrl->npes+1, "PreAllocateMemory: wspace->pv?");
-  wspace->pv4 = idxmalloc(ctrl->nparts+ctrl->npes+1, "PreAllocateMemory: wspace->pv?");
+  wspace->pv1 = idxmalloc(ctrl->nparts+ctrl->npes+1, "AllocateWSpace: wspace->pv1");
+  wspace->pv2 = idxmalloc(ctrl->nparts+ctrl->npes+1, "AllocateWSpace: wspace->pv2");
+  wspace->pv3 = idxmalloc(ctrl->nparts+ctrl->npes+1, "AllocateWSpace: wspace->pv3");
+  wspace->pv4 = idxmalloc(ctrl->nparts+ctrl->npes+1, "AllocateWSpace: wspace->pv4");
 
-  wspace->pepairs1 = (KeyValueType *)GKmalloc(sizeof(KeyValueType)*(ctrl->nparts+ctrl->npes+1), "PreAllocateMemory: wspace->pepairs?");
-  wspace->pepairs2 = (KeyValueType *)GKmalloc(sizeof(KeyValueType)*(ctrl->nparts+ctrl->npes+1), "PreAllocateMemory: wspace->pepairs?");
+  wspace->pepairs1 = (KeyValueType *)GKmalloc(sizeof(KeyValueType)*(ctrl->nparts+ctrl->npes+1), "AllocateWSpace: wspace->pepairs?");
+  wspace->pepairs2 = (KeyValueType *)GKmalloc(sizeof(KeyValueType)*(ctrl->nparts+ctrl->npes+1), "AllocateWSpace: wspace->pepairs?");
 
 }
 
+/*************************************************************************/
+/*! This function re-allocates the workspace if previous one is not large
+    enough */
+/*************************************************************************/
+void AdjustWSpace(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
+{
+  if (wspace->nlarge < 2*graph->nedges || wspace->nparts < ctrl->nparts || wspace->npes < ctrl->npes) {
+    FreeWSpace(wspace);
+    AllocateWSpace(ctrl, graph, wspace);
+  }
+}
 
-/*************************************************************************
-* This function de-allocate various pools of memory
-**************************************************************************/
+/*************************************************************************/
+/*! This function de-allocate various pools of memory */
+/**************************************************************************/
 void FreeWSpace(WorkSpaceType *wspace)
 {
 
@@ -110,8 +123,9 @@ void InitGraph(GraphType *graph)
   graph->lnpwgts = graph->gnpwgts = NULL;
   graph->rinfo = NULL;
 
-  graph->nrinfo = NULL;
-  graph->sepind = NULL;
+  graph->nrinfo  = NULL;
+  graph->sepind  = NULL;
+  graph->hmarker = NULL;
 
   graph->coarser = graph->finer = NULL;
 
@@ -139,6 +153,7 @@ void FreeGraph(GraphType *graph)
          (void **)&graph->rinfo, 
          (void **)&graph->nrinfo, 
          (void **)&graph->sepind,
+         (void **)&graph->hmarker,
          (void **)&graph->lpwgts, 
          (void **)&graph->gpwgts, 
          (void **)&graph->lnpwgts, 
@@ -165,14 +180,14 @@ void FreeGraph(GraphType *graph)
 /*************************************************************************
 * This function deallocates any memory stored in a graph
 **************************************************************************/
-void FreeInitialGraphAndRemap(GraphType *graph, int wgtflag) 
+void FreeInitialGraphAndRemap(GraphType *graph, int wgtflag, int freevsize) 
 {
   int i, nedges;
   idxtype *adjncy, *imap;
 
   nedges = graph->nedges;
   adjncy = graph->adjncy;
-  imap = graph->imap;
+  imap   = graph->imap;
 
   if (imap != NULL) {
     for (i=0; i<nedges; i++)
@@ -207,8 +222,10 @@ void FreeInitialGraphAndRemap(GraphType *graph, int wgtflag)
          (void **)&graph->peadjloc,
          LTERM);
 
+  if (freevsize)
+    GKfree((void **)&graph->vsize, LTERM);
   if ((wgtflag&2) == 0) 
-    GKfree((void **)&graph->vwgt, (void **)&graph->vsize, LTERM);
+    GKfree((void **)&graph->vwgt, LTERM);
   if ((wgtflag&1) == 0) 
     GKfree((void **)&graph->adjwgt, LTERM);
 

@@ -1,4 +1,18 @@
 
+Changes in version 3.1.1
+- Fixed a number of bugs that have been reported over the years.
+  The following tasks correspond to the issues reported at 
+  http://glaros.dtc.umn.edu/flyspray
+  - Flyspray Task  8: Fixed deallocation of user-supplied vsize
+  - Flyspray Task 28: Fixed ParMETIS_V3_Mesh2Dual static arrays 
+  - Flyspray Task 30: Fixed 1025 instead of 1024 buckets
+  - Flyspray Task 34: Fixed writting past wspace->core for certain cases
+  - Flyspray Task 35: Fixed issues associated with assumed 0-based indexing
+  - Flyspray Task 36: Fixed mesh 1->0 numbering error
+- Fixed non-utilization of the user-supplied seed for the parallel ordering 
+  code
+
+
 Changes in version 3.1
 - The mesh partitioning and dual creation routines have changed to support mixed
   element meshes.

@@ -18,17 +18,36 @@
 
 
 
-/*************************************************************************
-* This function is the entry point of the initial partitioning algorithm.
-* This algorithm assembles the graph to all the processors and preceed
-* serially.
-**************************************************************************/
-void InitMultisection(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
-{
-  int i, lpecut[2], gpecut[2], mypart, moptions[10];
-  idxtype *vtxdist, *gwhere = NULL, *part, *label;
-  GraphType *agraph;
-  int *sendcounts, *displs;
+/************************************************************************************/
+/*! 
+ The entry point of the algorithm that finds the separators of the coarsest graph.
+ This algorithm first assembles the graph to all the processors, it then splits the
+ processors into groups depending on the number of partitions for which we want to
+ compute the separator. The processors of each group compute the separator of their
+ corresponding graph and the smallest separator is selected.
+
+ The parameter nparts on calling this routine indicates the number of desired
+ partitions after the multisection (excluding the nodes that end up on the
+ separator). The initial bisection is achieved when nparts==2 and upon entry
+ graph->where[] = 0 for all vertices. Similarly, if nparts==4, it indicates that we
+ have a graph that is already partitioned into two parts (as specified in
+ graph->where) and we need to find the separator of each one of these parts.
+
+ The final partitioning is encoded in the graph->where vector as follows. If nparts
+ is the number of partitions, the left, right, and separator subpartitions of the
+ original partition i will be labeled 2*i, 2*i+1, and nparts+2*i, respectively. Note
+ that in the above expressions, i goes from [0...nparts/2]. As a result of this
+ encoding, the left (i.e., 0th) partition of a node \c i on the separator will be
+ given by where[i]%nparts. 
+
+*/
+/************************************************************************************/
+void InitMultisection(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace) 
+{ 
+  int i, lpecut[2], gpecut[2], mypart, moptions[10]; 
+  idxtype *vtxdist, *gwhere = NULL, *part, *label; 
+  GraphType *agraph; 
+  int *sendcounts, *displs; 
   MPI_Comm newcomm, labelcomm;
 
   IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->InitPartTmr));
@@ -42,9 +61,9 @@ void InitMultisection(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
   mypart = ctrl->mype%(ctrl->nparts/2);
   MPI_Comm_split(ctrl->comm, mypart, 0, &newcomm);
 
-  /* Each processor keeps the graphs that it only needs and bisects it */
-  agraph->ncon = 1; /* needed for Moc_KeepPart */
-  Moc_KeepPart(agraph, wspace, part, mypart);
+  /* Each processor keeps the graph that it only needs and bisects it */
+  agraph->ncon = 1; /* needed for Mc_KeepPart */
+  Mc_KeepPart(agraph, wspace, part, mypart);
   label = agraph->label;  /* Save this because ipart may need it */
   agraph->label = NULL;
 
@@ -115,22 +134,23 @@ void InitMultisection(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
   agraph->where = part;
 
   if (lpecut[1] == 0) {
-    MPI_Reduce((void *)gwhere, (void *)agraph->where, graph->gnvtxs, IDX_DATATYPE, MPI_SUM, 0, labelcomm);
+    MPI_Reduce((void *)gwhere, (void *)agraph->where, graph->gnvtxs, IDX_DATATYPE, 
+        MPI_SUM, 0, labelcomm);
     free(gwhere);
   }
 
   /* The minimum PE performs the Scatter */
   vtxdist = graph->vtxdist;
   ASSERT(ctrl, graph->where != NULL);
-  free(graph->where);  /* Remove the propagated down where info */
+  GKfree((void **)&graph->where, LTERM);  /* Remove the propagated down where info */
   graph->where = idxmalloc(graph->nvtxs+graph->nrecv, "InitPartition: where");
 
   sendcounts = imalloc(ctrl->npes, "InitPartitionNew: sendcounts");
-  displs = imalloc(ctrl->npes, "InitPartitionNew: displs");
+  displs     = imalloc(ctrl->npes, "InitPartitionNew: displs");
 
   for (i=0; i<ctrl->npes; i++) {
     sendcounts[i] = vtxdist[i+1]-vtxdist[i];
-    displs[i] = vtxdist[i];
+    displs[i]     = vtxdist[i];
   }
 
   MPI_Scatterv((void *)agraph->where, sendcounts, displs, IDX_DATATYPE, 
@@ -162,16 +182,16 @@ GraphType *AssembleMultisectedGraph(CtrlType *ctrl, GraphType *graph, WorkSpaceT
   int *recvcounts, *displs, mysize;
   GraphType *agraph;
 
-  gnvtxs = graph->gnvtxs;
-  nvtxs = graph->nvtxs;
-  nedges = graph->xadj[nvtxs];
-  xadj = graph->xadj;
-  vwgt = graph->vwgt;
-  where = graph->where;
-  adjncy = graph->adjncy;
-  adjwgt = graph->adjwgt;
+  gnvtxs  = graph->gnvtxs;
+  nvtxs   = graph->nvtxs;
+  nedges  = graph->xadj[nvtxs];
+  xadj    = graph->xadj;
+  vwgt    = graph->vwgt;
+  where   = graph->where;
+  adjncy  = graph->adjncy;
+  adjwgt  = graph->adjwgt;
   vtxdist = graph->vtxdist;
-  imap = graph->imap;
+  imap    = graph->imap;
 
   /* Determine the # of idxtype to receive from each processor */
   recvcounts = imalloc(ctrl->npes, "AssembleGraph: recvcounts");

@@ -21,5 +21,6 @@
 #include <stdarg.h>
 #include <limits.h>
 #include <time.h>
+#include <assert.h>
 #include <mpi.h>
 

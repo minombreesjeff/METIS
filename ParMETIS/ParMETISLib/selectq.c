@@ -16,7 +16,7 @@
 /*************************************************************************
 *  This stuff is hardcoded for up to four constraints
 **************************************************************************/
-void Moc_DynamicSelectQueue(int nqueues, int ncon, int subdomain1, int subdomain2,
+void Mc_DynamicSelectQueue(int nqueues, int ncon, int subdomain1, int subdomain2,
      idxtype *currentq, float *flows, int *from, int *qnum, int minval, float avgvwgt,
      float maxdiff)
 {
@@ -276,7 +276,7 @@ MPI_Comm_rank(MPI_COMM_WORLD, &mype);
       rank[cand[j]] = j;
 
 
-    hash = Moc_HashVRank(ncon, rank) - minval;
+    hash = Mc_HashVRank(ncon, rank) - minval;
     if (currentq[hash+index] > 0) {
       *qnum = hash;
       return;
@@ -290,7 +290,7 @@ MPI_Comm_rank(MPI_COMM_WORLD, &mype);
 /*************************************************************************
 *  This function sorts the nvwgts of a vertex and returns a hashed value
 **************************************************************************/
-int Moc_HashVwgts(int ncon, float *nvwgt)
+int Mc_HashVwgts(int ncon, float *nvwgt)
 {
   int i;
   int multiplier, retval;
@@ -322,7 +322,7 @@ int Moc_HashVwgts(int ncon, float *nvwgt)
 /*************************************************************************
 *  This function sorts the vwgts of a vertex and returns a hashed value
 **************************************************************************/
-int Moc_HashVRank(int ncon, int *vwgt)
+int Mc_HashVRank(int ncon, int *vwgt)
 {
   int i, multiplier, retval;
 

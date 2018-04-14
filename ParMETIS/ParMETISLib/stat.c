@@ -19,7 +19,7 @@
 /*************************************************************************
 * This function computes the balance of the partitioning
 **************************************************************************/
-void Moc_ComputeSerialBalance(CtrlType *ctrl, GraphType *graph, idxtype *where, float *ubvec)
+void Mc_ComputeSerialBalance(CtrlType *ctrl, GraphType *graph, idxtype *where, float *ubvec)
 {
   int i, j, nvtxs, ncon, nparts;
   idxtype *pwgts, *tvwgts, *vwgt;
@@ -56,7 +56,7 @@ void Moc_ComputeSerialBalance(CtrlType *ctrl, GraphType *graph, idxtype *where, 
 /*************************************************************************
 * This function computes the balance of the partitioning
 **************************************************************************/
-void Moc_ComputeParallelBalance(CtrlType *ctrl, GraphType *graph, idxtype *where, float *ubvec)
+void Mc_ComputeParallelBalance(CtrlType *ctrl, GraphType *graph, idxtype *where, float *ubvec)
 {
   int i, j, nvtxs, ncon, nparts;
   float *nvwgt, *lnpwgts, *gnpwgts;
@@ -103,7 +103,7 @@ void Moc_ComputeParallelBalance(CtrlType *ctrl, GraphType *graph, idxtype *where
 /*************************************************************************
 * This function prints a matrix
 **************************************************************************/
-void Moc_PrintThrottleMatrix(CtrlType *ctrl, GraphType *graph, float *matrix)
+void Mc_PrintThrottleMatrix(CtrlType *ctrl, GraphType *graph, float *matrix)
 {
   int i, j;
 
@@ -130,7 +130,7 @@ void Moc_PrintThrottleMatrix(CtrlType *ctrl, GraphType *graph, float *matrix)
 /*************************************************************************
 *  This function computes stats for refinement
 **************************************************************************/
-void Moc_ComputeRefineStats(CtrlType *ctrl, GraphType *graph, float *ubvec)
+void Mc_ComputeRefineStats(CtrlType *ctrl, GraphType *graph, float *ubvec)
 {
   int h, i, j, k;
   int nvtxs, ncon;

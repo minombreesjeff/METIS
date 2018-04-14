@@ -26,24 +26,26 @@ void Mc_LocalMatch_HEM(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
   idxtype *perm, *match;
   float maxnvwgt, *nvwgt;
 
+  ASSERT(ctrl, wspace->nlarge > graph->xadj[graph->nvtxs]);
+
   graph->match_type = MATCH_LOCAL;
   maxnvwgt = 1.0/((float)(ctrl->nparts)*MAXVWGT_FACTOR);
 
   IFSET(ctrl->dbglvl, DBG_TIME, MPI_Barrier(ctrl->comm));
   IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->MatchTmr));
 
-  nvtxs = graph->nvtxs;
-  ncon = graph->ncon;
-  xadj = graph->xadj;
-  nvwgt = graph->nvwgt;
+  nvtxs   = graph->nvtxs;
+  ncon    = graph->ncon;
+  xadj    = graph->xadj;
+  nvwgt   = graph->nvwgt;
   ladjncy = graph->adjncy;
-  adjwgt = graph->adjwgt;
-  home = graph->home;
+  adjwgt  = graph->adjwgt;
+  home    = graph->home;
 
-  vtxdist = graph->vtxdist;
+  vtxdist  = graph->vtxdist;
   firstvtx = vtxdist[ctrl->mype];
 
-  match = graph->match = idxmalloc(nvtxs+graph->nrecv, "HEM_Match: match");
+  match  = graph->match = idxmalloc(nvtxs+graph->nrecv, "HEM_Match: match");
   myhome = idxsmalloc(nvtxs+graph->nrecv, UNMATCHED, "HEM_Match: myhome");
 
   idxset(nvtxs, UNMATCHED, match);
@@ -75,7 +77,7 @@ void Mc_LocalMatch_HEM(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
         if (nvwgt[i*ncon+h] > maxnvwgt)
           break;
 
-      if (h == ncon) {
+      if (h == ncon && ii<nvtxs) {
         for (j=xadj[i]; j<xadj[i+1]; j++) {
           edge = ladjncy[j];
 
@@ -143,8 +145,6 @@ void Mc_LocalMatch_HEM(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
 
 
 
-
-
 /*************************************************************************
 * This function creates the coarser graph
 **************************************************************************/
@@ -156,23 +156,24 @@ void Mc_Local_CreateCoarseGraph(CtrlType *ctrl, GraphType *graph, WorkSpaceType 
   int cnedges, v, u;
   idxtype *xadj, *vwgt, *vsize, *ladjncy, *adjwgt, *vtxdist, *where, *home;
   idxtype *match, *cmap;
-  idxtype *cxadj, *cvwgt, *cvsize = NULL, *cadjncy, *cadjwgt, *cvtxdist, *chome = NULL, *cwhere = NULL;
+  idxtype *cxadj, *cvwgt, *cvsize = NULL, *cadjncy, *cadjwgt, *cvtxdist, 
+          *chome = NULL, *cwhere = NULL;
   float *cnvwgt;
   GraphType *cgraph;
   int mask=(1<<13)-1, htable[8192], htableidx[8192];
 
   nvtxs = graph->nvtxs;
-  ncon = graph->ncon;
+  ncon  = graph->ncon;
 
   vtxdist = graph->vtxdist;
-  xadj = graph->xadj;
-  vwgt = graph->vwgt;
-  home = graph->home;
-  vsize = graph->vsize;
+  xadj    = graph->xadj;
+  vwgt    = graph->vwgt;
+  home    = graph->home;
+  vsize   = graph->vsize;
   ladjncy = graph->adjncy;
-  adjwgt = graph->adjwgt;
-  where = graph->where;
-  match = graph->match;
+  adjwgt  = graph->adjwgt;
+  where   = graph->where;
+  match   = graph->match;
 
   firstvtx = vtxdist[mype];
 
@@ -357,7 +358,9 @@ void Mc_Local_CreateCoarseGraph(CtrlType *ctrl, GraphType *graph, WorkSpaceType 
   cgraph->adjwgt = idxmalloc(cnedges, "CreateCoarserGraph: cadjwgt");
   idxcopy(cnedges, cadjncy, cgraph->adjncy);
   idxcopy(cnedges, cadjwgt, cgraph->adjwgt);
-  GKfree((void **)&cadjncy, (void **)&graph->where, LTERM); /* Note that graph->where works fine even if it is NULL */
+
+  /* Note that graph->where works fine even if it is NULL */
+  GKfree((void **)&cadjncy, (void **)&graph->where, LTERM); 
 
 }
 

@@ -31,9 +31,8 @@ void Coordinate_Partition(CtrlType *ctrl, GraphType *graph, int ndims, float *xy
   else
     graph->nrecv = 0;
 
-  nvtxs = graph->nvtxs;
-  vtxdist = graph->vtxdist;
-
+  nvtxs    = graph->nvtxs;
+  vtxdist  = graph->vtxdist;
   firstvtx = vtxdist[ctrl->mype];
 
   cand = (KeyValueType *)GKmalloc(nvtxs*sizeof(KeyValueType), "Coordinate_Partition: cand");
@@ -77,8 +76,9 @@ void Coordinate_Partition(CtrlType *ctrl, GraphType *graph, int ndims, float *xy
       break;
     case XYZ_SPFILL:
       for (i=0; i<nvtxs; i++) {
+        /* make the coordinates to be ints in the 0..1023 range (i.e., 10 bits) */
         for (k=0; k<ndims; k++)
-          coords[k] = 1024*((xyz[i*ndims+k]+shift[k])*scale[k]);
+          coords[k] = 1023*((xyz[i*ndims+k]+shift[k])*scale[k]); 
         for (icoord=0, j=9; j>=0; j--) {
           for (k=0; k<ndims; k++)
             icoord = (icoord<<1) + (coords[k]&(1<<j) ? 1 : 0);
@@ -101,10 +101,10 @@ void Coordinate_Partition(CtrlType *ctrl, GraphType *graph, int ndims, float *xy
 
 
 
-/*************************************************************************
-* This function sorts a distributed list of KeyValueType in increasing 
-* order, and uses it to compute a partition. It uses samplesort. 
-**************************************************************************/
+/**************************************************************************/
+/*! This function sorts a distributed list of KeyValueType in increasing 
+    order, and uses it to compute a partition. It uses samplesort. */
+/**************************************************************************/
 void PartSort(CtrlType *ctrl, GraphType *graph, KeyValueType *elmnts, WorkSpaceType *wspace)
 {
   int i, j, k, nvtxs, nrecv, npes=ctrl->npes, mype=ctrl->mype, firstvtx, lastvtx;

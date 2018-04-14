@@ -42,7 +42,7 @@ void SetUp(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
   adjncy  = graph->adjncy;
 
   firstvtx = vtxdist[mype];
-  lastvtx = vtxdist[mype+1];
+  lastvtx  = vtxdist[mype+1];
 
   pemap = wspace->pv1;
   idxset(npes, -1, pemap);
@@ -65,12 +65,12 @@ void SetUp(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
         adjncy[j] = k-firstvtx;
         continue;  /* local vertex */
       }
-      adjpairs[nadj].key = k;
+      adjpairs[nadj].key   = k;
       adjpairs[nadj++].val = j;
       islocal = 0;
     }
     if (islocal) {
-      lperm[i] = lperm[nlocal];
+      lperm[i]        = lperm[nlocal];
       lperm[nlocal++] = i;
     }
   }
@@ -86,7 +86,7 @@ void SetUp(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
 
 
   /* Allocate space for the setup info attached to this level of the graph */
-  peind = graph->peind = idxmalloc(npes, "SetUp: peind");
+  peind   = graph->peind   = idxmalloc(npes, "SetUp: peind");
   recvptr = graph->recvptr = idxmalloc(npes+1, "SetUp: recvptr");
   recvind = graph->recvind = idxmalloc(nrecv, "SetUp: recvind");
 
@@ -100,11 +100,12 @@ void SetUp(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
         break;
     }
     if (j > i) {
-      peind[nnbrs] = penum;
+      peind[nnbrs]     = penum;
       recvptr[++nnbrs] = j;
       i = j;
     }
   }
+  //PrintVector(ctrl, nnbrs+1, 0, recvptr, "recvptr");
 
 
   /************************************************************* 
@@ -113,28 +114,33 @@ void SetUp(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
   /* Tell the other processors what they need to send you */
   recvrequests = wspace->pepairs1;
   sendrequests = wspace->pepairs2;
-  for (i=0; i<npes; i++)
+  for (i=0; i<npes; i++) {
     recvrequests[i].key = 0;
+    recvrequests[i].val = -1;
+  }
   for (i=0; i<nnbrs; i++) {
     recvrequests[peind[i]].key = recvptr[i+1]-recvptr[i];
     recvrequests[peind[i]].val = nvtxs+recvptr[i];
   }
   MPI_Alltoall((void *)recvrequests, 2, IDX_DATATYPE, (void *)sendrequests, 2, IDX_DATATYPE, ctrl->comm);
 
+  //PrintPairs(ctrl, npes, recvrequests, "recvrequests");
+  //PrintPairs(ctrl, npes, sendrequests, "sendrequests");
 
   sendptr = graph->sendptr = idxmalloc(npes+1, "SetUp: sendptr");
   startsind = wspace->pv2;
   for (j=i=0; i<npes; i++) {
     if (sendrequests[i].key > 0) {
-      sendptr[j] = sendrequests[i].key;
+      sendptr[j]   = sendrequests[i].key;
       startsind[j] = sendrequests[i].val;
       j++;
     }
   }
-  ASSERT(ctrl, nnbrs == j);
-  MAKECSR(i, j, sendptr);
 
-  nsend = sendptr[nnbrs];
+  ASSERT(ctrl, j == nnbrs);
+  MAKECSR(i, nnbrs, sendptr);
+
+  nsend   = sendptr[nnbrs];
   sendind = graph->sendind = idxmalloc(nsend, "SetUp: sendind");
 
 
@@ -156,7 +162,7 @@ void SetUp(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
 
 
   /* Create the peadjncy data structure for sparse boundary exchanges */
-  pexadj = graph->pexadj = idxsmalloc(nvtxs+1, 0, "SetUp: pexadj");
+  pexadj   = graph->pexadj = idxsmalloc(nvtxs+1, 0, "SetUp: pexadj");
   peadjncy = graph->peadjncy = idxmalloc(nsend, "SetUp: peadjncy");
   peadjloc = graph->peadjloc = idxmalloc(nsend, "SetUp: peadjloc");
 
@@ -180,9 +186,9 @@ void SetUp(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
   pexadj[0] = 0;
 
 
-  graph->nnbrs = nnbrs;
-  graph->nrecv = nrecv;
-  graph->nsend = nsend;
+  graph->nnbrs  = nnbrs;
+  graph->nrecv  = nrecv;
+  graph->nsend  = nsend;
   graph->nlocal = nlocal;
 
 

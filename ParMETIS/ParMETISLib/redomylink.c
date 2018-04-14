@@ -118,11 +118,11 @@ MPI_Comm_rank(MPI_COMM_WORLD, &mype);
     lastseed = (lastseed+1) % nvtxs;
     where[r] = 0;
 
-    Moc_Serial_Compute2WayPartitionParams(graph);
-    Moc_Serial_Init2WayBalance(graph, tpwgts);
-    Moc_Serial_FM_2WayRefine(graph, tpwgts, 4);
-    Moc_Serial_Balance2Way(graph, tpwgts, 1.02);
-    Moc_Serial_FM_2WayRefine(graph, tpwgts, 4);
+    Mc_Serial_Compute2WayPartitionParams(graph);
+    Mc_Serial_Init2WayBalance(graph, tpwgts);
+    Mc_Serial_FM_2WayRefine(graph, tpwgts, 4);
+    Mc_Serial_Balance2Way(graph, tpwgts, 1.02);
+    Mc_Serial_FM_2WayRefine(graph, tpwgts, 4);
 
     for (i=0; i<nvtxs; i++)
       where[i] = (where[i] == 0) ? me : you;

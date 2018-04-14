@@ -117,10 +117,10 @@ void ParMETIS_V3_PartGeomKway(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy,
 
   uwgtflag = iwgtflag|2;
   uvwgt = idxsmalloc(vtxdist[mype+1]-vtxdist[mype], 1, "uvwgt");
-  graph = Moc_SetUpGraph(&ctrl, 1, vtxdist, xadj, uvwgt, adjncy, adjwgt, &uwgtflag);
+  graph = Mc_SetUpGraph(&ctrl, 1, vtxdist, xadj, uvwgt, adjncy, adjwgt, &uwgtflag);
   free(graph->nvwgt); graph->nvwgt = NULL;
 
-  PreAllocateMemory(&ctrl, graph, &wspace);
+  AllocateWSpace(&ctrl, graph, &wspace);
 
   /*=================================================================
    * Compute the initial npes-way partitioning geometric partitioning
@@ -146,11 +146,11 @@ void ParMETIS_V3_PartGeomKway(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy,
   graph->ncon = incon;
   j = ctrl.nparts;
   ctrl.nparts = ctrl.npes;
-  mgraph = Moc_MoveGraph(&ctrl, graph, &wspace);
+  mgraph = Mc_MoveGraph(&ctrl, graph, &wspace);
   ctrl.nparts = j;
 
   /**********************************************************/
-  /* Do the same functionality as Moc_SetUpGraph for mgraph */
+  /* Do the same functionality as Mc_SetUpGraph for mgraph */
   /**********************************************************/
   /* compute tvwgts */
   for (j=0; j<incon; j++)
@@ -204,8 +204,7 @@ void ParMETIS_V3_PartGeomKway(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy,
   IFSET(ctrl.dbglvl, DBG_TIME, starttimer(ctrl.TotalTmr));
 
   ctrl.nparts = inparts;
-  FreeWSpace(&wspace);
-  PreAllocateMemory(&ctrl, mgraph, &wspace);
+  AdjustWSpace(&ctrl, mgraph, &wspace);
 
   /*=======================================================
    * Now compute the partition of the moved graph
@@ -215,7 +214,7 @@ void ParMETIS_V3_PartGeomKway(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy,
     PartitionSmallGraph(&ctrl, mgraph, &wspace);
   }
   else {
-    Moc_Global_Partition(&ctrl, mgraph, &wspace);
+    Mc_Global_Partition(&ctrl, mgraph, &wspace);
   }
   ParallelReMapGraph(&ctrl, mgraph, &wspace);
 
@@ -249,7 +248,7 @@ void ParMETIS_V3_PartGeomKway(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy,
 
   GKfree((void **)&itpwgts, LTERM);
   FreeGraph(mgraph);
-  FreeInitialGraphAndRemap(graph, iwgtflag);
+  FreeInitialGraphAndRemap(graph, iwgtflag, 1);
   FreeWSpace(&wspace);
   FreeCtrl(&ctrl);
 
@@ -300,9 +299,9 @@ void ParMETIS_V3_PartGeom(idxtype *vtxdist, int *ndims, float *xyz, idxtype *par
   ctrl.seed      = mype;
   ctrl.CoarsenTo = amin(vtxdist[npes]+1, 25*npes);
 
-  graph = Moc_SetUpGraph(&ctrl, 1, vtxdist, xadj, NULL, adjncy, NULL, &zeroflg);
+  graph = Mc_SetUpGraph(&ctrl, 1, vtxdist, xadj, NULL, adjncy, NULL, &zeroflg);
 
-  PreAllocateMemory(&ctrl, graph, &wspace);
+  AllocateWSpace(&ctrl, graph, &wspace);
 
   /*=======================================================
    * Compute the initial geometric partitioning
@@ -319,7 +318,7 @@ void ParMETIS_V3_PartGeom(idxtype *vtxdist, int *ndims, float *xyz, idxtype *par
   IFSET(ctrl.dbglvl, DBG_TIME, stoptimer(ctrl.TotalTmr));
   IFSET(ctrl.dbglvl, DBG_TIME, PrintTimingInfo(&ctrl));
 
-  FreeInitialGraphAndRemap(graph, 0);
+  FreeInitialGraphAndRemap(graph, 0, 1);
   FreeWSpace(&wspace);
   FreeCtrl(&ctrl);
 

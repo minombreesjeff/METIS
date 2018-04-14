@@ -108,7 +108,7 @@ MPI_Comm_rank(MPI_COMM_WORLD, &mype);
   queues = (FPQueueType *)(GKmalloc(sizeof(FPQueueType)*nqueues*2, "queues"));
 
   for (i=0; i<nvtxs; i++)
-    hval[i] = Moc_HashVwgts(ncon, nvwgt+i*ncon) - minval;
+    hval[i] = Mc_HashVwgts(ncon, nvwgt+i*ncon) - minval;
 
   for (i=0; i<nvtxs; i++)
     nvpq[hval[i]]++;
@@ -173,7 +173,7 @@ MPI_Comm_rank(MPI_COMM_WORLD, &mype);
     nchanges = nmoves = 0;
     for (ii=0; ii<nvtxs/2; ii++) {
       from = -1;
-      Moc_DynamicSelectQueue(nqueues, ncon, me, you, inq, flows, &from,
+      Mc_DynamicSelectQueue(nqueues, ncon, me, you, inq, flows, &from,
       &qnum, minval, avgvwgt, maxdiff);
 
       /* can't find a vertex in one subdomain, try the other */
@@ -192,7 +192,7 @@ MPI_Comm_rank(MPI_COMM_WORLD, &mype);
         }
 
         if (j != ncon)
-          Moc_DynamicSelectQueue(nqueues, ncon, me, you, inq, flows, &from,
+          Mc_DynamicSelectQueue(nqueues, ncon, me, you, inq, flows, &from,
           &qnum, minval, avgvwgt, maxdiff);
       }
 

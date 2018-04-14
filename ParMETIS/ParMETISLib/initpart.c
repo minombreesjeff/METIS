@@ -25,7 +25,7 @@
 * This algorithm assembles the graph to all the processors and preceeds
 * by parallelizing the recursive bisection step.
 **************************************************************************/
-void Moc_InitPartition_RB(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
+void Mc_InitPartition_RB(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
 {
   int i, j;
   int ncon, mype, npes, gnvtxs, ngroups;
@@ -48,12 +48,12 @@ void Moc_InitPartition_RB(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspac
   IFSET(ctrl->dbglvl, DBG_TIME, MPI_Barrier(ctrl->comm));
   IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->InitPartTmr));
 
-  agraph = Moc_AssembleAdaptiveGraph(ctrl, graph, wspace);
-  part = idxmalloc(agraph->nvtxs, "Moc_IP_RB: part");
-  xadj = idxmalloc(agraph->nvtxs+1, "Moc_IP_RB: xadj");
-  adjncy = idxmalloc(agraph->nedges, "Moc_IP_RB: adjncy");
-  adjwgt = idxmalloc(agraph->nedges, "Moc_IP_RB: adjwgt");
-  vwgt = idxmalloc(agraph->nvtxs*ncon, "Moc_IP_RB: vwgt");
+  agraph = Mc_AssembleAdaptiveGraph(ctrl, graph, wspace);
+  part = idxmalloc(agraph->nvtxs, "Mc_IP_RB: part");
+  xadj = idxmalloc(agraph->nvtxs+1, "Mc_IP_RB: xadj");
+  adjncy = idxmalloc(agraph->nedges, "Mc_IP_RB: adjncy");
+  adjwgt = idxmalloc(agraph->nedges, "Mc_IP_RB: adjwgt");
+  vwgt = idxmalloc(agraph->nvtxs*ncon, "Mc_IP_RB: vwgt");
 
   idxcopy(agraph->nvtxs*ncon, agraph->vwgt, vwgt);
   idxcopy(agraph->nvtxs+1, agraph->xadj, xadj);
@@ -66,8 +66,8 @@ void Moc_InitPartition_RB(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspac
 
   gnvtxs = agraph->nvtxs;
 
-  gwhere0 = idxsmalloc(gnvtxs, 0, "Moc_IP_RB: gwhere0");
-  gwhere1 = idxmalloc(gnvtxs, "Moc_IP_RB: gwhere1");
+  gwhere0 = idxsmalloc(gnvtxs, 0, "Mc_IP_RB: gwhere0");
+  gwhere1 = idxmalloc(gnvtxs, "Mc_IP_RB: gwhere1");
 
   /* ADD: this assumes that tpwgts for all constraints is the same */
   /* ADD: this is necessary because serial metis does not support the general case */
@@ -107,12 +107,12 @@ void Moc_InitPartition_RB(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspac
 
     /* I'm picking the left branch */
     if (mype < fpe+lnpes/2) {
-      Moc_KeepPart(agraph, wspace, part, 0);
+      Mc_KeepPart(agraph, wspace, part, 0);
       lnpes = lnpes/2;
       lnparts = lnparts/2;
     }
     else {
-      Moc_KeepPart(agraph, wspace, part, 1);
+      Mc_KeepPart(agraph, wspace, part, 1);
       fpart = fpart + lnparts/2;
       fpe = fpe + lnpes/2;
       lnpes = lnpes - lnpes/2;
@@ -158,7 +158,7 @@ void Moc_InitPartition_RB(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspac
     agraph->where = gwhere1;
     agraph->vwgt = vwgt;
     agraph->nvtxs = gnvtxs;
-    Moc_ComputeSerialBalance(ctrl, agraph, gwhere1, lbvec);
+    Mc_ComputeSerialBalance(ctrl, agraph, gwhere1, lbvec);
     lbsum = ssum(ncon, lbvec);
 
     edgecut = ComputeSerialEdgeCut(agraph);
@@ -199,7 +199,7 @@ void Moc_InitPartition_RB(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspac
 /*************************************************************************
 * This function keeps one parts
 **************************************************************************/
-void Moc_KeepPart(GraphType *graph, WorkSpaceType *wspace, idxtype *part, int mypart)
+void Mc_KeepPart(GraphType *graph, WorkSpaceType *wspace, idxtype *part, int mypart)
 {
   int h, i, j, k;
   int nvtxs, ncon, mynvtxs, mynedges;
@@ -214,7 +214,7 @@ void Moc_KeepPart(GraphType *graph, WorkSpaceType *wspace, idxtype *part, int my
   adjwgt = graph->adjwgt;
   label = graph->label;
 
-  rename = idxmalloc(nvtxs, "Moc_KeepPart: rename");
+  rename = idxmalloc(nvtxs, "Mc_KeepPart: rename");
  
   for (mynvtxs=0, i=0; i<nvtxs; i++) {
     if (part[i] == mypart)

@@ -19,7 +19,7 @@
 /*************************************************************************
 * This function performs k-way refinement
 **************************************************************************/
-void Moc_KWayBalance(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace, int npasses)
+void Mc_KWayBalance(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace, int npasses)
 {
   int h, i, ii, iii, j, k, c;
   int pass, nvtxs, nedges, ncon;
@@ -147,7 +147,7 @@ void Moc_KWayBalance(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace, in
 */
 
     /* check to see if the partitioning is imbalanced */
-    Moc_ComputeParallelBalance(ctrl, graph, graph->where, lbvec);
+    Mc_ComputeParallelBalance(ctrl, graph, graph->where, lbvec);
     ubavg = savg(ncon, ubvec);
     lbavg = savg(ncon, lbvec);
     imbalanced = (lbavg > ubavg) ? 1 : 0;

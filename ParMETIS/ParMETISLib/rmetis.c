@@ -91,7 +91,7 @@ void ParMETIS_V3_RefineKway(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy,
   ctrl.ps_relation = ps_relation;
   ctrl.tpwgts = itpwgts;
 
-  graph = Moc_SetUpGraph(&ctrl, incon, vtxdist, xadj, vwgt, adjncy, adjwgt, &iwgtflag);
+  graph = Mc_SetUpGraph(&ctrl, incon, vtxdist, xadj, vwgt, adjncy, adjwgt, &iwgtflag);
   graph->vsize = idxsmalloc(graph->nvtxs, 1, "vsize");
 
   graph->home = idxmalloc(graph->nvtxs, "home");
@@ -107,7 +107,7 @@ void ParMETIS_V3_RefineKway(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy,
   ctrl.edge_size_ratio = gtewgt/gtvsize;
   scopy(incon, iubvec, ctrl.ubvec);
 
-  PreAllocateMemory(&ctrl, graph, &wspace);
+  AllocateWSpace(&ctrl, graph, &wspace);
 
   /***********************/
   /* Partition and Remap */
@@ -149,10 +149,10 @@ void ParMETIS_V3_RefineKway(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy,
   /*************************************/
   /* Free memory, renumber, and return */
   /*************************************/
-  GKfree((void **)&graph->lnpwgts, (void **)&graph->gnpwgts, (void **)&graph->nvwgt, (void **)(&graph->home), (void **)(&graph->vsize), LTERM);
+  GKfree((void **)&graph->lnpwgts, &graph->gnpwgts, &graph->nvwgt, &graph->home, 
+      &graph->vsize, &itpwgts, LTERM);
 
-  GKfree((void **)&itpwgts, LTERM);
-  FreeInitialGraphAndRemap(graph, iwgtflag);
+  FreeInitialGraphAndRemap(graph, iwgtflag, 1);
   FreeWSpace(&wspace);
   FreeCtrl(&ctrl);
 

@@ -439,12 +439,12 @@ void TestMoveGraph(GraphType *ograph, GraphType *omgraph, idxtype *part, MPI_Com
   SetUpCtrl(&ctrl, npes, 0, comm); 
   ctrl.CoarsenTo = 1;  /* Needed by SetUpGraph, otherwise we can FP errors */
   graph = SetUpGraph(&ctrl, ograph->vtxdist, ograph->xadj, NULL, ograph->adjncy, NULL, 0);
-  PreAllocateMemory(&ctrl, graph, &wspace);
+  AllocateWSpace(&ctrl, graph, &wspace);
 
   SetUp(&ctrl, graph, &wspace);
   graph->where = part;
   graph->ncon = 1;
-  mgraph = Moc_MoveGraph(&ctrl, graph, &wspace);
+  mgraph = Mc_MoveGraph(&ctrl, graph, &wspace);
 
   omgraph->gnvtxs = mgraph->gnvtxs;
   omgraph->nvtxs = mgraph->nvtxs;
@@ -458,7 +458,7 @@ void TestMoveGraph(GraphType *ograph, GraphType *omgraph, idxtype *part, MPI_Com
   FreeGraph(mgraph);
 
   graph->where = NULL;
-  FreeInitialGraphAndRemap(graph, 0);
+  FreeInitialGraphAndRemap(graph, 0, 1);
   FreeWSpace(&wspace);
 }  
 
@@ -471,7 +471,7 @@ GraphType *SetUpGraph(CtrlType *ctrl, idxtype *vtxdist, idxtype *xadj,
   int mywgtflag;
 
   mywgtflag = wgtflag;
-  return Moc_SetUpGraph(ctrl, 1, vtxdist, xadj, vwgt, adjncy, adjwgt, &mywgtflag);
+  return Mc_SetUpGraph(ctrl, 1, vtxdist, xadj, vwgt, adjncy, adjwgt, &mywgtflag);
 }
 
 

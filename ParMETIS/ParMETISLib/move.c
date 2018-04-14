@@ -19,7 +19,7 @@
 * This routine can be called with or without performing refinement.
 * In the latter case it allocates and computes lpwgts itself.
 **************************************************************************/
-GraphType *Moc_MoveGraph(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
+GraphType *Mc_MoveGraph(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
 {
   int h, i, ii, j, jj, nvtxs, ncon, nparts;
   idxtype *xadj, *vwgt, *adjncy, *adjwgt, *mvtxdist;
@@ -28,24 +28,26 @@ GraphType *Moc_MoveGraph(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace
   KeyValueType *sinfo, *rinfo;
   GraphType *mgraph;
 
-  nparts = ctrl->nparts;
-  ASSERT(ctrl, nparts == ctrl->npes);
+  /* this routine only works when nparts == npes */
+  ASSERT(ctrl, ctrl->nparts == ctrl->npes);
 
-  nvtxs = graph->nvtxs;
-  ncon = graph->ncon;
-  xadj = graph->xadj;
-  vwgt = graph->vwgt;
+  nparts = ctrl->nparts;
+
+  nvtxs  = graph->nvtxs;
+  ncon   = graph->ncon;
+  xadj   = graph->xadj;
+  vwgt   = graph->vwgt;
   adjncy = graph->adjncy;
   adjwgt = graph->adjwgt;
-  where = graph->where;
+  where  = graph->where;
 
   mvtxdist = idxmalloc(nparts+1, "MoveGraph: mvtxdist");
 
   /* Let's do a prefix scan to determine the labeling of the nodes given */
   lpwgts = wspace->pv1;
   gpwgts = wspace->pv2;
-  sinfo = wspace->pepairs1;
-  rinfo = wspace->pepairs2;
+  sinfo  = wspace->pepairs1;
+  rinfo  = wspace->pepairs2;
   for (i=0; i<nparts; i++)
     sinfo[i].key = sinfo[i].val = 0;
 
@@ -85,12 +87,11 @@ GraphType *Moc_MoveGraph(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace
     gpwgts[i+1] = gpwgts[i] + (1+ncon)*rinfo[i].key + 2*rinfo[i].val;
   }
 
-
   if (lpwgts[nparts]+gpwgts[nparts] > wspace->maxcore) {
     /* Adjust core memory, incase the graph was originally very memory unbalanced */
-    free(wspace->core);
+    GKfree((void **)&wspace->core, LTERM);
     wspace->maxcore = lpwgts[nparts]+4*gpwgts[nparts]; /* In spirit of the 8*nedges */
-    wspace->core = idxmalloc(wspace->maxcore, "Moc_MoveGraph: wspace->core");
+    wspace->core    = idxmalloc(wspace->maxcore, "Mc_MoveGraph: wspace->core");
   }
 
   sgraph = wspace->core;
@@ -100,12 +101,14 @@ GraphType *Moc_MoveGraph(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace
   for (i=0; i<nparts; i++) {
     if (rinfo[i].key > 0) 
       MPI_Irecv((void *)(rgraph+gpwgts[i]), gpwgts[i+1]-gpwgts[i], IDX_DATATYPE, i, 1, ctrl->comm, ctrl->rreq+i);
-    else
+    else {
       ASSERT(ctrl, gpwgts[i+1]-gpwgts[i] == 0);
+    }
   }
 
   /* Assemble the graph to be sent and send it */
   for (i=0; i<nvtxs; i++) {
+    ASSERT(ctrl, where[i] >= 0 && where[i] < nparts);
     ii = lpwgts[where[i]];
     sgraph[ii++] = xadj[i+1]-xadj[i];
     for (h=0; h<ncon; h++)
@@ -117,15 +120,14 @@ GraphType *Moc_MoveGraph(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace
     lpwgts[where[i]] = ii;
   }
 
-  for (i=nparts; i>0; i--)
-    lpwgts[i] = lpwgts[i-1];
-  lpwgts[0] = 0;
+  SHIFTCSR(i, nparts, lpwgts);
 
   for (i=0; i<nparts; i++) {
     if (sinfo[i].key > 0)
       MPI_Isend((void *)(sgraph+lpwgts[i]), lpwgts[i+1]-lpwgts[i], IDX_DATATYPE, i, 1, ctrl->comm, ctrl->sreq+i);
-    else
+    else {
       ASSERT(ctrl, lpwgts[i+1]-lpwgts[i] == 0);
+    }
   }
 
 /*
@@ -146,20 +148,21 @@ GraphType *Moc_MoveGraph(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace
 
   /* OK, now go and put the graph into GraphType Format */
   mgraph = CreateGraph();
-  mgraph->gnvtxs = graph->gnvtxs;
-  mgraph->ncon = ncon;
-  mgraph->level = 0;
-  mgraph->nvtxs = mgraph->nedges = 0;
+  
+  mgraph->vtxdist = mvtxdist;
+  mgraph->gnvtxs  = graph->gnvtxs;
+  mgraph->ncon    = ncon;
+  mgraph->level   = 0;
+  mgraph->nvtxs   = mgraph->nedges = 0;
   for (i=0; i<nparts; i++) {
-    mgraph->nvtxs += rinfo[i].key;
+    mgraph->nvtxs  += rinfo[i].key;
     mgraph->nedges += rinfo[i].val;
   }
-  nvtxs = mgraph->nvtxs;
-  xadj = mgraph->xadj = idxmalloc(nvtxs+1, "MMG: mgraph->xadj");
-  vwgt = mgraph->vwgt = idxmalloc(nvtxs*ncon, "MMG: mgraph->vwgt");
+  nvtxs  = mgraph->nvtxs;
+  xadj   = mgraph->xadj   = idxmalloc(nvtxs+1, "MMG: mgraph->xadj");
+  vwgt   = mgraph->vwgt   = idxmalloc(nvtxs*ncon, "MMG: mgraph->vwgt");
   adjncy = mgraph->adjncy = idxmalloc(mgraph->nedges, "MMG: mgraph->adjncy");
   adjwgt = mgraph->adjwgt = idxmalloc(mgraph->nedges, "MMG: mgraph->adjwgt");
-  mgraph->vtxdist = mvtxdist;
 
   for (jj=ii=i=0; i<nvtxs; i++) {
     xadj[i] = rgraph[ii++];
@@ -172,10 +175,12 @@ GraphType *Moc_MoveGraph(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace
   }
   MAKECSR(i, nvtxs, xadj);
 
+  ASSERT(ctrl, jj == mgraph->nedges);
+  ASSERT(ctrl, ii == gpwgts[nparts]);
   ASSERTP(ctrl, jj == mgraph->nedges, (ctrl, "%d %d\n", jj, mgraph->nedges));
   ASSERTP(ctrl, ii == gpwgts[nparts], (ctrl, "%d %d %d %d %d\n", ii, gpwgts[nparts], jj, mgraph->nedges, nvtxs));
 
-  free(newlabel);
+  GKfree((void **)&newlabel, LTERM);
 
 #ifdef DEBUG
   IFSET(ctrl->dbglvl, DBG_INFO, rprintf(ctrl, "Checking moved graph...\n"));
@@ -310,17 +315,19 @@ void CheckMGraph(CtrlType *ctrl, GraphType *graph)
   idxtype *xadj, *adjncy, *vtxdist;
 
 
-  nvtxs = graph->nvtxs;
-  xadj = graph->xadj;
-  adjncy = graph->adjncy;
+  nvtxs   = graph->nvtxs;
+  xadj    = graph->xadj;
+  adjncy  = graph->adjncy;
   vtxdist = graph->vtxdist;
 
   firstvtx = vtxdist[ctrl->mype];
-  lastvtx = vtxdist[ctrl->mype+1];
+  lastvtx  = vtxdist[ctrl->mype+1];
 
   for (i=0; i<nvtxs; i++) {
     for (j=xadj[i]; j<xadj[i+1]; j++) {
-      ASSERT(ctrl, firstvtx+i != adjncy[j]);
+      if (firstvtx+i == adjncy[j])
+        myprintf(ctrl, "(%d %d) diagonal entry\n", i, i);
+
       if (adjncy[j] >= firstvtx && adjncy[j] < lastvtx) {
         k = adjncy[j]-firstvtx;
         for (jj=xadj[k]; jj<xadj[k+1]; jj++) {
@@ -328,7 +335,9 @@ void CheckMGraph(CtrlType *ctrl, GraphType *graph)
             break;
         }
         if (jj == xadj[k+1])
-          myprintf(ctrl, "(%d %d) but not (%d %d)\n", firstvtx+i, k, k, firstvtx+i);
+          myprintf(ctrl, "(%d %d) but not (%d %d) [%d %d] [%d %d]\n", 
+              i, k, k, i, firstvtx+i, firstvtx+k, 
+              xadj[i+1]-xadj[i], xadj[k+1]-xadj[k]);
       }
     }
   }

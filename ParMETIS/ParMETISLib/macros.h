@@ -17,6 +17,7 @@
 * The following macro returns a random number in the specified range
 **************************************************************************/
 #define RandomInRange(u) ((int)(1.0*(u)*rand()/(RAND_MAX+1.0)))
+/* #define RandomInRange(u) (rand()%(u)) */
 
 #define amax(a, b) ((a) >= (b) ? (a) : (b))
 #define amin(a, b) ((a) >= (b) ? (b) : (a))
@@ -98,51 +99,44 @@
 
 
 
-#ifdef DEBUG
+#ifndef NDEBUG
 #   define ASSERT(ctrl, expr)                                          \
     if (!(expr)) {                                               \
-        myprintf(ctrl, "***ASSERTION failed on line %d of file %s: " #expr "\n", \
-              __LINE__, __FILE__);                               \
-        abort();                                                \
+       myprintf(ctrl, "***ASSERTION failed on line %d of file %s: " #expr "\n", \
+            __LINE__, __FILE__);                               \
+       assert(expr);                                           \
     }
-#else
-#   define ASSERT(ctrl, expr) ;
-#endif 
 
-#ifdef DEBUG
 #   define ASSERTP(ctrl, expr, msg)                                          \
     if (!(expr)) {                                               \
         myprintf(ctrl, "***ASSERTION failed on line %d of file %s:" #expr "\n", \
               __LINE__, __FILE__);                               \
         myprintf msg ; \
-        abort();                                                \
+        assert(expr); \
     }
-#else
-#   define ASSERTP(ctrl, expr,msg) ;
-#endif 
 
-#ifdef DEBUGS
 #   define ASSERTS(expr)                                          \
     if (!(expr)) {                                               \
         printf("***ASSERTION failed on line %d of file %s: " #expr "\n", \
               __LINE__, __FILE__);                               \
-        abort();                                                \
+        assert(expr); \
     }
-#else
-#   define ASSERTS(expr) ;
-#endif 
 
-#ifdef DEBUGS
 #   define ASSERTSP(expr, msg)                                          \
     if (!(expr)) {                                               \
         printf("***ASSERTION failed on line %d of file %s: " #expr "\n", \
               __LINE__, __FILE__);                               \
         printf msg ; \
-        abort();                                                \
+        assert(expr); \
     }
+
 #else
+#   define ASSERT(ctrl, expr) ;
+#   define ASSERTP(ctrl, expr,msg) ;
+#   define ASSERTS(expr) ;
 #   define ASSERTSP(expr, msg) ;
 #endif 
+
 
 /*************************************************************************
  * * These macros insert and remove nodes from the boundary list

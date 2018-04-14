@@ -27,16 +27,18 @@ void ParMETIS_V3_NodeND(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy, int *n
 {
   int i, j;
   int ltvwgts[MAXNCON];
-  int nparts, npes, mype, wgtflag = 0, seed = GLOBAL_SEED;
+  int nparts, npes, mype, wgtflag = 0, seed;
   CtrlType ctrl;
   WorkSpaceType wspace;
   GraphType *graph, *mgraph;
   idxtype *morder;
   int minnvtxs;
+  int dbglvl_original;
 
   MPI_Comm_size(*comm, &npes);
   MPI_Comm_rank(*comm, &mype);
-  nparts = npes;
+
+  nparts = 1*npes;
 
   if (!ispow2(npes)) {
     if (mype == 0)
@@ -60,60 +62,71 @@ void ParMETIS_V3_NodeND(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy, int *n
     return;
   }
  
-
   if (*numflag == 1) 
     ChangeNumbering(vtxdist, xadj, adjncy, order, npes, mype, 1);
 
-  SetUpCtrl(&ctrl, nparts, options[PMV3_OPTION_DBGLVL], *comm);
-  ctrl.CoarsenTo = amin(vtxdist[npes]+1, 25*npes);
 
-  ctrl.CoarsenTo = amin(vtxdist[npes]+1, 25*amax(npes, nparts));
-  ctrl.seed = mype;
-  ctrl.sync = seed;
-  ctrl.partType = STATIC_PARTITION;
+  /*****************************/
+  /* Set up control structures */
+  /*****************************/
+  if (options == NULL && options[0] == 0) {
+    dbglvl_original = GLOBAL_DBGLVL;
+    seed            = GLOBAL_SEED;
+  }
+  else {
+    dbglvl_original = options[PMV3_OPTION_DBGLVL];
+    seed            = options[PMV3_OPTION_SEED];
+  }
+
+  SetUpCtrl(&ctrl, nparts, 0, *comm);
+
+  ctrl.CoarsenTo   = amin(vtxdist[npes]+1, 25*amax(npes, nparts));
+  ctrl.seed        = (seed == 0 ? mype : seed*mype);
+  ctrl.sync        = GlobalSEMax(&ctrl, seed);
+  ctrl.partType    = STATIC_PARTITION;
   ctrl.ps_relation = -1;
-  ctrl.tpwgts = fsmalloc(nparts, 1.0/(float)(nparts), "tpwgts");
-  ctrl.ubvec[0] = 1.03;
+  ctrl.tpwgts      = fsmalloc(nparts, 1.0/(float)(nparts), "tpwgts");
+  ctrl.ubvec[0]    = 1.03;
 
-  graph = Moc_SetUpGraph(&ctrl, 1, vtxdist, xadj, NULL, adjncy, NULL, &wgtflag);
+  graph = Mc_SetUpGraph(&ctrl, 1, vtxdist, xadj, NULL, adjncy, NULL, &wgtflag);
 
-  PreAllocateMemory(&ctrl, graph, &wspace);
+  AllocateWSpace(&ctrl, graph, &wspace);
 
   /*=======================================================
    * Compute the initial k-way partitioning 
    =======================================================*/
-  IFSET(ctrl.dbglvl, DBG_TIME, InitTimers(&ctrl));
-  IFSET(ctrl.dbglvl, DBG_TIME, MPI_Barrier(ctrl.gcomm));
-  IFSET(ctrl.dbglvl, DBG_TIME, starttimer(ctrl.TotalTmr));
+  IFSET(dbglvl_original, DBG_TIME, InitTimers(&ctrl));
+  IFSET(dbglvl_original, DBG_TIME, MPI_Barrier(ctrl.gcomm));
+  IFSET(dbglvl_original, DBG_TIME, starttimer(ctrl.TotalTmr));
 
-  Moc_Global_Partition(&ctrl, graph, &wspace);
+  Mc_Global_Partition(&ctrl, graph, &wspace);
 
-  IFSET(ctrl.dbglvl, DBG_TIME, MPI_Barrier(ctrl.gcomm));
-  IFSET(ctrl.dbglvl, DBG_TIME, stoptimer(ctrl.TotalTmr));
-  IFSET(ctrl.dbglvl, DBG_TIME, PrintTimingInfo(&ctrl));
+  /* Collapse the number of partitions to be from 0..npes-1 */
+  for (i=0; i<graph->nvtxs; i++)
+    graph->where[i] = graph->where[i]%npes;
+  ctrl.nparts = nparts = npes;
 
   /*=======================================================
    * Move the graph according to the partitioning
    =======================================================*/
-  IFSET(ctrl.dbglvl, DBG_TIME, MPI_Barrier(ctrl.gcomm));
-  IFSET(ctrl.dbglvl, DBG_TIME, starttimer(ctrl.MoveTmr));
+  IFSET(dbglvl_original, DBG_TIME, MPI_Barrier(ctrl.gcomm));
+  IFSET(dbglvl_original, DBG_TIME, starttimer(ctrl.MoveTmr));
 
   MALLOC_CHECK(NULL);
   graph->ncon = 1;
-  mgraph = Moc_MoveGraph(&ctrl, graph, &wspace);
+  mgraph = Mc_MoveGraph(&ctrl, graph, &wspace);
   MALLOC_CHECK(NULL);
 
-  IFSET(ctrl.dbglvl, DBG_TIME, MPI_Barrier(ctrl.gcomm));
-  IFSET(ctrl.dbglvl, DBG_TIME, stoptimer(ctrl.MoveTmr));
+  IFSET(dbglvl_original, DBG_TIME, MPI_Barrier(ctrl.gcomm));
+  IFSET(dbglvl_original, DBG_TIME, stoptimer(ctrl.MoveTmr));
+
+  /* restore the user supplied dbglvl */
+  ctrl.dbglvl = dbglvl_original;
 
   /*=======================================================
    * Now compute an ordering of the moved graph
    =======================================================*/
-  IFSET(ctrl.dbglvl, DBG_TIME, MPI_Barrier(ctrl.gcomm));
-  IFSET(ctrl.dbglvl, DBG_TIME, starttimer(ctrl.TotalTmr));
-
-  FreeWSpace(&wspace);
-  PreAllocateMemory(&ctrl, mgraph, &wspace);
+  AdjustWSpace(&ctrl, mgraph, &wspace);
 
   ctrl.ipart = ISEP_NODE;
   ctrl.CoarsenTo = amin(vtxdist[npes]+1, amax(20*npes, 1000));
@@ -145,15 +158,14 @@ void ParMETIS_V3_NodeND(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy, int *n
 
   MALLOC_CHECK(NULL);
 
-  IFSET(ctrl.dbglvl, DBG_TIME, MPI_Barrier(ctrl.gcomm));
-  IFSET(ctrl.dbglvl, DBG_TIME, stoptimer(ctrl.TotalTmr));
-  IFSET(ctrl.dbglvl, DBG_TIME, PrintTimingInfo(&ctrl));
-  IFSET(ctrl.dbglvl, DBG_TIME, MPI_Barrier(ctrl.gcomm));
+  IFSET(dbglvl_original, DBG_TIME, MPI_Barrier(ctrl.gcomm));
+  IFSET(dbglvl_original, DBG_TIME, stoptimer(ctrl.TotalTmr));
+  IFSET(dbglvl_original, DBG_TIME, PrintTimingInfo(&ctrl));
+  IFSET(dbglvl_original, DBG_TIME, MPI_Barrier(ctrl.gcomm));
 
-  free(ctrl.tpwgts);
-  free(morder);
+  GKfree((void **)&ctrl.tpwgts, &morder, LTERM);
   FreeGraph(mgraph);
-  FreeInitialGraphAndRemap(graph, 0);
+  FreeInitialGraphAndRemap(graph, 0, 1);
   FreeWSpace(&wspace);
   FreeCtrl(&ctrl);
 

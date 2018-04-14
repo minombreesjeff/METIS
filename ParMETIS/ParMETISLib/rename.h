@@ -1,29 +1,29 @@
 /* kmetis.c */
-#define	Moc_Global_Partition Moc_Global_Partition__
+#define	Mc_Global_Partition Mc_Global_Partition__
 
 /* mmetis.c */
 
 /* gkmetis.c */
 
 /* match.c */
-#define	Moc_GlobalMatch_Balance Moc_GlobalMatch_Balance__
+#define	Mc_GlobalMatch_Balance Mc_GlobalMatch_Balance__
 
 /* coarsen.c */
-#define	Moc_Global_CreateCoarseGraph Moc_Global_CreateCoarseGraph__
+#define	Mc_Global_CreateCoarseGraph Mc_Global_CreateCoarseGraph__
 
 /* initpart.c */
-#define	Moc_InitPartition_RB Moc_InitPartition_RB__
-#define	Moc_KeepPart Moc_KeepPart__
+#define	Mc_InitPartition_RB Mc_InitPartition_RB__
+#define	Mc_KeepPart Mc_KeepPart__
 
 /* kwayrefine.c */
-#define	Moc_ProjectPartition Moc_ProjectPartition__
-#define	Moc_ComputePartitionParams Moc_ComputePartitionParams__
+#define	Mc_ProjectPartition Mc_ProjectPartition__
+#define	Mc_ComputePartitionParams Mc_ComputePartitionParams__
 
 /* kwayfm.c */
-#define	Moc_KWayFM Moc_KWayFM__
+#define	Mc_KWayFM Mc_KWayFM__
 
 /* kwaybalance.c */
-#define	Moc_KWayBalance Moc_KWayBalance__
+#define	Mc_KWayBalance Mc_KWayBalance__
 
 /* remap.c */
 #define	ParallelReMapGraph ParallelReMapGraph__
@@ -31,7 +31,7 @@
 #define	SimilarTpwgts SimilarTpwgts__
 
 /* move.c */
-#define	Moc_MoveGraph Moc_MoveGraph__
+#define	Mc_MoveGraph Mc_MoveGraph__
 #define	CheckMGraph CheckMGraph__
 #define	ProjectInfoBack ProjectInfoBack__
 #define	FindVtxPerm FindVtxPerm__
@@ -69,10 +69,10 @@
 
 /* initbalance.c */
 #define	Balance_Partition Balance_Partition__
-#define	Moc_AssembleAdaptiveGraph Moc_AssembleAdaptiveGraph__
+#define	Mc_AssembleAdaptiveGraph Mc_AssembleAdaptiveGraph__
 
 /* mdiffusion.c */
-#define	Moc_Diffusion Moc_Diffusion__
+#define	Mc_Diffusion Mc_Diffusion__
 #define	ExtractGraph ExtractGraph__
 
 /* diffutil.c */
@@ -87,31 +87,31 @@
 #define	ComputeSerialTotalV ComputeSerialTotalV__
 
 /* akwayfm.c */
-#define	Moc_KWayAdaptiveRefine Moc_KWayAdaptiveRefine__
+#define	Mc_KWayAdaptiveRefine Mc_KWayAdaptiveRefine__
 
 /* selectq.c */
-#define	Moc_DynamicSelectQueue Moc_DynamicSelectQueue__
-#define	Moc_HashVwgts Moc_HashVwgts__
-#define	Moc_HashVRank Moc_HashVRank__
+#define	Mc_DynamicSelectQueue Mc_DynamicSelectQueue__
+#define	Mc_HashVwgts Mc_HashVwgts__
+#define	Mc_HashVRank Mc_HashVRank__
 
 /* csrmatch.c */
 #define	CSR_Match_SHEM CSR_Match_SHEM__
 
 /* serial.c */
-#define	Moc_SerialKWayAdaptRefine Moc_SerialKWayAdaptRefine__
-#define	Moc_ComputeSerialPartitionParams Moc_ComputeSerialPartitionParams__
+#define	Mc_SerialKWayAdaptRefine Mc_SerialKWayAdaptRefine__
+#define	Mc_ComputeSerialPartitionParams Mc_ComputeSerialPartitionParams__
 #define	AreAllHVwgtsBelow AreAllHVwgtsBelow__
 #define	ComputeHKWayLoadImbalance ComputeHKWayLoadImbalance__
 #define	SerialRemap SerialRemap__
 #define	SSMIncKeyCmp SSMIncKeyCmp__
-#define	Moc_Serial_FM_2WayRefine Moc_Serial_FM_2WayRefine__
+#define	Mc_Serial_FM_2WayRefine Mc_Serial_FM_2WayRefine__
 #define	Serial_SelectQueue Serial_SelectQueue__
 #define	Serial_BetterBalance Serial_BetterBalance__
 #define	Serial_Compute2WayHLoadImbalance Serial_Compute2WayHLoadImbalance__
-#define	Moc_Serial_Balance2Way Moc_Serial_Balance2Way__
-#define	Moc_Serial_Init2WayBalance Moc_Serial_Init2WayBalance__
+#define	Mc_Serial_Balance2Way Mc_Serial_Balance2Way__
+#define	Mc_Serial_Init2WayBalance Mc_Serial_Init2WayBalance__
 #define	Serial_SelectQueueOneWay Serial_SelectQueueOneWay__
-#define	Moc_Serial_Compute2WayPartitionParams Moc_Serial_Compute2WayPartitionParams__
+#define	Mc_Serial_Compute2WayPartitionParams Mc_Serial_Compute2WayPartitionParams__
 #define	Serial_AreAnyVwgtsBelow Serial_AreAnyVwgtsBelow__
 
 /* weird.c */
@@ -180,10 +180,10 @@
 #define	CheckHeapFloat CheckHeapFloat__
 
 /* stat.c */
-#define	Moc_ComputeSerialBalance Moc_ComputeSerialBalance__
-#define	Moc_ComputeParallelBalance Moc_ComputeParallelBalance__
-#define	Moc_PrintThrottleMatrix Moc_PrintThrottleMatrix__
-#define	Moc_ComputeRefineStats Moc_ComputeRefineStats__
+#define	Mc_ComputeSerialBalance Mc_ComputeSerialBalance__
+#define	Mc_ComputeParallelBalance Mc_ComputeParallelBalance__
+#define	Mc_PrintThrottleMatrix Mc_PrintThrottleMatrix__
+#define	Mc_ComputeRefineStats Mc_ComputeRefineStats__
 
 /* debug.c */
 #define	PrintVector PrintVector__
@@ -271,7 +271,7 @@
 #define	ikeyvalsort ikeyvalsort__
 
 /* grsetup.c */
-#define	Moc_SetUpGraph Moc_SetUpGraph__
+#define	Mc_SetUpGraph Mc_SetUpGraph__
 #define	SetUpCtrl SetUpCtrl__
 #define	ChangeNumbering ChangeNumbering__
 #define	ChangeNumberingMesh ChangeNumberingMesh__

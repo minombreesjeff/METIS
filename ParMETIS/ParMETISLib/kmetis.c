@@ -3,7 +3,7 @@
  *
  * kmetis.c
  *
- * This is the entry point of Moc_PARMETIS_PartGraphKway
+ * This is the entry point of Mc_PARMETIS_PartGraphKway
  *
  * Started 10/19/96
  * George
@@ -13,7 +13,6 @@
  */
 
 #include <parmetislib.h>
-
 
 /***********************************************************************************
 * This function is the entry point of the parallel k-way multilevel partitionioner. 
@@ -51,21 +50,21 @@ void ParMETIS_V3_PartKway(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy, idxt
 	      options, ioptions, part, comm);
 
 
-  /*********************************/
-  /* Take care the nparts = 1 case */
-  /*********************************/
+  /**********************************/
+  /* Take care the nparts == 1 case */
+  /**********************************/
   if (inparts <= 1) {
     idxset(vtxdist[mype+1]-vtxdist[mype], 0, part); 
     *edgecut = 0;
     return;
   }
 
-  /******************************/
-  /* Take care of npes = 1 case */
-  /******************************/
-  if (npes == 1 && inparts > 1) {
+  /*******************************/
+  /* Take care of npes == 1 case */
+  /*******************************/
+  if (npes == 1) {
     moptions[0] = 0;
-    nvtxs = vtxdist[1];
+    nvtxs = vtxdist[1] - vtxdist[0];
 
     if (incon == 1) {
       METIS_WPartGraphKway(&nvtxs, xadj, adjncy, vwgt, adjwgt, &iwgtflag, &inumflag, 
@@ -96,11 +95,11 @@ void ParMETIS_V3_PartKway(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy, idxt
   /*****************************/
   if (ioptions[0] == 1) {
     dbglvl = ioptions[PMV3_OPTION_DBGLVL];
-    seed = ioptions[PMV3_OPTION_SEED];
+    seed   = ioptions[PMV3_OPTION_SEED];
   }
   else {
     dbglvl = GLOBAL_DBGLVL;
-    seed = GLOBAL_SEED;
+    seed   = GLOBAL_SEED;
   }
   SetUpCtrl(&ctrl, inparts, dbglvl, *comm);
   ctrl.CoarsenTo = amin(vtxdist[npes]+1, 25*incon*amax(npes, inparts));
@@ -111,9 +110,9 @@ void ParMETIS_V3_PartKway(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy, idxt
   ctrl.tpwgts = itpwgts;
   scopy(incon, iubvec, ctrl.ubvec);
 
-  graph = Moc_SetUpGraph(&ctrl, incon, vtxdist, xadj, vwgt, adjncy, adjwgt, &iwgtflag);
+  graph = Mc_SetUpGraph(&ctrl, incon, vtxdist, xadj, vwgt, adjncy, adjwgt, &iwgtflag);
 
-  PreAllocateMemory(&ctrl, graph, &wspace);
+  AllocateWSpace(&ctrl, graph, &wspace);
 
   IFSET(ctrl.dbglvl, DBG_TIME, InitTimers(&ctrl));
   IFSET(ctrl.dbglvl, DBG_TIME, MPI_Barrier(ctrl.gcomm));
@@ -134,7 +133,7 @@ void ParMETIS_V3_PartKway(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy, idxt
     /***********************/
     /* Partition the graph */
     /***********************/
-    Moc_Global_Partition(&ctrl, graph, &wspace);
+    Mc_Global_Partition(&ctrl, graph, &wspace);
     ParallelReMapGraph(&ctrl, graph, &wspace);
   }
 
@@ -164,7 +163,7 @@ void ParMETIS_V3_PartKway(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy, idxt
   }
 
   GKfree((void **)&itpwgts, (void **)&graph->lnpwgts, (void **)&graph->gnpwgts, (void **)&graph->nvwgt, LTERM);
-  FreeInitialGraphAndRemap(graph, iwgtflag);
+  FreeInitialGraphAndRemap(graph, iwgtflag, 1);
   FreeWSpace(&wspace);
   FreeCtrl(&ctrl);
 
@@ -178,14 +177,16 @@ void ParMETIS_V3_PartKway(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy, idxt
 /*************************************************************************
 * This function is the driver to the multi-constraint partitioning algorithm.
 **************************************************************************/
-void Moc_Global_Partition(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
+void Mc_Global_Partition(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
 {
   int i, ncon, nparts;
   float ftmp, ubavg, lbavg, lbvec[MAXNCON];
  
-  ncon = graph->ncon;
+  AdjustWSpace(ctrl, graph, wspace);
+
+  ncon   = graph->ncon;
   nparts = ctrl->nparts;
-  ubavg = savg(graph->ncon, ctrl->ubvec);
+  ubavg  = savg(graph->ncon, ctrl->ubvec);
 
   SetUp(ctrl, graph, wspace);
 
@@ -206,10 +207,10 @@ void Moc_Global_Partition(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspac
 
     /* Done with coarsening. Find a partition */
     graph->where = idxmalloc(graph->nvtxs+graph->nrecv, "graph->where");
-    Moc_InitPartition_RB(ctrl, graph, wspace);
+    Mc_InitPartition_RB(ctrl, graph, wspace);
 
     if (ctrl->dbglvl&DBG_PROGRESS) {
-      Moc_ComputeParallelBalance(ctrl, graph, graph->where, lbvec);
+      Mc_ComputeParallelBalance(ctrl, graph, graph->where, lbvec);
       rprintf(ctrl, "nvtxs: %10d, balance: ", graph->gnvtxs);
       for (i=0; i<graph->ncon; i++) 
         rprintf(ctrl, "%.3f ", lbvec[i]);
@@ -218,17 +219,18 @@ void Moc_Global_Partition(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspac
 
     /* In case no coarsening took place */
     if (graph->finer == NULL) {
-      Moc_ComputePartitionParams(ctrl, graph, wspace);
-      Moc_KWayFM(ctrl, graph, wspace, NGR_PASSES);
+      Mc_ComputePartitionParams(ctrl, graph, wspace);
+      Mc_KWayFM(ctrl, graph, wspace, NGR_PASSES);
     }
   }
   else {
-    Moc_GlobalMatch_Balance(ctrl, graph, wspace);
+    Mc_GlobalMatch_Balance(ctrl, graph, wspace);
 
-    Moc_Global_Partition(ctrl, graph->coarser, wspace);
+    Mc_Global_Partition(ctrl, graph->coarser, wspace);
 
-    Moc_ProjectPartition(ctrl, graph, wspace);
-    Moc_ComputePartitionParams(ctrl, graph, wspace);
+    Mc_ProjectPartition(ctrl, graph, wspace);
+
+    Mc_ComputePartitionParams(ctrl, graph, wspace);
 
     if (graph->ncon > 1 && graph->level < 3) {
       for (i=0; i<ncon; i++) {
@@ -243,21 +245,21 @@ void Moc_Global_Partition(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspac
 
       if (lbavg > ubavg + 0.035) {
         if (ctrl->dbglvl&DBG_PROGRESS) {
-          Moc_ComputeParallelBalance(ctrl, graph, graph->where, lbvec);
+          Mc_ComputeParallelBalance(ctrl, graph, graph->where, lbvec);
           rprintf(ctrl, "nvtxs: %10d, cut: %8d, balance: ", graph->gnvtxs, graph->mincut);
           for (i=0; i<graph->ncon; i++) 
             rprintf(ctrl, "%.3f ", lbvec[i]);
           rprintf(ctrl, "\n");
 	}
 
-        Moc_KWayBalance(ctrl, graph, wspace, graph->ncon);
+        Mc_KWayBalance(ctrl, graph, wspace, graph->ncon);
       }
     }
 
-    Moc_KWayFM(ctrl, graph, wspace, NGR_PASSES);
+    Mc_KWayFM(ctrl, graph, wspace, NGR_PASSES);
 
     if (ctrl->dbglvl&DBG_PROGRESS) {
-      Moc_ComputeParallelBalance(ctrl, graph, graph->where, lbvec);
+      Mc_ComputeParallelBalance(ctrl, graph, graph->where, lbvec);
       rprintf(ctrl, "nvtxs: %10d, cut: %8d, balance: ", graph->gnvtxs, graph->mincut);
       for (i=0; i<graph->ncon; i++) 
         rprintf(ctrl, "%.3f ", lbvec[i]);

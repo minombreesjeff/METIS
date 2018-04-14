@@ -38,7 +38,7 @@ void PartitionSmallGraph(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace
 
   SetUp(ctrl, graph, wspace);
   graph->where = idxmalloc(graph->nvtxs+graph->nrecv, "PartitionSmallGraph: where");
-  agraph       = Moc_AssembleAdaptiveGraph(ctrl, graph, wspace);
+  agraph       = Mc_AssembleAdaptiveGraph(ctrl, graph, wspace);
   mypart       = idxmalloc(agraph->nvtxs, "mypart");
 
   moptions[0] = 0;

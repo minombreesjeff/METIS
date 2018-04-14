@@ -9,14 +9,14 @@ OBJS = comm.o util.o debug.o setup.o grsetup.o timer.o \
        xyzpart.o pspases.o frename.o \
        iintsort.o iidxsort.o ikeysort.o ikeyvalsort.o \
        kmetis.o gkmetis.o ometis.o \
-       initpart.o match.o coarsen.o \
+       initpart.o match.o \
        kwayfm.o kwayrefine.o kwaybalance.o \
        remap.o stat.o fpqueue.o \
        ametis.o rmetis.o lmatch.o initbalance.o \
        mdiffusion.o diffutil.o wave.o \
        csrmatch.o redomylink.o balancemylink.o \
        selectq.o akwayfm.o serial.o move.o \
-       mmetis.o mesh.o memory.o weird.o backcompat.o
+       mmetis.o mesh.o memory.o weird.o backcompat.o 
 
 .c.o:
 	$(CC) $(CFLAGS) -c $*.c

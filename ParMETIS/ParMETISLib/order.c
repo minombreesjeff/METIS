@@ -16,19 +16,26 @@
 
 #include <parmetislib.h>
 
-/*************************************************************************
-* This is the top level ordering routine
-**************************************************************************/
-void MultilevelOrder(CtrlType *ctrl, GraphType *graph, idxtype *order, idxtype *sizes, WorkSpaceType *wspace)
+/*********************************************************************************/
+/*!
+  This is the top level ordering routine. 
+  \param order is the computed ordering.
+  \param sizes is the 2*nparts array that will store the sizes of each subdomains 
+               and the sizes of the separators at each level. Note that the 
+               top-level separator is stores at \c sizes[2*nparts-2].
+*/
+/*********************************************************************************/
+void MultilevelOrder(CtrlType *ctrl, GraphType *graph, idxtype *order, idxtype *sizes, 
+         WorkSpaceType *wspace)
 {
   int i, nparts, nvtxs, npes;
   idxtype *perm, *lastnode, *morder, *porder;
   GraphType *mgraph;
 
-  npes = ctrl->npes;
+  npes  = ctrl->npes;
   nvtxs = graph->nvtxs;
 
-  perm = idxmalloc(nvtxs, "MultilevelOrder: perm");
+  perm     = idxmalloc(nvtxs, "MultilevelOrder: perm");
   lastnode = idxsmalloc(4*npes, -1, "MultilevelOrder: lastnode");
 
   for (i=0; i<nvtxs; i++) 
@@ -37,6 +44,9 @@ void MultilevelOrder(CtrlType *ctrl, GraphType *graph, idxtype *order, idxtype *
 
   idxset(nvtxs, -1, order);
 
+  /* This is used as a pointer to the end of the sizes[] array (i.e., >=nparts)
+     that has not yet been filled in so that the separator sizes of the succesive
+     levels will be stored correctly. It is used in LabelSeparatos() */
   sizes[0] = 2*npes-1;
 
   graph->where = idxsmalloc(nvtxs, 0, "MultilevelOrder: graph->where");
@@ -64,8 +74,8 @@ void MultilevelOrder(CtrlType *ctrl, GraphType *graph, idxtype *order, idxtype *
   IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->MoveTmr));
 
   SetUp(ctrl, graph, wspace);
-  graph->ncon = 1; /*needed for Moc_MoveGraph */
-  mgraph = Moc_MoveGraph(ctrl, graph, wspace);
+  graph->ncon = 1; /*needed for Mc_MoveGraph */
+  mgraph = Mc_MoveGraph(ctrl, graph, wspace);
 
   /* Fill in the sizes[] array for the local part. Just the vtxdist of the mgraph */
   for (i=0; i<npes; i++)
@@ -96,25 +106,28 @@ void MultilevelOrder(CtrlType *ctrl, GraphType *graph, idxtype *order, idxtype *
 }
 
 
-/*************************************************************************
-* This function is used to assign labels to the nodes in the separators
-* It uses the appropriate entry in the lastnode array to select label
-* boundaries and adjusts it for the next level
-**************************************************************************/
-void LabelSeparators(CtrlType *ctrl, GraphType *graph, idxtype *lastnode, idxtype *perm, idxtype *order, idxtype *sizes, WorkSpaceType *wspace)
-{
-  int i, nvtxs, nparts, sid;
-  idxtype *where, *lpwgts, *gpwgts, *sizescan;
+/*********************************************************************************/
+/*!
+  This function is used to assign labels to the nodes in the separators It uses the
+  appropriate entry in the lastnode array to select label boundaries and adjusts it
+  for the next level.
+
+*/
+/*********************************************************************************/
+void LabelSeparators(CtrlType *ctrl, GraphType *graph, idxtype *lastnode, idxtype
+    *perm, idxtype *order, idxtype *sizes, WorkSpaceType *wspace) 
+{ 
+  int i, nvtxs, nparts, sid; idxtype *where, *lpwgts, *gpwgts, *sizescan;
 
   nparts = ctrl->nparts;
 
-  nvtxs = graph->nvtxs;
-  where = graph->where;
+  nvtxs  = graph->nvtxs;
+  where  = graph->where;
   lpwgts = graph->lpwgts;
   gpwgts = graph->gpwgts;
 
   /* Compute the local size of the separator. This is required in case the 
-   * graph has vertex weights */
+     graph has vertex weights */
   idxset(2*nparts, 0, lpwgts);
   for (i=0; i<nvtxs; i++) 
     lpwgts[where[i]]++;
@@ -131,11 +144,12 @@ void LabelSeparators(CtrlType *ctrl, GraphType *graph, idxtype *lastnode, idxtyp
   PrintVector(ctrl, 2*nparts, 0, lastnode, "LastNode");
 #endif
 
-  /* Fillin the sizes[] array */
+  /* Fillin the sizes[] array. See the comment on MultilevelOrder() on the 
+     purpose of the sizes[0] value. */
   for (i=nparts-2; i>=0; i-=2) 
     sizes[--sizes[0]] = gpwgts[nparts+i];
 
-  if (ctrl->dbglvl&DBG_INFO) {
+  if (ctrl->dbglvl&DBG_INFO) { 
     if (ctrl->mype == 0) {
       printf("SepSizes: ");
       for (i=0; i<nparts; i+=2)
@@ -148,6 +162,7 @@ void LabelSeparators(CtrlType *ctrl, GraphType *graph, idxtype *lastnode, idxtyp
   for (i=0; i<2*nparts; i++)
     sizescan[i] -= lpwgts[i];
 
+  /* Assign the order[] values to the separator nodes */
   for (i=0; i<nvtxs; i++) {
     if (where[i] >= nparts) {
       sid = where[i];
@@ -161,15 +176,13 @@ void LabelSeparators(CtrlType *ctrl, GraphType *graph, idxtype *lastnode, idxtyp
   /* Update lastnode array */
   idxcopy(2*nparts, lastnode, sizescan);
   for (i=0; i<nparts; i+=2) {
-    lastnode[2*nparts+2*i] = sizescan[nparts+i]-gpwgts[nparts+i]-gpwgts[i+1];
+    lastnode[2*nparts+2*i]     = sizescan[nparts+i]-gpwgts[nparts+i]-gpwgts[i+1];
     lastnode[2*nparts+2*(i+1)] = sizescan[nparts+i]-gpwgts[nparts+i];
   }
 
-  free(sizescan);
+  GKfree((void **)&sizescan, LTERM);
 
 }
-
-
 
 
 /*************************************************************************
@@ -178,17 +191,17 @@ void LabelSeparators(CtrlType *ctrl, GraphType *graph, idxtype *lastnode, idxtyp
 void CompactGraph(CtrlType *ctrl, GraphType *graph, idxtype *perm, WorkSpaceType *wspace)
 {
   int i, j, l, nvtxs, cnvtxs, cfirstvtx, nparts, npes; 
-  idxtype *xadj, *ladjncy, *adjwgt, *vtxdist, *where;
+  idxtype *xadj, *adjncy, *adjwgt, *vtxdist, *where;
   idxtype *cmap, *cvtxdist, *newwhere;
 
   nparts = ctrl->nparts;
-  npes = ctrl->npes;
+  npes   = ctrl->npes;
 
-  nvtxs = graph->nvtxs;
-  xadj = graph->xadj;
-  ladjncy = graph->adjncy;
+  nvtxs  = graph->nvtxs;
+  xadj   = graph->xadj;
+  adjncy = graph->adjncy;
   adjwgt = graph->adjwgt;
-  where = graph->where;
+  where  = graph->where;
 
   if (graph->cmap == NULL)
     graph->cmap = idxmalloc(nvtxs+graph->nrecv, "CompactGraph: cmap");
@@ -201,9 +214,10 @@ void CompactGraph(CtrlType *ctrl, GraphType *graph, idxtype *perm, WorkSpaceType
   * that lpwgts stores the local non separator vertices.
   **************************************************************/
   cvtxdist = wspace->pv1;
-  cnvtxs = cvtxdist[npes] = idxsum(nparts, graph->lpwgts);
+  cnvtxs   = idxsum(nparts, graph->lpwgts);
 
-  MPI_Allgather((void *)(cvtxdist+npes), 1, IDX_DATATYPE, (void *)cvtxdist, 1, IDX_DATATYPE, ctrl->comm);
+  MPI_Allgather((void *)&cnvtxs, 1, IDX_DATATYPE, (void *)cvtxdist, 1, IDX_DATATYPE, 
+       ctrl->comm);
   MAKECSR(i, npes, cvtxdist);
 
 #ifdef DEBUG_ORDER
@@ -235,37 +249,36 @@ void CompactGraph(CtrlType *ctrl, GraphType *graph, idxtype *perm, WorkSpaceType
   for (i=0; i<nvtxs; i++) {
     if (where[i] < nparts) {
       for (j=xadj[i]; j<xadj[i+1]; j++) {
-        if (where[i] == where[ladjncy[j]]) {
-          ladjncy[l] = cmap[ladjncy[j]];
+        ASSERT(ctrl, where[i] == where[adjncy[j]] || where[adjncy[j]] >= nparts);
+        if (where[i] == where[adjncy[j]]) {
+          adjncy[l]   = cmap[adjncy[j]];
           adjwgt[l++] = adjwgt[j];
         }
-#ifdef DEBUG_ORDER
-        else if (where[ladjncy[j]] < nparts)
-          printf("It seems that the separation has failed: %d %d\n", where[i], where[ladjncy[j]]);
-#endif
       }
 
       xadj[cnvtxs] = l;
       graph->vwgt[cnvtxs] = graph->vwgt[i];
-      newwhere[cnvtxs] = where[i];
+      newwhere[cnvtxs]    = where[i];
       cnvtxs++;
     }
   }
-  for (i=cnvtxs; i>0; i--)
-    xadj[i] = xadj[i-1];
-  xadj[0] = 0;
+  SHIFTCSR(i, cnvtxs, xadj);
 
-  GKfree((void **)&graph->match, (void **)&graph->cmap, (void **)&graph->lperm, (void **)&graph->where, (void **)&graph->label, (void **)&graph->rinfo,
-         (void **)&graph->nrinfo, (void **)&graph->lpwgts, (void **)&graph->gpwgts, (void **)&graph->sepind, (void **)&graph->peind,
-         (void **)&graph->sendptr, (void **)&graph->sendind, (void **)&graph->recvptr, (void **)&graph->recvind, 
-         (void **)&graph->imap, (void **)&graph->rlens, (void **)&graph->slens, (void **)&graph->rcand, (void **)&graph->pexadj, 
+  GKfree((void **)&graph->match, (void **)&graph->cmap, (void **)&graph->lperm, 
+         (void **)&graph->where, (void **)&graph->label, (void **)&graph->rinfo,
+         (void **)&graph->nrinfo, (void **)&graph->lpwgts, (void **)&graph->gpwgts, 
+         (void **)&graph->sepind, (void **)&graph->hmarker, (void **)&graph->peind,
+         (void **)&graph->sendptr, (void **)&graph->sendind, 
+         (void **)&graph->recvptr, (void **)&graph->recvind, 
+         (void **)&graph->imap, (void **)&graph->rlens, (void **)&graph->slens, 
+         (void **)&graph->rcand, (void **)&graph->pexadj, 
          (void **)&graph->peadjncy, (void **)&graph->peadjloc, LTERM);
  
-  graph->nvtxs = cnvtxs;
+  graph->nvtxs  = cnvtxs;
   graph->nedges = l;
   graph->gnvtxs = cvtxdist[npes];
+  graph->where  = newwhere;
   idxcopy(npes+1, cvtxdist, graph->vtxdist);
-  graph->where = newwhere;
 
 }
 
@@ -281,12 +294,12 @@ void LocalNDOrder(CtrlType *ctrl, GraphType *graph, idxtype *order, int firstnod
   idxtype *perm, *iperm;
   int numflag=0, options[10];
 
-  nvtxs = graph->nvtxs;
-  xadj = graph->xadj;
+  nvtxs  = graph->nvtxs;
+  xadj   = graph->xadj;
   adjncy = graph->adjncy;
 
   firstvtx = graph->vtxdist[ctrl->mype];
-  lastvtx = graph->vtxdist[ctrl->mype+1];
+  lastvtx  = graph->vtxdist[ctrl->mype+1];
 
   /* Relabel the vertices so that they are in local index space */
   for (i=0; i<nvtxs; i++) {
@@ -308,14 +321,16 @@ void LocalNDOrder(CtrlType *ctrl, GraphType *graph, idxtype *order, int firstnod
     ASSERT(ctrl, iperm[i]>=0 && iperm[i]<nvtxs);
     order[i] = firstnode+iperm[i];
   }
-
 }
+
 
 /*************************************************************************
 * This function is the driver for the partition refinement mode of ParMETIS
 **************************************************************************/
 void Order_Partition(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
 {
+
+  AdjustWSpace(ctrl, graph, wspace);
 
   SetUp(ctrl, graph, wspace);
   graph->ncon = 1;
@@ -325,23 +340,26 @@ void Order_Partition(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
         GlobalSEMax(ctrl, graph->nvtxs), ctrl->CoarsenTo,
         GlobalSEMax(ctrl, graph->vwgt[idxamax(graph->nvtxs, graph->vwgt)])));
 
-  if (graph->gnvtxs < 1.3*ctrl->CoarsenTo || (graph->finer != NULL && graph->gnvtxs > graph->finer->gnvtxs*COARSEN_FRACTION)) {
+  if ((graph->gnvtxs < 1.66*ctrl->CoarsenTo) || 
+      (graph->finer != NULL && graph->gnvtxs > graph->finer->gnvtxs*COARSEN_FRACTION)) {
     /* Compute the initial npart-way multisection */
     InitMultisection(ctrl, graph, wspace);
 
-    if (graph->finer == NULL) { /* Do that only of no-coarsening took place */
+    if (graph->finer == NULL) { /* Do that only if no-coarsening took place */
+      AllocateNodePartitionParams(ctrl, graph, wspace);
       ComputeNodePartitionParams(ctrl, graph, wspace);
-      KWayNodeRefine(ctrl, graph, wspace, 2*NGR_PASSES, ORDER_UNBALANCE_FRACTION);
+      KWayNodeRefine(ctrl, graph, wspace, NGR_PASSES, ORDER_UNBALANCE_FRACTION);
     }
   }
-  else { /* Coarsen it and the partition it */
+  else { /* Coarsen it and then partition it */
     Mc_LocalMatch_HEM(ctrl, graph, wspace);
 
     Order_Partition(ctrl, graph->coarser, wspace);
 
-    Moc_ProjectPartition(ctrl, graph, wspace);
+    Mc_ProjectPartition(ctrl, graph, wspace);
+    AllocateNodePartitionParams(ctrl, graph, wspace);
     ComputeNodePartitionParams(ctrl, graph, wspace);
-    KWayNodeRefine(ctrl, graph, wspace, 2*NGR_PASSES, ORDER_UNBALANCE_FRACTION);
+    KWayNodeRefine(ctrl, graph, wspace, NGR_PASSES, ORDER_UNBALANCE_FRACTION);
   }
 }
 
