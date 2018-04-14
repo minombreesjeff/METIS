@@ -9,7 +9,7 @@
  * Started 7/23/97
  * George
  *
- * $Id: minitpart2.c,v 1.3 1998/09/19 17:23:28 karypis Exp $
+ * $Id: minitpart2.c,v 1.1 2003/07/16 15:55:10 karypis Exp $
  *
  */
 

@@ -8,10 +8,10 @@
  * Started 9/28/95
  * George
  *
- * $Id: util.c,v 1.5 1998/07/03 17:19:46 karypis Exp $
+ * $Id: util.c,v 1.2 2003/07/21 17:18:54 karypis Exp $
  */
 
-#include <parmetis.h>
+#include <parmetislib.h>
 
 
 /*************************************************************************

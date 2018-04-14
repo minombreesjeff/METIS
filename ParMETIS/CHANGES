@@ -1,4 +1,20 @@
 
+Changes in version 3.1
+- The mesh partitioning and dual creation routines have changed to support mixed
+  element meshes.
+
+- The parmetis.h header file has been restructured and is now C++ friendly.
+
+- Fortran bindings/renamings for various routines have been added.
+
+- A number of bugs have been fixed.
+  - tpwgts are now respected for small graphs.
+  - fixed various divide by zero errors.
+  - removed dependency on the old drand48() routines.
+  - fixed some memory leaks.
+
+
+
 Changes in version 3.0
 
 - The names and calling sequence of all the routines have changed due to expanded

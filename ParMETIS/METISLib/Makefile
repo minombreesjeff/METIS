@@ -14,8 +14,7 @@ OBJS = coarsen.o fm.o initpart.o match.o ccgraph.o \
        mutil.o mkmetis.o mkwayrefine.o mkwayfmh.o \
        mrefine2.o minitpart2.o mbalance2.o mfm2.o \
        kvmetis.o kwayvolrefine.o kwayvolfm.o subdomains.o \
-	NEW_parmetis.o NEW_mfm.o NEW_memory.o NEW_mrefine.o \
-	NEW_stats.o NEW_checkgraph.o
+       mfm.o memory.o mrefine.o checkgraph.o
 
 .c.o:
 	$(CC) $(CFLAGS) -c $*.c
@@ -26,3 +25,21 @@ OBJS = coarsen.o fm.o initpart.o match.o ccgraph.o \
 
 clean:
 	rm -f *.o 
+
+realclean:
+	rm -f *.o ; rm -f ../libmetis.a
+
+
+checkin:
+	@for file in *.[c,h]; \
+	do \
+	ci -u -m'Maintance' $$file;\
+	done 
+
+checkin2:
+	@for file in *.[c,h]; \
+	do \
+	ci $$file;\
+	rcs -U $$file;\
+	co $$file;\
+	done

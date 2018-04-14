@@ -6,7 +6,7 @@
  * Started 7/28/97
  * George
  *
- * $Id: kwayfm.c,v 1.2 1998/09/17 19:47:40 karypis Exp $
+ * $Id: kwayfm.c,v 1.1 2003/07/16 15:55:04 karypis Exp $
  *
  */
 

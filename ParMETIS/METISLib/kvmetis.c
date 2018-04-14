@@ -9,7 +9,7 @@
  * Started 7/28/97
  * George
  *
- * $Id: kvmetis.c,v 1.1 1998/09/16 14:30:36 karypis Exp $
+ * $Id: kvmetis.c,v 1.1 2003/07/16 15:55:04 karypis Exp $
  *
  */
 

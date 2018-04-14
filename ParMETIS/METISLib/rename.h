@@ -8,7 +8,7 @@
  * Started 10/2/97
  * George
  *
- * $Id: rename.h,v 1.2 1998/09/20 17:36:13 karypis Exp $
+ * $Id: rename.h,v 1.2 2003/07/24 18:39:12 karypis Exp $
  *
  */
 
@@ -28,6 +28,10 @@
 #define CreateCoarseGraph_NVW 		__CreateCoarseGraph_NVW
 #define SetUpCoarseGraph		__SetUpCoarseGraph
 #define ReAdjustMemory			__ReAdjustMemory
+
+
+/* checkgraph.c */
+#define CheckGraph      		__CheckGraph
 
 
 /* coarsen.c */
@@ -302,6 +306,7 @@
 
 /* parmetis.c */
 #define MlevelNestedDissectionP		__MlevelNestedDissectionP
+#define MCMlevelRecursiveBisection2     __MCMlevelRecursiveBisection2
 
 
 /* pmetis.c */
@@ -356,6 +361,7 @@
 #define ComputePartitionInfo		__ComputePartitionInfo
 #define ComputePartitionBalance		__ComputePartitionBalance
 #define ComputeElementBalance		__ComputeElementBalance
+#define Moc_ComputePartitionBalance     __Moc_ComputePartitionBalance
 
 
 /* subdomains.c */

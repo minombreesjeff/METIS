@@ -7,11 +7,11 @@
  * Started 4/16/98
  * George
  *
- * $Id: premap.c,v 1.4 1998/07/06 12:38:21 karypis Exp $
+ * $Id: remap.c,v 1.2 2003/07/21 17:18:53 karypis Exp $
  *
  */
 
-#include <parmetis.h>
+#include <parmetislib.h>
 
 /*************************************************************************
 * This function remaps that graph so that it will minimize the 

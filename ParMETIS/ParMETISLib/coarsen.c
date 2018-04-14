@@ -8,11 +8,11 @@
  * Started 2/22/96
  * George
  *
- * $Id: mcoarsen.c,v 1.3 1998/09/21 20:18:46 karypis Exp $
+ * $Id: coarsen.c,v 1.2 2003/07/21 17:18:48 karypis Exp $
  *
  */
 
-#include <parmetis.h>
+#include <parmetislib.h>
 
 
 /*************************************************************************

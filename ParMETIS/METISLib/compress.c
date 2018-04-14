@@ -9,7 +9,7 @@
  * Started 9/17/97
  * George
  *
- * $Id: compress.c,v 1.1 1998/09/16 14:30:32 karypis Exp $
+ * $Id: compress.c,v 1.1 2003/07/16 15:55:01 karypis Exp $
  */
 
 #include <metis.h>

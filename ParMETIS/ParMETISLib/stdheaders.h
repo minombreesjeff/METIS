@@ -8,14 +8,13 @@
  * Started 8/27/94
  * George
  *
- * $Id: stdheaders.h,v 1.1 1998/05/25 17:55:05 karypis Exp $
+ * $Id: stdheaders.h,v 1.4 2003/07/25 14:31:47 karypis Exp $
  */
 
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <malloc.h>
-#include <strings.h>
 #include <string.h>
 #include <ctype.h>
 #include <math.h>

@@ -9,7 +9,7 @@
  * Started 7/23/97
  * George
  *
- * $Id: match.c,v 1.1 1998/09/16 14:30:40 karypis Exp $
+ * $Id: match.c,v 1.1 2003/07/16 15:55:06 karypis Exp $
  *
  */
 

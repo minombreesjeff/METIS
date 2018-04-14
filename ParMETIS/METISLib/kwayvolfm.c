@@ -6,7 +6,7 @@
  * Started 7/8/98
  * George
  *
- * $Id: kwayvolfm.c,v 1.3 1998/09/19 17:23:28 karypis Exp $
+ * $Id: kwayvolfm.c,v 1.2 2003/07/31 06:14:01 karypis Exp $
  *
  */
 
@@ -1629,13 +1629,13 @@ void EliminateVolComponents(CtrlType *ctrl, GraphType *graph, int nparts, float 
   pwgts = idxset(nparts, 0, graph->pwgts);
 
   touched = idxset(nvtxs, 0, idxwspacemalloc(ctrl, nvtxs));
-  cptr = idxwspacemalloc(ctrl, nvtxs);
-  cind = idxwspacemalloc(ctrl, nvtxs);
-  perm = idxwspacemalloc(ctrl, nvtxs);
-  todo = idxwspacemalloc(ctrl, nvtxs);
+  cptr    = idxwspacemalloc(ctrl, nvtxs+1);
+  cind    = idxwspacemalloc(ctrl, nvtxs);
+  perm    = idxwspacemalloc(ctrl, nvtxs);
+  todo    = idxwspacemalloc(ctrl, nvtxs);
   maxpwgt = idxwspacemalloc(ctrl, nparts);
-  cpvec = idxwspacemalloc(ctrl, nparts);
-  npcmps = idxset(nparts, 0, idxwspacemalloc(ctrl, nparts));
+  cpvec   = idxwspacemalloc(ctrl, nparts);
+  npcmps  = idxset(nparts, 0, idxwspacemalloc(ctrl, nparts));
 
   for (i=0; i<nvtxs; i++) 
     perm[i] = todo[i] = i;
@@ -1772,7 +1772,7 @@ void EliminateVolComponents(CtrlType *ctrl, GraphType *graph, int nparts, float 
   idxwspacefree(ctrl, nvtxs);
   idxwspacefree(ctrl, nvtxs);
   idxwspacefree(ctrl, nvtxs);
-  idxwspacefree(ctrl, nvtxs);
+  idxwspacefree(ctrl, nvtxs+1);
 
 }
 

@@ -7,7 +7,7 @@ CC = mpicc
 OPTFLAGS = -O3 
 
 # Include directories for the compiler
-INCDIR = 
+INCDIR = -I/opt/local/include
 
 # What options to be used by the compiler
 COPTIONS = 
@@ -16,10 +16,11 @@ COPTIONS =
 LD = mpicc
 
 # In which directories to look for any additional libraries
-LIBDIR = 
+LIBDIR = -L/opt/local/lib -L/usr/lib
 
 # What additional libraries to link the programs with (eg., -lmpi)
-XTRALIBS = 
+#XTRALIBS = -lefence
+#XTRALIBS = -ldmalloc
 
 # What archiving to use
 AR = ar rv
@@ -28,3 +29,4 @@ AR = ar rv
 #RANLIB = ranlib
 RANLIB = ar -ts
 
+VERNUM = 

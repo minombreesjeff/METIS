@@ -9,7 +9,7 @@
  * Started 7/24/97
  * George
  *
- * $Id: ometis.c,v 1.1 1998/09/16 14:30:53 karypis Exp $
+ * $Id: ometis.c,v 1.2 2003/07/31 06:14:01 karypis Exp $
  *
  */
 
@@ -344,8 +344,8 @@ void MlevelNestedDissectionCC(CtrlType *ctrl, GraphType *graph, idxtype *order, 
   for (i=0; i<nbnd; i++) 
     order[label[bndind[i]]] = --lastvtx;
 
-  cptr = idxmalloc(nvtxs, "MlevelNestedDissectionCC: cptr");
-  cind = idxmalloc(nvtxs, "MlevelNestedDissectionCC: cind");
+  cptr  = idxmalloc(nvtxs+1, "MlevelNestedDissectionCC: cptr");
+  cind  = idxmalloc(nvtxs, "MlevelNestedDissectionCC: cind");
   ncmps = FindComponents(ctrl, graph, cptr, cind);
 
 /*

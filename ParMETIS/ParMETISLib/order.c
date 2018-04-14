@@ -8,13 +8,13 @@
  * Started 5/3/97
  * George
  *
- * $Id: order.c,v 1.4 1998/09/22 19:36:50 karypis Exp $
+ * $Id: order.c,v 1.2 2003/07/21 17:18:50 karypis Exp $
  *
  */
 
 #define DEBUG_ORDER_
 
-#include <parmetis.h>
+#include <parmetislib.h>
 
 /*************************************************************************
 * This is the top level ordering routine

@@ -8,7 +8,7 @@
  * Started 8/1/97
  * George
  *
- * $Id: mincover.c,v 1.1 1998/09/16 14:30:45 karypis Exp $
+ * $Id: mincover.c,v 1.1 2003/07/16 15:55:09 karypis Exp $
  */
 
 #include <metis.h>

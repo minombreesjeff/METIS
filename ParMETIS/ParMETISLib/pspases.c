@@ -7,11 +7,11 @@
  * Started 10/14/97
  * George
  *
- * $Id: pspases.c,v 1.4 1998/07/03 18:20:55 karypis Exp $
+ * $Id: pspases.c,v 1.3 2003/07/21 17:18:53 karypis Exp $
  *
  */
 
-#include <parmetis.h>
+#include <parmetislib.h>
 
 
 /***********************************************************************************
@@ -38,7 +38,7 @@ void ParMETIS_SerialNodeND(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy, int
   if (*numflag == 1) 
     ChangeNumbering(vtxdist, xadj, adjncy, order, npes, mype, 1);
 
-  SetUpCtrl(&ctrl, npes, &options[OPTION_DBGLVL], *comm);
+  SetUpCtrl(&ctrl, npes, options[OPTION_DBGLVL], *comm);
 
   IFSET(ctrl.dbglvl, DBG_TIME, InitTimers(&ctrl));
   IFSET(ctrl.dbglvl, DBG_TIME, MPI_Barrier(ctrl.gcomm));

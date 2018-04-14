@@ -8,10 +8,10 @@
  * Started 3/1/96
  * George
  *
- * $Id: mkwayfm.c,v 1.5 1998/09/21 21:16:25 karypis Exp $
+ * $Id: kwayfm.c,v 1.3 2003/07/22 20:29:05 karypis Exp $
  */
 
-#include <parmetis.h>
+#include <parmetislib.h>
 
 #define ProperSide(c, from, other) \
               (((c) == 0 && (from)-(other) < 0) || ((c) == 1 && (from)-(other) > 0))
@@ -58,12 +58,12 @@ void Moc_KWayFM(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace, int npa
   firstvtx = vtxdist[mype];
   lastvtx = vtxdist[mype+1];
 
-  where = graph->where;
-  rinfo = graph->rinfo;
+  where   = graph->where;
+  rinfo   = graph->rinfo;
   lnpwgts = graph->lnpwgts;
   gnpwgts = graph->gnpwgts;
-  ubvec = ctrl->ubvec;
-  tpwgts = ctrl->tpwgts;
+  ubvec   = ctrl->ubvec;
+  tpwgts  = ctrl->tpwgts;
 
   nnbrs = graph->nnbrs;
   peind = graph->peind;

@@ -9,11 +9,11 @@
  * Started 11/19/96
  * George
  *
- * $Id: adrivers.c,v 1.11 1998/09/21 21:16:25 karypis Exp $
+ * $Id: adrivers.c,v 1.5 2003/07/30 18:37:58 karypis Exp $
  *
  */
 
-#include <parmetis.h>
+#include <parmetislib.h>
 
 
 
@@ -32,16 +32,15 @@ void Adaptive_Partition(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
   /************************************/
   SetUp(ctrl, graph, wspace);
 
-  ubavg = savg(graph->ncon, ctrl->ubvec);
-  tewgt = idxsum(graph->nedges, graph->adjwgt);
-  tvsize = idxsum(graph->nvtxs, graph->vsize);
-  gtewgt = (float) GlobalSESum(ctrl, tewgt);
-  gtvsize = (float) GlobalSESum(ctrl, tvsize);
+  ubavg   = savg(graph->ncon, ctrl->ubvec);
+  tewgt   = idxsum(graph->nedges, graph->adjwgt);
+  tvsize  = idxsum(graph->nvtxs, graph->vsize);
+  gtewgt  = (float) GlobalSESum(ctrl, tewgt) + 1.0;  /* The +1 were added to remove any FPE */
+  gtvsize = (float) GlobalSESum(ctrl, tvsize) + 1.0;
   ctrl->redist_factor = ctrl->redist_base * ((gtewgt/gtvsize)/ ctrl->edge_size_ratio);
 
   IFSET(ctrl->dbglvl, DBG_PROGRESS, rprintf(ctrl, "[%6d %8d %5d %5d][%d]\n", 
-  graph->gnvtxs, GlobalSESum(ctrl, graph->nedges), GlobalSEMin(ctrl, graph->nvtxs),
-  GlobalSEMax(ctrl, graph->nvtxs), ctrl->CoarsenTo));
+        graph->gnvtxs, GlobalSESum(ctrl, graph->nedges), GlobalSEMin(ctrl, graph->nvtxs), GlobalSEMax(ctrl, graph->nvtxs), ctrl->CoarsenTo));
 
   if (graph->gnvtxs < 1.3*ctrl->CoarsenTo ||
      (graph->finer != NULL && graph->gnvtxs > graph->finer->gnvtxs*COARSEN_FRACTION)) {
@@ -58,16 +57,13 @@ void Adaptive_Partition(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
     if (lbavg > ubavg + 0.035 && ctrl->partType != REFINE_PARTITION)
       Balance_Partition(ctrl, graph, wspace);
 
-    IFSET(ctrl->dbglvl, DBG_PROGRESS,
-      Moc_ComputeParallelBalance(ctrl, graph, graph->where, lbvec));
-    IFSET(ctrl->dbglvl, DBG_PROGRESS,
-      rprintf(ctrl, "nvtxs: %10d, balance: ", graph->gnvtxs));
-    for (i=0; i<graph->ncon; i++) {
-      IFSET(ctrl->dbglvl, DBG_PROGRESS,
-        rprintf(ctrl, "%.3f ", lbvec[i]));
+    if (ctrl->dbglvl&DBG_PROGRESS) {
+      Moc_ComputeParallelBalance(ctrl, graph, graph->where, lbvec);
+      rprintf(ctrl, "nvtxs: %10d, balance: ", graph->gnvtxs);
+      for (i=0; i<graph->ncon; i++) 
+        rprintf(ctrl, "%.3f ", lbvec[i]);
+      rprintf(ctrl, "\n");
     }
-    IFSET(ctrl->dbglvl, DBG_PROGRESS,
-      rprintf(ctrl, "\n"));
 
     /* check if no coarsening took place */
     if (graph->finer == NULL) {
@@ -90,7 +86,6 @@ void Adaptive_Partition(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
         break;
     }
 
-
     Adaptive_Partition(ctrl, graph->coarser, wspace);
 
     /********************************/
@@ -110,16 +105,13 @@ void Adaptive_Partition(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
 
     Moc_KWayAdaptiveRefine(ctrl, graph, wspace, NGR_PASSES);
 
-    IFSET(ctrl->dbglvl, DBG_PROGRESS,
-      Moc_ComputeParallelBalance(ctrl, graph, graph->where, lbvec));
-    IFSET(ctrl->dbglvl, DBG_PROGRESS,
-      rprintf(ctrl, "nvtxs: %10d, cut: %8d, balance: ", graph->gnvtxs, graph->mincut));
-    for (i=0; i<graph->ncon; i++) {
-      IFSET(ctrl->dbglvl, DBG_PROGRESS,
-        rprintf(ctrl, "%.3f ", lbvec[i]));
+    if (ctrl->dbglvl&DBG_PROGRESS) {
+      Moc_ComputeParallelBalance(ctrl, graph, graph->where, lbvec);
+      rprintf(ctrl, "nvtxs: %10d, cut: %8d, balance: ", graph->gnvtxs, graph->mincut);
+      for (i=0; i<graph->ncon; i++) 
+        rprintf(ctrl, "%.3f ", lbvec[i]);
+      rprintf(ctrl, "\n");
     }
-    IFSET(ctrl->dbglvl, DBG_PROGRESS,
-      rprintf(ctrl, "\n"));
   }
 }
 

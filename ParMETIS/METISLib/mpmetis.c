@@ -9,7 +9,7 @@
  * Started 7/24/97
  * George
  *
- * $Id: mpmetis.c,v 1.6 1998/09/17 16:54:46 karypis Exp $
+ * $Id: mpmetis.c,v 1.1 2003/07/16 15:55:12 karypis Exp $
  *
  */
 

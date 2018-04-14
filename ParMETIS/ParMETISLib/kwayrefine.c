@@ -8,10 +8,10 @@
  * Started 3/1/96
  * George
  *
- * $Id: medge_refine.c,v 1.5 1998/09/21 21:16:25 karypis Exp $
+ * $Id: kwayrefine.c,v 1.2 2003/07/21 17:18:49 karypis Exp $
  */
 
-#include <parmetis.h>
+#include <parmetislib.h>
 
 #define ProperSide(c, from, other) \
               (((c) == 0 && (from)-(other) < 0) || ((c) == 1 && (from)-(other) > 0))

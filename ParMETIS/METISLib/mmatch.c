@@ -9,7 +9,7 @@
  * Started 7/23/97
  * George
  *
- * $Id: mmatch.c,v 1.2 1998/09/20 20:42:30 karypis Exp $
+ * $Id: mmatch.c,v 1.1 2003/07/16 15:55:11 karypis Exp $
  *
  */
 

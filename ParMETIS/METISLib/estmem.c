@@ -9,7 +9,7 @@
  * Started 11/4/97
  * George
  *
- * $Id: estmem.c,v 1.1 1998/09/16 14:30:33 karypis Exp $
+ * $Id: estmem.c,v 1.1 2003/07/16 15:55:02 karypis Exp $
  *
  */
 

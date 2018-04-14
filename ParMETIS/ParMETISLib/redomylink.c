@@ -8,10 +8,10 @@
  * Started 7/23/97
  * George
  *
- * $Id: redomylink.c,v 1.2 1998/11/30 14:50:44 karypis Exp $
+ * $Id: redomylink.c,v 1.2 2003/07/21 17:18:53 karypis Exp $
  */
 
-#include <parmetis.h>
+#include <parmetislib.h>
 #define	PE	0
 
 /*************************************************************************

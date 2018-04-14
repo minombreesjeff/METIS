@@ -8,10 +8,10 @@
  * Started 3/1/96
  * George
  *
- * $Id: node_refine.c,v 1.3 1998/07/03 17:17:18 karypis Exp $
+ * $Id: node_refine.c,v 1.2 2003/07/21 17:18:50 karypis Exp $
  */
 
-#include <parmetis.h>
+#include <parmetislib.h>
 
 #define PackWeightWhereInfo(a, b) (((a)<<10) + (b))
 #define SelectWhere(a) ((a)%1024)

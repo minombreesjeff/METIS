@@ -8,7 +8,7 @@
  * Started 8/27/94
  * George
  *
- * $Id: metis.h,v 1.1 1998/09/16 14:30:43 karypis Exp $
+ * $Id: metis.h,v 1.3 2003/07/25 13:52:00 karypis Exp $
  */
 
 /*
@@ -22,11 +22,10 @@
 #include <dmalloc.h>
 #endif
 
+#include "../parmetis.h"  /* Get the idxtype definition */
 #include <defs.h>
 #include <struct.h>
 #include <macros.h>
 #include <rename.h>
-#include <NEW_rename.h>
 #include <proto.h>
-#include <NEW_proto.h>
 

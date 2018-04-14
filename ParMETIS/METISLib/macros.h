@@ -8,7 +8,7 @@
  * Started 9/25/94
  * George
  *
- * $Id: macros.h,v 1.3 1998/09/20 17:36:39 karypis Exp $
+ * $Id: macros.h,v 1.7 2003/07/21 19:11:40 karypis Exp $
  *
  */
 
@@ -16,15 +16,7 @@
 /*************************************************************************
 * The following macro returns a random number in the specified range
 **************************************************************************/
-#ifdef __VC__
-#define RandomInRange(u) ((rand()>>3)%(u))
-#define RandomInRangeFast(u) ((rand()>>3)%(u))
-#else
-#define RandomInRange(u) ((int)(drand48()*((double)(u))))
-#define RandomInRangeFast(u) ((rand()>>3)%(u))
-#endif
-
-
+#define RandomInRange(u) ((int)(1.0*(u)*rand()/(RAND_MAX+1.0)))
 
 #define amax(a, b) ((a) >= (b) ? (a) : (b))
 #define amin(a, b) ((a) >= (b) ? (b) : (a))

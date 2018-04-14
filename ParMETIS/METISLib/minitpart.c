@@ -9,7 +9,7 @@
  * Started 7/23/97
  * George
  *
- * $Id: minitpart.c,v 1.4 1998/09/19 17:06:10 karypis Exp $
+ * $Id: minitpart.c,v 1.2 2003/07/31 16:23:29 karypis Exp $
  *
  */
 
@@ -30,7 +30,10 @@ void MocInit2WayPartition(CtrlType *ctrl, GraphType *graph, float *tpwgts, float
 
   switch (ctrl->IType) {
     case IPART_GGPKL:
-      MocGrowBisection(ctrl, graph, tpwgts, ubfactor);
+      if (graph->nedges == 0)
+        MocRandomBisection(ctrl, graph, tpwgts, ubfactor);
+      else
+        MocGrowBisection(ctrl, graph, tpwgts, ubfactor);
       break;
     case IPART_RANDOM:
       MocRandomBisection(ctrl, graph, tpwgts, ubfactor);

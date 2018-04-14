@@ -9,7 +9,7 @@
  * Started 7/15/98
  * George
  *
- * $Id: subdomains.c,v 1.2 1998/09/17 19:47:41 karypis Exp $
+ * $Id: subdomains.c,v 1.2 2003/07/31 06:14:01 karypis Exp $
  *
  */
 
@@ -1061,13 +1061,13 @@ void EliminateComponents(CtrlType *ctrl, GraphType *graph, int nparts, float *tp
   pwgts = graph->pwgts;
 
   touched = idxset(nvtxs, 0, idxwspacemalloc(ctrl, nvtxs));
-  cptr = idxwspacemalloc(ctrl, nvtxs);
-  cind = idxwspacemalloc(ctrl, nvtxs);
-  perm = idxwspacemalloc(ctrl, nvtxs);
-  todo = idxwspacemalloc(ctrl, nvtxs);
+  cptr    = idxwspacemalloc(ctrl, nvtxs+1);
+  cind    = idxwspacemalloc(ctrl, nvtxs);
+  perm    = idxwspacemalloc(ctrl, nvtxs);
+  todo    = idxwspacemalloc(ctrl, nvtxs);
   maxpwgt = idxwspacemalloc(ctrl, nparts);
-  cpvec = idxwspacemalloc(ctrl, nparts);
-  npcmps = idxset(nparts, 0, idxwspacemalloc(ctrl, nparts));
+  cpvec   = idxwspacemalloc(ctrl, nparts);
+  npcmps  = idxset(nparts, 0, idxwspacemalloc(ctrl, nparts));
 
   for (i=0; i<nvtxs; i++) 
     perm[i] = todo[i] = i;
@@ -1163,7 +1163,7 @@ void EliminateComponents(CtrlType *ctrl, GraphType *graph, int nparts, float *tp
   idxwspacefree(ctrl, nvtxs);
   idxwspacefree(ctrl, nvtxs);
   idxwspacefree(ctrl, nvtxs);
-  idxwspacefree(ctrl, nvtxs);
+  idxwspacefree(ctrl, nvtxs+1);
 
 }
 

@@ -9,12 +9,12 @@
  * Started 2/21/96
  * George
  *
- * $Id: setup.c,v 1.3 1998/09/21 20:18:47 karypis Exp $
+ * $Id: setup.c,v 1.3 2003/07/31 16:23:30 karypis Exp $
  *
  */
 
 
-#include <parmetis.h>
+#include <parmetislib.h>
 
 #define DEBUG_SETUPINFO_
 
@@ -35,11 +35,11 @@ void SetUp(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
   IFSET(ctrl->dbglvl, DBG_TIME, MPI_Barrier(ctrl->comm));
   IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->SetupTmr));
 
-  gnvtxs = graph->gnvtxs;
-  nvtxs = graph->nvtxs;
+  gnvtxs  = graph->gnvtxs;
+  nvtxs   = graph->nvtxs;
   vtxdist = graph->vtxdist;
-  xadj = graph->xadj;
-  adjncy = graph->adjncy;
+  xadj    = graph->xadj;
+  adjncy  = graph->adjncy;
 
   firstvtx = vtxdist[mype];
   lastvtx = vtxdist[mype+1];
@@ -54,7 +54,7 @@ void SetUp(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
   /************************************************************* 
    * Determine what you need to receive 
    *************************************************************/
-  receive = wspace->indices;  		/* Use the large global received array for now */
+  receive  = wspace->indices;  		/* Use the large global received array for now */
   adjpairs = wspace->pairs;
 
   for (nlocal = nadj = i = 0; i<nvtxs; i++) {

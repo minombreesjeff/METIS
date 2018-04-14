@@ -9,11 +9,11 @@
  * Started 11/19/96
  * George
  *
- * $Id: mdrivers.c,v 1.11 1998/09/21 21:16:25 karypis Exp $
+ * $Id: mdrivers.c,v 1.3 2003/07/22 20:29:06 karypis Exp $
  *
  */
 
-#include <parmetis.h>
+#include <parmetislib.h>
 
 
 
@@ -31,23 +31,16 @@ void Moc_Global_Partition(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspac
 
   SetUp(ctrl, graph, wspace);
 
-  IFSET(ctrl->dbglvl, DBG_PROGRESS,
-	rprintf(ctrl, "[%6d %8d %5d %5d] [%d] [", graph->gnvtxs,
-	GlobalSESum(ctrl, graph->nedges),
-	GlobalSEMin(ctrl, graph->nvtxs),
-	GlobalSEMax(ctrl, graph->nvtxs),
-	ctrl->CoarsenTo));
-  for (i=0; i<ncon; i++)
-    IFSET(ctrl->dbglvl, DBG_PROGRESS,
-	rprintf(ctrl, " %.3f", GlobalSEMinFloat(ctrl,
-	graph->nvwgt[samin_strd(graph->nvtxs, graph->nvwgt+i, ncon)*ncon+i])));  
-  IFSET(ctrl->dbglvl, DBG_PROGRESS, rprintf(ctrl, "] ["));
-  for (i=0; i<ncon; i++)
-    IFSET(ctrl->dbglvl, DBG_PROGRESS,
-	rprintf(ctrl, " %.3f", GlobalSEMaxFloat(ctrl,
-	graph->nvwgt[samax_strd(graph->nvtxs, graph->nvwgt+i, ncon)*ncon+i])));  
-  IFSET(ctrl->dbglvl, DBG_PROGRESS, rprintf(ctrl, "]\n"));
-
+  if (ctrl->dbglvl&DBG_PROGRESS) {
+    rprintf(ctrl, "[%6d %8d %5d %5d] [%d] [", graph->gnvtxs, GlobalSESum(ctrl, graph->nedges),
+	    GlobalSEMin(ctrl, graph->nvtxs), GlobalSEMax(ctrl, graph->nvtxs), ctrl->CoarsenTo);
+    for (i=0; i<ncon; i++)
+      rprintf(ctrl, " %.3f", GlobalSEMinFloat(ctrl,graph->nvwgt[samin_strd(graph->nvtxs, graph->nvwgt+i, ncon)*ncon+i]));  
+    rprintf(ctrl, "] [");
+    for (i=0; i<ncon; i++)
+      rprintf(ctrl, " %.3f", GlobalSEMaxFloat(ctrl, graph->nvwgt[samax_strd(graph->nvtxs, graph->nvwgt+i, ncon)*ncon+i]));  
+    rprintf(ctrl, "]\n");
+  }
 
   if (graph->gnvtxs < 1.3*ctrl->CoarsenTo ||
 	(graph->finer != NULL &&
@@ -57,16 +50,13 @@ void Moc_Global_Partition(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspac
     graph->where = idxmalloc(graph->nvtxs+graph->nrecv, "graph->where");
     Moc_InitPartition_RB(ctrl, graph, wspace);
 
-    IFSET(ctrl->dbglvl, DBG_PROGRESS,
-      Moc_ComputeParallelBalance(ctrl, graph, graph->where, lbvec));
-    IFSET(ctrl->dbglvl, DBG_PROGRESS,
-      rprintf(ctrl, "nvtxs: %10d, balance: ", graph->gnvtxs));
-    for (i=0; i<graph->ncon; i++) {
-      IFSET(ctrl->dbglvl, DBG_PROGRESS,
-        rprintf(ctrl, "%.3f ", lbvec[i]));
+    if (ctrl->dbglvl&DBG_PROGRESS) {
+      Moc_ComputeParallelBalance(ctrl, graph, graph->where, lbvec);
+      rprintf(ctrl, "nvtxs: %10d, balance: ", graph->gnvtxs);
+      for (i=0; i<graph->ncon; i++) 
+        rprintf(ctrl, "%.3f ", lbvec[i]);
+      rprintf(ctrl, "\n");
     }
-    IFSET(ctrl->dbglvl, DBG_PROGRESS,
-      rprintf(ctrl, "\n"));
 
     /* In case no coarsening took place */
     if (graph->finer == NULL) {
@@ -94,35 +84,27 @@ void Moc_Global_Partition(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspac
       lbavg = savg(graph->ncon, lbvec);
 
       if (lbavg > ubavg + 0.035) {
-
-        IFSET(ctrl->dbglvl, DBG_PROGRESS, 
-          Moc_ComputeParallelBalance(ctrl, graph, graph->where, lbvec));
-        IFSET(ctrl->dbglvl, DBG_PROGRESS,
-          rprintf(ctrl, "nvtxs: %10d, cut: %8d, balance: ", graph->gnvtxs, graph->mincut));
-        for (i=0; i<graph->ncon; i++) {
-          IFSET(ctrl->dbglvl, DBG_PROGRESS,
-            rprintf(ctrl, "%.3f ", lbvec[i]));
-        }
-        IFSET(ctrl->dbglvl, DBG_PROGRESS,
-          rprintf(ctrl, "\n"));
+        if (ctrl->dbglvl&DBG_PROGRESS) {
+          Moc_ComputeParallelBalance(ctrl, graph, graph->where, lbvec);
+          rprintf(ctrl, "nvtxs: %10d, cut: %8d, balance: ", graph->gnvtxs, graph->mincut);
+          for (i=0; i<graph->ncon; i++) 
+            rprintf(ctrl, "%.3f ", lbvec[i]);
+          rprintf(ctrl, "\n");
+	}
 
         Moc_KWayBalance(ctrl, graph, wspace, graph->ncon);
-
       }
     }
 
     Moc_KWayFM(ctrl, graph, wspace, NGR_PASSES);
 
-    IFSET(ctrl->dbglvl, DBG_PROGRESS,
-      Moc_ComputeParallelBalance(ctrl, graph, graph->where, lbvec));
-    IFSET(ctrl->dbglvl, DBG_PROGRESS,
-      rprintf(ctrl, "nvtxs: %10d, cut: %8d, balance: ", graph->gnvtxs, graph->mincut));
-    for (i=0; i<graph->ncon; i++) {
-      IFSET(ctrl->dbglvl, DBG_PROGRESS,
-        rprintf(ctrl, "%.3f ", lbvec[i]));
+    if (ctrl->dbglvl&DBG_PROGRESS) {
+      Moc_ComputeParallelBalance(ctrl, graph, graph->where, lbvec);
+      rprintf(ctrl, "nvtxs: %10d, cut: %8d, balance: ", graph->gnvtxs, graph->mincut);
+      for (i=0; i<graph->ncon; i++) 
+        rprintf(ctrl, "%.3f ", lbvec[i]);
+      rprintf(ctrl, "\n");
     }
-    IFSET(ctrl->dbglvl, DBG_PROGRESS,
-      rprintf(ctrl, "\n"));
 
     if (graph->level != 0)
       GKfree((void **)&graph->lnpwgts, (void **)&graph->gnpwgts, LTERM);

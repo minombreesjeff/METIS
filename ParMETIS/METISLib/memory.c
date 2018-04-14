@@ -8,7 +8,7 @@
  * Started 2/24/96
  * George
  *
- * $Id: memory.c,v 1.2 1998/11/27 18:16:18 karypis Exp $
+ * $Id: memory.c,v 1.1 2003/07/24 18:39:08 karypis Exp $
  *
  */
 

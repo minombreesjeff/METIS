@@ -8,7 +8,7 @@
  * Started 7/25/97
  * George
  *
- * $Id: stat.c,v 1.2 1998/09/22 18:33:40 karypis Exp $
+ * $Id: NEW_stats.c,v 1.1 2003/07/16 15:55:15 karypis Exp $
  *
  */
 

@@ -8,11 +8,11 @@
  * Started 2/22/96
  * George
  *
- * $Id: mmatch.c,v 1.3 1998/09/21 20:18:46 karypis Exp $
+ * $Id: match.c,v 1.2 2003/07/21 17:18:50 karypis Exp $
  *
  */
 
-#include <parmetis.h>
+#include <parmetislib.h>
 
 
 /*************************************************************************

@@ -10,11 +10,11 @@
  * Started 9/2/94
  * George
  *
- * $Id: fpqueue.c,v 1.1 1998/11/27 17:59:28 karypis Exp $
+ * $Id: fpqueue.c,v 1.2 2003/07/21 17:18:48 karypis Exp $
  *
  */
 
-#include <parmetis.h>
+#include <parmetislib.h>
 
 
 /*************************************************************************

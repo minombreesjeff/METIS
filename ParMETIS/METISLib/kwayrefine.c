@@ -8,7 +8,7 @@
  * Started 7/28/97
  * George
  *
- * $Id: kwayrefine.c,v 1.5 1998/09/22 18:33:39 karypis Exp $
+ * $Id: kwayrefine.c,v 1.1 2003/07/16 15:55:05 karypis Exp $
  */
 
 #include <metis.h>

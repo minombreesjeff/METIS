@@ -6,7 +6,7 @@
  * Started 7/28/97
  * George
  *
- * $Id: mkwayfmh.c,v 1.4 1998/09/17 15:04:36 karypis Exp $
+ * $Id: mkwayfmh.c,v 1.1 2003/07/16 15:55:10 karypis Exp $
  *
  */
 

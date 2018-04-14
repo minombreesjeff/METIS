@@ -8,7 +8,7 @@
  * Started 9/15/97
  * George
  *
- * $Id: frename.c,v 1.2 1998/09/20 17:36:13 karypis Exp $
+ * $Id: frename.c,v 1.1 2003/07/16 15:55:03 karypis Exp $
  *
  */
 

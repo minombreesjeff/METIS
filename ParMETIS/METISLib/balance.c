@@ -9,7 +9,7 @@
  * Started 7/29/97
  * George
  *
- * $Id: balance.c,v 1.1 1998/09/16 14:30:29 karypis Exp $
+ * $Id: balance.c,v 1.1 2003/07/16 15:54:58 karypis Exp $
  *
  */
 

@@ -8,7 +8,7 @@
  * Started 10/19/96
  * George
  *
- * $Id: msetup.c,v 1.6 1998/07/06 19:44:38 karypis Exp $
+ * $Id: msetup.c,v 1.3 2003/07/31 06:14:01 karypis Exp $
  *
  */
 

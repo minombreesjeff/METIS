@@ -6,11 +6,11 @@
  * Started 7/28/97
  * George
  *
- * $Id: serial.c,v 1.1 1998/11/27 17:59:24 karypis Exp $
+ * $Id: serial.c,v 1.2 2003/07/21 17:18:53 karypis Exp $
  *
  */
 
-#include <parmetis.h>
+#include <parmetislib.h>
 
 
 /*************************************************************************

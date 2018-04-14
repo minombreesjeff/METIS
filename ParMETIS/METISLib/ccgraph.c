@@ -8,7 +8,7 @@
  * Started 8/11/97
  * George
  *
- * $Id: ccgraph.c,v 1.1 1998/09/16 14:30:31 karypis Exp $
+ * $Id: ccgraph.c,v 1.1 2003/07/16 15:55:00 karypis Exp $
  *
  */
 

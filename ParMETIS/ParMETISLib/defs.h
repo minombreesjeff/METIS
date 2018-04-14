@@ -8,7 +8,7 @@
  * Started 8/27/94
  * George
  *
- * $Id: defs.h,v 1.9 1998/09/23 16:51:53 karypis Exp $
+ * $Id: defs.h,v 1.4 2003/07/22 20:29:05 karypis Exp $
  *
  */
 

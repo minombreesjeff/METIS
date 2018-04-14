@@ -8,11 +8,11 @@
  * Started 10/19/96
  * George
  *
- * $Id: timer.c,v 1.1 1998/05/25 17:55:12 karypis Exp $
+ * $Id: timer.c,v 1.2 2003/07/21 17:18:54 karypis Exp $
  *
  */
 
-#include <parmetis.h>
+#include <parmetislib.h>
 
 
 

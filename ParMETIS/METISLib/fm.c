@@ -8,7 +8,7 @@
  * Started 7/23/97
  * George
  *
- * $Id: fm.c,v 1.1 1998/09/16 14:30:33 karypis Exp $
+ * $Id: fm.c,v 1.1 2003/07/16 15:55:02 karypis Exp $
  */
 
 #include <metis.h>

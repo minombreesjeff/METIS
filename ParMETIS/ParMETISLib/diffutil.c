@@ -8,11 +8,11 @@
  *
  * Started 5/19/97, Kirk, George
  *
- * $Id: diffutil.c,v 1.2 1998/06/03 13:34:38 karypis Exp $
+ * $Id: diffutil.c,v 1.2 2003/07/21 17:18:48 karypis Exp $
  *
  */
 
-#include <parmetis.h>
+#include <parmetislib.h>
 
 
 /*************************************************************************

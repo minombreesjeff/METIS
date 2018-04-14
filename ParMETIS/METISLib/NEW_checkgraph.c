@@ -8,7 +8,7 @@
  * Started 8/28/94
  * George
  *
- * $Id: checkgraph.c,v 1.1 1998/11/27 17:59:34 karypis Exp $
+ * $Id: NEW_checkgraph.c,v 1.1 2003/07/16 15:55:13 karypis Exp $
  *
  */
 

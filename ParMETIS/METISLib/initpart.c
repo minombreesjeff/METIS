@@ -9,7 +9,7 @@
  * Started 7/23/97
  * George
  *
- * $Id: initpart.c,v 1.1 1998/09/16 14:30:35 karypis Exp $
+ * $Id: initpart.c,v 1.2 2003/07/31 16:23:29 karypis Exp $
  *
  */
 
@@ -30,7 +30,10 @@ void Init2WayPartition(CtrlType *ctrl, GraphType *graph, int *tpwgts, float ubfa
 
   switch (ctrl->IType) {
     case IPART_GGPKL:
-      GrowBisection(ctrl, graph, tpwgts, ubfactor);
+      if (graph->nedges == 0)
+        RandomBisection(ctrl, graph, tpwgts, ubfactor);
+      else
+        GrowBisection(ctrl, graph, tpwgts, ubfactor);
       break;
     case 3:
       RandomBisection(ctrl, graph, tpwgts, ubfactor);

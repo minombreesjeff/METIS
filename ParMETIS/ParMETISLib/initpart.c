@@ -9,10 +9,10 @@
  * Started 3/4/96
  * George
  *
- * $Id: initpart.c,v 1.9 1998/09/23 16:47:03 karypis Exp $
+ * $Id: initpart.c,v 1.2 2003/07/21 17:18:49 karypis Exp $
  */
 
-#include <parmetis.h>
+#include <parmetislib.h>
 
 
 #define DEBUG_IPART_

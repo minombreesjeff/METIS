@@ -8,10 +8,10 @@
  * Started 6/3/97
  * George
  *
- * $Id: initmsection.c,v 1.5 1998/07/06 19:44:38 karypis Exp $
+ * $Id: initmsection.c,v 1.2 2003/07/21 17:18:49 karypis Exp $
  */
 
-#include <parmetis.h>
+#include <parmetislib.h>
 
 
 #define DEBUG_IPART_

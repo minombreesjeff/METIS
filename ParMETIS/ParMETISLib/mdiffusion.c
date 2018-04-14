@@ -7,10 +7,10 @@
  * Started 9/16/99
  * George
  *
- * $Id: mdiffusion.c,v 1.9 1998/09/23 16:47:03 karypis Exp $
+ * $Id: mdiffusion.c,v 1.2 2003/07/21 17:18:50 karypis Exp $
  */
 
-#include <parmetis.h>
+#include <parmetislib.h>
 
 #define PE	-1
 
