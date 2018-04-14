@@ -5,7 +5,7 @@
 \date Started 5/30/11
 \author George
 \author Copyright 1997-2011, Regents of the University of Minnesota 
-\version $Id: mcore.c 11403 2012-01-24 21:50:53Z karypis $
+\version $Id: mcore.c 13953 2013-03-30 16:20:07Z karypis $
 */
 
 #include <GKlib.h>
@@ -205,7 +205,7 @@ void gk_mcorePop(gk_mcore_t *mcore)
         break; 
 
       case GK_MOPT_CORE: /* core free */
-        if (mcore->corecpos-mcore->mops[mcore->cmop].nbytes < 0)
+        if (mcore->corecpos < mcore->mops[mcore->cmop].nbytes)
           errexit("Internal Error: wspace's core is about to be over-freed [%zu, %zu, %zd]\n",
               mcore->coresize, mcore->corecpos, mcore->mops[mcore->cmop].nbytes);
 

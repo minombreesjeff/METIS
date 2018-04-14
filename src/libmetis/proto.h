@@ -8,7 +8,7 @@
  * Started 10/19/95
  * George
  *
- * $Id: proto.h 13804 2013-03-04 23:49:08Z karypis $
+ * $Id: proto.h 13933 2013-03-29 22:20:46Z karypis $
  *
  */
 
@@ -41,6 +41,12 @@ graph_t *CoarsenGraph(ctrl_t *ctrl, graph_t *graph);
 graph_t *CoarsenGraphNlevels(ctrl_t *ctrl, graph_t *graph, idx_t nlevels);
 idx_t Match_RM(ctrl_t *ctrl, graph_t *graph);
 idx_t Match_SHEM(ctrl_t *ctrl, graph_t *graph);
+idx_t Match_2Hop(ctrl_t *ctrl, graph_t *graph, idx_t *perm, idx_t *match,
+          idx_t cnvtxs, size_t nunmatched);
+idx_t Match_2HopAny(ctrl_t *ctrl, graph_t *graph, idx_t *perm, idx_t *match,
+          idx_t cnvtxs, size_t *r_nunmatched, size_t maxdegree);
+idx_t Match_2HopAll(ctrl_t *ctrl, graph_t *graph, idx_t *perm, idx_t *match,
+          idx_t cnvtxs, size_t *r_nunmatched, size_t maxdegree);
 void PrintCGraphStats(ctrl_t *ctrl, graph_t *graph);
 void CreateCoarseGraph(ctrl_t *ctrl, graph_t *graph, idx_t cnvtxs, 
          idx_t *match);
