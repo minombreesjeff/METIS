@@ -29,10 +29,10 @@
 
 
 void par_uncoarsen_graph(
-    ctrl_t * const ctrl,
-    graph_t * const graph)
+    ctrl_type * const ctrl,
+    graph_type * const graph)
 {
-  tid_t const myid = dlthread_get_id(ctrl->comm);
+  tid_type const myid = dlthread_get_id(ctrl->comm);
 
   if (myid == 0) {
     dl_start_timer(&ctrl->timers.uncoarsening);

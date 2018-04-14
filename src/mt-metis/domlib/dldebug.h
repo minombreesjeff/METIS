@@ -69,7 +69,7 @@ static inline const char * __current_time(void)
 #else
 #define eprintf(...) \
   do { \
-    fprintf(stderr, "%s ERROR: ",__current_time()); \
+    fprintf(stderr, "ERROR: "); \
     fprintf(stderr, __VA_ARGS__); \
     fflush(stderr); \
   } while (0)
@@ -78,8 +78,6 @@ static inline const char * __current_time(void)
 #define dl_error(...) \
   do { \
     eprintf( __VA_ARGS__); \
-    fprintf(stderr,"At %s: %d ", __FILE__, __LINE__); \
-    fflush(stderr); \
     abort(); \
   } while (0)
 
@@ -110,10 +108,10 @@ static inline const char * __current_time(void)
   #ifdef MPI_VERSION
   #define DL_ASSERT(cond, ...) \
     do { \
-      fflush(stdout); \
-      fflush(stderr); \
       if (!(cond)) { \
         int __rank, __size; \
+        fflush(stdout); \
+        fflush(stderr); \
         MPI_Comm_rank(MPI_COMM_WORLD,&__rank); \
         MPI_Comm_size(MPI_COMM_WORLD,&__size); \
         eprintf("[%d/%d] : ",__rank,__size); \
@@ -128,9 +126,9 @@ static inline const char * __current_time(void)
   #else
   #define DL_ASSERT(cond, ...) \
     do { \
-      fflush(stdout); \
-      fflush(stderr); \
       if (!(cond)) { \
+        fflush(stdout); \
+        fflush(stderr); \
         eprintf( __VA_ARGS__); \
         fprintf(stderr,"\n"); \
         fflush(stdout); \

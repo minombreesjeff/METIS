@@ -28,11 +28,11 @@
 
 
 void par_contract_graph(
-    ctrl_t * ctrl, 
-    graph_t * graph, 
-    vtx_t mycnvtxs, 
-    vtx_t const * const * gmatch, 
-    vtx_t const * fcmap);
+    ctrl_type * ctrl, 
+    graph_type * graph, 
+    vtx_type mycnvtxs, 
+    vtx_type const * const * gmatch, 
+    vtx_type const * fcmap);
 
 
 

@@ -35,8 +35,8 @@
 
 
 #define MTMETIS_VER_MAJOR 0
-#define MTMETIS_VER_MINOR 4
-#define MTMETIS_VER_SUBMINOR 4
+#define MTMETIS_VER_MINOR 5
+#define MTMETIS_VER_SUBMINOR 0
 
 
 
@@ -49,30 +49,37 @@
 #ifndef MTMETIS_GRAPH_TYPES_DEFINED
 /* define these types for internal use */
 #ifdef MTMETIS_64BIT_VERTICES
-typedef uint64_t mtmetis_vtx_t;
+typedef uint64_t mtmetis_vtx_type;
 #else
-typedef uint32_t mtmetis_vtx_t;
+typedef uint32_t mtmetis_vtx_type;
 #endif
 
 #ifdef MTMETIS_64BIT_EDGES
-typedef uint64_t mtmetis_adj_t;
+typedef uint64_t mtmetis_adj_type;
 #else
-typedef uint32_t mtmetis_adj_t;
+typedef uint32_t mtmetis_adj_type;
 #endif
 
 /* this must be signed for refinement to work */
 #ifdef MTMETIS_64BIT_WEIGHTS
-typedef int64_t mtmetis_wgt_t;
+typedef int64_t mtmetis_wgt_type;
 #else
-typedef int32_t mtmetis_wgt_t;
+typedef int32_t mtmetis_wgt_type;
 #endif
 #endif /* MTMETIS_GRAPH_TYPES_DEFINED */
 
 
 #ifdef MTMETIS_64BIT_PARTITIONS
-typedef uint64_t mtmetis_pid_t;
+typedef uint64_t mtmetis_pid_type;
 #else
-typedef uint32_t mtmetis_pid_t;
+typedef uint32_t mtmetis_pid_type;
+#endif
+
+
+#ifdef MTMETIS_DOUBLE_REAL
+typedef double mtmetis_real_type;
+#else
+typedef float mtmetis_real_type;
 #endif
 
 
@@ -89,7 +96,6 @@ typedef enum mtmetis_error_t {
 
 
 typedef enum mtmetis_option_t {
-  MTMETIS_OPTION_HELP,
   MTMETIS_OPTION_TIME,
   MTMETIS_OPTION_NPARTS,
   MTMETIS_OPTION_NTHREADS,
@@ -111,6 +117,11 @@ typedef enum mtmetis_option_t {
   MTMETIS_OPTION_REMOVEISLANDS,
   MTMETIS_OPTION_VWGTDEGREE,
   MTMETIS_OPTION_IGNORE,
+  MTMETIS_OPTION_HILLSIZE,
+  MTMETIS_OPTION_HS_SCANTYPE,
+  /* used only be command line */
+  MTMETIS_OPTION_VERSION,
+  MTMETIS_OPTION_HELP,
   __MTMETIS_OPTION_TERM
 } mtmetis_option_t;
 
@@ -136,6 +147,7 @@ typedef enum mtmetis_rtype_t {
   MTMETIS_RTYPE_FM,
   MTMETIS_RTYPE_SFM,
   MTMETIS_RTYPE_SFG,
+  MTMETIS_RTYPE_HS
 } mtmetis_rtype_t;
 
 
@@ -146,6 +158,15 @@ typedef enum mtmetis_ptype_t {
   MTMETIS_PTYPE_VSEP,
   MTMETIS_PTYPE_ND
 } mtmetis_ptype_t;
+
+
+typedef enum mtmetis_hs_scan_t {
+  MTMETIS_HS_SCAN_SQRT,
+  MTMETIS_HS_SCAN_1PC,
+  MTMETIS_HS_SCAN_5PC,
+  MTMETIS_HS_SCAN_25PC,
+  MTMETIS_HS_SCAN_FULL,
+} mtmetis_hs_scan_t;
 
 
 typedef enum mtmetis_verbosity_t {
@@ -216,33 +237,108 @@ double * mtmetis_init_options(void);
 
 
 /**
- * @brief Partition a graph using default options. 
+ * @brief Create a partitioning of a graph using recursive bisection. 
  *
  * @param nvtxs The number of vertices in the graph.
- * @param xadj The adjacency list pointer.
+ * @param ncon The number of balance constraints (only 1 is supported at 
+ * this time).
+ * @param xadj The adjacency list pointer (equivalent to rowptr in CSR).
  * @param adjncy The adjacency list.
  * @param vwgt The vertex weights.
+ * @param vsize Unused.
  * @param adjwgt The edge weights.
- * @param nparts The number of partitions.
- * @param where The partition ID of each vertex (can be NULL, or of length
- * nvtxs)
- * @param r_edgecut A reference to the weight of cut edges (can be NULL).
+ * @param nparts The number of partitions desired.
+ * @param tpwgts The target partition weights (as a fraction of the total). 
+ * @param ubvec The imbalance tolerance for each constraint (again, only 1 is
+ * allowed currently). 
+ * @param options The configuration options for this run.
+ * @param r_edgecut The total cut edgeweight of the resulting partitioning
+ * (output).
+ * @param where The partition assignments for each vertex (output).
  *
- * @return MTMETIS_SUCCESS unless an error is encountered. 
+ * @return MTMETIS_SUCCESS upon success partitioning generation. 
  */
-int mtmetis_partkway(
-    mtmetis_vtx_t nvtxs, 
-    mtmetis_adj_t const * xadj, 
-    mtmetis_vtx_t const * adjncy, 
-    mtmetis_wgt_t const * vwgt, 
-    mtmetis_wgt_t const * adjwgt,
-    mtmetis_pid_t nparts, 
-    mtmetis_pid_t * where, 
-    mtmetis_wgt_t * r_edgecut);
+int MTMETIS_PartGraphRecursive(
+    mtmetis_vtx_type const * nvtxs,
+    mtmetis_vtx_type const * ncon,
+    mtmetis_adj_type const * xadj,
+    mtmetis_vtx_type const * adjncy,
+    mtmetis_wgt_type const * vwgt,
+    mtmetis_vtx_type const * vsize,
+    mtmetis_wgt_type const * adjwgt,
+    mtmetis_pid_type const * nparts,
+    mtmetis_real_type const * tpwgts,
+    mtmetis_real_type const * ubvec,
+    double const * options,
+    mtmetis_wgt_type * r_edgecut,
+    mtmetis_pid_type * where);
 
 
 /**
- * @brief Partition a graph using an explicit set of options.
+ * @brief Create a direct k-way partitioning of a graph. 
+ *
+ * @param nvtxs The number of vertices in the graph.
+ * @param ncon The number of balance constraints (only 1 is supported at 
+ * this time).
+ * @param xadj The adjacency list pointer (equivalent to rowptr in CSR).
+ * @param adjncy The adjacency list.
+ * @param vwgt The vertex weights.
+ * @param vsize Unused.
+ * @param adjwgt The edge weights.
+ * @param nparts The number of partitions desired.
+ * @param tpwgts The target partition weights (as a fraction of the total). 
+ * @param ubvec The imbalance tolerance for each constraint (again, only 1 is
+ * allowed currently). 
+ * @param options The configuration options for this run.
+ * @param r_edgecut The total cut edgeweight of the resulting partitioning
+ * (output).
+ * @param where The partition assignments for each vertex (output).
+ *
+ * @return MTMETIS_SUCCESS upon success partitioning generation. 
+ */
+int MTMETIS_PartGraphKway(
+    mtmetis_vtx_type const * nvtxs,
+    mtmetis_vtx_type const * ncon,
+    mtmetis_adj_type const * xadj,
+    mtmetis_vtx_type const * adjncy,
+    mtmetis_wgt_type const * vwgt,
+    mtmetis_vtx_type const * vsize,
+    mtmetis_wgt_type const * adjwgt,
+    mtmetis_pid_type const * nparts,
+    mtmetis_real_type const * tpwgts,
+    mtmetis_real_type const * ubvec,
+    double const * options,
+    mtmetis_wgt_type * r_edgecut,
+    mtmetis_pid_type * where);
+
+
+/**
+ * @brief Create a nested dissection ordering of a graph.
+ *
+ * @param nvtxs The number of vertices in the graph.
+ * @param xadj The adjacency list pointer (equivalent to rowptr in CSR).
+ * @param adjncy The adjacency list.
+ * @param vwgt The vertex weights.
+ * @param options The options for the partitioning.
+ * @param perm The permutation vector for re-ordering a sparse matrix (output).
+ * @param iperm The permutation vector for mapping from a re-ordered
+ * vector/matrix to the original ordering (output).
+ *
+ * @return MTMETIS_SUCCESS upon successful ordering generation.
+ */
+int MTMETIS_NodeND(
+    mtmetis_vtx_type const * nvtxs,
+    mtmetis_adj_type const * xadj,
+    mtmetis_vtx_type const * adjncy,
+    mtmetis_wgt_type const * vwgt,
+    double const * options,
+    mtmetis_pid_type * perm,
+    mtmetis_pid_type * iperm);
+
+
+/**
+ * @brief Partition a graph using an explicit set of options detailing what
+ * tupe of operation to perform.
  *
  * @param nvtxs The number of vertices in the graph.
  * @param xadj The adjacency list pointer.
@@ -257,37 +353,16 @@ int mtmetis_partkway(
  * @return MTMETIS_SUCCESS unless an error was encountered.
  */
 int mtmetis_partition_explicit(
-    mtmetis_vtx_t nvtxs,
-    mtmetis_adj_t const * xadj,
-    mtmetis_vtx_t const * adjncy,
-    mtmetis_wgt_t const * vwgt,
-    mtmetis_wgt_t const * adjwgt,
+    mtmetis_vtx_type nvtxs,
+    mtmetis_adj_type const * xadj,
+    mtmetis_vtx_type const * adjncy,
+    mtmetis_wgt_type const * vwgt,
+    mtmetis_wgt_type const * adjwgt,
     double const * options,
-    mtmetis_pid_t * where,
-    mtmetis_wgt_t * r_edgecut);
+    mtmetis_pid_type * where,
+    mtmetis_wgt_type * r_edgecut);
 
 
-
-/**
- * @brief Perform a nested disection on a graph, and output a permutation. 
- *
- * @param nvtxs The number of vertices in the graph.
- * @param xadj The adjacency list pointer.
- * @param adjncy The adjacency list.
- * @param vwgt The vertex weights.
- * @param adjwgt The edge weights.
- * @param options The set of options.
- * @param perm The permutation of the vertices (rows+columns).
- *
- * @return MTMETIS_SUCCESS unless an error is encountered. 
- */
-int mtmetis_nd(
-    mtmetis_vtx_t const nvtxs,
-    mtmetis_adj_t const * xadj,
-    mtmetis_vtx_t const * adjncy,
-    mtmetis_wgt_t const * vwgt,
-    mtmetis_wgt_t const * adjwgt,
-    mtmetis_pid_t * perm);
 
 
 #ifdef __cplusplus

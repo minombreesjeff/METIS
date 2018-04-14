@@ -50,17 +50,17 @@ static double const MIN_UFACTOR = 1.002;
  *
  * @return  The total weight of cut edges.
  */
-static wgt_t __ser_calc_cut(
-    graph_t const * const graph,
-    pid_t const * const * const where)
+static wgt_type S_ser_calc_cut(
+    graph_type const * const graph,
+    pid_type const * const * const where)
 {
-  vtx_t i,k,l,mynvtxs;
-  adj_t j;
-  wgt_t cut;
-  pid_t me, other;
-  tid_t myid, o;
+  vtx_type i,k,l,mynvtxs;
+  adj_type j;
+  wgt_type cut;
+  pid_type me, other;
+  tid_type myid, o;
 
-  tid_t const nthreads = graph->dist.nthreads;
+  tid_type const nthreads = graph->dist.nthreads;
 
   cut = 0;
   for (myid=0;myid<nthreads;++myid) {
@@ -97,18 +97,18 @@ static wgt_t __ser_calc_cut(
  *
  * @return The communication volume. 
  */
-static vtx_t __ser_calc_comvol(
-    graph_t const * const graph,
-    pid_t const * const * const where,
-    pid_t const nparts)
+static vtx_type S_ser_calc_comvol(
+    graph_type const * const graph,
+    pid_type const * const * const where,
+    pid_type const nparts)
 {
-  vtx_t vol, i, k, l, mynvtxs, g;
-  adj_t j;
-  pid_t me, other;
-  tid_t o, myid;
-  vtx_t * marker;
+  vtx_type vol, i, k, l, mynvtxs, g;
+  adj_type j;
+  pid_type me, other;
+  tid_type o, myid;
+  vtx_type * marker;
 
-  tid_t const nthreads = graph->dist.nthreads;
+  tid_type const nthreads = graph->dist.nthreads;
 
   marker = vtx_init_alloc(NULL_VTX,nparts);
 
@@ -151,16 +151,16 @@ static vtx_t __ser_calc_comvol(
  *
  * @return The weight of the vertex separator.
  */
-static wgt_t __ser_calc_vsep(
-    graph_t const * const graph,
-    pid_t const * const * const where)
+static wgt_type S_ser_calc_vsep(
+    graph_type const * const graph,
+    pid_type const * const * const where)
 {
-  vtx_t mynvtxs, i;
-  pid_t me;
-  tid_t myid;
-  wgt_t sep;
+  vtx_type mynvtxs, i;
+  pid_type me;
+  tid_type myid;
+  wgt_type sep;
 
-  tid_t const nthreads = graph->dist.nthreads;
+  tid_type const nthreads = graph->dist.nthreads;
 
   sep = 0;
 
@@ -185,13 +185,13 @@ static wgt_t __ser_calc_vsep(
 ******************************************************************************/
 
 
-static wgt_t __par_partition_mlevel(
-    ctrl_t * const ctrl,
-    graph_t * const graph)
+static wgt_type S_par_partition_mlevel(
+    ctrl_type * const ctrl,
+    graph_type * const graph)
 {
-  wgt_t obj;
+  wgt_type obj;
   double ratio;
-  graph_t * cgraph;
+  graph_type * cgraph;
 
   /* coaresn this level */
   cgraph = par_coarsen_graph(ctrl,graph);
@@ -223,7 +223,7 @@ static wgt_t __par_partition_mlevel(
     par_refine_graph(ctrl,cgraph);
   } else {
     /* recurse */
-    __par_partition_mlevel(ctrl,cgraph);
+    S_par_partition_mlevel(ctrl,cgraph);
   }
 
   /* uncoarsen this level */
@@ -260,26 +260,26 @@ static wgt_t __par_partition_mlevel(
  *
  * @return The weight of the edgecut. 
  */
-static wgt_t __par_partition_mlevel_rb(
-    ctrl_t * const ctrl,
-    graph_t * const graph,
-    pid_t ** const gwhere,
-    real_t const ratio) 
+static wgt_type S_par_partition_mlevel_rb(
+    ctrl_type * const ctrl,
+    graph_type * const graph,
+    pid_type ** const gwhere,
+    real_type const ratio) 
 {
-  vtx_t v, g, mynvtxs, lvtx;
-  tid_t hmyid, lid;
+  vtx_type v, g, mynvtxs, lvtx;
+  tid_type hmyid, lid;
   dlthread_comm_t lcomm;
-  pid_t p, pid;
-  wgt_t cut;
-  pid_t * offset;
-  ctrl_t * myctrl;
-  wgt_t htwgt[2];
+  pid_type p, pid;
+  wgt_type cut;
+  pid_type * offset;
+  ctrl_type * myctrl;
+  wgt_type htwgt[2];
 
-  graph_t ** hgraphs;
-  pid_t *** hgwhere;
+  graph_type ** hgraphs;
+  pid_type *** hgwhere;
 
-  tid_t const nthreads = dlthread_get_nthreads(ctrl->comm);
-  tid_t const myid = dlthread_get_id(ctrl->comm);
+  tid_type const nthreads = dlthread_get_nthreads(ctrl->comm);
+  tid_type const myid = dlthread_get_id(ctrl->comm);
 
   if (ctrl->nparts == 1) {
     /* each thread just assign a label to its vertices */
@@ -316,12 +316,12 @@ static wgt_t __par_partition_mlevel_rb(
         dl_start_timer(&(ctrl->timers.recursion));
       }
 
-      hgraphs = dlthread_get_shmem((sizeof(graph_t*)*2) + \
-          (sizeof(pid_t**)*2),ctrl->comm);
-      hgwhere = (pid_t***)(hgraphs+2);
+      hgraphs = dlthread_get_shmem((sizeof(graph_type*)*2) + \
+          (sizeof(pid_type**)*2),ctrl->comm);
+      hgwhere = (pid_type***)(hgraphs+2);
 
       /* extract subgraphs and structure based on number of calling threads */
-      par_graph_extract_parts(graph,(pid_t const **)gwhere,2,hgraphs);
+      par_graph_extract_parts(graph,(pid_type const **)gwhere,2,hgraphs);
 
       if (myid == 0) {
         dl_stop_timer(&(ctrl->timers.recursion));
@@ -348,11 +348,11 @@ static wgt_t __par_partition_mlevel_rb(
         DL_ASSERT_EQUALS((size_t)myctrl->comm,(size_t)hgraphs[pid]->comm, \
             "%zu");
 
-        hgwhere[pid] = dlthread_get_shmem(sizeof(pid_t*)*nthreads,lcomm);
+        hgwhere[pid] = dlthread_get_shmem(sizeof(pid_type*)*nthreads,lcomm);
         hgwhere[pid][hmyid] = pid_alloc(hgraphs[pid]->mynvtxs[hmyid]);
 
-        cut = __par_partition_mlevel_rb(myctrl,hgraphs[pid], \
-            hgwhere[pid],hgraphs[pid]->tvwgt/(real_t)htwgt[pid]);
+        cut = S_par_partition_mlevel_rb(myctrl,hgraphs[pid], \
+            hgwhere[pid],hgraphs[pid]->tvwgt/(real_type)htwgt[pid]);
 
         if (myid == 0) {
           ctrl_combine_timers(ctrl,myctrl);
@@ -403,20 +403,20 @@ static wgt_t __par_partition_mlevel_rb(
  *
  * @return The objective (weight of edge or vertex separator).
  */
-static wgt_t __par_partition(
-    ctrl_t * const ctrl,
-    graph_t * const graph,
-    pid_t * const * const where)
+static wgt_type S_par_partition(
+    ctrl_type * const ctrl,
+    graph_type * const graph,
+    pid_type * const * const where)
 {
   size_t run;
-  vtx_t i;
-  wgt_t curobj, bestobj;
+  vtx_type i;
+  wgt_type curobj, bestobj;
   double curbal, bestbal;
-  wgt_t * pwgts, * lpwgts;
-  pid_t ** gwhere;
+  wgt_type * pwgts, * lpwgts;
+  pid_type ** gwhere;
 
-  tid_t const myid = dlthread_get_id(ctrl->comm);
-  tid_t const nthreads = dlthread_get_nthreads(ctrl->comm);
+  tid_type const myid = dlthread_get_id(ctrl->comm);
+  tid_type const nthreads = dlthread_get_nthreads(ctrl->comm);
 
   pwgts = NULL;
 
@@ -427,7 +427,7 @@ static wgt_t __par_partition(
 
     par_graph_removeislands(ctrl,graph);
 
-    pwgts = dlthread_get_shmem(sizeof(wgt_t)*ctrl->nparts,ctrl->comm);
+    pwgts = dlthread_get_shmem(sizeof(wgt_type)*ctrl->nparts,ctrl->comm);
 
     if (myid == 0) {
       dl_stop_timer(&ctrl->timers.preprocess);
@@ -474,10 +474,10 @@ static wgt_t __par_partition(
       switch (ctrl->ptype) {
         case MTMETIS_PTYPE_RB: /* special case */
           /* create where */
-          gwhere = dlthread_get_shmem(sizeof(pid_t*)*nthreads,ctrl->comm);
+          gwhere = dlthread_get_shmem(sizeof(pid_type*)*nthreads,ctrl->comm);
           gwhere[myid] = pid_alloc(graph->mynvtxs[myid]);
 
-          curobj = __par_partition_mlevel_rb(ctrl,graph,gwhere,1.0);
+          curobj = S_par_partition_mlevel_rb(ctrl,graph,gwhere,1.0);
 
           /* compute pwgts */
           lpwgts = wgt_init_alloc(0,ctrl->nparts);
@@ -503,7 +503,7 @@ static wgt_t __par_partition(
         case MTMETIS_PTYPE_KWAY:
         default:
           /* everyone else works fine with this */
-          curobj = __par_partition_mlevel(ctrl,graph);
+          curobj = S_par_partition_mlevel(ctrl,graph);
       }
     }
 
@@ -567,33 +567,29 @@ static wgt_t __par_partition(
 
 
 void partition_print_info(
-    ctrl_t const * ctrl,
-    graph_t const * graph,
-    pid_t const * const * where)
+    ctrl_type const * ctrl,
+    graph_type const * graph,
+    pid_type const * const * where)
 {
-  vtx_t i, k, mynvtxs;
-  pid_t nparts, p, q;
-  tid_t myid;
-  wgt_t tvwgt, mvwgt;
-  wgt_t * kpwgts;
-  real_t * tpwgts;
+  vtx_type i, k, mynvtxs;
+  pid_type nparts, p, q;
+  tid_type myid;
+  wgt_type tvwgt, mvwgt;
+  wgt_type * kpwgts;
+  real_type * tpwgts;
   double unbalance;
-  const wgt_t *vwgt; 
-  const pid_t *mywhere;
+  const wgt_type *vwgt; 
+  const pid_type *mywhere;
 
   nparts = ctrl->nparts;
   tpwgts = ctrl->tpwgts;
 
   dl_print_footer('*');
-  printf(" size of vtx_t: %zu, adj_t: %zu, wgt_t: %zu, pid_t: %zu, tid_t: " \
-      "%zu, real_t: %zu\n",8*sizeof(vtx_t), 8*sizeof(adj_t), 8*sizeof(wgt_t), \
-      8*sizeof(pid_t), 8*sizeof(tid_t), 8*sizeof(real_t));
+  printf(" size of vtx_type: %zu, adj_type: %zu, wgt_type: %zu, pid_type: %zu, tid_type: " \
+      "%zu, real_type: %zu\n",8*sizeof(vtx_type), 8*sizeof(adj_type), 8*sizeof(wgt_type), \
+      8*sizeof(pid_type), 8*sizeof(tid_type), 8*sizeof(real_type));
   printf("\n");
-  dl_print_header("Graph Information",'-');
-  printf("#Vertices: %"PF_VTX_T", #Edges: %"PF_ADJ_T", #Parts: %"PF_PID_T"\n", 
-    graph->nvtxs, graph->nedges/2, ctrl->nparts);
 
-  printf("\n");
   printf("\n");
   if (ctrl->ptype == MTMETIS_PTYPE_KWAY || ctrl->ptype == MTMETIS_PTYPE_ESEP \
       || ctrl->ptype == MTMETIS_PTYPE_RB) {
@@ -612,7 +608,7 @@ void partition_print_info(
 
     /* Compute objective-related infomration */
     printf(" - Edgecut: %"PF_WGT_T", communication volume: %"PF_VTX_T".\n\n", \
-      __ser_calc_cut(graph,where),__ser_calc_comvol(graph,where, \
+      S_ser_calc_cut(graph,where),S_ser_calc_comvol(graph,where, \
         nparts));
 
 
@@ -664,14 +660,14 @@ void partition_print_info(
 
     printf(" - Most overweight partition:\n");
     printf("     pid: %"PF_PID_T", actual: %"PF_WGT_T", desired: %"PF_WGT_T \
-           ", ratio: %.2lf\n",p,kpwgts[p],(wgt_t)(tvwgt*tpwgts[p]),unbalance);
+           ", ratio: %.2lf\n",p,kpwgts[p],(wgt_type)(tvwgt*tpwgts[p]),unbalance);
     printf("\n");
 
   } else if (ctrl->ptype == MTMETIS_PTYPE_VSEP) {
     dl_print_header("Vertex Separator",'-');
 
     printf(" - Separator Size: %"PF_WGT_T".\n\n", \
-        __ser_calc_vsep(graph,where));
+        S_ser_calc_vsep(graph,where));
 
     kpwgts = wgt_init_alloc(0,3);
 
@@ -696,7 +692,7 @@ void partition_print_info(
     
     printf(" - Most overweight partition:\n");
     printf("     pid: %"PF_PID_T", actual: %"PF_WGT_T", desired: %"PF_WGT_T \
-           ", ratio: %.2lf\n",p,kpwgts[p],(wgt_t)(tvwgt*0.5),unbalance);
+           ", ratio: %.2lf\n",p,kpwgts[p],(wgt_type)(tvwgt*0.5),unbalance);
     printf("\n");
   } else {
     dl_error("Unknown partition type '%d'\n",ctrl->ptype);
@@ -716,14 +712,14 @@ void partition_print_info(
 
 
 void par_partition_kway(
-    ctrl_t * const ctrl, 
-    graph_t * const graph, 
-    pid_t ** const where)
+    ctrl_type * const ctrl, 
+    graph_type * const graph, 
+    pid_type ** const where)
 {
-  pid_t i;
-  wgt_t cut;
+  pid_type i;
+  wgt_type cut;
 
-  tid_t const myid = dlthread_get_id(ctrl->comm);
+  tid_type const myid = dlthread_get_id(ctrl->comm);
 
   /* set up multipliers for making balance computations easier */
   if (myid == 0) {
@@ -736,7 +732,7 @@ void par_partition_kway(
   }
   dlthread_barrier(ctrl->comm);
 
-  cut = __par_partition(ctrl,graph,where); 
+  cut = S_par_partition(ctrl,graph,where); 
 
   if (myid == 0) {
     graph->mincut = cut;
@@ -747,14 +743,14 @@ void par_partition_kway(
 
 
 void par_partition_rb(
-    ctrl_t * const ctrl,
-    graph_t * const graph,
-    pid_t ** const where)
+    ctrl_type * const ctrl,
+    graph_type * const graph,
+    pid_type ** const where)
 {
-  pid_t i;
-  wgt_t cut;
+  pid_type i;
+  wgt_type cut;
 
-  tid_t const myid = dlthread_get_id(ctrl->comm);
+  tid_type const myid = dlthread_get_id(ctrl->comm);
 
   /* set up multipliers for making balance computations easier */
   if (myid == 0) {
@@ -767,7 +763,7 @@ void par_partition_rb(
   }
   dlthread_barrier(ctrl->comm);
 
-  cut = __par_partition(ctrl,graph,where);
+  cut = S_par_partition(ctrl,graph,where);
 
   if (myid == 0) {
     graph->mincut = cut;
@@ -778,12 +774,12 @@ void par_partition_rb(
 
 
 void par_partition_vertexseparator(
-    ctrl_t * const ctrl, 
-    graph_t * const graph, 
-    pid_t ** const where)
+    ctrl_type * const ctrl, 
+    graph_type * const graph, 
+    pid_type ** const where)
 {
-  pid_t i;
-  tid_t const myid = dlthread_get_id(ctrl->comm);
+  pid_type i;
+  tid_type const myid = dlthread_get_id(ctrl->comm);
 
   /* set up multipliers for making balance computations easier */
   if (myid == 0) {
@@ -796,19 +792,19 @@ void par_partition_vertexseparator(
   }
   dlthread_barrier(ctrl->comm);
 
-  __par_partition(ctrl,graph,where);
+  S_par_partition(ctrl,graph,where);
 }
 
 
 void par_partition_edgeseparator(
-    ctrl_t * const ctrl, 
-    graph_t * const graph, 
-    pid_t ** const where)
+    ctrl_type * const ctrl, 
+    graph_type * const graph, 
+    pid_type ** const where)
 {
-  wgt_t cut;
-  pid_t i;
+  wgt_type cut;
+  pid_type i;
 
-  tid_t const myid = dlthread_get_id(ctrl->comm);
+  tid_type const myid = dlthread_get_id(ctrl->comm);
 
   /* set up multipliers for making balance computations easier */
   if (myid == 0) {
@@ -821,7 +817,7 @@ void par_partition_edgeseparator(
   }
   dlthread_barrier(ctrl->comm);
 
-  cut = __par_partition(ctrl,graph,where);
+  cut = S_par_partition(ctrl,graph,where);
   if (myid == 0) {
     graph->mincut = cut;
   }
@@ -831,16 +827,16 @@ void par_partition_edgeseparator(
 
 
 void par_partition_pre(
-    ctrl_t * const ctrl,
-    graph_t * const graph)
+    ctrl_type * const ctrl,
+    graph_type * const graph)
 {
-  vtx_t i;
+  vtx_type i;
   double options[MTMETIS_NOPTIONS];
-  ctrl_t * sctrl;
-  pid_t ** dperm;
+  ctrl_type * sctrl;
+  pid_type ** dperm;
 
-  tid_t const myid = dlthread_get_id(graph->comm);
-  tid_t const nthreads = dlthread_get_nthreads(graph->comm);
+  tid_type const myid = dlthread_get_id(graph->comm);
+  tid_type const nthreads = dlthread_get_nthreads(graph->comm);
 
   if (myid == 0) {
     dl_start_timer(&ctrl->timers.preprocess);
@@ -853,7 +849,7 @@ void par_partition_pre(
     options[MTMETIS_OPTION_NPARTS] = graph->ngroup; 
     options[MTMETIS_OPTION_NITER] = 3;
   }
-  dperm = dlthread_get_shmem(sizeof(pid_t*)*nthreads,ctrl->comm);
+  dperm = dlthread_get_shmem(sizeof(pid_type*)*nthreads,ctrl->comm);
 
   graph->group[myid] = pid_alloc(graph->mynvtxs[myid]);
 
@@ -867,7 +863,7 @@ void par_partition_pre(
     dperm[myid][i] = graph->group[myid][i] % nthreads;
   }
 
-  par_graph_shuffle(ctrl,graph,(pid_t const **)dperm,0);
+  par_graph_shuffle(ctrl,graph,(pid_type const **)dperm,0);
 
   dl_free(dperm[myid]);
 

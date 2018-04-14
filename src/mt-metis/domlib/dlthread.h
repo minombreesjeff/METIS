@@ -147,4 +147,20 @@ void * dlthread_get_shmem(
     dlthread_comm_t comm_idx);
 
 
+#ifdef __DOMLIB_USE_PTHREADS
+#define dlthread_atomic_add(a,comm) \
+  do { \
+    dlthread_exclude(comm); \
+    ++(a); \
+    dlthread_unexclude(comm); \
+  } while (0)
+#else
+#define dlthread_atomic_add(a,comm) \
+  do { \
+    _Pragma("omp atomic") \
+    ++(a); \
+  } while (0)
+#endif
+
+
 #endif

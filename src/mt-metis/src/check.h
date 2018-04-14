@@ -30,7 +30,7 @@
 ******************************************************************************/
 
 
-#define check_kwinfo __mtmetis_check_kwinfo
+#define check_kwinfo MTMETIS_check_kwinfo
 /**
  * @brief Perform a sanity check on k-way refinement information.
  *
@@ -41,12 +41,12 @@
  * @return 1 if the information is sane.
  */
 int check_kwinfo(
-    kwinfo_t const * kwinfo,
-    graph_t const * graph,
-    pid_t const * const * where);
+    kwinfo_type const * kwinfo,
+    graph_type const * graph,
+    pid_type const * const * where);
 
 
-#define check_vsinfo __mtmetis_check_vsinfo
+#define check_vsinfo MTMETIS_check_vsinfo
 /**
  * @brief Perform a sanity check on vertex separator refinement information.
  *
@@ -57,12 +57,12 @@ int check_kwinfo(
  * @return 1 if the information is sane.
  */
 int check_vsinfo(
-    vsinfo_t const * vsinfo,
-    graph_t const * graph,
-    pid_t const * const * where);
+    vsinfo_type const * vsinfo,
+    graph_type const * graph,
+    pid_type const * const * where);
 
 
-#define check_esinfo __mtmetis_check_esinfo
+#define check_esinfo MTMETIS_check_esinfo
 /**
  * @brief Perform a sanity check on edge separator refinement information.
  *
@@ -73,12 +73,12 @@ int check_vsinfo(
  * @return 1 if the information is sane.
  */
 int check_esinfo(
-    esinfo_t const * esinfo,
-    graph_t const * graph,
-    pid_t const * const * where);
+    esinfo_type const * esinfo,
+    graph_type const * graph,
+    pid_type const * const * where);
 
 
-#define check_graph __mtmetis_check_graph
+#define check_graph MTMETIS_check_graph
 /**
  * @brief Check the sanity of a graph structure.
  *
@@ -87,10 +87,10 @@ int check_esinfo(
  * @return 1 if the graph is sane.
  */
 int check_graph(
-    graph_t const * graph);
+    graph_type const * graph);
 
 
-#define check_kwbnd __mtmetis_check_kwbnd
+#define check_kwbnd MTMETIS_check_kwbnd
 /**
  * @brief Check the sanity of a boundary for kway greedy partitionings.
  *
@@ -100,11 +100,11 @@ int check_graph(
  */
 int check_kwbnd(
     vtx_iset_t const * bnd,
-    graph_t const * graph,
+    graph_type const * graph,
     int greedy);
 
 
-#define check_vsbnd __mtmetis_check_vsbnd
+#define check_vsbnd MTMETIS_check_vsbnd
 /**
  * @brief Check the sanity of a boundary for a vertex separator.
  *
@@ -114,10 +114,10 @@ int check_kwbnd(
  */
 int check_vsbnd(
     vtx_iset_t const * bnd,
-    graph_t const * graph);
+    graph_type const * graph);
 
 
-#define check_esbnd __mtmetis_check_esbnd
+#define check_esbnd MTMETIS_check_esbnd
 /**
  * @brief Check the sanity of a boundary for an edge separator.
  *
@@ -127,12 +127,12 @@ int check_vsbnd(
  */
 int check_esbnd(
     vtx_iset_t const * bnd,
-    graph_t const * graph);
+    graph_type const * graph);
 
 
 
 
-#define check_separator __mtmetis_check_separator
+#define check_separator MTMETIS_check_separator
 /**
  * @brief Check the sanity of a vertex separator.
  *
@@ -141,8 +141,8 @@ int check_esbnd(
  * @return 1 if the separator is sane.
  */
 int check_separator(
-    graph_t const * graph,
-    pid_t const * const * gwhere);
+    graph_type const * graph,
+    pid_type const * const * gwhere);
 
 
 

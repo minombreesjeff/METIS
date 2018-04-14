@@ -10,7 +10,7 @@
 
 NAME="mt-metis"
 DOMLIB_PATH="domlib"
-BOWSTRING_PATH="bowstring"
+WILDRIVER_PATH="wildriver"
 METIS_PATH="metis"
 
 
@@ -53,6 +53,8 @@ show_help() {
   echo "    Use 64 bit data types for vertices instead of 32 bit."
   echo "  --weights64bit"
   echo "    Use 64 bit data types for weights instead of 32 bit."
+  echo "  --partitions64bit"
+  echo "    Use 64 bit data types for partitions instead of 32 bit."
   echo "  --test"
   echo "    Enable unit testing."
   echo ""
@@ -116,6 +118,10 @@ for i in "${@}"; do
     --weights64bit)
     CONFIG_FLAGS="${CONFIG_FLAGS} -DBIGWEIGHTS=1"
     ;;
+    # 64 bit partitions
+    --partitions64bit)
+    CONFIG_FLAGS="${CONFIG_FLAGS} -DBIGPARTITIONS=1"
+    ;;
     # testing
     --test)
     CONFIG_FLAGS="${CONFIG_FLAGS} -DTESTS=1"
@@ -145,11 +151,11 @@ else
 fi
 
 
-# check if bowstring exists
-if [[ ! -d "${BOWSTRING_PATH}" ]]; then
-  die "Could not find bowstring: '${BOWSTRING_PATH}'"
+# check if wildriver exists
+if [[ ! -d "${WILDRIVER_PATH}" ]]; then
+  die "Could not find wildriver: '${WILDRIVER_PATH}'"
 else
-  CONFIG_FLAGS="${CONFIG_FLAGS} -DBOWSTRING_PATH=${BOWSTRING_PATH}"
+  CONFIG_FLAGS="${CONFIG_FLAGS} -DWILDRIVER_PATH=${WILDRIVER_PATH}"
 fi
 
 

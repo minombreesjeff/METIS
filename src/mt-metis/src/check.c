@@ -28,26 +28,26 @@
 
 
 int check_kwinfo(
-    kwinfo_t const * const kwinfo,
-    graph_t const * const graph,
-    pid_t const * const * const where)
+    kwinfo_type const * const kwinfo,
+    graph_type const * const graph,
+    pid_type const * const * const where)
 {
-  vtx_t i,k,mynvtxs,gvtx,lvtx;
-  adj_t j;
-  wgt_t ted, tid, m;
-  pid_t me, other, nnbrs, nbrid, p;
-  adj_t const * xadj;
-  vtx_t const * adjncy;
-  wgt_t const * adjwgt;
-  pid_t const * mywhere;
-  kwnbrinfo_t const * myrinfo;
-  adjinfo_t const * mynbrs;
+  vtx_type i,k,mynvtxs,gvtx,lvtx;
+  adj_type j;
+  wgt_type ted, tid, m;
+  pid_type me, other, nnbrs, nbrid, p;
+  adj_type const * xadj;
+  vtx_type const * adjncy;
+  wgt_type const * adjwgt;
+  pid_type const * mywhere;
+  kwnbrinfo_type const * myrinfo;
+  adjinfo_type const * mynbrs;
 
-  pid_t const nparts = kwinfo->nparts;
+  pid_type const nparts = kwinfo->nparts;
 
-  tid_t const myid = dlthread_get_id(graph->comm);
+  tid_type const myid = dlthread_get_id(graph->comm);
 
-  wgt_t htable[nparts];
+  wgt_type htable[nparts];
 
   mynvtxs = graph->mynvtxs[myid];
   xadj = graph->xadj[myid];
@@ -175,24 +175,24 @@ int check_kwinfo(
 
 
 int check_vsinfo(
-    vsinfo_t const * const vsinfo,
-    graph_t const * const graph,
-    pid_t const * const * const where)
+    vsinfo_type const * const vsinfo,
+    graph_type const * const graph,
+    pid_type const * const * const where)
 {
   int rv;
-  vtx_t i, k, lvtx;
-  adj_t j;
-  pid_t me, p;
-  tid_t nbrid;
-  wgt_t con[3];
+  vtx_type i, k, lvtx;
+  adj_type j;
+  pid_type me, p;
+  tid_type nbrid;
+  wgt_type con[3];
 
-  tid_t const myid = dlthread_get_id(graph->comm);
+  tid_type const myid = dlthread_get_id(graph->comm);
 
-  vtx_t const mynvtxs = graph->mynvtxs[myid];
-  adj_t const * const xadj = graph->xadj[myid];
-  vtx_t const * const adjncy = graph->adjncy[myid];
+  vtx_type const mynvtxs = graph->mynvtxs[myid];
+  adj_type const * const xadj = graph->xadj[myid];
+  vtx_type const * const adjncy = graph->adjncy[myid];
 
-  wgt_t const * const * const gvwgt = (wgt_t const **)graph->vwgt;
+  wgt_type const * const * const gvwgt = (wgt_type const **)graph->vwgt;
 
   rv = 1;
 
@@ -247,25 +247,25 @@ int check_vsinfo(
 
 
 int check_esinfo(
-    esinfo_t const * const esinfo,
-    graph_t const * const graph,
-    pid_t const * const * const gwhere)
+    esinfo_type const * const esinfo,
+    graph_type const * const graph,
+    pid_type const * const * const gwhere)
 {
   int rv;
-  vtx_t i, k, p, lvtx;
-  adj_t j;
-  pid_t other;
-  tid_t nbrid;
-  wgt_t con[2];
+  vtx_type i, k, p, lvtx;
+  adj_type j;
+  pid_type other;
+  tid_type nbrid;
+  wgt_type con[2];
 
-  tid_t const myid = dlthread_get_id(graph->comm);
+  tid_type const myid = dlthread_get_id(graph->comm);
 
-  vtx_t const mynvtxs = graph->mynvtxs[myid];
-  adj_t const * const xadj = graph->xadj[myid];
-  vtx_t const * const adjncy = graph->adjncy[myid];
-  wgt_t const * const adjwgt = graph->adjwgt[myid];
+  vtx_type const mynvtxs = graph->mynvtxs[myid];
+  adj_type const * const xadj = graph->xadj[myid];
+  vtx_type const * const adjncy = graph->adjncy[myid];
+  wgt_type const * const adjwgt = graph->adjwgt[myid];
 
-  esnbrinfo_t const * const nbrinfo = esinfo->nbrinfo;
+  esnbrinfo_type const * const nbrinfo = esinfo->nbrinfo;
   vtx_iset_t const * const bnd = esinfo->bnd;
 
   rv = 1;
@@ -301,15 +301,15 @@ int check_esinfo(
 
 
 int check_graph(
-    graph_t const * const graph)
+    graph_type const * const graph)
 {
-  vtx_t mynvtxs, i, v, u, k, m, nvtxs;
-  adj_t j, l, nedges;
-  tid_t myid, nbrid;
-  twgt_t tvwgt, tadjwgt;
-  adj_t * xadj, * xudj;
-  vtx_t * adjncy, * udjncy;
-  wgt_t * adjwgt, * udjwgt;
+  vtx_type mynvtxs, i, v, u, k, m, nvtxs;
+  adj_type j, l, nedges;
+  tid_type myid, nbrid;
+  twgt_type tvwgt, tadjwgt;
+  adj_type * xadj, * xudj;
+  vtx_type * adjncy, * udjncy;
+  wgt_type * adjwgt, * udjwgt;
 
   /* simple check */
   nvtxs = vtx_sum(graph->mynvtxs,graph->dist.nthreads);
@@ -411,19 +411,19 @@ int check_graph(
 
 int check_kwbnd(
     vtx_iset_t const * const bnd,
-    graph_t const * const graph,
+    graph_type const * const graph,
     int const greedy)
 {
-  vtx_t mynvtxs, i, lvtx, gvtx, k;
-  adj_t j;
-  pid_t nbrid, me, other;
-  wgt_t tid, ted;
-  adj_t * xadj;
-  vtx_t * adjncy;
-  wgt_t * adjwgt;
+  vtx_type mynvtxs, i, lvtx, gvtx, k;
+  adj_type j;
+  pid_type nbrid, me, other;
+  wgt_type tid, ted;
+  adj_type * xadj;
+  vtx_type * adjncy;
+  wgt_type * adjwgt;
 
-  pid_t const * const * const gwhere = (pid_t const **)graph->where;
-  tid_t const myid = dlthread_get_id(graph->comm);
+  pid_type const * const * const gwhere = (pid_type const **)graph->where;
+  tid_type const myid = dlthread_get_id(graph->comm);
   
   xadj = graph->xadj[myid];
   adjncy = graph->adjncy[myid];
@@ -468,13 +468,13 @@ int check_kwbnd(
 
 int check_vsbnd(
     vtx_iset_t const * const bnd,
-    graph_t const * const graph)
+    graph_type const * const graph)
 {
-  vtx_t i;
+  vtx_type i;
 
-  tid_t const myid = dlthread_get_id(graph->comm);
-  pid_t const * const where = graph->where[myid];
-  vtx_t const mynvtxs = graph->mynvtxs[myid];
+  tid_type const myid = dlthread_get_id(graph->comm);
+  pid_type const * const where = graph->where[myid];
+  vtx_type const mynvtxs = graph->mynvtxs[myid];
   
   for (i=0;i<mynvtxs;++i) {
     if (where[i] == MTMETIS_VSEP_SEP) {
@@ -498,19 +498,19 @@ int check_vsbnd(
 
 int check_esbnd(
     vtx_iset_t const * const bnd,
-    graph_t const * const graph)
+    graph_type const * const graph)
 {
-  vtx_t i, k, lvtx;
-  adj_t j;
-  tid_t nbrid;
-  pid_t me, other;
+  vtx_type i, k, lvtx;
+  adj_type j;
+  tid_type nbrid;
+  pid_type me, other;
 
-  tid_t const myid = dlthread_get_id(graph->comm);
-  vtx_t const mynvtxs = graph->mynvtxs[myid];
-  adj_t const * const xadj = graph->xadj[myid];
-  vtx_t const * const adjncy = graph->adjncy[myid];
+  tid_type const myid = dlthread_get_id(graph->comm);
+  vtx_type const mynvtxs = graph->mynvtxs[myid];
+  adj_type const * const xadj = graph->xadj[myid];
+  vtx_type const * const adjncy = graph->adjncy[myid];
 
-  pid_t const * const * const gwhere = (pid_t const **)graph->where;
+  pid_type const * const * const gwhere = (pid_type const **)graph->where;
   
   for (i=0;i<mynvtxs;++i) {
     me = gwhere[myid][i];
@@ -559,17 +559,17 @@ int check_esbnd(
 
 
 int check_separator(
-    graph_t const * const graph,
-    pid_t const * const * const gwhere)
+    graph_type const * const graph,
+    pid_type const * const * const gwhere)
 {
-  vtx_t i, k, lvtx, mynvtxs;
-  adj_t j;
-  pid_t me, other;
-  tid_t nbrid, myid;
-  adj_t * xadj;
-  vtx_t * adjncy;
+  vtx_type i, k, lvtx, mynvtxs;
+  adj_type j;
+  pid_type me, other;
+  tid_type nbrid, myid;
+  adj_type * xadj;
+  vtx_type * adjncy;
 
-  tid_t const nthreads = dlthread_get_nthreads(graph->comm);
+  tid_type const nthreads = dlthread_get_nthreads(graph->comm);
 
   for (myid=0;myid<nthreads;++myid) {
     mynvtxs = graph->mynvtxs[myid];

@@ -27,59 +27,59 @@
 ******************************************************************************/
 
 
-typedef struct graphdist_t {
-  tid_t nthreads;
-  vtx_t mask;
+typedef struct graphdist_type {
+  tid_type nthreads;
+  vtx_type mask;
   int shift;
-  vtx_t offset;
-} graphdist_t;
+  vtx_type offset;
+} graphdist_type;
 
 
-typedef struct graph_t {
+typedef struct graph_type {
   /* global counts */
-  vtx_t nvtxs; 
-  vtx_t gnvtxs;
-  adj_t nedges;
+  vtx_type nvtxs; 
+  vtx_type gnvtxs;
+  adj_type nedges;
   /* distribution information */
   dlthread_comm_t comm;
-  graphdist_t dist;
+  graphdist_type dist;
   /* pre partitioning info */
-  pid_t ** group;
-  pid_t ngroup;
+  pid_type ** group;
+  pid_type ngroup;
   /* distributed graph structure */
-  vtx_t * mynvtxs;
-  adj_t * mynedges;
-  adj_t ** xadj;
-  wgt_t ** vwgt;
-  vtx_t ** adjncy;
-  wgt_t ** adjwgt;
+  vtx_type * mynvtxs;
+  adj_type * mynedges;
+  adj_type ** xadj;
+  wgt_type ** vwgt;
+  vtx_type ** adjncy;
+  wgt_type ** adjwgt;
   /* graph info */
   int uniformvwgt;
   int uniformadjwgt;
-  vtx_t * nislands;
+  vtx_type * nislands;
   /* coarsening info */
   size_t level;
-  vtx_t ** cmap;
+  vtx_type ** cmap;
   /* partition information */
-  wgt_t * pwgts;
-  pid_t ** where;
-  struct kwinfo_t * kwinfo;
-  struct esinfo_t * esinfo;
-  struct vsinfo_t * vsinfo;
+  wgt_type * pwgts;
+  pid_type ** where;
+  struct kwinfo_type * kwinfo;
+  struct esinfo_type * esinfo;
+  struct vsinfo_type * vsinfo;
   /* total weight */
-  twgt_t tvwgt, tadjwgt;
-  real_t invtvwgt;
+  twgt_type tvwgt, tadjwgt;
+  real_type invtvwgt;
   /* aliasing */
-  vtx_t ** rename;
-  vtx_t ** label;
+  vtx_type ** rename;
+  vtx_type ** label;
   /* metrics */
-  wgt_t mincut, minsep;
-  vtx_t minvol;
+  wgt_type mincut, minsep;
+  vtx_type minvol;
   /* "To free, or not free" */
   int free_xadj, free_vwgt, free_vsize, free_adjncy, free_adjwgt;
   /* graphs in the heirarchy */
-  struct graph_t *coarser, *finer;
-} graph_t;
+  struct graph_type *coarser, *finer;
+} graph_type;
 
 
 
@@ -89,7 +89,7 @@ typedef struct graph_t {
 ******************************************************************************/
 
 
-#define graph_create __mtmetis_graph_create
+#define graph_create MTMETIS_graph_create
 /**
  * @brief Allocate and initialize a graph structure.
  *
@@ -97,11 +97,11 @@ typedef struct graph_t {
  *
  * @return The allocated and initialized graph.
  */
-graph_t * graph_create(
-    tid_t nthreads);
+graph_type * graph_create(
+    tid_type nthreads);
 
 
-#define graph_setup __mtmetis_graph_setup
+#define graph_setup MTMETIS_graph_setup
 /**
  * @brief Setup a graph structure given this threads parts of the graph.
  *
@@ -114,16 +114,16 @@ graph_t * graph_create(
  *
  * @return The setup graph structure.
  */
-graph_t * graph_setup(
-    vtx_t * nvtxs, 
-    adj_t ** xadj, 
-    vtx_t ** adjncy, 
-    wgt_t ** adjwgt, 
-    wgt_t ** vwgt,
-    tid_t nthreads);
+graph_type * graph_setup(
+    vtx_type * nvtxs, 
+    adj_type ** xadj, 
+    vtx_type ** adjncy, 
+    wgt_type ** adjwgt, 
+    wgt_type ** vwgt,
+    tid_type nthreads);
 
 
-#define graph_distribute __mtmetis_graph_distribute
+#define graph_distribute MTMETIS_graph_distribute
 /**
  * @brief Distribute a csr based graph among threads. 
  *
@@ -137,17 +137,17 @@ graph_t * graph_setup(
  *
  * @return The distributed graph. 
  */
-graph_t * graph_distribute(
+graph_type * graph_distribute(
     int dist,
-    vtx_t nvtxs, 
-    adj_t const * xadj, 
-    vtx_t const * adjncy, 
-    wgt_t const * vwgt,
-    wgt_t const * adjwgt, 
-    tid_t nthreads);
+    vtx_type nvtxs, 
+    adj_type const * xadj, 
+    vtx_type const * adjncy, 
+    wgt_type const * vwgt,
+    wgt_type const * adjwgt, 
+    tid_type nthreads);
 
 
-#define graph_gather __mtmetis_graph_gather
+#define graph_gather MTMETIS_graph_gather
 /**
  * @brief Gather a copy of the graph to each thread. Alias is private to each
  * thread where the other three arrays are not.
@@ -160,15 +160,15 @@ graph_t * graph_distribute(
  * @param r_voff A reference to the offset of the vertices for this thread.
  */
 void graph_gather(
-  graph_t const * graph,
-  adj_t ** r_xadj,
-  vtx_t ** r_adjncy,
-  wgt_t ** r_vwgt,
-  wgt_t ** r_adjwgt,
-  vtx_t ** r_voff);
+  graph_type const * graph,
+  adj_type ** r_xadj,
+  vtx_type ** r_adjncy,
+  wgt_type ** r_vwgt,
+  wgt_type ** r_adjwgt,
+  vtx_type ** r_voff);
 
 
-#define graph_setup_coarse __mtmetis_graph_setup_coarse
+#define graph_setup_coarse MTMETIS_graph_setup_coarse
 /**
  * @brief Setup a coarse graph given the fine graph and the number of coarse
  * vertices.  
@@ -178,22 +178,22 @@ void graph_gather(
  *
  * @return The allocated and setup coarse graph. 
  */
-graph_t * graph_setup_coarse(
-    graph_t * graph, 
-    vtx_t * cnvtxs);
+graph_type * graph_setup_coarse(
+    graph_type * graph, 
+    vtx_type * cnvtxs);
 
 
-#define graph_setup_twgts __mtmetis_graph_setup_twgts
+#define graph_setup_twgts MTMETIS_graph_setup_twgts
 /**
  * @brief Calculate and save the tvwgts of a new graph.
  *
  * @param graph The graph.
  */
 void graph_setup_twgts(
-    graph_t * graph);
+    graph_type * graph);
 
 
-#define graph_alloc_partmemory __mtmetis_graph_alloc_partmemory
+#define graph_alloc_partmemory MTMETIS_graph_alloc_partmemory
 /**
  * @brief Allocate memory for partition informatin.
  *
@@ -201,30 +201,30 @@ void graph_setup_twgts(
  * @param graph The graph.
  */
 void graph_alloc_partmemory(
-    ctrl_t * ctrl,
-    graph_t * graph);
+    ctrl_type * ctrl,
+    graph_type * graph);
 
-#define graph_free __mtmetis_graph_free
+#define graph_free MTMETIS_graph_free
 /**
  * @brief Free a graph structure and its associated memory.
  *
  * @param graph The graph to free.
  */
 void graph_free(
-    graph_t * graph);
+    graph_type * graph);
 
 
-#define graph_free_rdata __mtmetis_graph_free_rdata
+#define graph_free_rdata MTMETIS_graph_free_rdata
 /**
  * @brief Free partition/refinement data associated with a graph.
  *
  * @param graph The graph to free the associated partition/refinement data of.
  */
 void graph_free_rdata(
-    graph_t * graph);
+    graph_type * graph);
 
 
-#define graph_imbalance __mtmetis_graph_imbalance
+#define graph_imbalance MTMETIS_graph_imbalance
 /**
  * @brief Compute the load imbalance of a partitioning.
  *
@@ -235,12 +235,12 @@ void graph_free_rdata(
  * @return The imbalance of the partitioning.
  */
 double graph_imbalance(
-    graph_t const * graph,
-    pid_t nparts,
-    real_t const * pijbm);
+    graph_type const * graph,
+    pid_type nparts,
+    real_type const * pijbm);
 
 
-#define graph_imbalance_diff __mtmetis_graph_imbalance_diff
+#define graph_imbalance_diff MTMETIS_graph_imbalance_diff
 /**
  * @brief Compute the amount the load imbalance of the graph violates the
  * constraint.
@@ -253,13 +253,13 @@ double graph_imbalance(
  * @return The amount of imbalance in excess of the constraint. 
  */
 double graph_imbalance_diff(
-    graph_t const * const graph,
-    pid_t const nparts,
-    real_t const * const pijbm,
-    real_t const ubfactor);
+    graph_type const * const graph,
+    pid_type const nparts,
+    real_type const * const pijbm,
+    real_type const ubfactor);
 
 
-#define graph_cut __mtmetis_graph_cut
+#define graph_cut MTMETIS_graph_cut
 /**
  * @brief Compute the edgecut of a partitioning.
  *
@@ -268,12 +268,12 @@ double graph_imbalance_diff(
  *
  * @return The total weight of cut edges.
  */
-wgt_t graph_cut(
-    graph_t const * graph,
-    pid_t const * const * where);
+wgt_type graph_cut(
+    graph_type const * graph,
+    pid_type const * const * where);
 
 
-#define graph_isbalanced __mtmetis_graph_isbalanced
+#define graph_isbalanced MTMETIS_graph_isbalanced
 /**
  * @brief Check if a partitioning of a graph is balanced within the given
  * constraint.
@@ -285,12 +285,12 @@ wgt_t graph_cut(
  * @return 1 if the partitioning is balanced.
  */
 int graph_isbalanced(
-    ctrl_t const * ctrl, 
-    graph_t const * graph, 
-    real_t ffactor);
+    ctrl_type const * ctrl, 
+    graph_type const * graph, 
+    real_type ffactor);
 
 
-#define graph_readjust_memory __mtmetis_graph_readjust_memory
+#define graph_readjust_memory MTMETIS_graph_readjust_memory
 /**
  * @brief Re-adjust the memory used the by edge arrays of a graph. 
  *
@@ -298,11 +298,11 @@ int graph_isbalanced(
  * @param adjsize The current size of the adjacency arrays.
  */
 void graph_readjust_memory(
-    graph_t * const graph,
-    adj_t adjsize);
+    graph_type * const graph,
+    adj_type adjsize);
 
 
-#define graph_extract_halves __mtmetis_graph_extract_halves
+#define graph_extract_halves MTMETIS_graph_extract_halves
 /**
  * @brief Pull out partition 0 and partition 1 from a vertex separated graph or
  * edge bisected graph. Vertices with high partition labels than 1 are dropped.
@@ -315,12 +315,12 @@ void graph_readjust_memory(
  * @param halves The two extracted subgraphs (output).
  */
 void graph_extract_halves(
-    graph_t * graph,
-    pid_t const * const * where,
-    graph_t ** halves);
+    graph_type * graph,
+    pid_type const * const * where,
+    graph_type ** halves);
 
 
-#define graph_size __mtmetis_graph_size
+#define graph_size MTMETIS_graph_size
 /**
  * @brief Determine the amount of memory required to store the graph.
  *
@@ -329,24 +329,10 @@ void graph_extract_halves(
  * @return The number of bytes required to store the graph.
  */
 size_t graph_size(
-    graph_t const * graph);
+    graph_type const * graph);
 
 
-#define ser_graph_extract_halves __mtmetis_ser_graph_extract_halves
-/**
- * @brief Extract two subgraph from partitions 0 and 1.
- *
- * @param graph The graph to extract subgraphs from.
- * @param gwhere The partition IDs of each vertex in the graph.
- * @param halves The references to each subgraph (output).
- */
-void ser_graph_extract_halves(
-    graph_t * graph,
-    pid_t const * const * gwhere,
-    graph_t ** halves);
-
-
-#define graph_calc_dist __mtmetis_graph_calc_dist
+#define graph_calc_dist MTMETIS_graph_calc_dist
 /**
  * @brief Configure the distribution structure.
  *
@@ -355,9 +341,9 @@ void ser_graph_extract_halves(
  * @param dist The distribution structure to configure.
  */
 void graph_calc_dist(
-    vtx_t maxnvtxs, 
-    tid_t nthreads,
-    graphdist_t * dist);
+    vtx_type maxnvtxs, 
+    tid_type nthreads,
+    graphdist_type * dist);
 
 
 
@@ -367,7 +353,7 @@ void graph_calc_dist(
 ******************************************************************************/
 
 
-#define par_graph_create __mtmetis_par_graph_create
+#define par_graph_create MTMETIS_par_graph_create
 /**
  * @brief Allocate and initialize a graph structure.
  *
@@ -375,11 +361,11 @@ void graph_calc_dist(
  *
  * @return The allocated and initialized graph.
  */
-graph_t * par_graph_create(
+graph_type * par_graph_create(
     dlthread_comm_t comm);
 
 
-#define par_graph_setup __mtmetis_par_graph_setup
+#define par_graph_setup MTMETIS_par_graph_setup
 /**
  * @brief Setup a graph structure given this threads parts of the graph.
  *
@@ -392,16 +378,16 @@ graph_t * par_graph_create(
  *
  * @return The setup graph structure.
  */
-graph_t * par_graph_setup(
-    vtx_t nvtxs, 
-    adj_t * xadj, 
-    vtx_t * adjncy, 
-    wgt_t * adjwgt, 
-    wgt_t * vwgt,
+graph_type * par_graph_setup(
+    vtx_type nvtxs, 
+    adj_type * xadj, 
+    vtx_type * adjncy, 
+    wgt_type * adjwgt, 
+    wgt_type * vwgt,
     dlthread_comm_t comm);
 
 
-#define par_graph_gather __mtmetis_par_graph_gather
+#define par_graph_gather MTMETIS_par_graph_gather
 /**
  * @brief Gather a copy of the graph to each thread. Alias is private to each
  * thread where the other three arrays are not.
@@ -414,15 +400,15 @@ graph_t * par_graph_setup(
  * @param r_voff A reference to the offset of the vertices for this thread.
  */
 void par_graph_gather(
-  graph_t const * graph,
-  adj_t ** r_xadj,
-  vtx_t ** r_adjncy,
-  wgt_t ** r_vwgt,
-  wgt_t ** r_adjwgt,
-  vtx_t * r_voff);
+  graph_type const * graph,
+  adj_type ** r_xadj,
+  vtx_type ** r_adjncy,
+  wgt_type ** r_vwgt,
+  wgt_type ** r_adjwgt,
+  vtx_type * r_voff);
 
 
-#define par_graph_shuffle __mtmetis_par_graph_shuffle
+#define par_graph_shuffle MTMETIS_par_graph_shuffle
 /**
  * @brief Shuffle the vertices in a graph such that the partition matches the
  * owning thread. 
@@ -433,13 +419,13 @@ void par_graph_gather(
  * @param wgts Preserve the current weight information.
  */
 void par_graph_shuffle(
-    ctrl_t * ctrl,
-    graph_t * graph,
-    pid_t const * const * where,
+    ctrl_type * ctrl,
+    graph_type * graph,
+    pid_type const * const * where,
     int wgts);
 
 
-#define par_graph_setup_coarse __mtmetis_par_graph_setup_coarse
+#define par_graph_setup_coarse MTMETIS_par_graph_setup_coarse
 /**
  * @brief Setup a coarse graph given the fine graph and the number of coarse
  * vertices.  
@@ -449,22 +435,22 @@ void par_graph_shuffle(
  *
  * @return The allocated and setup coarse graph. 
  */
-graph_t * par_graph_setup_coarse(
-    graph_t * const graph, 
-    vtx_t cnvtxs);
+graph_type * par_graph_setup_coarse(
+    graph_type * const graph, 
+    vtx_type cnvtxs);
 
 
-#define par_graph_setup_twgts __mtmetis_par_graph_setup_twgts
+#define par_graph_setup_twgts MTMETIS_par_graph_setup_twgts
 /**
  * @brief Calculate and save the twgts of a new graph.
  *
  * @param graph The graph.
  */
 void par_graph_setup_twgts(
-    graph_t * graph);
+    graph_type * graph);
 
 
-#define par_graph_alloc_partmemory __mtmetis_par_graph_alloc_partmemory
+#define par_graph_alloc_partmemory MTMETIS_par_graph_alloc_partmemory
 /**
  * @brief Allocate memory for partition informatin.
  *
@@ -472,31 +458,31 @@ void par_graph_setup_twgts(
  * @param graph The graph.
  */
 void par_graph_alloc_partmemory(
-    ctrl_t * ctrl,
-    graph_t * graph);
+    ctrl_type * ctrl,
+    graph_type * graph);
 
 
-#define par_graph_free __mtmetis_par_graph_free
+#define par_graph_free MTMETIS_par_graph_free
 /**
  * @brief Free a graph structure and its associated memory.
  *
  * @param graph The graph to free.
  */
 void par_graph_free(
-    graph_t * graph);
+    graph_type * graph);
 
 
-#define par_graph_free_rdata __mtmetis_par_graph_free_rdata
+#define par_graph_free_rdata MTMETIS_par_graph_free_rdata
 /**
  * @brief Free partition/refinement data associated with a graph.
  *
  * @param graph The graph to free the associated partition/refinement data of.
  */
 void par_graph_free_rdata(
-    graph_t * graph);
+    graph_type * graph);
 
 
-#define par_graph_readjust_memory __mtmetis_par_graph_readjust_memory
+#define par_graph_readjust_memory MTMETIS_par_graph_readjust_memory
 /**
  * @brief Re-adjust the memory used the by edge arrays of a graph. 
  *
@@ -504,11 +490,11 @@ void par_graph_free_rdata(
  * @param adjsize The current size of the adjacency arrays.
  */
 void par_graph_readjust_memory(
-    graph_t * const graph,
-    adj_t adjsize);
+    graph_type * const graph,
+    adj_type adjsize);
 
 
-#define par_graph_extract_halves __mtmetis_par_graph_extract_halves
+#define par_graph_extract_halves MTMETIS_par_graph_extract_halves
 /**
  * @brief Pull out partition 0 and partition 1 from a vertex separated graph or
  * edge bisected graph. Vertices with high partition labels than 1 are dropped.
@@ -522,13 +508,13 @@ void par_graph_readjust_memory(
  *
  * @return Which half of the graph this thread is assigned.
  */
-tid_t par_graph_extract_halves(
-    graph_t * graph,
-    pid_t const * const * where,
-    graph_t ** halves);
+tid_type par_graph_extract_halves(
+    graph_type * graph,
+    pid_type const * const * where,
+    graph_type ** halves);
 
 
-#define par_graph_extract_boundary __mtmetis_par_graph_extract_boundary
+#define par_graph_extract_boundary MTMETIS_par_graph_extract_boundary
 /**
  * @brief Extract a subgraph exposing the boundary of a bisection, where the
  * size of the boundary is determined by the maximum imbalanced allowed in the
@@ -543,13 +529,13 @@ tid_t par_graph_extract_halves(
  *
  * @return The extract boundary subgraph.
  */
-graph_t * par_graph_extract_boundary(
-    ctrl_t const * ctrl,
-    graph_t const * graph,
+graph_type * par_graph_extract_boundary(
+    ctrl_type const * ctrl,
+    graph_type const * graph,
     vtx_iset_t const * bnd);
 
 
-#define par_graph_extract_separator __mtmetis_par_graph_extract_separator
+#define par_graph_extract_separator MTMETIS_par_graph_extract_separator
 /**
  * @brief Extract a subgraph consisting only the current separator and two
  * super vertices representing each half.
@@ -563,13 +549,13 @@ graph_t * par_graph_extract_boundary(
  *
  * @return The extract boundary subgraph.
  */
-graph_t * par_graph_extract_separator(
-    ctrl_t const * ctrl,
-    graph_t const * graph,
+graph_type * par_graph_extract_separator(
+    ctrl_type const * ctrl,
+    graph_type const * graph,
     vtx_iset_t const * bnd);
 
 
-#define par_graph_extract_aseparator __mtmetis_par_graph_extract_aseparator
+#define par_graph_extract_aseparator MTMETIS_par_graph_extract_aseparator
 /**
  * @brief Extract a subgraph consisting only the current separator and two
  * super vertices representing each half.
@@ -583,13 +569,13 @@ graph_t * par_graph_extract_separator(
  *
  * @return The extract boundary subgraph.
  */
-graph_t * par_graph_extract_aseparator(
-    ctrl_t const * ctrl,
-    graph_t const * graph,
+graph_type * par_graph_extract_aseparator(
+    ctrl_type const * ctrl,
+    graph_type const * graph,
     vtx_iset_t const * bnd);
 
 
-#define par_graph_build_radj __mtmetis_par_graph_build_radj
+#define par_graph_build_radj MTMETIS_par_graph_build_radj
 /**
  * @brief Build a reverse adjacency index and store it in graph->radj.
  *
@@ -597,11 +583,11 @@ graph_t * par_graph_extract_aseparator(
  *
  * @return The reverse adjacecny index.
  */
-adj_t * par_graph_build_radj(
-    graph_t const * graph);
+adj_type * par_graph_build_radj(
+    graph_type const * graph);
 
 
-#define par_graph_contract __mtmetis_par_graph_contract
+#define par_graph_contract MTMETIS_par_graph_contract
 /**
 * @brief Create a coarse graph given a matching using hash table to identify
 *   edges to be merged
@@ -614,14 +600,14 @@ adj_t * par_graph_build_radj(
 *   fine vertex in the coarse vertex.
 */
 void par_graph_contract(
-    ctrl_t * ctrl, 
-    graph_t * graph, 
-    vtx_t const cnvtxs, 
-    vtx_t const * const * gmatch, 
-    vtx_t const * fcmap);
+    ctrl_type * ctrl, 
+    graph_type * graph, 
+    vtx_type const cnvtxs, 
+    vtx_type const * const * gmatch, 
+    vtx_type const * fcmap);
 
 
-#define par_graph_intext_vtx __mtmetis_par_graph_intext_vtx
+#define par_graph_intext_vtx MTMETIS_par_graph_intext_vtx
 /**
  * @brief Count the number of internal and external (interface) vertices owned
  * by this thread.
@@ -631,12 +617,12 @@ void par_graph_contract(
  * @param r_next A reference to the number of external vertices.
  */
 void par_graph_intext_vtx(
-    graph_t const * const graph,
-    vtx_t * const r_nint,
-    vtx_t * const r_next);
+    graph_type const * const graph,
+    vtx_type * const r_nint,
+    vtx_type * const r_next);
 
 
-#define par_graph_cut __mtmetis_par_graph_cut
+#define par_graph_cut MTMETIS_par_graph_cut
 /**
  * @brief Compute the edgecut of a partitioning in parallel.
  *
@@ -645,12 +631,12 @@ void par_graph_intext_vtx(
  *
  * @return The total weight of cut edges.
  */
-wgt_t par_graph_cut(
-    graph_t const * graph,
-    pid_t const * const * where);
+wgt_type par_graph_cut(
+    graph_type const * graph,
+    pid_type const * const * where);
 
 
-#define par_graph_removeislands __mtmetis_par_graph_removeislands
+#define par_graph_removeislands MTMETIS_par_graph_removeislands
 /**
  * @brief Remove island vertices from a graph and adjust parameters.
  *
@@ -658,11 +644,11 @@ wgt_t par_graph_cut(
  * @param graph The graph structure.
  */
 void par_graph_removeislands(
-    ctrl_t * ctrl,
-    graph_t * graph);
+    ctrl_type * ctrl,
+    graph_type * graph);
 
 
-#define par_graph_restoreislands __mtmetis_par_graph_restoreislands
+#define par_graph_restoreislands MTMETIS_par_graph_restoreislands
 /**
  * @brief Restore island vertices and parameters to a graph.
  *
@@ -672,12 +658,12 @@ void par_graph_removeislands(
  * vertices).
  */
 void par_graph_restoreislands(
-    ctrl_t * ctrl,
-    graph_t * graph,
-    pid_t * const * gwhere);
+    ctrl_type * ctrl,
+    graph_type * graph,
+    pid_type * const * gwhere);
 
 
-#define par_graph_extract_parts __mtmetis_par_graph_extract_parts
+#define par_graph_extract_parts MTMETIS_par_graph_extract_parts
 /**
  * @brief Extract the partitions from a graph. If called with more threads than
  * partitions, the number of threads should be a multiple of number of
@@ -691,11 +677,34 @@ void par_graph_restoreislands(
  * @param parts The extracted partitions (output), should be of lenght nparts.
  */
 void par_graph_extract_parts(
-    graph_t * const graph,
-    pid_t const * const * const gwhere,
-    pid_t const nparts,
-    graph_t ** const parts);
+    graph_type * const graph,
+    pid_type const * const * const gwhere,
+    pid_type const nparts,
+    graph_type ** const parts);
 
+
+#define par_graph_distribute MTMETIS_par_graph_distribute
+/**
+ * @brief Distribute a csr based graph among a set of active threads. 
+ *
+ * @param dist The type of distribution to use.
+ * @param nvtxs The number of vertices in the graph.
+ * @param xadj The adjacency list pointer.
+ * @param adjncy The adjacecny list.
+ * @param vwgt The vertex weights.
+ * @param adjwgt The edge weights.
+ * @param comm The active thread communicator.
+ *
+ * @return The distributed graph. 
+ */
+graph_type * par_graph_distribute(
+    int distribution,
+    vtx_type nvtxs, 
+    adj_type const * xadj, 
+    vtx_type const * adjncy, 
+    wgt_type const * vwgt,
+    wgt_type const * adjwgt, 
+    dlthread_comm_t comm);
 
 
 

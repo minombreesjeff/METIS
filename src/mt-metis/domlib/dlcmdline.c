@@ -27,7 +27,6 @@
 
 
 static const char * const __DELIM = "=";
-static const char * const __ARGSKIP = "-";
 static const char __ARGPREFIX = '-';
 static const size_t __BASE_NARGS = 32;
 static const int __NULLID = -1;
@@ -43,10 +42,6 @@ static const char * __ARGVALUES[] = {
   [CMD_OPT_FLAG] = NULL,
   [CMD_OPT_XARG] = NULL,
   [CMD_OPT_NULL] = NULL 
-};
-static const char __QUOTECHARS[256] = {
-  ['\''] = 1,
-  ['"'] = 1
 };
 
 
@@ -85,8 +80,10 @@ static const char __QUOTECHARS[256] = {
 ******************************************************************************/
 
 
-static size_t __split(const char * str, const char * delim, 
-    const char ** back)
+static size_t __split(
+    char const * str, 
+    char const * delim, 
+    char const ** back)
 {
   size_t i,j,k;
   k = j = 0;
@@ -112,8 +109,10 @@ static size_t __split(const char * str, const char * delim,
 }
 
 
-static int __parse_parameter(const cmd_opt_t opt, 
-    const char * const str, cmd_arg_t * const arg)
+static int __parse_parameter(
+    cmd_opt_t const opt, 
+    char const * const str, 
+    cmd_arg_t * const arg)
 {
   size_t l;
   char * eptr;
@@ -172,7 +171,8 @@ static int __parse_parameter(const cmd_opt_t opt,
 ******************************************************************************/
 
 
-cmd_opt_t * init_cmd_opt(cmd_opt_t * cmd_opt)
+cmd_opt_t * init_cmd_opt(
+    cmd_opt_t * cmd_opt)
 {
   cmd_opt->id = __NULLID;
   cmd_opt->sflag = '\0';
@@ -185,7 +185,8 @@ cmd_opt_t * init_cmd_opt(cmd_opt_t * cmd_opt)
 }
 
 
-cmd_arg_t * init_cmd_arg(cmd_arg_t * cmd_arg)
+cmd_arg_t * init_cmd_arg(
+    cmd_arg_t * cmd_arg)
 {
   cmd_arg->id = __NULLID;
   cmd_arg->type = CMD_OPT_NULL;
@@ -194,9 +195,13 @@ cmd_arg_t * init_cmd_arg(cmd_arg_t * cmd_arg)
 }
 
 
-int cmd_parse_args(const size_t argc, char ** argv, 
-    const cmd_opt_t * const opts, const size_t nopts, 
-    cmd_arg_t ** const r_args, size_t * const r_nargs)
+int cmd_parse_args(
+    size_t const argc, 
+    char ** argv, 
+    cmd_opt_t const * const opts, 
+    size_t const nopts, 
+    cmd_arg_t ** const r_args, 
+    size_t * const r_nargs)
 {
   int parse;
   size_t i,j,len,nargs,argn,maxnargs;
@@ -343,17 +348,26 @@ int cmd_parse_args(const size_t argc, char ** argv,
 }
 
 
-void fprint_cmd_opts(FILE * out, const cmd_opt_t * opts, const size_t nopts)
+void fprint_cmd_opts(
+    FILE * out, 
+    cmd_opt_t const * opts, 
+    size_t const nopts)
 {
   size_t i,j;
   const char * fmt;
   for (i=0;i<nopts;++i) {
     if ((fmt = __ARGVALUES[opts[i].type]) == NULL) {
-      fprintf(out,"%c%c %c%c%s :\n",__ARGPREFIX,opts[i].sflag,__ARGPREFIX,
-          __ARGPREFIX,opts[i].lflag);
+      if (opts[i].sflag != '\0') {
+        /* has short option */
+        fprintf(out,"%c%c ",__ARGPREFIX,opts[i].sflag);
+      }
+      fprintf(out,"%c%c%s :\n",__ARGPREFIX,__ARGPREFIX,opts[i].lflag);
     } else {
-      fprintf(out,"%c%c<%s> %c%c%s=<%s> :\n",__ARGPREFIX,opts[i].sflag,fmt,
-          __ARGPREFIX,__ARGPREFIX,opts[i].lflag,fmt);
+      if (opts[i].sflag != '\0') {
+        /* has short option */
+        fprintf(out,"%c%c<%s> ",__ARGPREFIX,opts[i].sflag,fmt);
+      }
+      fprintf(out,"%c%c%s=<%s> :\n",__ARGPREFIX,__ARGPREFIX,opts[i].lflag,fmt);
     }
     fprintf(out,"%s\n",opts[i].desc);
     if (opts[i].type == CMD_OPT_CHOICE) {

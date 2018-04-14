@@ -27,7 +27,7 @@
 ******************************************************************************/
 
 
-#define par_uncoarsen_graph __mtmetis_par_uncoarsen_graph
+#define par_uncoarsen_graph MTMETIS_par_uncoarsen_graph
 /**
  * @brief Uncoarsen a partitioning on a graph (from graph->coarser to graph).
  *
@@ -35,8 +35,8 @@
  * @param graph The original graph to uncoarsen the partition to.
  */
 void par_uncoarsen_graph(
-    ctrl_t * ctrl,
-    graph_t * graph);
+    ctrl_type * ctrl,
+    graph_type * graph);
 
 
 

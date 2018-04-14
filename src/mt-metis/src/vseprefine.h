@@ -29,7 +29,7 @@
 ******************************************************************************/
 
 
-#define par_vseprefine __mtmetis_par_vseprefine
+#define par_vseprefine MTMETIS_par_vseprefine
 /**
 * @brief Parallel vertex separator refinement.
 *
@@ -39,10 +39,10 @@
 *
 * @return Total of moved vertices.
 */
-vtx_t par_vseprefine(
-    ctrl_t * const ctrl, 
-    graph_t * const graph,
-    vsinfo_t * vsinfo);
+vtx_type par_vseprefine(
+    ctrl_type * const ctrl, 
+    graph_type * const graph,
+    vsinfo_type * vsinfo);
 
 
 

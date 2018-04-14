@@ -32,43 +32,43 @@
  * @param ctrl The control structure containing runtime parameters.
  * @param graph The partitioned graph to project the partition from.
  */
-static void __project_kway(
-    ctrl_t * const ctrl,
-    graph_t * const graph)
+static void S_project_kway(
+    ctrl_type * const ctrl,
+    graph_type * const graph)
 {
-  vtx_t i, k, pi, lvtx, nbrid, ned, nid;
-  adj_t j, l, istart, iend;
-  pid_t me, other, na;
-  wgt_t tid, ted;
-  kwnbrinfo_t * myrinfo;
-  adjinfo_t * mynbrs;
-  vtx_t * id, * ed;
-  pid_t * htable;
+  vtx_type i, k, pi, lvtx, nbrid, ned, nid;
+  adj_type j, l, istart, iend;
+  pid_type me, other, na;
+  wgt_type tid, ted;
+  kwnbrinfo_type * myrinfo;
+  adjinfo_type * mynbrs;
+  vtx_type * id, * ed;
+  pid_type * htable;
   vtx_iset_t * bnd;
-  kwnbrinfo_t * nbrinfo;
-  kwinfo_t * gkwinfo, * kwinfo;
+  kwnbrinfo_type * nbrinfo;
+  kwinfo_type * gkwinfo, * kwinfo;
 
-  tid_t const myid = dlthread_get_id(ctrl->comm);
+  tid_type const myid = dlthread_get_id(ctrl->comm);
 
-  pid_t const nparts = ctrl->nparts;
-  graph_t * const cgraph = graph->coarser;
-  vtx_t * const * const gcmap = graph->cmap;
-  adj_t const * const * const gxadj = (adj_t const **)graph->xadj;
-  vtx_t const * const * const gadjncy = (vtx_t const **)graph->adjncy;
-  wgt_t const * const * const gadjwgt = (wgt_t const **)graph->adjwgt;
+  pid_type const nparts = ctrl->nparts;
+  graph_type * const cgraph = graph->coarser;
+  vtx_type * const * const gcmap = graph->cmap;
+  adj_type const * const * const gxadj = (adj_type const **)graph->xadj;
+  vtx_type const * const * const gadjncy = (vtx_type const **)graph->adjncy;
+  wgt_type const * const * const gadjwgt = (wgt_type const **)graph->adjwgt;
 
   int const greedy = ctrl->rtype == MTMETIS_RTYPE_GREEDY;
 
-  pid_t ** const gwhere = graph->where;
-  pid_t * const where = gwhere[myid];
+  pid_type ** const gwhere = graph->where;
+  pid_type * const where = gwhere[myid];
 
-  vtx_t const mynvtxs = graph->mynvtxs[myid];
+  vtx_type const mynvtxs = graph->mynvtxs[myid];
 
-  vtx_t * const cmap = gcmap[myid];
+  vtx_type * const cmap = gcmap[myid];
 
-  adj_t const * const xadj = gxadj[myid];
-  vtx_t const * const adjncy = gadjncy[myid];
-  wgt_t const * const adjwgt = gadjwgt[myid];
+  adj_type const * const xadj = gxadj[myid];
+  vtx_type const * const adjncy = gadjncy[myid];
+  wgt_type const * const adjwgt = gadjwgt[myid];
 
   gkwinfo = cgraph->kwinfo;
   
@@ -210,7 +210,7 @@ static void __project_kway(
   dl_free(id);
 
   DL_ASSERT((dlthread_barrier(ctrl->comm),check_kwinfo(kwinfo,graph, \
-          (pid_t const **)gwhere)),"Bad info");
+          (pid_type const **)gwhere)),"Bad info");
 
   dlthread_barrier(ctrl->comm);
 }
@@ -223,36 +223,36 @@ static void __project_kway(
  * @param graph The partitioned graph to project the partition (edge
  * separator) from.
  */
-static void __project_esep(
-    ctrl_t * const ctrl,
-    graph_t * const graph)
+static void S_project_esep(
+    ctrl_type * const ctrl,
+    graph_type * const graph)
 {
-  vtx_t i, k, lvtx, nbrid;
-  adj_t j;
-  pid_t me, other;
+  vtx_type i, k, lvtx, nbrid;
+  adj_type j;
+  pid_type me, other;
   vtx_iset_t * bnd;
-  esnbrinfo_t * myrinfo;
-  esnbrinfo_t * nbrinfo;
-  esinfo_t * esinfo;
+  esnbrinfo_type * myrinfo;
+  esnbrinfo_type * nbrinfo;
+  esinfo_type * esinfo;
 
-  tid_t const myid = dlthread_get_id(ctrl->comm);
+  tid_type const myid = dlthread_get_id(ctrl->comm);
 
-  graph_t * const cgraph = graph->coarser;
-  vtx_t * const * const gcmap = graph->cmap;
-  adj_t const * const * const gxadj = (adj_t const **)graph->xadj;
-  vtx_t const * const * const gadjncy = (vtx_t const **)graph->adjncy;
-  wgt_t const * const * const gadjwgt = (wgt_t const **)graph->adjwgt;
+  graph_type * const cgraph = graph->coarser;
+  vtx_type * const * const gcmap = graph->cmap;
+  adj_type const * const * const gxadj = (adj_type const **)graph->xadj;
+  vtx_type const * const * const gadjncy = (vtx_type const **)graph->adjncy;
+  wgt_type const * const * const gadjwgt = (wgt_type const **)graph->adjwgt;
 
-  adj_t const * const xadj = gxadj[myid];
-  vtx_t const * const adjncy = gadjncy[myid];
-  wgt_t const * const adjwgt = gadjwgt[myid];
+  adj_type const * const xadj = gxadj[myid];
+  vtx_type const * const adjncy = gadjncy[myid];
+  wgt_type const * const adjwgt = gadjwgt[myid];
 
-  vtx_t const mynvtxs = graph->mynvtxs[myid];
+  vtx_type const mynvtxs = graph->mynvtxs[myid];
 
-  vtx_t * const cmap = gcmap[myid];
+  vtx_type * const cmap = gcmap[myid];
 
-  pid_t ** const gwhere = graph->where;
-  pid_t * const where = gwhere[myid];
+  pid_type ** const gwhere = graph->where;
+  pid_type * const where = gwhere[myid];
 
   /* expand boundary */
   bnd = vtx_iset_create(0,mynvtxs);
@@ -326,7 +326,7 @@ static void __project_esep(
     }
   }
 
-  DL_ASSERT(check_esinfo(esinfo,graph,(pid_t const **)gwhere),"Bad info");
+  DL_ASSERT(check_esinfo(esinfo,graph,(pid_type const **)gwhere),"Bad info");
   DL_ASSERT(check_esbnd(esinfo->bnd,graph),"Bad boundary");
 }
 
@@ -338,31 +338,31 @@ static void __project_esep(
  * @param graph The partitioned graph to project the partition (vertex
  * separator) from.
  */
-static void __project_vsep(
-    ctrl_t * const ctrl,
-    graph_t * const graph)
+static void S_project_vsep(
+    ctrl_type * const ctrl,
+    graph_type * const graph)
 {
-  vtx_t i;
-  pid_t me;
-  vsnbrinfo_t * myrinfo;
+  vtx_type i;
+  pid_type me;
+  vsnbrinfo_type * myrinfo;
   vtx_iset_t * bnd;
-  vsnbrinfo_t * nbrinfo;
-  vsinfo_t * vsinfo;
+  vsnbrinfo_type * nbrinfo;
+  vsinfo_type * vsinfo;
 
-  tid_t const myid = dlthread_get_id(ctrl->comm);
+  tid_type const myid = dlthread_get_id(ctrl->comm);
 
-  graph_t * const cgraph = graph->coarser;
-  adj_t const * const * const gxadj = (adj_t const **)graph->xadj;
-  vtx_t const * const * const gadjncy = (vtx_t const **)graph->adjncy;
-  wgt_t const * const * const gvwgt = (wgt_t const **)graph->vwgt;
+  graph_type * const cgraph = graph->coarser;
+  adj_type const * const * const gxadj = (adj_type const **)graph->xadj;
+  vtx_type const * const * const gadjncy = (vtx_type const **)graph->adjncy;
+  wgt_type const * const * const gvwgt = (wgt_type const **)graph->vwgt;
 
-  pid_t ** const gwhere = graph->where;
-  pid_t * const where = gwhere[myid];
+  pid_type ** const gwhere = graph->where;
+  pid_type * const where = gwhere[myid];
 
-  vtx_t const mynvtxs = graph->mynvtxs[myid];
+  vtx_type const mynvtxs = graph->mynvtxs[myid];
 
-  adj_t const * const xadj = gxadj[myid];
-  vtx_t const * const adjncy = gadjncy[myid];
+  adj_type const * const xadj = gxadj[myid];
+  vtx_type const * const adjncy = gadjncy[myid];
 
   graph->minsep = cgraph->minsep;
 
@@ -395,14 +395,14 @@ static void __project_vsep(
 
     if (me == MTMETIS_VSEP_SEP) {
       /* have to compute connectivity */
-      __calc_conn(i,myid,mynvtxs,xadj,adjncy,gvwgt,(pid_t const **)gwhere, \
+      S_calc_conn(i,myid,mynvtxs,xadj,adjncy,gvwgt,(pid_type const **)gwhere, \
           graph->dist,myrinfo->con);
 
       vtx_iset_add(i,bnd);
     }
   }
 
-  DL_ASSERT(check_vsinfo(vsinfo,graph,(pid_t const **)gwhere),"Bad info");
+  DL_ASSERT(check_vsinfo(vsinfo,graph,(pid_type const **)gwhere),"Bad info");
   DL_ASSERT(check_vsbnd(vsinfo->bnd,graph),"Bad boundary");
 }
 
@@ -415,21 +415,21 @@ static void __project_vsep(
 
 
 void par_project_graph(
-    ctrl_t * const ctrl,
-    graph_t * const graph)
+    ctrl_type * const ctrl,
+    graph_type * const graph)
 {
-  vtx_t i, k, lvtx;
-  tid_t nbrid;
-  pid_t * where;
+  vtx_type i, k, lvtx;
+  tid_type nbrid;
+  pid_type * where;
 
-  tid_t const myid = dlthread_get_id(ctrl->comm);
+  tid_type const myid = dlthread_get_id(ctrl->comm);
 
-  vtx_t const * const cmap = graph->cmap[myid];
+  vtx_type const * const cmap = graph->cmap[myid];
 
-  vtx_t const mynvtxs = graph->mynvtxs[myid];
-  graph_t const * const cgraph = graph->coarser;
-  vtx_t const mycnvtxs = cgraph->mynvtxs[myid];
-  pid_t const * const * const gcwhere = (pid_t const **)cgraph->where;
+  vtx_type const mynvtxs = graph->mynvtxs[myid];
+  graph_type const * const cgraph = graph->coarser;
+  vtx_type const mycnvtxs = cgraph->mynvtxs[myid];
+  pid_type const * const * const gcwhere = (pid_type const **)cgraph->where;
 
   if (myid == 0) {
     dl_start_timer(&(ctrl->timers.projection));
@@ -456,16 +456,16 @@ void par_project_graph(
     case MTMETIS_PTYPE_ND:
     case MTMETIS_PTYPE_VSEP:
       graph->minsep = cgraph->minsep;
-      __project_vsep(ctrl,graph);
+      S_project_vsep(ctrl,graph);
       break;
     case MTMETIS_PTYPE_RB:
     case MTMETIS_PTYPE_ESEP:
       graph->mincut = cgraph->mincut;
-      __project_esep(ctrl,graph);
+      S_project_esep(ctrl,graph);
       break;
     case MTMETIS_PTYPE_KWAY:
       graph->mincut = cgraph->mincut;
-      __project_kway(ctrl,graph);
+      S_project_kway(ctrl,graph);
       break;
     default:
       dl_error("Unknown partition type '%d'\n",ctrl->ptype);

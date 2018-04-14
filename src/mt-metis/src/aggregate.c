@@ -26,10 +26,10 @@
 ******************************************************************************/
 
 
-typedef struct adjhash_t {
-  vtx_t val;
+typedef struct adjhash_type {
+  vtx_type val;
   uint64_t key;
-} adjhash_t;
+} adjhash_type;
 
 
 
@@ -40,8 +40,8 @@ typedef struct adjhash_t {
 
 
 #define DLSORTKV_PREFIX vv
-#define DLSORTKV_KEY_T vtx_t
-#define DLSORTKV_VAL_T vtx_t
+#define DLSORTKV_KEY_T vtx_type
+#define DLSORTKV_VAL_T vtx_type
 #define DLSORTKV_STATIC
 #include "dlsortkv_headers.h"
 #undef DLSORTKV_STATIC
@@ -51,7 +51,7 @@ typedef struct adjhash_t {
 
 
 #define DLSORT_PREFIX ah
-#define DLSORT_TYPE_T adjhash_t
+#define DLSORT_TYPE_T adjhash_type
 #define DLSORT_COMPARE(a,b) ((a).key < (b).key)
 #define DLSORT_STATIC
 #include "dlsort_headers.h"
@@ -62,8 +62,8 @@ typedef struct adjhash_t {
 
 
 #define DLHT_PREFIX vw
-#define DLHT_KEY_T vtx_t
-#define DLHT_VAL_T wgt_t
+#define DLHT_KEY_T vtx_type
+#define DLHT_VAL_T wgt_type
 #define DLHT_STATIC
 #include "dlht_headers.h"
 #undef DLHT_STATIC
@@ -80,13 +80,11 @@ typedef struct adjhash_t {
 
 
 #define CYCLE_MASK_SIZE (0x100000)
-static vtx_t const CYCLE_MASK = CYCLE_MASK_SIZE-1;
-static vtx_t const MAX_CYCLE_SIZE = CYCLE_MASK_SIZE >> 1;
-static vtx_t const DESIRED_VERTEX_SIZE = 4;
-static vtx_t const MAX_VERTEX_SIZE = 32;
+static vtx_type const CYCLE_MASK = CYCLE_MASK_SIZE-1;
+static vtx_type const MAX_CYCLE_SIZE = CYCLE_MASK_SIZE >> 1;
 static double const LEAF_MATCH_RATIO = 0.25;
-static vtx_t const MAXDEG_LEAF = 1;
-static vtx_t const MAXDEG_TWIN = 64;
+static vtx_type const MAXDEG_LEAF = 1;
+static vtx_type const MAXDEG_TWIN = 64;
 
 
 
@@ -109,10 +107,10 @@ static vtx_t const MAXDEG_TWIN = 64;
  * @return 1 if v is lead vertex, and 0 if u is the lead vertex. 
  */
 static inline int my_cvtx(
-    vtx_t const v,
-    vtx_t const u,
-    vtx_t const dv,
-    vtx_t const du)
+    vtx_type const v,
+    vtx_type const u,
+    vtx_type const dv,
+    vtx_type const du)
 {
   if (v == u) {
     /* I own my vertex if it's matched with itself */
@@ -151,9 +149,9 @@ static inline int my_cvtx(
  *
  * @return 1 if aggregation should stop.
  */
-static inline int __agg_limit_reached(
-    vtx_t const nvtxs, 
-    vtx_t const collapsed, 
+static inline int S_agg_limit_reached(
+    vtx_type const nvtxs, 
+    vtx_type const collapsed, 
     double const max_agg_rate)
 {
   double agg_rate;
@@ -171,11 +169,11 @@ static inline int __agg_limit_reached(
  *
  * @return The index corresponding to the key.
  */
-static inline vtx_t __htable_idx(
-    vtx_t const i, 
-    vtx_t const * const htable)
+static inline vtx_type S_htable_idx(
+    vtx_type const i, 
+    vtx_type const * const htable)
 {
-  vtx_t idx,m,j;
+  vtx_type idx,m,j;
 
   idx = i&CYCLE_MASK;
   m = htable[idx];
@@ -205,16 +203,16 @@ static inline vtx_t __htable_idx(
  * @return The number of vertices collapsed (1 if formed a cluster, 0 if
  * aggreagted with itself). 
  */
-static inline vtx_t __cluster(
-    vtx_t const i, 
-    vtx_t const maxidx,
-    tid_t const myid, 
-    vtx_t * const * const match, 
-    graph_t const * const graph)
+static inline vtx_type S_cluster(
+    vtx_type const i, 
+    vtx_type const maxidx,
+    tid_type const myid, 
+    vtx_type * const * const match, 
+    graph_type const * const graph)
 {
-  vtx_t l, matched;
-  tid_t o;
-  vtx_t const mynvtxs = graph->mynvtxs[myid];
+  vtx_type l, matched;
+  tid_type o;
+  vtx_type const mynvtxs = graph->mynvtxs[myid];
   if (maxidx == i) {
     /* if we didn't match */
     match[myid][i] = i;
@@ -276,19 +274,19 @@ static inline vtx_t __cluster(
  * @return The number of coarse vertices that will be generated during
  * contraction.
  */
-static vtx_t __cleanup_match(
-    graph_t const * const graph,
-    vtx_t * const * const gmatch,
-    vtx_t * const * const gcmap,
-    vtx_t * const fcmap)
+static vtx_type S_cleanup_match(
+    graph_type const * const graph,
+    vtx_type * const * const gmatch,
+    vtx_type * const * const gcmap,
+    vtx_type * const fcmap)
 {
-  vtx_t i, lvtx, gvtx, cnvtxs, maxidx;
-  tid_t nbrid;
+  vtx_type i, lvtx, gvtx, cnvtxs, maxidx;
+  tid_type nbrid;
 
-  tid_t const myid = dlthread_get_id(graph->comm);
+  tid_type const myid = dlthread_get_id(graph->comm);
 
-  vtx_t const mynvtxs = graph->mynvtxs[myid];
-  adj_t const * const * const gxadj = (adj_t const * const *)graph->xadj;
+  vtx_type const mynvtxs = graph->mynvtxs[myid];
+  adj_type const * const * const gxadj = (adj_type const * const *)graph->xadj;
 
   cnvtxs = 0;
   for (i=0;i<mynvtxs;++i) {
@@ -362,24 +360,24 @@ static vtx_t __cleanup_match(
  *
  * @return The number of coarse vertices this thread owns.
  */
-static vtx_t __cleanup_cluster(
-    vtx_t const mynvtxs,
-    tid_t const myid,
-    vtx_t * const * const match, 
-    vtx_t * const * const cmap, 
-    vtx_t * const * const fmap, 
-    graph_t const * const graph)
+static vtx_type S_cleanup_cluster(
+    vtx_type const mynvtxs,
+    tid_type const myid,
+    vtx_type * const * const match, 
+    vtx_type * const * const cmap, 
+    vtx_type * const * const fmap, 
+    graph_type const * const graph)
 {
-  vtx_t i, g, maxidx, idx, l, j, gvtx, ncycle, minvtx, mycnvtxs, cnvtxs;
-  tid_t o, maxtid;
+  vtx_type i, g, maxidx, idx, l, j, gvtx, ncycle, minvtx, mycnvtxs, cnvtxs;
+  tid_type o, maxtid;
 
-  vtx_t * vtxs = vtx_init_alloc(NULL_VTX,CYCLE_MASK_SIZE);
-  vtx_t * ptxs = vtx_alloc(MAX_CYCLE_SIZE);
+  vtx_type * vtxs = vtx_init_alloc(NULL_VTX,CYCLE_MASK_SIZE);
+  vtx_type * ptxs = vtx_alloc(MAX_CYCLE_SIZE);
 
   ncycle = 0;
   mycnvtxs = 0;
   for (i=0;i<mynvtxs;++i) {
-    DL_ASSERT_EQUALS(ncycle,(vtx_t)0,"%"PF_VTX_T);
+    DL_ASSERT_EQUALS(ncycle,(vtx_type)0,"%"PF_VTX_T);
     maxidx = match[myid][i];
     if (maxidx == NULL_VTX) { /* if we didn't get matched */
       match[myid][i] = i;
@@ -393,7 +391,7 @@ static vtx_t __cleanup_cluster(
       minvtx = i;
       maxtid = myid;
       gvtx = lvtx_to_gvtx(i,myid,graph->dist);
-      idx = __htable_idx(gvtx,vtxs);
+      idx = S_htable_idx(gvtx,vtxs);
       vtxs[idx] = gvtx;
       ptxs[ncycle++] = idx;
       o = myid;
@@ -413,7 +411,7 @@ static vtx_t __cleanup_cluster(
         DL_ASSERT_EQUALS(gvtx_to_tid(g,graph->dist),o,"%"PF_VTX_T);
         DL_ASSERT_EQUALS(lvtx_to_gvtx(maxidx,o,graph->dist),g,"%"PF_VTX_T);
 
-        idx = __htable_idx(g,vtxs);
+        idx = S_htable_idx(g,vtxs);
         if (vtxs[idx] == NULL_VTX) {
           /* no cycle yet -- will stay in do-while */
           if (maxidx < minvtx || (maxidx == minvtx && o > maxtid)) {
@@ -491,36 +489,36 @@ static vtx_t __cleanup_cluster(
  * @param maxdeg The maximum degree of an eligible leaf.
  *
  */
-static vtx_t __coarsen_match_leaves(
-    ctrl_t * const ctrl, 
-    graph_t const * const graph,
-    vtx_t * const * const gmatch, 
-    vtx_t * const fcmap,
-    vtx_t cnvtxs,
-    vtx_t const leafdegree) 
+static vtx_type S_coarsen_match_leaves(
+    ctrl_type * const ctrl, 
+    graph_type const * const graph,
+    vtx_type * const * const gmatch, 
+    vtx_type * const fcmap,
+    vtx_type cnvtxs,
+    vtx_type const leafdegree) 
 {
-  vtx_t i, k, m, l, npivot, mask;
-  adj_t j, jj;
-  vtx_t * ind, * hash, * id;
-  adj_t * ptr;
+  vtx_type i, k, m, l, npivot, mask;
+  adj_type j, jj;
+  vtx_type * ind, * hash, * id;
+  adj_type * ptr;
 
-  tid_t const myid = dlthread_get_id(ctrl->comm);
+  tid_type const myid = dlthread_get_id(ctrl->comm);
 
-  vtx_t const mynvtxs = graph->mynvtxs[myid];
-  adj_t const * const xadj = graph->xadj[myid];
-  vtx_t const * const adjncy = graph->adjncy[myid];
-  wgt_t const * const vwgt = graph->vwgt[myid];
+  vtx_type const mynvtxs = graph->mynvtxs[myid];
+  adj_type const * const xadj = graph->xadj[myid];
+  vtx_type const * const adjncy = graph->adjncy[myid];
+  wgt_type const * const vwgt = graph->vwgt[myid];
 
-  wgt_t const maxvwgt = ctrl->maxvwgt;
+  wgt_type const maxvwgt = ctrl->maxvwgt;
 
-  vtx_t * const cmap = graph->cmap[myid];
-  vtx_t * const match = gmatch[myid];
+  vtx_type * const cmap = graph->cmap[myid];
+  vtx_type * const match = gmatch[myid];
 
   /* this function is based on the algorithm implemented in Metis 5.1.0,
    * but hashes neighbor ids and only lets vertices owned by the same thread
    * match */
 
-  mask = (vtx_t)(2.3*mynvtxs);
+  mask = (vtx_type)(2.3*mynvtxs);
 
   ptr = adj_init_alloc(0,mynvtxs+1);
   ind = vtx_alloc(graph->mynedges[myid]);
@@ -622,39 +620,39 @@ static vtx_t __coarsen_match_leaves(
  * @param maxdeg The maximum degree of an eligible twin.
  *
  */
-static vtx_t __coarsen_match_twins(
-    ctrl_t * const ctrl, 
-    graph_t const * const graph,
-    vtx_t * const * const gmatch, 
-    vtx_t * const fcmap,
-    vtx_t cnvtxs,
-    vtx_t const maxdeg)
+static vtx_type S_coarsen_match_twins(
+    ctrl_type * const ctrl, 
+    graph_type const * const graph,
+    vtx_type * const * const gmatch, 
+    vtx_type * const fcmap,
+    vtx_type cnvtxs,
+    vtx_type const maxdeg)
 {
   uint64_t h;
-  vtx_t i, v, u, k, deg, l, ntwin;
-  adj_t j;
-  wgt_t wgt;
-  vtx_t * lista, * listb;
-  adjhash_t * twins;
+  vtx_type i, v, u, k, deg, l, ntwin;
+  adj_type j;
+  wgt_type wgt;
+  vtx_type * lista, * listb;
+  adjhash_type * twins;
 
   uint64_t const mask = UINT64_MAX / (maxdeg+1);
 
-  tid_t const myid = dlthread_get_id(ctrl->comm);
+  tid_type const myid = dlthread_get_id(ctrl->comm);
 
-  vtx_t const mynvtxs = graph->mynvtxs[myid];
-  adj_t const * const xadj = graph->xadj[myid];
-  vtx_t const * const adjncy = graph->adjncy[myid];
-  wgt_t const * const vwgt = graph->vwgt[myid];
+  vtx_type const mynvtxs = graph->mynvtxs[myid];
+  adj_type const * const xadj = graph->xadj[myid];
+  vtx_type const * const adjncy = graph->adjncy[myid];
+  wgt_type const * const vwgt = graph->vwgt[myid];
 
-  vtx_t * const match = gmatch[myid];
-  vtx_t * const cmap = graph->cmap[myid];
+  vtx_type * const match = gmatch[myid];
+  vtx_type * const cmap = graph->cmap[myid];
 
-  wgt_t const maxvwgt = ctrl->maxvwgt;
+  wgt_type const maxvwgt = ctrl->maxvwgt;
 
   lista = vtx_alloc(maxdeg);
   listb = vtx_alloc(maxdeg);
 
-  twins = malloc(sizeof(adjhash_t)*mynvtxs);
+  twins = malloc(sizeof(adjhash_type)*mynvtxs);
 
   /* hash adjacency lists for eligible vertices */
   ntwin = 0;
@@ -767,35 +765,35 @@ static vtx_t __coarsen_match_twins(
  * @return The number of coarse vertices that will be generated during
  * contraction. 
  */
-static vtx_t __coarsen_match_RM(
-    ctrl_t * const ctrl, 
-    graph_t const * const graph,
-    vtx_t * const * const gmatch, 
-    vtx_t * const fcmap) 
+static vtx_type S_coarsen_match_RM(
+    ctrl_type * const ctrl, 
+    graph_type const * const graph,
+    vtx_type * const * const gmatch, 
+    vtx_type * const fcmap) 
 {
   int unsigned seed;
-  vtx_t i, pi, k, maxidx, last_unmatched, lvtx, gvtx, cnvtxs;
-  adj_t j, start;
-  tid_t nbrid;
-  vtx_t * match, * perm;
+  vtx_type i, pi, k, maxidx, last_unmatched, lvtx, gvtx, cnvtxs;
+  adj_type j, start;
+  tid_type nbrid;
+  vtx_type * match, * perm;
 
-  tid_t const myid = dlthread_get_id(ctrl->comm);
+  tid_type const myid = dlthread_get_id(ctrl->comm);
 
-  adj_t const * const * const gxadj = (adj_t const **)graph->xadj;
-  wgt_t const * const * const gvwgt = (wgt_t const **)graph->vwgt;
-  vtx_t const * const * const gadjncy = (vtx_t const **)graph->adjncy;
-  vtx_t ** const gcmap = graph->cmap;
+  adj_type const * const * const gxadj = (adj_type const **)graph->xadj;
+  wgt_type const * const * const gvwgt = (wgt_type const **)graph->vwgt;
+  vtx_type const * const * const gadjncy = (vtx_type const **)graph->adjncy;
+  vtx_type ** const gcmap = graph->cmap;
 
-  wgt_t const maxvwgt = ctrl->maxvwgt;
+  wgt_type const maxvwgt = ctrl->maxvwgt;
 
   /* local graph pointers */
-  vtx_t const mynvtxs = graph->mynvtxs[myid];
-  adj_t const * const xadj = gxadj[myid];
-  wgt_t const * const vwgt = gvwgt[myid];
-  vtx_t const * const adjncy = gadjncy[myid];
+  vtx_type const mynvtxs = graph->mynvtxs[myid];
+  adj_type const * const xadj = gxadj[myid];
+  wgt_type const * const vwgt = gvwgt[myid];
+  vtx_type const * const adjncy = gadjncy[myid];
 
   DL_ASSERT_EQUALS(graph->dist.nthreads, \
-      (tid_t)dlthread_get_nthreads(ctrl->comm),"%"PF_TID_T);
+      (tid_type)dlthread_get_nthreads(ctrl->comm),"%"PF_TID_T);
 
   gcmap[myid] = perm = vtx_alloc(mynvtxs);
 
@@ -871,7 +869,7 @@ static vtx_t __coarsen_match_RM(
   } /* outer match loop */
   dlthread_barrier(ctrl->comm);
 
-  cnvtxs = __cleanup_match(graph,gmatch,gcmap,fcmap);
+  cnvtxs = S_cleanup_match(graph,gmatch,gcmap,fcmap);
 
   return cnvtxs;
 }
@@ -889,38 +887,38 @@ static vtx_t __coarsen_match_RM(
  * @return The number of coarse vertices that will be generated during
  * contraction. 
  */
-static vtx_t __coarsen_match_SHEM(
-    ctrl_t * const ctrl, 
-    graph_t const * const graph,
-    vtx_t * const * const gmatch, 
-    vtx_t * const fcmap) 
+static vtx_type S_coarsen_match_SHEM(
+    ctrl_type * const ctrl, 
+    graph_type const * const graph,
+    vtx_type * const * const gmatch, 
+    vtx_type * const fcmap) 
 {
   unsigned int seed;
-  vtx_t cnvtxs, i, pi, k, maxidx, last_unmatched, \
+  vtx_type cnvtxs, i, pi, k, maxidx, last_unmatched, \
       lvtx, gvtx;
-  wgt_t mywgt, ewgt, maxwgt;
-  tid_t nbrid;
-  adj_t j, avgdegree;
-  vtx_t * perm, * tperm, * degrees;
+  wgt_type mywgt, ewgt, maxwgt;
+  tid_type nbrid;
+  adj_type j, avgdegree;
+  vtx_type * perm, * tperm, * degrees;
 
-  tid_t const myid = dlthread_get_id(ctrl->comm);
+  tid_type const myid = dlthread_get_id(ctrl->comm);
 
-  vtx_t ** const gcmap = graph->cmap;
+  vtx_type ** const gcmap = graph->cmap;
 
-  wgt_t const maxvwgt  = ctrl->maxvwgt;
+  wgt_type const maxvwgt  = ctrl->maxvwgt;
 
-  adj_t const * const * const gxadj = (adj_t const **)graph->xadj;
-  vtx_t const * const * const gadjncy = (vtx_t const **)graph->adjncy;
-  wgt_t const * const * const gvwgt = (wgt_t const **)graph->vwgt;
-  wgt_t const * const * const gadjwgt = (wgt_t const **)graph->adjwgt;
+  adj_type const * const * const gxadj = (adj_type const **)graph->xadj;
+  vtx_type const * const * const gadjncy = (vtx_type const **)graph->adjncy;
+  wgt_type const * const * const gvwgt = (wgt_type const **)graph->vwgt;
+  wgt_type const * const * const gadjwgt = (wgt_type const **)graph->adjwgt;
 
   /* thread local graph pointers */
-  vtx_t const mynvtxs = graph->mynvtxs[myid];
-  adj_t const * const xadj = gxadj[myid];
-  vtx_t const * const adjncy = gadjncy[myid];
-  wgt_t const * const vwgt = gvwgt[myid];
-  wgt_t const * const adjwgt = gadjwgt[myid];
-  vtx_t * const match = gmatch[myid];
+  vtx_type const mynvtxs = graph->mynvtxs[myid];
+  adj_type const * const xadj = gxadj[myid];
+  vtx_type const * const adjncy = gadjncy[myid];
+  wgt_type const * const vwgt = gvwgt[myid];
+  wgt_type const * const adjwgt = gadjwgt[myid];
+  vtx_type * const match = gmatch[myid];
 
   /* matching vectors */
 
@@ -1000,7 +998,7 @@ static vtx_t __coarsen_match_SHEM(
               nbrid = gvtx_to_tid(k,graph->dist);
               lvtx = gvtx_to_lvtx(k,graph->dist);
             }
-            if (maxwgt < ewgt + (wgt_t)((pi+xadj[i])%2) && \
+            if (maxwgt < ewgt + (wgt_type)((pi+xadj[i])%2) && \
                 mywgt+gvwgt[nbrid][lvtx] <= maxvwgt && \
                 gmatch[nbrid][lvtx] == NULL_VTX) {
               maxidx = k;
@@ -1030,7 +1028,7 @@ static vtx_t __coarsen_match_SHEM(
 
   gcmap[myid] = perm;
 
-  cnvtxs = __cleanup_match(graph,gmatch,gcmap,fcmap);
+  cnvtxs = S_cleanup_match(graph,gmatch,gcmap,fcmap);
 
   return cnvtxs;
 }
@@ -1048,51 +1046,51 @@ static vtx_t __coarsen_match_SHEM(
  * @return The number of coarse vertices that will be generated during
  * contraction. 
  */
-static vtx_t __coarsen_cluster_FC(
-    ctrl_t * const ctrl, 
-    graph_t const * const graph,
-    vtx_t * const * const gmatch, 
-    vtx_t * const fcmap)
+static vtx_type S_coarsen_cluster_FC(
+    ctrl_type * const ctrl, 
+    graph_type const * const graph,
+    vtx_type * const * const gmatch, 
+    vtx_type * const fcmap)
 {
   unsigned int seed;
-  vtx_t v, i, k, l, cl, cg, maxidx, mycnvtxs, maxdeg, last_unmatched, \
+  vtx_type v, i, k, l, cl, cg, maxidx, mycnvtxs, maxdeg, last_unmatched, \
       collapsed;
-  tid_t o,co;
-  adj_t j, astart,aend;
-  wgt_t cwgt, twgt, nvwgt, maxwgt;
-  wgt_t ** cvwgt;
-  vtx_t ** gfcmap;
+  tid_type o,co;
+  adj_type j, astart,aend;
+  wgt_type cwgt, twgt, nvwgt, maxwgt;
+  wgt_type ** cvwgt;
+  vtx_type ** gfcmap;
 
   vw_ht_t * conn;
 
-  tid_t const myid = dlthread_get_id(ctrl->comm);
-  tid_t const nthreads = dlthread_get_nthreads(ctrl->comm);
+  tid_type const myid = dlthread_get_id(ctrl->comm);
+  tid_type const nthreads = dlthread_get_nthreads(ctrl->comm);
 
   /* set up graph stuff */
-  vtx_t const nvtxs = graph->nvtxs;
-  vtx_t const mynvtxs = graph->mynvtxs[myid];
-  adj_t const * const * const gxadj = (adj_t const * const *)graph->xadj;
-  vtx_t const * const * const gadjncy = (vtx_t const * const *)graph->adjncy;
-  wgt_t const * const * const gvwgt = (wgt_t const * const *)graph->vwgt;
-  wgt_t const * const * const gadjwgt = (wgt_t const * const *)graph->adjwgt;
+  vtx_type const nvtxs = graph->nvtxs;
+  vtx_type const mynvtxs = graph->mynvtxs[myid];
+  adj_type const * const * const gxadj = (adj_type const * const *)graph->xadj;
+  vtx_type const * const * const gadjncy = (vtx_type const * const *)graph->adjncy;
+  wgt_type const * const * const gvwgt = (wgt_type const * const *)graph->vwgt;
+  wgt_type const * const * const gadjwgt = (wgt_type const * const *)graph->adjwgt;
 
-  adj_t const * myxadj = gxadj[myid];
-  vtx_t const * myadjncy = gadjncy[myid];
-  wgt_t const * myadjwgt = gadjwgt[myid];
+  adj_type const * myxadj = gxadj[myid];
+  vtx_type const * myadjncy = gadjncy[myid];
+  wgt_type const * myadjwgt = gadjwgt[myid];
 
-  vtx_t ** const gcmap = graph->cmap;
+  vtx_type ** const gcmap = graph->cmap;
 
-  wgt_t const maxvwgt = ctrl->maxvwgt;
+  wgt_type const maxvwgt = ctrl->maxvwgt;
 
-  vtx_t * perm = vtx_alloc(nvtxs);
+  vtx_type * perm = vtx_alloc(nvtxs);
 
   /* do the real work */
   vtx_set(gmatch[myid],NULL_VTX,mynvtxs);
 
   /* store total degree of coarse vertices */
-  cvwgt = dlthread_get_shmem((sizeof(vtx_t*)*nthreads) + \
-      (sizeof(wgt_t*)*nthreads),ctrl->comm);
-  gfcmap = (vtx_t**)(cvwgt+nthreads);
+  cvwgt = dlthread_get_shmem((sizeof(vtx_type*)*nthreads) + \
+      (sizeof(wgt_type*)*nthreads),ctrl->comm);
+  gfcmap = (vtx_type**)(cvwgt+nthreads);
 
   cvwgt[myid] = wgt_alloc(mynvtxs);
   gfcmap[myid] = fcmap;
@@ -1120,7 +1118,7 @@ static vtx_t __coarsen_cluster_FC(
   vtx_shuffle_r(perm,mynvtxs,&seed);
 
   for (v=0;v<mynvtxs;++v) {
-    if (__agg_limit_reached(mynvtxs,collapsed,0.7)) {
+    if (S_agg_limit_reached(mynvtxs,collapsed,0.7)) {
       break;
     }
     i = perm[v];
@@ -1236,7 +1234,7 @@ static vtx_t __coarsen_cluster_FC(
           cvwgt[co][cl] += gvwgt[myid][i];
         }
       }
-      collapsed += __cluster(i,maxidx,myid,gmatch,graph);
+      collapsed += S_cluster(i,maxidx,myid,gmatch,graph);
     }
   }
   vw_ht_free(conn);
@@ -1250,7 +1248,7 @@ static vtx_t __coarsen_cluster_FC(
 
   dlthread_barrier(ctrl->comm);
 
-  mycnvtxs = __cleanup_cluster(mynvtxs,myid,gmatch,gcmap,gfcmap,graph);
+  mycnvtxs = S_cleanup_cluster(mynvtxs,myid,gmatch,gcmap,gfcmap,graph);
 
   /* implicit barrier */ 
   dl_free(cvwgt[myid]);
@@ -1275,47 +1273,47 @@ static vtx_t __coarsen_cluster_FC(
  * @return The number of coarse vertices that will be generated during
  * contraction. 
  */
-static vtx_t __coarsen_cluster_RC(
-    ctrl_t * const ctrl, 
-    graph_t const * const graph,
-    vtx_t * const * const gmatch, 
-    vtx_t * const fcmap) 
+static vtx_type S_coarsen_cluster_RC(
+    ctrl_type * const ctrl, 
+    graph_type const * const graph,
+    vtx_type * const * const gmatch, 
+    vtx_type * const fcmap) 
 {
   unsigned int seed;
-  vtx_t v, i, k, l, cl, cg, maxidx, mycnvtxs, maxdeg, last_unmatched, \
+  vtx_type v, i, k, l, cl, cg, maxidx, mycnvtxs, maxdeg, last_unmatched, \
       collapsed;
-  tid_t o,co;
-  adj_t j, astart,aend;
-  wgt_t twgt;
-  wgt_t ** cvwgt;
-  vtx_t ** gfcmap;
+  tid_type o,co;
+  adj_type j, astart,aend;
+  wgt_type twgt;
+  wgt_type ** cvwgt;
+  vtx_type ** gfcmap;
 
-  tid_t const myid = dlthread_get_id(ctrl->comm);
-  tid_t const nthreads = dlthread_get_nthreads(ctrl->comm);
+  tid_type const myid = dlthread_get_id(ctrl->comm);
+  tid_type const nthreads = dlthread_get_nthreads(ctrl->comm);
 
   /* set up graph stuff */
-  vtx_t const nvtxs = graph->nvtxs;
-  vtx_t const mynvtxs = graph->mynvtxs[myid];
-  adj_t const * const * const gxadj = (adj_t const * const *)graph->xadj;
-  vtx_t const * const * const gadjncy = (vtx_t const * const *)graph->adjncy;
-  wgt_t const * const * const gvwgt = (wgt_t const * const *)graph->vwgt;
+  vtx_type const nvtxs = graph->nvtxs;
+  vtx_type const mynvtxs = graph->mynvtxs[myid];
+  adj_type const * const * const gxadj = (adj_type const * const *)graph->xadj;
+  vtx_type const * const * const gadjncy = (vtx_type const * const *)graph->adjncy;
+  wgt_type const * const * const gvwgt = (wgt_type const * const *)graph->vwgt;
 
-  adj_t const * myxadj = gxadj[myid];
-  vtx_t const * myadjncy = gadjncy[myid];
+  adj_type const * myxadj = gxadj[myid];
+  vtx_type const * myadjncy = gadjncy[myid];
 
-  vtx_t ** const gcmap = graph->cmap;
+  vtx_type ** const gcmap = graph->cmap;
 
-  wgt_t const maxvwgt = ctrl->maxvwgt;
+  wgt_type const maxvwgt = ctrl->maxvwgt;
 
-  vtx_t * perm = vtx_alloc(nvtxs);
+  vtx_type * perm = vtx_alloc(nvtxs);
 
   /* do the real work */
   vtx_set(gmatch[myid],NULL_VTX,mynvtxs);
 
   /* store total degree of coarse vertices */
-  cvwgt = dlthread_get_shmem((sizeof(vtx_t*)*nthreads) + \
-      (sizeof(wgt_t*)*nthreads),ctrl->comm);
-  gfcmap = (vtx_t**)(cvwgt+nthreads);
+  cvwgt = dlthread_get_shmem((sizeof(vtx_type*)*nthreads) + \
+      (sizeof(wgt_type*)*nthreads),ctrl->comm);
+  gfcmap = (vtx_type**)(cvwgt+nthreads);
 
   cvwgt[myid] = wgt_alloc(mynvtxs);
   gfcmap[myid] = fcmap;
@@ -1341,7 +1339,7 @@ static vtx_t __coarsen_cluster_RC(
   vtx_shuffle_r(perm,mynvtxs,&seed);
 
   for (v=0;v<mynvtxs;++v) {
-    if (__agg_limit_reached(mynvtxs,collapsed,0.7)) {
+    if (S_agg_limit_reached(mynvtxs,collapsed,0.7)) {
       break;
     }
     i = perm[v];
@@ -1417,7 +1415,7 @@ static vtx_t __coarsen_cluster_RC(
           cvwgt[co][cl] += gvwgt[myid][i];
         }
       }
-      collapsed += __cluster(i,maxidx,myid,gmatch,graph);
+      collapsed += S_cluster(i,maxidx,myid,gmatch,graph);
     }
   }
   dlthread_barrier(ctrl->comm);
@@ -1429,7 +1427,7 @@ static vtx_t __coarsen_cluster_RC(
 
   dlthread_barrier(ctrl->comm);
 
-  mycnvtxs = __cleanup_cluster(mynvtxs,myid,gmatch,gcmap,gfcmap,graph);
+  mycnvtxs = S_cleanup_cluster(mynvtxs,myid,gmatch,gcmap,gfcmap,graph);
 
   /* implicit barrier */ 
   dl_free(cvwgt[myid]);
@@ -1450,17 +1448,17 @@ static vtx_t __coarsen_cluster_RC(
 ******************************************************************************/
 
 
-vtx_t par_aggregate_graph(
-    ctrl_t * const ctrl,
-    graph_t * const graph,
-    vtx_t * const * const gmatch,
-    vtx_t * const fcmap)
+vtx_type par_aggregate_graph(
+    ctrl_type * const ctrl,
+    graph_type * const graph,
+    vtx_type * const * const gmatch,
+    vtx_type * const fcmap)
 {
-  vtx_t i, cnvtxs, nunmatched;
+  vtx_type i, cnvtxs, nunmatched;
 
-  tid_t const myid = dlthread_get_id(ctrl->comm);
+  tid_type const myid = dlthread_get_id(ctrl->comm);
 
-  vtx_t const mynvtxs = graph->mynvtxs[myid];
+  vtx_type const mynvtxs = graph->mynvtxs[myid];
 
   if (myid == 0) { 
     dl_start_timer(&ctrl->timers.matching);
@@ -1473,20 +1471,20 @@ vtx_t par_aggregate_graph(
   /* coarsening scheme selection used to go here */
   switch(ctrl->ctype) {
     case MTMETIS_CTYPE_RM:
-      cnvtxs = __coarsen_match_RM(ctrl,graph,gmatch,fcmap);
+      cnvtxs = S_coarsen_match_RM(ctrl,graph,gmatch,fcmap);
       break;
     case MTMETIS_CTYPE_SHEM:
       if (graph->uniformadjwgt) {
-        cnvtxs = __coarsen_match_RM(ctrl,graph,gmatch,fcmap);
+        cnvtxs = S_coarsen_match_RM(ctrl,graph,gmatch,fcmap);
       } else {
-        cnvtxs = __coarsen_match_SHEM(ctrl,graph,gmatch,fcmap);
+        cnvtxs = S_coarsen_match_SHEM(ctrl,graph,gmatch,fcmap);
       }
       break;
     case MTMETIS_CTYPE_FC:
       if (graph->uniformadjwgt) {
-        cnvtxs = __coarsen_cluster_RC(ctrl,graph,gmatch,fcmap);
+        cnvtxs = S_coarsen_cluster_RC(ctrl,graph,gmatch,fcmap);
       } else {
-        cnvtxs = __coarsen_cluster_FC(ctrl,graph,gmatch,fcmap);
+        cnvtxs = S_coarsen_cluster_FC(ctrl,graph,gmatch,fcmap);
       }
       break;
     default:
@@ -1497,19 +1495,19 @@ vtx_t par_aggregate_graph(
 
   /* fix leaves */
   if (ctrl->leafmatch && nunmatched > LEAF_MATCH_RATIO * mynvtxs) {
-    cnvtxs = __coarsen_match_leaves(ctrl,graph,gmatch,fcmap,cnvtxs, \
+    cnvtxs = S_coarsen_match_leaves(ctrl,graph,gmatch,fcmap,cnvtxs, \
         MAXDEG_LEAF);
-    cnvtxs = __coarsen_match_twins(ctrl,graph,gmatch,fcmap,cnvtxs, \
+    cnvtxs = S_coarsen_match_twins(ctrl,graph,gmatch,fcmap,cnvtxs, \
         MAXDEG_TWIN);
 
     nunmatched = mynvtxs - (cnvtxs*2);
     if (nunmatched > 1.5*LEAF_MATCH_RATIO*mynvtxs) {
-      cnvtxs = __coarsen_match_leaves(ctrl,graph,gmatch,fcmap,cnvtxs, \
+      cnvtxs = S_coarsen_match_leaves(ctrl,graph,gmatch,fcmap,cnvtxs, \
           2*MAXDEG_LEAF);
     }
     nunmatched = mynvtxs - (cnvtxs*2);
     if (nunmatched > 2.0*LEAF_MATCH_RATIO*mynvtxs) {
-      cnvtxs = __coarsen_match_leaves(ctrl,graph,gmatch,fcmap,cnvtxs, \
+      cnvtxs = S_coarsen_match_leaves(ctrl,graph,gmatch,fcmap,cnvtxs, \
           2*MAXDEG_LEAF);
     }
   }

@@ -19,10 +19,8 @@
 
 #include "order.h"
 #include "partition.h"
+#include "imetis.h"
 
-#undef real_t
-#include <metis.h>
-#define real_t mtmetis_real_t
 
 
 
@@ -32,12 +30,12 @@
 ******************************************************************************/
 
 
-typedef struct arg_t {
-  ctrl_t * ctrl;
-  graph_t * graph;
-  pid_t * perm;
-  pid_t ** dperm;
-} arg_t;
+typedef struct arg_type {
+  ctrl_type * ctrl;
+  graph_type * graph;
+  pid_type * perm;
+  pid_type ** dperm;
+} arg_type;
 
 
 
@@ -47,14 +45,14 @@ typedef struct arg_t {
 ******************************************************************************/
 
 
-static void __unify_perm(
-    pid_t const * const * const dperm,
-    graph_t * const graph,
-    pid_t * const perm)
+static void S_unify_perm(
+    pid_type const * const * const dperm,
+    graph_type * const graph,
+    pid_type * const perm)
 {
-  vtx_t i;
+  vtx_type i;
 
-  tid_t const myid = dlthread_get_id(graph->comm);
+  tid_type const myid = dlthread_get_id(graph->comm);
 
   for (i=0;i<graph->mynvtxs[myid];++i) {
     perm[graph->label[myid][i]] = dperm[myid][i];
@@ -62,47 +60,15 @@ static void __unify_perm(
 }
 
 
-static void __order_nd(
-    ctrl_t * const ctrl,
-    graph_t * const graph,
-    pid_t const offset,
-    pid_t ** const perm) 
+static void S_ser_order_nd(
+    ctrl_type * const ctrl,
+    graph_type * const graph,
+    pid_type const offset,
+    pid_type * const * const perm) 
 {
-  vtx_t i;
-  pid_t * fperm;
-  idx_t options[METIS_NOPTIONS];
+  vtx_type i;
 
-  tid_t const myid = dlthread_get_id(ctrl->comm);
-
-  DL_ASSERT_EQUALS(graph->dist.nthreads,1,"%"PF_TID_T);
-
-  fperm = pid_alloc(graph->mynvtxs[0]);
-
-  if (myid == 0) {
-    dl_start_timer(&(ctrl->timers.metis));
-  }
-
-  dlthread_pool_init(omp_get_num_threads());
-
-  __METIS_SetDefaultOptions(options);
-
-  options[METIS_OPTION_NITER] = ctrl->nrefpass;
-  options[METIS_OPTION_DBGLVL] = 0;
-  options[METIS_OPTION_SEED] = ctrl->seed + myid;
-  options[METIS_OPTION_NSEPS] = ctrl->ncuts;
-  options[METIS_OPTION_UFACTOR] = 1000*(ctrl->ubfactor - 1.0);
-
-  __METIS_NodeND((idx_t*)&graph->mynvtxs[0],(idx_t*)graph->xadj[0], \
-      (idx_t*)graph->adjncy[0],(idx_t*)graph->vwgt[0],options,(idx_t*)fperm, \
-      (idx_t*)perm[0]);
-  
-  dlthread_pool_finalize();
-
-  if (myid == 0) {
-    dl_stop_timer(&(ctrl->timers.metis));
-  }
-
-  dl_free(fperm);
+  metis_nd(ctrl,graph,perm);
 
   /* add my offset */
   for (i=0;i<graph->mynvtxs[0];++i) {
@@ -111,28 +77,28 @@ static void __order_nd(
 }
 
 
-static void __par_order_nd(
-    ctrl_t * const ctrl,
-    graph_t * const graph,
-    pid_t const offset,
-    pid_t ** const perm) 
+static void S_par_order_nd(
+    ctrl_type * const ctrl,
+    graph_type * const graph,
+    pid_type const offset,
+    pid_type ** const perm) 
 {
-  vtx_t v, g, mynvtxs, lvtx, i, nsep, lastvtx;
-  tid_t hmyid, mygroup, lid;
+  vtx_type v, g, mynvtxs, lvtx, i, nsep, lastvtx;
+  tid_type hmyid, mygroup, lid;
   dlthread_comm_t lcomm;
-  pid_t hoff;
-  vtx_t * prefix, * sep;
-  ctrl_t * myctrl;
+  pid_type hoff;
+  vtx_type * prefix, * sep;
+  ctrl_type * myctrl;
 
-  graph_t ** hgraphs;
-  pid_t *** hperm;
+  graph_type ** hgraphs;
+  pid_type *** hperm;
 
-  tid_t const nthreads = dlthread_get_nthreads(ctrl->comm);
-  tid_t const myid = dlthread_get_id(ctrl->comm);
+  tid_type const nthreads = dlthread_get_nthreads(ctrl->comm);
+  tid_type const myid = dlthread_get_id(ctrl->comm);
 
   /* handle the serial case */
   if (nthreads == 1) {
-    __order_nd(ctrl,graph,offset,perm);
+    S_ser_order_nd(ctrl,graph,offset,perm);
     return;
   }
 
@@ -143,11 +109,11 @@ static void __par_order_nd(
     dl_start_timer(&(ctrl->timers.recursion));
   }
 
-  hgraphs = dlthread_get_shmem((sizeof(graph_t*)*2) + (sizeof(pid_t**)*2) + \
-      (sizeof(vtx_t)*(nthreads+1)),ctrl->comm);
+  hgraphs = dlthread_get_shmem((sizeof(graph_type*)*2) + (sizeof(pid_type**)*2) + \
+      (sizeof(vtx_type)*(nthreads+1)),ctrl->comm);
 
-  hperm = (pid_t***)(hgraphs+2);
-  prefix = (vtx_t*)(hperm+2);
+  hperm = (pid_type***)(hgraphs+2);
+  prefix = (vtx_type*)(hperm+2);
 
   sep = vtx_alloc(graph->mynvtxs[myid]);
   nsep = 0;
@@ -164,7 +130,13 @@ static void __par_order_nd(
   }
 
   /* extract subgraphs and structure based on number of calling threads */
-  mygroup = par_graph_extract_halves(graph,(pid_t const **)perm,hgraphs);
+  mygroup = par_graph_extract_halves(graph,(pid_type const **)perm,hgraphs);
+
+  /* free graph structure */
+  dl_free(graph->xadj[myid]);
+  dl_free(graph->adjncy[myid]);
+  dl_free(graph->adjwgt[myid]);
+  dl_free(graph->vwgt[myid]);
 
   if (mygroup == 0) {
     hoff = offset;
@@ -172,6 +144,13 @@ static void __par_order_nd(
     hoff = hgraphs[0]->nvtxs + offset;
   }
   dlthread_barrier(ctrl->comm);
+
+  if (myid == 0) {
+    graph->free_xadj = 0;
+    graph->free_adjncy = 0;
+    graph->free_vwgt = 0;
+    graph->free_adjwgt = 0;
+  }
 
   /* order my portion of the separator */
   lastvtx = graph->nvtxs + offset - prefix[myid];
@@ -189,14 +168,14 @@ static void __par_order_nd(
 
   DL_ASSERT_EQUALS((size_t)myctrl->comm,(size_t)hgraphs[mygroup]->comm,"%zu");
 
-  hperm[mygroup] = dlthread_get_shmem(sizeof(pid_t*)*nthreads,lcomm);
+  hperm[mygroup] = dlthread_get_shmem(sizeof(pid_type*)*nthreads,lcomm);
   hperm[mygroup][hmyid] = pid_alloc(hgraphs[mygroup]->mynvtxs[hmyid]);
 
   if (myid == 0) {
     dl_stop_timer(&(ctrl->timers.recursion));
   }
 
-  __par_order_nd(myctrl,hgraphs[mygroup],hoff,hperm[mygroup]);
+  S_par_order_nd(myctrl,hgraphs[mygroup],hoff,hperm[mygroup]);
 
   if (myid == 0) {
     ctrl_combine_timers(ctrl,myctrl);
@@ -223,52 +202,6 @@ static void __par_order_nd(
 }
 
 
-static void __nd_func(
-    void * const ptr)
-{
-  tid_t myid, nthreads;
-  arg_t * arg;
-  ctrl_t * ctrl;
-  graph_t * graph;
-  pid_t * perm;
-  pid_t ** dperm;
-
-  arg = ptr;
-
-  ctrl = arg->ctrl;
-  graph = arg->graph;
-  perm = arg->perm;
-  dperm = arg->dperm;
-
-  myid = dlthread_get_id(ctrl->comm);
-  nthreads = dlthread_get_nthreads(ctrl->comm);
-
-  dlthread_barrier(ctrl->comm);
-
-  if (nthreads > 1) {
-    par_partition_pre(ctrl,graph);
-  }
-
-  dperm[myid] = pid_alloc(graph->mynvtxs[myid]);
-
-  if (myid == 0) {
-    dl_start_timer(&(ctrl->timers.ordering));
-  }
-
-  __par_order_nd(ctrl,graph,0,dperm);
-
-  if (myid == 0) {
-    dl_stop_timer(&(ctrl->timers.ordering));
-  }
-
-  if (perm) {
-    __unify_perm((pid_t const **)dperm,graph,perm);
-  }
-
-  dl_free(dperm[myid]);
-}
-
-
 
 
 /******************************************************************************
@@ -276,29 +209,16 @@ static void __nd_func(
 ******************************************************************************/
 
 
-void order_nd(
-    ctrl_t * const ctrl,
-    graph_t * const graph,
-    pid_t * const perm) 
+void par_order_nd(
+    ctrl_type * const ctrl,
+    graph_type * const graph,
+    pid_type ** const perm) 
 {
-  pid_t ** dperm;
-  arg_t arg;
-
-  tid_t const nthreads = graph->dist.nthreads;
-
-  dperm = r_pid_alloc(nthreads);
-
-  graph->comm = DLTHREAD_COMM_ROOT;
-  ctrl->comm = DLTHREAD_COMM_ROOT;
-
-  arg.ctrl = ctrl;
-  arg.graph = graph;
-  arg.perm = perm;
-  arg.dperm = dperm;
-
-  dlthread_launch(nthreads,&__nd_func,&arg);
-
-  dl_free(dperm);
+  if (ctrl->nthreads > 1) {
+    S_par_order_nd(ctrl,graph,0,perm);
+  } else {
+    S_ser_order_nd(ctrl,graph,0,perm);
+  }
 }
 
 

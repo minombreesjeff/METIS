@@ -28,14 +28,14 @@
 
 
 #define DLMEM_PREFIX kwnbrinfo
-#define DLMEM_TYPE_T kwnbrinfo_t
+#define DLMEM_TYPE_T kwnbrinfo_type
 #include <dlmem_funcs.h>
 #undef DLMEM_TYPE_T
 #undef DLMEM_PREFIX
 
 
 #define DLMEM_PREFIX adjinfo
-#define DLMEM_TYPE_T adjinfo_t
+#define DLMEM_TYPE_T adjinfo_type
 #include <dlmem_funcs.h>
 #undef DLMEM_TYPE_T
 #undef DLMEM_PREFIX
@@ -60,16 +60,16 @@ static size_t const NPOOLS = 64;
 
 
 void par_kwinfo_create(
-    ctrl_t * const ctrl,
-    graph_t * const graph)
+    ctrl_type * const ctrl,
+    graph_type * const graph)
 {
   size_t pool;
-  kwinfo_t * kwinfo;
+  kwinfo_type * kwinfo;
 
-  tid_t const myid = dlthread_get_id(ctrl->comm);
-  tid_t const nthreads = dlthread_get_nthreads(ctrl->comm);
+  tid_type const myid = dlthread_get_id(ctrl->comm);
+  tid_type const nthreads = dlthread_get_nthreads(ctrl->comm);
 
-  kwinfo = dlthread_get_shmem(sizeof(kwinfo_t)*nthreads,ctrl->comm);
+  kwinfo = dlthread_get_shmem(sizeof(kwinfo_type)*nthreads,ctrl->comm);
 
   kwinfo += myid;
 
@@ -82,9 +82,9 @@ void par_kwinfo_create(
   kwinfo->basebits = size_uplog2(dl_max(graph->mynedges[myid]*4,MIN_NNBRPOOL));
   kwinfo->basennbrs = 1 << kwinfo->basebits;
   kwinfo->npools = NPOOLS;
-  kwinfo->nbrpools = malloc(sizeof(adjinfo_t*)*kwinfo->npools);
+  kwinfo->nbrpools = malloc(sizeof(adjinfo_type*)*kwinfo->npools);
 
-  kwinfo->nbrpools[0] = malloc(sizeof(adjinfo_t)*kwinfo->basennbrs);
+  kwinfo->nbrpools[0] = malloc(sizeof(adjinfo_type)*kwinfo->basennbrs);
   for (pool=1;pool<kwinfo->npools;++pool) {
     kwinfo->nbrpools[pool] = NULL;
   }
@@ -100,14 +100,14 @@ void par_kwinfo_create(
 
 
 void par_kwinfo_free(
-    graph_t * const graph)
+    graph_type * const graph)
 {
   size_t n;
-  tid_t pid;
-  kwinfo_t * kwinfo;
+  tid_type pid;
+  kwinfo_type * kwinfo;
 
-  tid_t const myid = dlthread_get_id(graph->comm);
-  tid_t const nthreads = dlthread_get_nthreads(graph->comm);
+  tid_type const myid = dlthread_get_id(graph->comm);
+  tid_type const nthreads = dlthread_get_nthreads(graph->comm);
 
   for (pid=myid;pid<graph->dist.nthreads;pid+=nthreads) {
     kwinfo = graph->kwinfo+pid;

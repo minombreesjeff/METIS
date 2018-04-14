@@ -101,6 +101,11 @@ DLISET_TYPE_T DLISET_PUB(iset_indexof)(
     DLISET_PUB(iset_t) const * set);
 
 
+void DLISET_PUB(iset_expand)(
+    DLISET_TYPE_T nmax,
+    DLISET_PUB(iset_t) * set);
+
+
 void DLISET_PUB(iset_free)(
     DLISET_PUB(iset_t) * ptr);
 

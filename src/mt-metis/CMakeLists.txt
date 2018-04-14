@@ -3,6 +3,7 @@ project(MTMETIS)
 
 find_package(OpenMP REQUIRED)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 
 if (DEFINED DEBUG OR DEFINED ASSERT)
   if (DEFINED DEBUG)
@@ -32,18 +33,29 @@ else()
 endif()
 
 if (DEFINED BIGEDGES)
-  add_definitions(-DBOWSTRING_64BIT_EDGES=${BIGEDGES})
+  add_definitions(-DWILDRIVER_INDEX_TYPE=uint64_t)
   add_definitions(-DMTMETIS_64BIT_EDGES=${BIGEDGES})
+else()
+  add_definitions(-DWILDRIVER_INDEX_TYPE=uint32_t)
 endif()
 
 if (DEFINED BIGVERTICES)
-  add_definitions(-DBOWSTRING_64BIT_VERTICES=${BIGVERTICES})
+  add_definitions(-DWILDRIVER_DIMENSION_TYPE=uint64_t)
   add_definitions(-DMTMETIS_64BIT_VERTICES=${BIGVERTICES})
+else()
+  add_definitions(-DWILDRIVER_DIMENSION_TYPE=uint32_t)
 endif()
 
 if (DEFINED BIGWEIGHTS)
-  add_definitions(-DBOWSTRING_64BIT_WEIGHTS=${BIGWEIGHTS})
+  add_definitions(-DWILDRIVER_VALUE_TYPE=int64_t)
   add_definitions(-DMTMETIS_64BIT_WEIGHTS=${BIGWEIGHTS})
+else()
+  add_definitions(-DWILDRIVER_VALUE_TYPE=int32_t)
+endif()
+
+if (DEFINED BIGPARTITIONS)
+  add_definitions(-DWILDRIVER_64BIT_PARTITIONS=${BIGPARTITIONS})
+  add_definitions(-DMTMETIS_64BIT_PARTITIONS=${BIGPARTITIONS})
 endif()
 
 if (DEFINED BIGEDGES OR DEFINED BIGVERTICES OR DEFINED BIGWEIGHTS)
@@ -57,7 +69,7 @@ else()
 endif()
 set(REQ_LIBS ${REQ_LIBS} m)
 
-if (DEFINED DEVEL)
+if (DEFINED DEVEL AND NOT DEVEL EQUAL 0)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror") 
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall") 
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wextra") 
@@ -84,23 +96,30 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 add_definitions(-D_POSIX_C_SOURCE=1)
 
 # handle graph utils wgts
-add_definitions(-DBOWSTRING_INT_WEIGHTS=1)
+add_definitions(-DWILDRIVER_INT_WEIGHTS=1)
 
 include_directories("${CMAKE_SOURCE_DIR}/include")
 include_directories("${DOMLIB_PATH}")
-include_directories("${BOWSTRING_PATH}/include")
+include_directories("${WILDRIVER_PATH}/include")
 include_directories("${METIS_PATH}/include")
 include_directories("${METIS_PATH}/libmetis")
 include_directories("${METIS_PATH}/GKlib")
-set(BOWSTRING_LIB_PATH "${CMAKE_SOURCE_DIR}/${BOWSTRING_PATH}/src")
+set(WILDRIVER_LIB_PATH "${CMAKE_SOURCE_DIR}/${WILDRIVER_PATH}/src")
 set(METIS_LIB_PATH "${CMAKE_SOURCE_DIR}/${METIS_PATH}/libmetis")
-add_subdirectory("include")
-add_subdirectory("src")
 
-if (DEFINED TESTS)
+add_subdirectory("include")
+
+
+if (DEFINED TESTS AND NOT TESTS EQUAL 0)
   enable_testing()
-  add_subdirectory("apitest")
 endif()
 
+# build wildriver first
+add_subdirectory("wildriver")
 
+add_subdirectory("src")
+
+if (DEFINED TESTS AND NOT TESTS EQUAL 0)
+  add_subdirectory(apitest)
+endif()
 

@@ -26,9 +26,7 @@
 #define ONE_SIDED 1
 
 
-#undef real_t
 #include <metis.h>
-#define real_t mtmetis_real_t
 
 
 
@@ -38,18 +36,18 @@
 ******************************************************************************/
 
 
-typedef enum lock_state_t {
+typedef enum lock_state_type {
   UNLOCKED = -1,
   PARTA_LOCKED = MTMETIS_VSEP_PARTA,
   PARTB_LOCKED = MTMETIS_VSEP_PARTB,
   SEP_LOCKED = MTMETIS_VSEP_SEP,
   BOUNDARY_LOCKED = MTMETIS_VSEP_SEP+1 
-} lock_state_t;
+} lock_state_type;
 
 
-typedef struct update_t {
-  vtx_t v; 
-} update_t;
+typedef struct update_type {
+  vtx_type v; 
+} update_type;
 
 
 
@@ -60,8 +58,8 @@ typedef struct update_t {
 
 
 #define DLPQ_PREFIX vw
-#define DLPQ_KEY_T wgt_t
-#define DLPQ_VAL_T vtx_t
+#define DLPQ_KEY_T wgt_type
+#define DLPQ_VAL_T vtx_type
 #define DLPQ_STATIC
 #include "dlpq_headers.h"
 #undef DLPQ_STATIC
@@ -71,7 +69,7 @@ typedef struct update_t {
 
 
 #define DLBUFFER_PREFIX update
-#define DLBUFFER_TYPE_T update_t
+#define DLBUFFER_TYPE_T update_type
 #define DLBUFFER_STATIC 1
 #include "dlbuffer_headers.h"
 #undef DLBUFFER_STATIC
@@ -80,7 +78,7 @@ typedef struct update_t {
 
 
 #define DLCB_PREFIX update
-#define DLCB_TYPE_T update_t
+#define DLCB_TYPE_T update_type
 #define DLCB_BUFFER_PREFIX update_buffer
 #define DLCB_BUFFER_TYPE_T update_buffer_t
 #define DLCB_STATIC 1
@@ -109,9 +107,9 @@ static size_t const SERIAL_FM_FACTOR = 8192;
 ******************************************************************************/
 
 
-static inline int __valid_move(
-    vtx_t const v,
-    pid_t const side,
+static inline int S_valid_move(
+    vtx_type const v,
+    pid_type const side,
     int const * const locked)
 {
   int l;
@@ -121,19 +119,19 @@ static inline int __valid_move(
 }
 
 
-static inline void __lock(
-    vtx_t const v,
+static inline void S_lock(
+    vtx_type const v,
     int * const locked,
-    pid_t const side)
+    pid_type const side)
 {
   locked[v] = side;
 }
 
 
-static inline void __sync_pwgts(
-    tid_t const myid,
-    wgt_t * const gpwgts,
-    wgt_t * const lpwgts,
+static inline void S_sync_pwgts(
+    tid_type const myid,
+    wgt_type * const gpwgts,
+    wgt_type * const lpwgts,
     dlthread_comm_t const comm)
 {
   /* turn local pwgts into deltas */
@@ -162,33 +160,33 @@ static inline void __sync_pwgts(
 }
 
 
-static inline void __update_neighbor(
-    pid_t const side,
-    vtx_t const v,
-    tid_t const myid,
+static inline void S_update_neighbor(
+    pid_type const side,
+    vtx_type const v,
+    tid_type const myid,
     vw_pq_t * const q,
     vtx_iset_t * const bnd,
-    vsnbrinfo_t * const * const gnbrinfo,
-    wgt_t * const pwgts,
-    graph_t const * const graph)
+    vsnbrinfo_type * const * const gnbrinfo,
+    wgt_type * const pwgts,
+    graph_type const * const graph)
 {
-  vtx_t k, lvtx;
-  adj_t j;
-  tid_t nbrid;
-  wgt_t gain;
+  vtx_type k, lvtx;
+  adj_type j;
+  tid_type nbrid;
+  wgt_type gain;
 
-  vtx_t const mynvtxs = graph->mynvtxs[myid];
-  adj_t const * const xadj = graph->xadj[myid];
-  vtx_t const * const adjncy = graph->adjncy[myid];
-  wgt_t const * const * const gvwgt = (wgt_t const **)graph->vwgt;
-  pid_t * const * const gwhere = graph->where;
+  vtx_type const mynvtxs = graph->mynvtxs[myid];
+  adj_type const * const xadj = graph->xadj[myid];
+  vtx_type const * const adjncy = graph->adjncy[myid];
+  wgt_type const * const * const gvwgt = (wgt_type const **)graph->vwgt;
+  pid_type * const * const gwhere = graph->where;
 
-  pid_t const other = side ^ 0x01;
+  pid_type const other = side ^ 0x01;
 
   /* if I own the neighboring vertex, perform the update myself */
   if (gwhere[myid][v] == other) {
     /* re-calculate my nrbinfo */
-    __calc_conn(v,myid,mynvtxs,xadj,adjncy,gvwgt,(pid_t const **)gwhere, \
+    S_calc_conn(v,myid,mynvtxs,xadj,adjncy,gvwgt,(pid_type const **)gwhere, \
         graph->dist,gnbrinfo[myid][v].con);
 
     /* update neighbors of the vertices pulled into the separator */
@@ -239,20 +237,20 @@ static inline void __update_neighbor(
 }
 
 
-static inline pid_t __pick_side_local(
-    tid_t const myid,
-    wgt_t const * const vwgt,
-    wgt_t const * const pwgts,
-    wgt_t const maxpwgt,
-    vsnbrinfo_t const * const nbrinfo,
+static inline pid_type S_pick_side_local(
+    tid_type const myid,
+    wgt_type const * const vwgt,
+    wgt_type const * const pwgts,
+    wgt_type const maxpwgt,
+    vsnbrinfo_type const * const nbrinfo,
     vw_pq_t * const * const q)
 {
-  vtx_t p, v;
-  pid_t side;
+  vtx_type p, v;
+  pid_type side;
 
   /* part next move properties */
-  vtx_t vtx[2];
-  wgt_t wgt[2], pri[2];
+  vtx_type vtx[2];
+  wgt_type wgt[2], pri[2];
 
   /* determine stats for each side */
   for (p=0;p<MTMETIS_VSEP_SEP;++p) {
@@ -306,22 +304,22 @@ static inline pid_t __pick_side_local(
 }
 
 
-static inline pid_t __pick_side(
-    graph_t const * const graph,
-    wgt_t const * const pwgts,
-    wgt_t const maxpwgt,
-    vsnbrinfo_t const * const * const gnbrinfo,
+static inline pid_type S_pick_side(
+    graph_type const * const graph,
+    wgt_type const * const pwgts,
+    wgt_type const maxpwgt,
+    vsnbrinfo_type const * const * const gnbrinfo,
     vw_pq_t * const * const q)
 {
-  vtx_t p, v, g;
-  tid_t myid;
-  pid_t side;
+  vtx_type p, v, g;
+  tid_type myid;
+  pid_type side;
 
   /* part next move properties */
-  vtx_t vtx[2];
-  wgt_t wgt[2], pri[2];
+  vtx_type vtx[2];
+  wgt_type wgt[2], pri[2];
 
-  wgt_t const * const * const gvwgt = (wgt_t const **)graph->vwgt;
+  wgt_type const * const * const gvwgt = (wgt_type const **)graph->vwgt;
 
   /* determine stats for each side */
   for (p=0;p<MTMETIS_VSEP_SEP;++p) {
@@ -377,24 +375,24 @@ static inline pid_t __pick_side(
 }
 
 
-static void __fix_iface(
-    ctrl_t * const ctrl,
-    graph_t const * const graph,
-    vsinfo_t * const vsinfo,
-    vtx_t const * const iface,
-    vtx_t const niface)
+static void S_fix_iface(
+    ctrl_type * const ctrl,
+    graph_type const * const graph,
+    vsinfo_type * const vsinfo,
+    vtx_type const * const iface,
+    vtx_type const niface)
 {
-  vtx_t i, k, v;
-  adj_t j;
+  vtx_type i, k, v;
+  adj_type j;
 
-  tid_t const myid = dlthread_get_id(ctrl->comm);
+  tid_type const myid = dlthread_get_id(ctrl->comm);
 
-  vtx_t const mynvtxs = graph->mynvtxs[myid];
-  adj_t const * const xadj = graph->xadj[myid];
-  vtx_t const * const adjncy = graph->adjncy[myid];
-  wgt_t const * const * const gvwgt = (wgt_t const **)graph->vwgt;
+  vtx_type const mynvtxs = graph->mynvtxs[myid];
+  adj_type const * const xadj = graph->xadj[myid];
+  vtx_type const * const adjncy = graph->adjncy[myid];
+  wgt_type const * const * const gvwgt = (wgt_type const **)graph->vwgt;
 
-  vsnbrinfo_t * const nbrinfo = vsinfo->nbrinfo;
+  vsnbrinfo_type * const nbrinfo = vsinfo->nbrinfo;
   vtx_iset_t * const bnd = vsinfo->bnd;
 
   if (iface == NULL || niface > bnd->size*7) {
@@ -403,8 +401,8 @@ static void __fix_iface(
       for (j=xadj[v];j<xadj[v+1];++j) {
         k = adjncy[j];
         if (k >= mynvtxs) {
-          __calc_conn(v,myid,mynvtxs,xadj,adjncy,gvwgt, \
-              (pid_t const **)graph->where,graph->dist,nbrinfo[v].con);
+          S_calc_conn(v,myid,mynvtxs,xadj,adjncy,gvwgt, \
+              (pid_type const **)graph->where,graph->dist,nbrinfo[v].con);
           break;
         }
       }
@@ -413,29 +411,29 @@ static void __fix_iface(
     for (i=0;i<niface;++i) {
       v = iface[i];
       if (graph->where[myid][v] == MTMETIS_VSEP_SEP) {
-        __calc_conn(v,myid,mynvtxs,xadj,adjncy,gvwgt, \
-            (pid_t const **)graph->where,graph->dist,nbrinfo[v].con);
+        S_calc_conn(v,myid,mynvtxs,xadj,adjncy,gvwgt, \
+            (pid_type const **)graph->where,graph->dist,nbrinfo[v].con);
       }
     }
   }
 }
 
 
-static void __metis_refine(
-    ctrl_t const * const ctrl,
-    graph_t * const graph,
+static void S_metis_refine(
+    ctrl_type const * const ctrl,
+    graph_type * const graph,
     int const * const locked)
 {
-  vtx_t i, k;
-  adj_t j;
+  vtx_type i, k;
+  adj_type j;
   idx_t lnedges;
-  wgt_t lpwgts[3];
+  wgt_type lpwgts[3];
   idx_t * xadj;
   idx_t * adjncy;
 
-  tid_t const myid = dlthread_get_id(ctrl->comm);
+  tid_type const myid = dlthread_get_id(ctrl->comm);
 
-  vtx_t const mynvtxs = graph->mynvtxs[myid];
+  vtx_type const mynvtxs = graph->mynvtxs[myid];
 
   xadj = malloc(sizeof(idx_t)*(mynvtxs+1));
   adjncy = malloc(sizeof(idx_t)*(graph->xadj[myid][mynvtxs]));
@@ -481,37 +479,37 @@ static void __metis_refine(
 ******************************************************************************/
 
 
-static vtx_t __flow_GREEDY(
-    ctrl_t * const ctrl, 
-    graph_t * const graph,
-    vsinfo_t * const vsinfo,
-    vsnbrinfo_t * const * const gnbrinfo,
+static vtx_type S_flow_GREEDY(
+    ctrl_type * const ctrl, 
+    graph_type * const graph,
+    vsinfo_type * const vsinfo,
+    vsnbrinfo_type * const * const gnbrinfo,
     update_combuffer_t * const combuffer,
     vw_pq_t * const q,
-    pid_t const side,
-    wgt_t * const lpwgts,
-    wgt_t const maxpwgt)
+    pid_type const side,
+    wgt_type * const lpwgts,
+    wgt_type const maxpwgt)
 {
-  vtx_t i, k, v, nmoves, lvtx;
-  adj_t j;
-  wgt_t newwgt, gain;
-  pid_t other;
-  tid_t nbrid, o, t;
-  update_t up;
-  vsnbrinfo_t * myrinfo;
+  vtx_type i, k, v, nmoves, lvtx;
+  adj_type j;
+  wgt_type newwgt, gain;
+  pid_type other;
+  tid_type nbrid, o, t;
+  update_type up;
+  vsnbrinfo_type * myrinfo;
   update_buffer_t * updates;
 
-  tid_t const myid = dlthread_get_id(ctrl->comm);
-  tid_t const nthreads = dlthread_get_nthreads(ctrl->comm);
+  tid_type const myid = dlthread_get_id(ctrl->comm);
+  tid_type const nthreads = dlthread_get_nthreads(ctrl->comm);
 
-  vtx_t const mynvtxs = graph->mynvtxs[myid];
-  adj_t const * const xadj = graph->xadj[myid];
-  vtx_t const * const adjncy = graph->adjncy[myid];
-  wgt_t const * const * const gvwgt = (wgt_t const **)graph->vwgt;
+  vtx_type const mynvtxs = graph->mynvtxs[myid];
+  adj_type const * const xadj = graph->xadj[myid];
+  vtx_type const * const adjncy = graph->adjncy[myid];
+  wgt_type const * const * const gvwgt = (wgt_type const **)graph->vwgt;
 
-  pid_t * const * const gwhere = graph->where;
+  pid_type * const * const gwhere = graph->where;
 
-  vsnbrinfo_t * const nbrinfo = vsinfo->nbrinfo;
+  vsnbrinfo_type * const nbrinfo = vsinfo->nbrinfo;
   vtx_iset_t * const bnd = vsinfo->bnd;
 
   /* the side I'm not moving to */
@@ -595,7 +593,7 @@ static vtx_t __flow_GREEDY(
       }
 
       if (nbrid == myid) {
-        __update_neighbor(side,lvtx,myid,q,bnd,gnbrinfo,lpwgts,graph);
+        S_update_neighbor(side,lvtx,myid,q,bnd,gnbrinfo,lpwgts,graph);
       } else {
         /* let the neighboring thread know about the move */
         up.v = lvtx;
@@ -611,10 +609,10 @@ static vtx_t __flow_GREEDY(
   for (o=1;o<nthreads;++o) {
     t = (myid + o) % nthreads;
     updates = update_combuffer_get(t,combuffer);
-    for (i=0;i<(vtx_t)updates->size;++i) {
+    for (i=0;i<(vtx_type)updates->size;++i) {
       up = updates->elements[i];
       v = up.v;
-      __update_neighbor(side,v,myid,NULL,bnd,gnbrinfo,lpwgts,graph);
+      S_update_neighbor(side,v,myid,NULL,bnd,gnbrinfo,lpwgts,graph);
     }
   }
 
@@ -624,39 +622,39 @@ static vtx_t __flow_GREEDY(
 }
 
 
-static vtx_t __flow_GREEDYI(
-    ctrl_t * const ctrl, 
-    graph_t * const graph,
-    vsinfo_t * const vsinfo,
-    vsnbrinfo_t * const * const gnbrinfo,
+static vtx_type S_flow_GREEDYI(
+    ctrl_type * const ctrl, 
+    graph_type * const graph,
+    vsinfo_type * const vsinfo,
+    vsnbrinfo_type * const * const gnbrinfo,
     update_combuffer_t * const combuffer,
     vw_pq_t * const q,
-    pid_t const side,
-    wgt_t * const lpwgts,
-    wgt_t const maxpwgt,
-    vtx_t const * const iface,
-    vtx_t const niface)
+    pid_type const side,
+    wgt_type * const lpwgts,
+    wgt_type const maxpwgt,
+    vtx_type const * const iface,
+    vtx_type const niface)
 {
-  vtx_t i, k, v, nmoves, lvtx;
-  adj_t j;
-  wgt_t newwgt, gain;
-  pid_t other;
-  tid_t nbrid, o, t;
-  update_t up;
-  vsnbrinfo_t * myrinfo;
+  vtx_type i, k, v, nmoves, lvtx;
+  adj_type j;
+  wgt_type newwgt, gain;
+  pid_type other;
+  tid_type nbrid, o, t;
+  update_type up;
+  vsnbrinfo_type * myrinfo;
   update_buffer_t * updates;
 
-  tid_t const myid = dlthread_get_id(ctrl->comm);
-  tid_t const nthreads = dlthread_get_nthreads(ctrl->comm);
+  tid_type const myid = dlthread_get_id(ctrl->comm);
+  tid_type const nthreads = dlthread_get_nthreads(ctrl->comm);
 
-  vtx_t const mynvtxs = graph->mynvtxs[myid];
-  adj_t const * const xadj = graph->xadj[myid];
-  vtx_t const * const adjncy = graph->adjncy[myid];
-  wgt_t const * const * const gvwgt = (wgt_t const **)graph->vwgt;
+  vtx_type const mynvtxs = graph->mynvtxs[myid];
+  adj_type const * const xadj = graph->xadj[myid];
+  vtx_type const * const adjncy = graph->adjncy[myid];
+  wgt_type const * const * const gvwgt = (wgt_type const **)graph->vwgt;
 
-  pid_t * const * const gwhere = graph->where;
+  pid_type * const * const gwhere = graph->where;
 
-  vsnbrinfo_t * const nbrinfo = vsinfo->nbrinfo;
+  vsnbrinfo_type * const nbrinfo = vsinfo->nbrinfo;
   vtx_iset_t * const bnd = vsinfo->bnd;
 
   /* the side I'm not moving to */
@@ -741,7 +739,7 @@ static vtx_t __flow_GREEDYI(
       }
 
       if (nbrid == myid) {
-        __update_neighbor(side,lvtx,myid,NULL,bnd,gnbrinfo,lpwgts,graph);
+        S_update_neighbor(side,lvtx,myid,NULL,bnd,gnbrinfo,lpwgts,graph);
       } else {
         /* let the neighboring thread know about the move */
         up.v = lvtx;
@@ -757,10 +755,10 @@ static vtx_t __flow_GREEDYI(
   for (o=1;o<nthreads;++o) {
     t = (myid + o) % nthreads;
     updates = update_combuffer_get(t,combuffer);
-    for (i=0;i<(vtx_t)updates->size;++i) {
+    for (i=0;i<(vtx_type)updates->size;++i) {
       up = updates->elements[i];
       v = up.v;
-      __update_neighbor(side,v,myid,NULL,bnd,gnbrinfo,lpwgts,graph);
+      S_update_neighbor(side,v,myid,NULL,bnd,gnbrinfo,lpwgts,graph);
     }
   }
 
@@ -770,40 +768,40 @@ static vtx_t __flow_GREEDYI(
 }
 
 
-static vtx_t __flow_SFM(
-    ctrl_t * const ctrl, 
-    graph_t * const graph,
-    vsinfo_t * const vsinfo,
-    vtx_t * const moves,
-    vtx_t * const pullmk,
-    vtx_t * const pulled,
+static vtx_type S_flow_SFM(
+    ctrl_type * const ctrl, 
+    graph_type * const graph,
+    vsinfo_type * const vsinfo,
+    vtx_type * const moves,
+    vtx_type * const pullmk,
+    vtx_type * const pulled,
     vw_pq_t * const q,
     int * const locked,
-    pid_t const side,
-    wgt_t * const lpwgts,
-    wgt_t const maxpwgt)
+    pid_type const side,
+    wgt_type * const lpwgts,
+    wgt_type const maxpwgt)
 {
-  vtx_t i, k, v, m, nmoves, minmove;
-  adj_t j, npulled, l;
-  wgt_t minsep, newbal, minbal, gain, cursep;
-  pid_t p, other;
-  vsnbrinfo_t * myrinfo;
+  vtx_type i, k, v, m, nmoves, minmove;
+  adj_type j, npulled, l;
+  wgt_type minsep, newbal, minbal, gain, cursep;
+  pid_type p, other;
+  vsnbrinfo_type * myrinfo;
 
-  tid_t const myid = dlthread_get_id(ctrl->comm);
-  tid_t const nthreads = dlthread_get_nthreads(ctrl->comm);
+  tid_type const myid = dlthread_get_id(ctrl->comm);
+  tid_type const nthreads = dlthread_get_nthreads(ctrl->comm);
 
-  vtx_t const mynvtxs = graph->mynvtxs[myid];
-  adj_t const * const xadj = graph->xadj[myid];
-  vtx_t const * const adjncy = graph->adjncy[myid];
-  wgt_t const * const * const gvwgt = (wgt_t const **)graph->vwgt;
-  wgt_t const * const vwgt = graph->vwgt[myid];
+  vtx_type const mynvtxs = graph->mynvtxs[myid];
+  adj_type const * const xadj = graph->xadj[myid];
+  vtx_type const * const adjncy = graph->adjncy[myid];
+  wgt_type const * const * const gvwgt = (wgt_type const **)graph->vwgt;
+  wgt_type const * const vwgt = graph->vwgt[myid];
 
-  pid_t * const * const gwhere = graph->where; 
-  pid_t * const where = gwhere[myid]; 
-  vsnbrinfo_t * const nbrinfo = vsinfo->nbrinfo;
+  pid_type * const * const gwhere = graph->where; 
+  pid_type * const where = gwhere[myid]; 
+  vsnbrinfo_type * const nbrinfo = vsinfo->nbrinfo;
   vtx_iset_t * const bnd = vsinfo->bnd;
 
-  vtx_t const limit = ctrl->hillsize/sqrt(nthreads);
+  vtx_type const limit = ctrl->hillsize/sqrt(nthreads);
 
   other = side ^ 0x01;
 
@@ -816,7 +814,7 @@ static vtx_t __flow_SFM(
   vw_pq_clear(q);
   for (i=0;i<bnd->size;++i) {
     v = bnd->ind[i];
-    if (__valid_move(v,side,locked)) {
+    if (S_valid_move(v,side,locked)) {
       DL_ASSERT_EQUALS(MTMETIS_VSEP_SEP,where[v],"%"PF_PID_T);
       myrinfo = nbrinfo + v;
       gain = vwgt[v] - myrinfo->con[other];
@@ -830,7 +828,7 @@ static vtx_t __flow_SFM(
   while (nmoves < mynvtxs && q->size > 0) {
     v = vw_pq_pop(q);
 
-    DL_ASSERT(__valid_move(v,side,locked),"Pulled a vertex " \
+    DL_ASSERT(S_valid_move(v,side,locked),"Pulled a vertex " \
         "from %"PF_PID_T" but is locked to %"PF_PID_T,side,locked[v]);
     DL_ASSERT_EQUALS(MTMETIS_VSEP_SEP,where[v],"%"PF_PID_T);
     DL_ASSERT_EQUALS(vtx_iset_contains(v,bnd),1,"%d");
@@ -910,15 +908,15 @@ static vtx_t __flow_SFM(
           where[k] = MTMETIS_VSEP_SEP;
 
           /* calculate the connectivity */
-          __calc_conn(k,myid,mynvtxs,xadj,adjncy,gvwgt, \
-              (pid_t const **)gwhere,graph->dist,nbrinfo[k].con);
+          S_calc_conn(k,myid,mynvtxs,xadj,adjncy,gvwgt, \
+              (pid_type const **)gwhere,graph->dist,nbrinfo[k].con);
 
           /* update the partition weights */
           lpwgts[other] -= vwgt[k];
           lpwgts[MTMETIS_VSEP_SEP] += vwgt[k];
 
           /* add the vertex to the priority queue for further movement */
-          if (__valid_move(k,side,locked)) {
+          if (S_valid_move(k,side,locked)) {
             gain = vwgt[k] - nbrinfo[k].con[other];
             vw_pq_push(gain,k,q);
           }
@@ -934,7 +932,7 @@ static vtx_t __flow_SFM(
                 /* update connectivity */
                 nbrinfo[m].con[other] -= vwgt[k];
 
-                if (__valid_move(m,side,locked)) {
+                if (S_valid_move(m,side,locked)) {
                   /* update the value for moving this vertex in the same
                    * diretion */
                   if (vw_pq_contains(m,q)) {
@@ -984,7 +982,7 @@ static vtx_t __flow_SFM(
         }
       }
     }
-    __calc_conn(v,myid,mynvtxs,xadj,adjncy,gvwgt,(pid_t const **)gwhere, \
+    S_calc_conn(v,myid,mynvtxs,xadj,adjncy,gvwgt,(pid_type const **)gwhere, \
         graph->dist,nbrinfo[v].con);
 
     /* push nodes back out of the separator */ 
@@ -1014,7 +1012,7 @@ static vtx_t __flow_SFM(
         }
       }
 
-      __calc_conn(k,myid,mynvtxs,xadj,adjncy,gvwgt,(pid_t const **)gwhere, \
+      S_calc_conn(k,myid,mynvtxs,xadj,adjncy,gvwgt,(pid_type const **)gwhere, \
           graph->dist,nbrinfo[k].con);
     }
 
@@ -1027,43 +1025,43 @@ static vtx_t __flow_SFM(
 
 
 
-static void __pass_BAL(
-    ctrl_t * const ctrl, 
-    graph_t * const graph,
-    vsinfo_t * const vsinfo,
-    wgt_t const maxpwgt)
+static void S_pass_BAL(
+    ctrl_type * const ctrl, 
+    graph_type * const graph,
+    vsinfo_type * const vsinfo,
+    wgt_type const maxpwgt)
 {
   unsigned int seed;
-  vtx_t i, k, v, nmoves, lvtx;
-  adj_t j;
-  wgt_t gain;
-  tid_t o, nbrid, t;
-  pid_t side, other;
-  update_t up;
-  wgt_t mvwgt;
-  vtx_t * perm;
-  vsnbrinfo_t * myrinfo;
+  vtx_type i, k, v, nmoves, lvtx;
+  adj_type j;
+  wgt_type gain;
+  tid_type o, nbrid, t;
+  pid_type side, other;
+  update_type up;
+  wgt_type mvwgt;
+  vtx_type * perm;
+  vsnbrinfo_type * myrinfo;
   update_buffer_t * updates;
-  wgt_t lpwgts[3];
+  wgt_type lpwgts[3];
   update_combuffer_t * combuffer;
-  vsnbrinfo_t ** gnbrinfo;
+  vsnbrinfo_type ** gnbrinfo;
   vw_pq_t * q;
 
-  tid_t const myid = dlthread_get_id(ctrl->comm);
-  tid_t const nthreads = dlthread_get_nthreads(ctrl->comm);
+  tid_type const myid = dlthread_get_id(ctrl->comm);
+  tid_type const nthreads = dlthread_get_nthreads(ctrl->comm);
 
-  vtx_t const nvtxs = graph->nvtxs;
-  vtx_t const mynvtxs = graph->mynvtxs[myid];
-  adj_t const * const xadj = graph->xadj[myid];
-  vtx_t const * const adjncy = graph->adjncy[myid];
-  wgt_t const * const * const gvwgt = (wgt_t const **)graph->vwgt;
+  vtx_type const nvtxs = graph->nvtxs;
+  vtx_type const mynvtxs = graph->mynvtxs[myid];
+  adj_type const * const xadj = graph->xadj[myid];
+  vtx_type const * const adjncy = graph->adjncy[myid];
+  wgt_type const * const * const gvwgt = (wgt_type const **)graph->vwgt;
 
-  wgt_t * const pwgts = graph->pwgts;
-  pid_t * const * const gwhere = graph->where;
-  vsnbrinfo_t * const nbrinfo = vsinfo->nbrinfo;
+  wgt_type * const pwgts = graph->pwgts;
+  pid_type * const * const gwhere = graph->where;
+  vsnbrinfo_type * const nbrinfo = vsinfo->nbrinfo;
   vtx_iset_t * const bnd = vsinfo->bnd;
 
-  gnbrinfo = dlthread_get_shmem(sizeof(vsnbrinfo_t*)*nthreads,ctrl->comm);
+  gnbrinfo = dlthread_get_shmem(sizeof(vsnbrinfo_type*)*nthreads,ctrl->comm);
   gnbrinfo[myid] = vsinfo->nbrinfo;
 
   combuffer = update_combuffer_create(ctrl->comm);
@@ -1173,7 +1171,7 @@ static void __pass_BAL(
       }
 
       if (nbrid == myid) {
-        __update_neighbor(side,lvtx,myid,q,bnd,gnbrinfo,lpwgts,graph);
+        S_update_neighbor(side,lvtx,myid,q,bnd,gnbrinfo,lpwgts,graph);
       } else {
         /* let the neighboring thread know about the move */
         up.v = lvtx;
@@ -1191,10 +1189,10 @@ static void __pass_BAL(
   for (o=1;o<nthreads;++o) {
     t = (myid + o) % nthreads;
     updates = update_combuffer_get(t,combuffer);
-    for (i=0;i<(vtx_t)updates->size;++i) {
+    for (i=0;i<(vtx_type)updates->size;++i) {
       up = updates->elements[i];
       v = up.v;
-      __update_neighbor(side,v,myid,NULL,bnd,gnbrinfo,lpwgts,graph);
+      S_update_neighbor(side,v,myid,NULL,bnd,gnbrinfo,lpwgts,graph);
     }
   }
 
@@ -1218,35 +1216,35 @@ static void __pass_BAL(
   vw_pq_free(q);
   dl_free(perm);
 
-  __fix_iface(ctrl,graph,vsinfo,NULL,0);
+  S_fix_iface(ctrl,graph,vsinfo,NULL,0);
 
-  DL_ASSERT(check_vsinfo(vsinfo,graph,(pid_t const **)gwhere), \
+  DL_ASSERT(check_vsinfo(vsinfo,graph,(pid_type const **)gwhere), \
       "Bad vsinfo after balancing");
   DL_ASSERT(check_vsbnd(bnd,graph),"Bad boundary after balancing");
 }
 
 
-static vtx_t __pass_SFM1S(
-    ctrl_t * const ctrl, 
-    graph_t * const graph,
-    vsinfo_t * const vsinfo,
-    vtx_t * const moves,
-    vtx_t * const pullmk,
-    vtx_t * const pulled,
+static vtx_type S_pass_SFM1S(
+    ctrl_type * const ctrl, 
+    graph_type * const graph,
+    vsinfo_type * const vsinfo,
+    vtx_type * const moves,
+    vtx_type * const pullmk,
+    vtx_type * const pulled,
     vw_pq_t * const q, 
     int * const locked,
-    vtx_t const * const iface,
-    vtx_t const niface,
-    wgt_t const maxpwgt)
+    vtx_type const * const iface,
+    vtx_type const niface,
+    wgt_type const maxpwgt)
 {
   size_t d, nnomoves;
-  vtx_t nmoves, totalmoves;
-  pid_t side, o;
-  wgt_t lpwgts[3];
+  vtx_type nmoves, totalmoves;
+  pid_type side, o;
+  wgt_type lpwgts[3];
 
-  tid_t const myid = dlthread_get_id(ctrl->comm);
+  tid_type const myid = dlthread_get_id(ctrl->comm);
 
-  wgt_t * const pwgts = graph->pwgts;
+  wgt_type * const pwgts = graph->pwgts;
 
   totalmoves = 0;
 
@@ -1265,7 +1263,7 @@ static vtx_t __pass_SFM1S(
   for (d=0;d<ctrl->nrefpass*2;++d) {
     side = (d + o) % 2;
 
-    nmoves = __flow_SFM(ctrl,graph,vsinfo,moves,pullmk,pulled,q,locked,side, \
+    nmoves = S_flow_SFM(ctrl,graph,vsinfo,moves,pullmk,pulled,q,locked,side, \
         lpwgts,maxpwgt);
 
     if (nmoves == 0) {
@@ -1278,18 +1276,18 @@ static vtx_t __pass_SFM1S(
     }
   }
 
-  __sync_pwgts(myid,pwgts,lpwgts,ctrl->comm);
+  S_sync_pwgts(myid,pwgts,lpwgts,ctrl->comm);
 
   if (myid == 0) {
     ctrl->seed = ctrl->seed+1;
   }
 
-  __fix_iface(ctrl,graph,vsinfo,iface,niface);
+  S_fix_iface(ctrl,graph,vsinfo,iface,niface);
 
   /* implicit barrier */
   totalmoves = vtx_dlthread_sumreduce(totalmoves,ctrl->comm);
 
-  DL_ASSERT(check_vsinfo(vsinfo,graph,(pid_t const **)graph->where), \
+  DL_ASSERT(check_vsinfo(vsinfo,graph,(pid_type const **)graph->where), \
       "Bad vsinfo after refinement");
   DL_ASSERT(check_vsbnd(vsinfo->bnd,graph),"Bad boundary after " \
       "refinement");
@@ -1302,25 +1300,25 @@ static vtx_t __pass_SFM1S(
 }
 
 
-static vtx_t __pass_GREEDY(
-    ctrl_t * const ctrl, 
-    graph_t * const graph,
-    vsinfo_t * const vsinfo,
-    vsnbrinfo_t * const * const gnbrinfo,
+static vtx_type S_pass_GREEDY(
+    ctrl_type * const ctrl, 
+    graph_type * const graph,
+    vsinfo_type * const vsinfo,
+    vsnbrinfo_type * const * const gnbrinfo,
     update_combuffer_t * const combuffer,
     vw_pq_t * const q,
-    vtx_t const * const iface,
-    vtx_t const niface,
-    wgt_t const maxpwgt,
+    vtx_type const * const iface,
+    vtx_type const niface,
+    wgt_type const maxpwgt,
     int const bnd)
 {
-  vtx_t nnone, dnmoves, nmoves;
-  pid_t o, side, d;
-  wgt_t lpwgts[3];
+  vtx_type nnone, dnmoves, nmoves;
+  pid_type o, side, d;
+  wgt_type lpwgts[3];
 
-  tid_t const myid = dlthread_get_id(ctrl->comm);
+  tid_type const myid = dlthread_get_id(ctrl->comm);
 
-  wgt_t * const pwgts = graph->pwgts;
+  wgt_type * const pwgts = graph->pwgts;
 
   if (pwgts[0] > pwgts[1]) {
     o = 1;
@@ -1341,11 +1339,11 @@ static vtx_t __pass_GREEDY(
 
     if (bnd) {
       /* interface only refinement */
-      dnmoves = __flow_GREEDYI(ctrl,graph,vsinfo,gnbrinfo,combuffer,q,side, \
+      dnmoves = S_flow_GREEDYI(ctrl,graph,vsinfo,gnbrinfo,combuffer,q,side, \
           lpwgts,maxpwgt,iface,niface);
     } else {
       /* regular greedy refinment */
-      dnmoves = __flow_GREEDY(ctrl,graph,vsinfo,gnbrinfo,combuffer,q,side, \
+      dnmoves = S_flow_GREEDY(ctrl,graph,vsinfo,gnbrinfo,combuffer,q,side, \
           lpwgts,maxpwgt);
     }
 
@@ -1357,7 +1355,7 @@ static vtx_t __pass_GREEDY(
     }
 
     /* make sure have good information at the end of each half-pass */
-    __fix_iface(ctrl,graph,vsinfo,iface,niface);
+    S_fix_iface(ctrl,graph,vsinfo,iface,niface);
 
     if (dnmoves == 0) {
       if (++nnone == 2) {
@@ -1370,7 +1368,7 @@ static vtx_t __pass_GREEDY(
   }
 
   /* implicit barrier */
-  __sync_pwgts(myid,pwgts,lpwgts,ctrl->comm);
+  S_sync_pwgts(myid,pwgts,lpwgts,ctrl->comm);
 
   return nmoves;
 }
@@ -1383,48 +1381,48 @@ static vtx_t __pass_GREEDY(
 ******************************************************************************/
 
 
-static vtx_t __vseprefine_FM(
-    ctrl_t * const ctrl, 
-    graph_t * const graph,
+static vtx_type S_vseprefine_FM(
+    ctrl_type * const ctrl, 
+    graph_type * const graph,
     size_t const niter, 
-    vsinfo_t * const vsinfo,
-    wgt_t const maxpwgt)
+    vsinfo_type * const vsinfo,
+    wgt_type const maxpwgt)
 {
-  vtx_t i, k, g, v, m, nmoves, lvtx, olvtx, minmove, totalmoves, ntotalmoves;
-  adj_t j, npulled, l;
-  wgt_t minsep, newbal, minbal, gain, cursep;
-  pid_t side, other, p;
-  tid_t nbrid, onbrid, myid;
-  vtx_t * moves, * pulled, * pullmk;
-  vsnbrinfo_t * myrinfo;
+  vtx_type i, k, g, v, m, nmoves, lvtx, olvtx, minmove, totalmoves, ntotalmoves;
+  adj_type j, npulled, l;
+  wgt_type minsep, newbal, minbal, gain, cursep;
+  pid_type side, other, p;
+  tid_type nbrid, onbrid, myid;
+  vtx_type * moves, * pulled, * pullmk;
+  vsnbrinfo_type * myrinfo;
   size_t pass;
   vw_pq_t * q[2];
   int ** glocked;
-  vsnbrinfo_t ** gnbrinfo;
+  vsnbrinfo_type ** gnbrinfo;
   vtx_iset_t ** gbnd;
 
-  tid_t const nthreads = graph->dist.nthreads;
+  tid_type const nthreads = graph->dist.nthreads;
 
-  vtx_t const nvtxs = graph->nvtxs;
-  vtx_t const * const gmynvtxs = graph->mynvtxs;
-  adj_t const * const * const gxadj = (adj_t const **)graph->xadj;
-  vtx_t const * const * const gadjncy = (vtx_t const **)graph->adjncy;
-  wgt_t const * const * const gvwgt = (wgt_t const **)graph->vwgt;
+  vtx_type const nvtxs = graph->nvtxs;
+  vtx_type const * const gmynvtxs = graph->mynvtxs;
+  adj_type const * const * const gxadj = (adj_type const **)graph->xadj;
+  vtx_type const * const * const gadjncy = (vtx_type const **)graph->adjncy;
+  wgt_type const * const * const gvwgt = (wgt_type const **)graph->vwgt;
 
-  wgt_t * const pwgts = graph->pwgts;
-  pid_t * const * const gwhere = graph->where;
+  wgt_type * const pwgts = graph->pwgts;
+  pid_type * const * const gwhere = graph->where;
 
-  vtx_t const limit = ctrl->hillsize;
+  vtx_type const limit = ctrl->hillsize;
 
   DL_ASSERT_EQUALS(nthreads,graph->dist.nthreads,"%"PF_TID_T);
 
   myid = dlthread_get_id(ctrl->comm);
 
   glocked = dlthread_get_shmem((sizeof(int*)*nthreads) + \
-      (sizeof(vsnbrinfo_t*)*nthreads) + \
+      (sizeof(vsnbrinfo_type*)*nthreads) + \
       (sizeof(vtx_iset_t*)*nthreads),ctrl->comm);
 
-  gnbrinfo = (vsnbrinfo_t**)(glocked+nthreads);
+  gnbrinfo = (vsnbrinfo_type**)(glocked+nthreads);
   gbnd = (vtx_iset_t**)(gnbrinfo+nthreads);
 
   gnbrinfo[myid] = vsinfo->nbrinfo;
@@ -1498,8 +1496,8 @@ static vtx_t __vseprefine_FM(
 
       /* make possible moves */
       while (nmoves < nvtxs) {
-        side = __pick_side(graph,pwgts,maxpwgt, \
-            (vsnbrinfo_t const **)gnbrinfo,q);
+        side = S_pick_side(graph,pwgts,maxpwgt, \
+            (vsnbrinfo_type const **)gnbrinfo,q);
 
         if (side == NULL_PID) {
           /* we've emptied the priority queues */
@@ -1558,7 +1556,7 @@ static vtx_t __vseprefine_FM(
         gwhere[myid][v] = side;
         moves[++nmoves] = g; /* count one up */
 
-        __lock(v,glocked[myid],side);
+        S_lock(v,glocked[myid],side);
         
         /* remove the vertex from the boundary -- and opposing pq */
         vtx_iset_remove(v,gbnd[myid]);
@@ -1797,7 +1795,7 @@ static vtx_t __vseprefine_FM(
     vw_pq_free(q[MTMETIS_VSEP_PARTB]);
   }
 
-  DL_ASSERT(check_vsinfo(vsinfo,graph,(pid_t const **)gwhere), \
+  DL_ASSERT(check_vsinfo(vsinfo,graph,(pid_type const **)gwhere), \
       "Bad vsinfo after refinement");
   DL_ASSERT(check_vsbnd(gbnd[myid],graph),"Bad boundary after " \
       "refinement");
@@ -1810,43 +1808,43 @@ static vtx_t __vseprefine_FM(
 }
 
 
-static vtx_t __vseprefine_FM1S(
-    ctrl_t * const ctrl, 
-    graph_t * const graph,
+static vtx_type S_vseprefine_FM1S(
+    ctrl_type * const ctrl, 
+    graph_type * const graph,
     size_t const niter, 
-    vsinfo_t * const vsinfo,
-    wgt_t const maxpwgt)
+    vsinfo_type * const vsinfo,
+    wgt_type const maxpwgt)
 {
-  vtx_t i, k, g, v, m, nmoves, lvtx, olvtx, minmove, totalmoves, ntotalmoves;
-  adj_t j, npulled, l;
-  wgt_t minsep, newbal, minbal, gain, cursep;
-  pid_t side, other, o, d, me;
-  tid_t nbrid, onbrid, myid;
-  vtx_t * moves, * pulled, * pullmk;
-  vsnbrinfo_t * myrinfo;
+  vtx_type i, k, g, v, m, nmoves, lvtx, olvtx, minmove, totalmoves, ntotalmoves;
+  adj_type j, npulled, l;
+  wgt_type minsep, newbal, minbal, gain, cursep;
+  pid_type side, other, o, d, me;
+  tid_type nbrid, onbrid, myid;
+  vtx_type * moves, * pulled, * pullmk;
+  vsnbrinfo_type * myrinfo;
   size_t pass;
   vw_pq_t * q;
-  vsnbrinfo_t ** gnbrinfo;
+  vsnbrinfo_type ** gnbrinfo;
   vtx_iset_t ** gbnd;
 
-  tid_t const nthreads = graph->dist.nthreads;
+  tid_type const nthreads = graph->dist.nthreads;
 
-  vtx_t const nvtxs = graph->nvtxs;
-  vtx_t const * const gmynvtxs = graph->mynvtxs;
-  adj_t const * const * const gxadj = (adj_t const **)graph->xadj;
-  vtx_t const * const * const gadjncy = (vtx_t const **)graph->adjncy;
-  wgt_t const * const * const gvwgt = (wgt_t const **)graph->vwgt;
+  vtx_type const nvtxs = graph->nvtxs;
+  vtx_type const * const gmynvtxs = graph->mynvtxs;
+  adj_type const * const * const gxadj = (adj_type const **)graph->xadj;
+  vtx_type const * const * const gadjncy = (vtx_type const **)graph->adjncy;
+  wgt_type const * const * const gvwgt = (wgt_type const **)graph->vwgt;
 
-  wgt_t * const pwgts = graph->pwgts;
-  pid_t * const * const gwhere = graph->where;
+  wgt_type * const pwgts = graph->pwgts;
+  pid_type * const * const gwhere = graph->where;
 
-  vtx_t const limit = ctrl->hillsize;
+  vtx_type const limit = ctrl->hillsize;
 
   DL_ASSERT_EQUALS(nthreads,graph->dist.nthreads,"%"PF_TID_T);
 
   myid = dlthread_get_id(ctrl->comm);
 
-  gnbrinfo = dlthread_get_shmem((sizeof(vsnbrinfo_t*)*nthreads) + \
+  gnbrinfo = dlthread_get_shmem((sizeof(vsnbrinfo_type*)*nthreads) + \
       (sizeof(vtx_iset_t*)*nthreads),ctrl->comm);
   gbnd = (vtx_iset_t**)(gnbrinfo+nthreads);
 
@@ -2018,8 +2016,8 @@ static vtx_t __vseprefine_FM1S(
               gwhere[nbrid][lvtx] = MTMETIS_VSEP_SEP;
 
               /* calculate the connectivity */
-              __calc_conn(lvtx,nbrid,gmynvtxs[nbrid],gxadj[nbrid], \
-                  gadjncy[nbrid],gvwgt,(pid_t const **)gwhere,graph->dist, \
+              S_calc_conn(lvtx,nbrid,gmynvtxs[nbrid],gxadj[nbrid], \
+                  gadjncy[nbrid],gvwgt,(pid_type const **)gwhere,graph->dist, \
                   gnbrinfo[nbrid][lvtx].con);
 
               /* update the partition weights */
@@ -2093,8 +2091,8 @@ static vtx_t __vseprefine_FM1S(
           vtx_iset_add(v,gbnd[myid]);
 
           /* calculate the connectivity */
-          __calc_conn(v,myid,gmynvtxs[myid],gxadj[myid],gadjncy[myid],gvwgt, \
-              (pid_t const **)gwhere,graph->dist, \
+          S_calc_conn(v,myid,gmynvtxs[myid],gxadj[myid],gadjncy[myid],gvwgt, \
+              (pid_type const **)gwhere,graph->dist, \
               gnbrinfo[myid][v].con);
 
           /* adjust priorities of neighboring vertices */
@@ -2183,7 +2181,7 @@ static vtx_t __vseprefine_FM1S(
     vw_pq_free(q);
   }
 
-  DL_ASSERT(check_vsinfo(vsinfo,graph,(pid_t const **)gwhere), \
+  DL_ASSERT(check_vsinfo(vsinfo,graph,(pid_type const **)gwhere), \
       "Bad vsinfo after refinement");
   DL_ASSERT(check_vsbnd(gbnd[myid],graph),"Bad boundary after " \
       "refinement");
@@ -2194,25 +2192,25 @@ static vtx_t __vseprefine_FM1S(
 }
 
 
-static vtx_t __vseprefine_SFM(
-    ctrl_t * const ctrl, 
-    graph_t * const graph,
+static vtx_type S_vseprefine_SFM(
+    ctrl_type * const ctrl, 
+    graph_type * const graph,
     size_t const niter, 
-    vsinfo_t * const vsinfo,
-    wgt_t const maxpwgt)
+    vsinfo_type * const vsinfo,
+    wgt_type const maxpwgt)
 {
-  vtx_t i, k, ntotalmoves, totalmoves, niface;
-  adj_t j;
+  vtx_type i, k, ntotalmoves, totalmoves, niface;
+  adj_type j;
   size_t pass;
-  vtx_t * moves, * pullmk, * pulled, * iface;
+  vtx_type * moves, * pullmk, * pulled, * iface;
   vw_pq_t * q;
   int * locked;
 
-  tid_t const myid = dlthread_get_id(ctrl->comm);
+  tid_type const myid = dlthread_get_id(ctrl->comm);
 
-  vtx_t const mynvtxs = graph->mynvtxs[myid];
-  adj_t const * const xadj = graph->xadj[myid];
-  vtx_t const * const adjncy = graph->adjncy[myid];
+  vtx_type const mynvtxs = graph->mynvtxs[myid];
+  adj_type const * const xadj = graph->xadj[myid];
+  vtx_type const * const adjncy = graph->adjncy[myid];
 
   locked = int_init_alloc(UNLOCKED,mynvtxs);
   moves = vtx_alloc(mynvtxs+1);
@@ -2240,10 +2238,10 @@ static vtx_t __vseprefine_SFM(
   for (pass=0;pass<niter;++pass) {
     for (k=0;k<niface;++k) {
       i = iface[k];
-      __lock(i,locked,graph->where[myid][i]);
+      S_lock(i,locked,graph->where[myid][i]);
     }
 
-    totalmoves = __pass_SFM1S(ctrl,graph,vsinfo,moves,pullmk,pulled,q, \
+    totalmoves = S_pass_SFM1S(ctrl,graph,vsinfo,moves,pullmk,pulled,q, \
         locked,iface,niface,maxpwgt);
 
     if (totalmoves == 0) {
@@ -2265,7 +2263,7 @@ static vtx_t __vseprefine_SFM(
 
   dl_free(locked);
 
-  DL_ASSERT(check_vsinfo(vsinfo,graph,(pid_t const **)graph->where), \
+  DL_ASSERT(check_vsinfo(vsinfo,graph,(pid_type const **)graph->where), \
       "Bad vsinfo after refinement");
   DL_ASSERT(check_vsbnd(vsinfo->bnd,graph),"Bad boundary after " \
       "refinement");
@@ -2276,31 +2274,31 @@ static vtx_t __vseprefine_SFM(
 }
 
 
-static vtx_t __vseprefine_GREEDY(
-    ctrl_t * const ctrl, 
-    graph_t * const graph,
+static vtx_type S_vseprefine_GREEDY(
+    ctrl_type * const ctrl, 
+    graph_type * const graph,
     size_t const niter, 
-    vsinfo_t * const vsinfo,
-    wgt_t const maxpwgt)
+    vsinfo_type * const vsinfo,
+    wgt_type const maxpwgt)
 {
-  vtx_t gnmoves, ntotalmoves, niface, i, k;
-  adj_t j;
-  vtx_t * iface;
-  vsnbrinfo_t ** gnbrinfo;
+  vtx_type gnmoves, ntotalmoves, niface, i, k;
+  adj_type j;
+  vtx_type * iface;
+  vsnbrinfo_type ** gnbrinfo;
   size_t pass;
   vw_pq_t * q;
   update_combuffer_t * combuffer;
 
-  tid_t const myid = dlthread_get_id(ctrl->comm);
-  tid_t const nthreads = dlthread_get_nthreads(ctrl->comm);
+  tid_type const myid = dlthread_get_id(ctrl->comm);
+  tid_type const nthreads = dlthread_get_nthreads(ctrl->comm);
 
-  vtx_t const mynvtxs = graph->mynvtxs[myid];
-  adj_t const * const xadj = graph->xadj[myid];
-  vtx_t const * const adjncy = graph->adjncy[myid];
+  vtx_type const mynvtxs = graph->mynvtxs[myid];
+  adj_type const * const xadj = graph->xadj[myid];
+  vtx_type const * const adjncy = graph->adjncy[myid];
 
   DL_ASSERT_EQUALS(nthreads,graph->dist.nthreads,"%"PF_TID_T);
 
-  gnbrinfo = dlthread_get_shmem(sizeof(vsnbrinfo_t*)*nthreads,ctrl->comm);
+  gnbrinfo = dlthread_get_shmem(sizeof(vsnbrinfo_type*)*nthreads,ctrl->comm);
 
   gnbrinfo[myid] = vsinfo->nbrinfo;
 
@@ -2325,7 +2323,7 @@ static vtx_t __vseprefine_GREEDY(
   }
 
   for (pass=0;pass<niter;++pass) {
-    gnmoves = __pass_GREEDY(ctrl,graph,vsinfo,gnbrinfo,combuffer,q,iface, \
+    gnmoves = S_pass_GREEDY(ctrl,graph,vsinfo,gnbrinfo,combuffer,q,iface, \
         niface,maxpwgt,0);
 
     if (gnmoves == 0) {
@@ -2347,7 +2345,7 @@ static vtx_t __vseprefine_GREEDY(
   dlthread_barrier(ctrl->comm);
   #endif
 
-  DL_ASSERT(check_vsinfo(vsinfo,graph,(pid_t const **)graph->where), \
+  DL_ASSERT(check_vsinfo(vsinfo,graph,(pid_type const **)graph->where), \
       "Bad vsinfo after refinement");
   DL_ASSERT(check_vsbnd(vsinfo->bnd,graph),"Bad boundary after " \
       "refinement");
@@ -2360,31 +2358,31 @@ static vtx_t __vseprefine_GREEDY(
 }
 
 
-static vtx_t __vseprefine_SFG(
-    ctrl_t * const ctrl, 
-    graph_t * const graph,
+static vtx_type S_vseprefine_SFG(
+    ctrl_type * const ctrl, 
+    graph_type * const graph,
     size_t const niter, 
-    vsinfo_t * const vsinfo,
-    wgt_t const maxpwgt)
+    vsinfo_type * const vsinfo,
+    wgt_type const maxpwgt)
 {
-  vtx_t i, k, nmoves, niface;
-  adj_t j;
+  vtx_type i, k, nmoves, niface;
+  adj_type j;
   int * locked;
-  vtx_t * moves, * pullmk, * pulled, * iface;
+  vtx_type * moves, * pullmk, * pulled, * iface;
   vw_pq_t * q;
   update_combuffer_t * combuffer;
-  vsnbrinfo_t ** gnbrinfo;
+  vsnbrinfo_type ** gnbrinfo;
 
-  tid_t const myid = dlthread_get_id(ctrl->comm);
-  tid_t const nthreads = dlthread_get_nthreads(ctrl->comm);
+  tid_type const myid = dlthread_get_id(ctrl->comm);
+  tid_type const nthreads = dlthread_get_nthreads(ctrl->comm);
 
-  vtx_t const mynvtxs = graph->mynvtxs[myid];
-  adj_t const * const xadj = graph->xadj[myid];
-  vtx_t const * const adjncy = graph->adjncy[myid];
+  vtx_type const mynvtxs = graph->mynvtxs[myid];
+  adj_type const * const xadj = graph->xadj[myid];
+  vtx_type const * const adjncy = graph->adjncy[myid];
 
   DL_ASSERT_EQUALS(nthreads,graph->dist.nthreads,"%"PF_TID_T);
 
-  gnbrinfo = dlthread_get_shmem(sizeof(vsnbrinfo_t*)*nthreads,ctrl->comm);
+  gnbrinfo = dlthread_get_shmem(sizeof(vsnbrinfo_type*)*nthreads,ctrl->comm);
 
   gnbrinfo[myid] = vsinfo->nbrinfo;
 
@@ -2411,15 +2409,15 @@ static vtx_t __vseprefine_SFG(
 
   combuffer = update_combuffer_create(ctrl->comm);
 
-  nmoves = __pass_GREEDY(ctrl,graph,vsinfo,gnbrinfo,combuffer,q, \
+  nmoves = S_pass_GREEDY(ctrl,graph,vsinfo,gnbrinfo,combuffer,q, \
         iface,niface,maxpwgt,0);
 
   for (k=0;k<niface;++k) {
     i = iface[k];
-    __lock(i,locked,graph->where[myid][i]);
+    S_lock(i,locked,graph->where[myid][i]);
   }
 
-  nmoves += __pass_SFM1S(ctrl,graph,vsinfo,moves,pullmk,pulled,q,locked, \
+  nmoves += S_pass_SFM1S(ctrl,graph,vsinfo,moves,pullmk,pulled,q,locked, \
       iface,niface,maxpwgt);
 
   if (myid == 0) {
@@ -2437,7 +2435,7 @@ static vtx_t __vseprefine_SFG(
   dlthread_barrier(ctrl->comm);
   #endif
 
-  DL_ASSERT(check_vsinfo(vsinfo,graph,(pid_t const **)graph->where), \
+  DL_ASSERT(check_vsinfo(vsinfo,graph,(pid_type const **)graph->where), \
       "Bad vsinfo after refinement");
   DL_ASSERT(check_vsbnd(vsinfo->bnd,graph),"Bad boundary after " \
       "refinement");
@@ -2456,44 +2454,44 @@ static vtx_t __vseprefine_SFG(
 ******************************************************************************/
 
 
-vtx_t par_vseprefine(
-    ctrl_t * const ctrl,
-    graph_t * const graph,
-    vsinfo_t * const vsinfo)
+vtx_type par_vseprefine(
+    ctrl_type * const ctrl,
+    graph_type * const graph,
+    vsinfo_type * const vsinfo)
 {
-  vtx_t nmoves;
+  vtx_type nmoves;
 
-  wgt_t const avgvtxwgt = graph->tvwgt/graph->nvtxs;
-  wgt_t * const pwgts = graph->pwgts;
+  wgt_type const avgvtxwgt = graph->tvwgt/graph->nvtxs;
+  wgt_type * const pwgts = graph->pwgts;
 
-  wgt_t const maxpwgt = ctrl->ubfactor*(pwgts[0]+pwgts[1])*0.5;
+  wgt_type const maxpwgt = ctrl->ubfactor*(pwgts[0]+pwgts[1])*0.5;
 
-  DL_ASSERT(check_separator(graph,(pid_t const **)graph->where), \
+  DL_ASSERT(check_separator(graph,(pid_type const **)graph->where), \
       "Bad separator before refinement");
-  DL_ASSERT(check_vsinfo(vsinfo,graph,(pid_t const **)graph->where), \
+  DL_ASSERT(check_vsinfo(vsinfo,graph,(pid_type const **)graph->where), \
       "Bad vsinfo before refinement");
   DL_ASSERT(check_vsbnd(vsinfo->bnd,graph),"Bad boundary before refinement");
 
   if (graph->nvtxs < SERIAL_FM_FACTOR*sqrt(graph->dist.nthreads)) {
-    nmoves = __vseprefine_FM1S(ctrl,graph,ctrl->nrefpass,vsinfo,maxpwgt);
+    nmoves = S_vseprefine_FM1S(ctrl,graph,ctrl->nrefpass,vsinfo,maxpwgt);
   } else {
     /* disabled for now */
     if (0 && dl_max(pwgts[0],pwgts[1]) > maxpwgt*1.03 && \
          4*avgvtxwgt < wgt_abs_diff(pwgts[0],pwgts[1])) {
-      __pass_BAL(ctrl,graph,vsinfo,maxpwgt);
+      S_pass_BAL(ctrl,graph,vsinfo,maxpwgt);
     }
     switch (ctrl->rtype) {
       case MTMETIS_RTYPE_GREEDY:
-        nmoves = __vseprefine_GREEDY(ctrl,graph,ctrl->nrefpass,vsinfo,maxpwgt);
+        nmoves = S_vseprefine_GREEDY(ctrl,graph,ctrl->nrefpass,vsinfo,maxpwgt);
         break;
       case MTMETIS_RTYPE_FM:
-        nmoves = __vseprefine_FM1S(ctrl,graph,ctrl->nrefpass,vsinfo,maxpwgt);
+        nmoves = S_vseprefine_FM1S(ctrl,graph,ctrl->nrefpass,vsinfo,maxpwgt);
         break;
       case MTMETIS_RTYPE_SFM:
-        nmoves = __vseprefine_SFM(ctrl,graph,ctrl->nrefpass,vsinfo,maxpwgt);
+        nmoves = S_vseprefine_SFM(ctrl,graph,ctrl->nrefpass,vsinfo,maxpwgt);
         break;
       case MTMETIS_RTYPE_SFG:
-        nmoves = __vseprefine_SFG(ctrl,graph,ctrl->nrefpass,vsinfo,maxpwgt);
+        nmoves = S_vseprefine_SFG(ctrl,graph,ctrl->nrefpass,vsinfo,maxpwgt);
         break;
       default:
         dl_error("Unknown refinement type '%d'\n",ctrl->rtype);
@@ -2502,7 +2500,7 @@ vtx_t par_vseprefine(
 
   DL_ASSERT_EQUALS(wgt_lsum(graph->pwgts,3),graph->tvwgt,"%"PF_TWGT_T);
   DL_ASSERT_EQUALS(graph->pwgts[2],graph->minsep,"%"PF_WGT_T);
-  DL_ASSERT(check_separator(graph,(pid_t const **)graph->where), \
+  DL_ASSERT(check_separator(graph,(pid_type const **)graph->where), \
       "Bad separator after refinement");
 
   par_vprintf(ctrl->verbosity,MTMETIS_VERBOSITY_HIGH,"%zu) [%"PF_VTX_T" %" \

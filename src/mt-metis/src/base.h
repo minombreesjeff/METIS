@@ -49,31 +49,25 @@
 
 
 #ifdef MTMETIS_64BIT_THREADS
-typedef uint64_t mtmetis_tid_t;
+typedef uint64_t mtmetis_tid_type;
 #else
-typedef uint32_t mtmetis_tid_t;
+typedef uint32_t mtmetis_tid_type;
 #endif
 
 
-#ifdef MTMETIS_DOUBLE_REAL
-typedef double mtmetis_real_t;
-#else
-typedef float mtmetis_real_t;
-#endif
-
-typedef int64_t mtmetis_twgt_t;
-typedef uint16_t mtmetis_offset_t;
+typedef int64_t mtmetis_twgt_type;
+typedef uint16_t mtmetis_offset_type;
 
 
 /* rename mtmetis.h types for internal use */
-#define vtx_t mtmetis_vtx_t
-#define adj_t mtmetis_adj_t
-#define wgt_t mtmetis_wgt_t
-#define twgt_t mtmetis_twgt_t
-#define pid_t mtmetis_pid_t
-#define tid_t mtmetis_tid_t
-#define real_t mtmetis_real_t
-#define offset_t mtmetis_offset_t
+#define vtx_type mtmetis_vtx_type
+#define adj_type mtmetis_adj_type
+#define wgt_type mtmetis_wgt_type
+#define twgt_type mtmetis_twgt_type
+#define pid_type mtmetis_pid_type
+#define tid_type mtmetis_tid_type
+#define real_type mtmetis_real_type
+#define offset_type mtmetis_offset_type
 
 
 
@@ -84,27 +78,27 @@ typedef uint16_t mtmetis_offset_t;
 
 
 /* macros */
-#define DEF_NULL_VTX ((vtx_t)-1)
-#define DEF_NULL_ADJ ((adj_t)-1)
-#define DEF_NULL_PID ((pid_t)-1)
-#define DEF_NULL_TID ((tid_t)-1)
-#define DEF_NULL_WGT ((wgt_t)-1)
-#define DEF_NULL_OFFSET ((offset_t)-1)
+#define DEF_NULL_VTX ((vtx_type)-1)
+#define DEF_NULL_ADJ ((adj_type)-1)
+#define DEF_NULL_PID ((pid_type)-1)
+#define DEF_NULL_TID ((tid_type)-1)
+#define DEF_NULL_WGT ((wgt_type)-1)
+#define DEF_NULL_OFFSET ((offset_type)-1)
 
 
 /* type null values */
-static const vtx_t NULL_VTX = DEF_NULL_VTX;
-static const wgt_t NULL_WGT = DEF_NULL_WGT;
-static const adj_t NULL_ADJ = DEF_NULL_ADJ;
-static const pid_t NULL_PID = DEF_NULL_PID;
-static const tid_t NULL_TID = DEF_NULL_TID;
-static const offset_t NULL_OFFSET = DEF_NULL_OFFSET;
+static const vtx_type NULL_VTX = DEF_NULL_VTX;
+static const wgt_type NULL_WGT = DEF_NULL_WGT;
+static const adj_type NULL_ADJ = DEF_NULL_ADJ;
+static const pid_type NULL_PID = DEF_NULL_PID;
+static const tid_type NULL_TID = DEF_NULL_TID;
+static const offset_type NULL_OFFSET = DEF_NULL_OFFSET;
 
 
 /* thread specific constants */
-static const vtx_t BLOCKSIZE = 0x1000;
+static const vtx_type BLOCKSIZE = 0x1000;
 static const int BLOCKSHIFT = 12;
-static const vtx_t BLOCKMASK = 0x0FFF;
+static const vtx_type BLOCKMASK = 0x0FFF;
 
 
 
@@ -114,9 +108,9 @@ static const vtx_t BLOCKMASK = 0x0FFF;
 ******************************************************************************/
 
 
-/* vtx_t */
+/* vtx_type */
 #define DLMEM_PREFIX vtx
-#define DLMEM_TYPE_T vtx_t
+#define DLMEM_TYPE_T vtx_type
 #define DLMEM_DLTYPE DLTYPE_INTEGRAL
 #define DLMEM_STATIC
 #include "dlmem_headers.h"
@@ -127,7 +121,7 @@ static const vtx_t BLOCKMASK = 0x0FFF;
 
 
 #define DLMATH_PREFIX vtx
-#define DLMATH_TYPE_T vtx_t
+#define DLMATH_TYPE_T vtx_type
 #define DLMATH_DLTYPE DLTYPE_INTEGRAL
 #define DLMATH_STATIC
 #include "dlmath_headers.h"
@@ -138,7 +132,7 @@ static const vtx_t BLOCKMASK = 0x0FFF;
 
 
 #define DLRAND_PREFIX vtx
-#define DLRAND_TYPE_T vtx_t
+#define DLRAND_TYPE_T vtx_type
 #define DLRAND_DLTYPE DLTYPE_INTEGRAL
 #define DLRAND_STATIC
 #include "dlrand_headers.h"
@@ -149,7 +143,7 @@ static const vtx_t BLOCKMASK = 0x0FFF;
 
 
 #define DLSTATS_PREFIX vtx
-#define DLSTATS_TYPE_T vtx_t
+#define DLSTATS_TYPE_T vtx_type
 #define DLSTATS_STATIC
 #include "dlstats_headers.h"
 #undef DLSTATS_STATIC
@@ -158,7 +152,7 @@ static const vtx_t BLOCKMASK = 0x0FFF;
 
 
 #define DLISET_PREFIX vtx
-#define DLISET_TYPE_T vtx_t
+#define DLISET_TYPE_T vtx_type
 #define DLISET_STATIC
 #include "dliset_headers.h"
 #undef DLISET_STATIC
@@ -167,7 +161,7 @@ static const vtx_t BLOCKMASK = 0x0FFF;
 
 
 #define DLTHREAD_PREFIX vtx
-#define DLTHREAD_TYPE_T vtx_t
+#define DLTHREAD_TYPE_T vtx_type
 #define DLTHREAD_STATIC 1
 #include "dlthread_reduction_headers.h"
 #undef DLTHREAD_STATIC
@@ -176,7 +170,7 @@ static const vtx_t BLOCKMASK = 0x0FFF;
 
 
 #define DLSORT_PREFIX vtx
-#define DLSORT_TYPE_T vtx_t
+#define DLSORT_TYPE_T vtx_type
 #define DLSORT_STATIC
 #include "dlsort_headers.h"
 #undef DLSORT_STATIC
@@ -186,9 +180,9 @@ static const vtx_t BLOCKMASK = 0x0FFF;
 
 
 
-/* adj_t */
+/* adj_type */
 #define DLMEM_PREFIX adj
-#define DLMEM_TYPE_T adj_t
+#define DLMEM_TYPE_T adj_type
 #define DLMEM_DLTYPE DLTYPE_INTEGRAL
 #define DLMEM_STATIC
 #include "dlmem_headers.h"
@@ -199,7 +193,7 @@ static const vtx_t BLOCKMASK = 0x0FFF;
 
 
 #define DLMATH_PREFIX adj
-#define DLMATH_TYPE_T adj_t
+#define DLMATH_TYPE_T adj_type
 #define DLMATH_DLTYPE DLTYPE_INTEGRAL
 #define DLMATH_STATIC
 #include "dlmath_headers.h"
@@ -210,7 +204,7 @@ static const vtx_t BLOCKMASK = 0x0FFF;
 
 
 #define DLRAND_PREFIX adj
-#define DLRAND_TYPE_T adj_t
+#define DLRAND_TYPE_T adj_type
 #define DLRAND_DLTYPE DLTYPE_INTEGRAL
 #define DLRAND_STATIC
 #include "dlrand_headers.h"
@@ -221,7 +215,7 @@ static const vtx_t BLOCKMASK = 0x0FFF;
 
 
 #define DLSTATS_PREFIX adj
-#define DLSTATS_TYPE_T adj_t
+#define DLSTATS_TYPE_T adj_type
 #define DLSTATS_STATIC
 #include "dlstats_headers.h"
 #undef DLSTATS_STATIC
@@ -230,7 +224,7 @@ static const vtx_t BLOCKMASK = 0x0FFF;
 
 
 #define DLTHREAD_PREFIX adj
-#define DLTHREAD_TYPE_T adj_t
+#define DLTHREAD_TYPE_T adj_type
 #define DLTHREAD_STATIC 1
 #include "dlthread_reduction_headers.h"
 #undef DLTHREAD_STATIC
@@ -240,9 +234,9 @@ static const vtx_t BLOCKMASK = 0x0FFF;
 
 
 
-/* pid_t */
+/* pid_type */
 #define DLMEM_PREFIX pid
-#define DLMEM_TYPE_T pid_t
+#define DLMEM_TYPE_T pid_type
 #define DLMEM_DLTYPE DLTYPE_INTEGRAL
 #define DLMEM_STATIC
 #include "dlmem_headers.h"
@@ -253,7 +247,7 @@ static const vtx_t BLOCKMASK = 0x0FFF;
 
 
 #define DLMATH_PREFIX pid
-#define DLMATH_TYPE_T pid_t
+#define DLMATH_TYPE_T pid_type
 #define DLMATH_DLTYPE DLTYPE_INTEGRAL
 #define DLMATH_STATIC
 #include "dlmath_headers.h"
@@ -264,7 +258,7 @@ static const vtx_t BLOCKMASK = 0x0FFF;
 
 
 #define DLRAND_PREFIX pid
-#define DLRAND_TYPE_T pid_t
+#define DLRAND_TYPE_T pid_type
 #define DLRAND_DLTYPE DLTYPE_INTEGRAL
 #define DLRAND_STATIC
 #include "dlrand_headers.h"
@@ -275,7 +269,7 @@ static const vtx_t BLOCKMASK = 0x0FFF;
 
 
 #define DLSTATS_PREFIX pid
-#define DLSTATS_TYPE_T pid_t
+#define DLSTATS_TYPE_T pid_type
 #define DLSTATS_STATIC
 #include "dlstats_headers.h"
 #undef DLSTATS_STATIC
@@ -283,9 +277,9 @@ static const vtx_t BLOCKMASK = 0x0FFF;
 #undef DLSTATS_TYPE_T
 
 
-/* tid_t */
+/* tid_type */
 #define DLMEM_PREFIX tid
-#define DLMEM_TYPE_T tid_t
+#define DLMEM_TYPE_T tid_type
 #define DLMEM_DLTYPE DLTYPE_INTEGRAL
 #define DLMEM_STATIC
 #include "dlmem_headers.h"
@@ -296,7 +290,7 @@ static const vtx_t BLOCKMASK = 0x0FFF;
 
 
 #define DLMATH_PREFIX tid
-#define DLMATH_TYPE_T tid_t
+#define DLMATH_TYPE_T tid_type
 #define DLMATH_DLTYPE DLTYPE_INTEGRAL
 #define DLMATH_STATIC
 #include "dlmath_headers.h"
@@ -306,9 +300,9 @@ static const vtx_t BLOCKMASK = 0x0FFF;
 #undef DLMATH_TYPE_T
 
 
-/* wgt_t */
+/* wgt_type */
 #define DLMEM_PREFIX wgt
-#define DLMEM_TYPE_T wgt_t
+#define DLMEM_TYPE_T wgt_type
 #define DLMEM_DLTYPE DLTYPE_INTEGRAL
 #define DLMEM_STATIC
 #include "dlmem_headers.h"
@@ -319,7 +313,7 @@ static const vtx_t BLOCKMASK = 0x0FFF;
 
 
 #define DLMATH_PREFIX wgt
-#define DLMATH_TYPE_T wgt_t
+#define DLMATH_TYPE_T wgt_type
 #define DLMATH_DLTYPE DLTYPE_INTEGRAL
 #define DLMATH_STATIC
 #include "dlmath_headers.h"
@@ -330,7 +324,7 @@ static const vtx_t BLOCKMASK = 0x0FFF;
 
 
 #define DLRAND_PREFIX wgt
-#define DLRAND_TYPE_T wgt_t
+#define DLRAND_TYPE_T wgt_type
 #define DLRAND_DLTYPE DLTYPE_INTEGRAL
 #define DLRAND_STATIC
 #include "dlrand_headers.h"
@@ -341,7 +335,7 @@ static const vtx_t BLOCKMASK = 0x0FFF;
 
 
 #define DLSTATS_PREFIX wgt
-#define DLSTATS_TYPE_T wgt_t
+#define DLSTATS_TYPE_T wgt_type
 #define DLSTATS_STATIC
 #include "dlstats_headers.h"
 #undef DLSTATS_STATIC
@@ -350,7 +344,7 @@ static const vtx_t BLOCKMASK = 0x0FFF;
 
 
 #define DLTHREAD_PREFIX wgt
-#define DLTHREAD_TYPE_T wgt_t
+#define DLTHREAD_TYPE_T wgt_type
 #define DLTHREAD_STATIC 1
 #include "dlthread_reduction_headers.h"
 #undef DLTHREAD_STATIC
@@ -358,9 +352,9 @@ static const vtx_t BLOCKMASK = 0x0FFF;
 #undef DLTHREAD_PREFIX
 
 
-/* twgt_t */
+/* twgt_type */
 #define DLTHREAD_PREFIX twgt
-#define DLTHREAD_TYPE_T twgt_t
+#define DLTHREAD_TYPE_T twgt_type
 #define DLTHREAD_STATIC 1
 #include "dlthread_reduction_headers.h"
 #undef DLTHREAD_STATIC
@@ -369,7 +363,7 @@ static const vtx_t BLOCKMASK = 0x0FFF;
 
 
 #define DLMATH_PREFIX twgt
-#define DLMATH_TYPE_T twgt_t
+#define DLMATH_TYPE_T twgt_type
 #define DLMATH_DLTYPE DLTYPE_INTEGRAL
 #define DLMATH_STATIC
 #include "dlmath_headers.h"
@@ -379,9 +373,9 @@ static const vtx_t BLOCKMASK = 0x0FFF;
 #undef DLMATH_TYPE_T
 
 
-/* real_t */
+/* real_type */
 #define DLMEM_PREFIX real
-#define DLMEM_TYPE_T real_t
+#define DLMEM_TYPE_T real_type
 #define DLMEM_DLTYPE DLTYPE_FLOAT
 #define DLMEM_STATIC
 #include "dlmem_headers.h"
@@ -392,7 +386,7 @@ static const vtx_t BLOCKMASK = 0x0FFF;
 
 
 #define DLMATH_PREFIX real
-#define DLMATH_TYPE_T real_t
+#define DLMATH_TYPE_T real_type
 #define DLMATH_DLTYPE DLTYPE_FLOAT
 #define DLMATH_STATIC
 #include "dlmath_headers.h"
@@ -422,10 +416,10 @@ static const vtx_t BLOCKMASK = 0x0FFF;
 #undef DLTHREAD_PREFIX
 
 
-/* offset_t */
+/* offset_type */
 
 #define DLMEM_PREFIX offset
-#define DLMEM_TYPE_T offset_t
+#define DLMEM_TYPE_T offset_type
 #define DLMEM_STATIC 1
 #include "dlmem_headers.h"
 #undef DLMEM_STATIC
@@ -468,9 +462,9 @@ static const vtx_t BLOCKMASK = 0x0FFF;
 ******************************************************************************/
 
 
-static inline vtx_t gvtx_to_lvtx(
-    vtx_t const v, 
-    vtx_t const mask)
+static inline vtx_type gvtx_to_lvtx(
+    vtx_type const v, 
+    vtx_type const mask)
 {
   DL_ASSERT(mask > 0,"The mask is set to 0!\n");
   DL_ASSERT(v > mask,"Global vertex number is smaller than mask (gvtx = %"
@@ -479,40 +473,40 @@ static inline vtx_t gvtx_to_lvtx(
 }
 
 
-static inline vtx_t lvtx_to_gvtx(
-    vtx_t const v, 
-    tid_t const t, 
+static inline vtx_type lvtx_to_gvtx(
+    vtx_type const v, 
+    tid_type const t, 
     int const shift)
 {
   DL_ASSERT(shift > 0,"The mask size is set to 0!\n");
-  DL_ASSERT(v < (vtx_t)(1 << shift),"Local vertex number is greater than "
+  DL_ASSERT(v < (vtx_type)(1 << shift),"Local vertex number is greater than "
       "shift (lvtx = %"PF_VTX_T", shift = %d)\n",v,shift);
   return ((t+1) << shift) | v;
 }
 
 
-static inline tid_t gvtx_to_tid(
-    vtx_t const v, 
+static inline tid_type gvtx_to_tid(
+    vtx_type const v, 
     int const shift)
 {
   DL_ASSERT(shift > 0,"The shift size is set to %d!\n",shift);
-  DL_ASSERT(v >= (vtx_t)(1 << shift),"Global vertex number is too small "
+  DL_ASSERT(v >= (vtx_type)(1 << shift),"Global vertex number is too small "
       "(gvtx = %"PF_VTX_T", shift = %d)\n",v,shift);
   return (v >> shift)-1;
 }
 
 
-static inline vtx_t max_gvtx(
+static inline vtx_type max_gvtx(
     int const shift, 
-    tid_t const nthreads) 
+    tid_type const nthreads) 
 {
-  return (vtx_t)(1 << shift)*(nthreads+1);
+  return (vtx_type)(1 << shift)*(nthreads+1);
 }
 
 
 static inline int is_bnd(
-    wgt_t const id,
-    wgt_t const ed,
+    wgt_type const id,
+    wgt_type const ed,
     int const greedy)
 {
   if (greedy) {

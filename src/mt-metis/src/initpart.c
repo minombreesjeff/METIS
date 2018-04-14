@@ -27,21 +27,21 @@
 ******************************************************************************/
 
 
-wgt_t par_initpart_cut(
-    ctrl_t * const ctrl,
-    graph_t * const graph)
+wgt_type par_initpart_cut(
+    ctrl_type * const ctrl,
+    graph_type * const graph)
 {
-  vtx_t voff, idx;
-  wgt_t cut;
-  adj_t * xadj;
-  vtx_t * adjncy;
-  wgt_t * adjwgt, * vwgt;
-  pid_t * where = NULL, ** r_where;
+  vtx_type voff, idx;
+  wgt_type cut;
+  adj_type * xadj;
+  vtx_type * adjncy;
+  wgt_type * adjwgt, * vwgt;
+  pid_type * where = NULL, ** r_where;
 
-  tid_t const myid = dlthread_get_id(ctrl->comm);
-  tid_t const nthreads = dlthread_get_nthreads(ctrl->comm);
+  tid_type const myid = dlthread_get_id(ctrl->comm);
+  tid_type const nthreads = dlthread_get_nthreads(ctrl->comm);
 
-  vtx_t const nvtxs = graph->nvtxs; 
+  vtx_type const nvtxs = graph->nvtxs; 
 
   size_t const tcuts = ctrl->ninitsolutions; 
 
@@ -51,7 +51,7 @@ wgt_t par_initpart_cut(
     dl_start_timer(&ctrl->timers.initpart);
   }
 
-  r_where = dlthread_get_shmem(sizeof(pid_t*),ctrl->comm);
+  r_where = dlthread_get_shmem(sizeof(pid_type*),ctrl->comm);
 
   par_graph_gather(graph,&xadj,&adjncy,&vwgt,&adjwgt,&voff);
 
@@ -106,21 +106,21 @@ wgt_t par_initpart_cut(
 }
 
 
-wgt_t par_initpart_vsep(
-    ctrl_t * const ctrl,
-    graph_t * const graph)
+wgt_type par_initpart_vsep(
+    ctrl_type * const ctrl,
+    graph_type * const graph)
 {
-  vtx_t voff, idx;
-  wgt_t sep;
-  adj_t * xadj;
-  vtx_t * adjncy;
-  wgt_t * adjwgt, * vwgt;
-  pid_t * where = NULL, ** r_where;
+  vtx_type voff, idx;
+  wgt_type sep;
+  adj_type * xadj;
+  vtx_type * adjncy;
+  wgt_type * adjwgt, * vwgt;
+  pid_type * where = NULL, ** r_where;
 
-  tid_t const myid = dlthread_get_id(ctrl->comm);
-  tid_t const nthreads = dlthread_get_nthreads(ctrl->comm);
+  tid_type const myid = dlthread_get_id(ctrl->comm);
+  tid_type const nthreads = dlthread_get_nthreads(ctrl->comm);
 
-  vtx_t const nvtxs = graph->nvtxs; 
+  vtx_type const nvtxs = graph->nvtxs; 
 
   size_t const tseps = ctrl->ninitsolutions; 
 
@@ -132,7 +132,7 @@ wgt_t par_initpart_vsep(
     dl_start_timer(&ctrl->timers.initpart);
   }
 
-  r_where = dlthread_get_shmem(sizeof(pid_t*),ctrl->comm);
+  r_where = dlthread_get_shmem(sizeof(pid_type*),ctrl->comm);
 
   par_graph_gather(graph,&xadj,&adjncy,&vwgt,&adjwgt,&voff);
 

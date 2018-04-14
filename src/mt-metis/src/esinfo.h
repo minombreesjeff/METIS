@@ -31,15 +31,15 @@
 ******************************************************************************/
 
 
-typedef struct esnbrinfo_t {
-  wgt_t con[2];
-} esnbrinfo_t;
+typedef struct esnbrinfo_type {
+  wgt_type con[2];
+} esnbrinfo_type;
 
 
-typedef struct esinfo_t {
+typedef struct esinfo_type {
   vtx_iset_t * bnd;
-  esnbrinfo_t * nbrinfo;
-} esinfo_t;
+  esnbrinfo_type * nbrinfo;
+} esinfo_type;
 
 
 
@@ -50,7 +50,7 @@ typedef struct esinfo_t {
 
 
 #define DLMEM_PREFIX esnbrinfo
-#define DLMEM_TYPE_T esnbrinfo_t
+#define DLMEM_TYPE_T esnbrinfo_type
 #include <dlmem_headers.h>
 #undef DLMEM_TYPE_T
 #undef DLMEM_PREFIX
@@ -63,17 +63,17 @@ typedef struct esinfo_t {
 ******************************************************************************/
 
 
-#define esinfo_free __mtmetis_esinfo_free
+#define esinfo_free MTMETIS_esinfo_free
 /**
  * @brief Free an esinfo and its associated memory.
  *
  * @param graph The graph to free the esinfo of.
  */
 void esinfo_free(
-    graph_t * graph);
+    graph_type * graph);
 
 
-#define par_esinfo_create __mtmetis_par_esinfo_create
+#define par_esinfo_create MTMETIS_par_esinfo_create
 /**
  * @brief Allocate the memory arrays for refinement of an edge separator.
  *
@@ -81,18 +81,18 @@ void esinfo_free(
  * @param graph The graph.
  */
 void par_esinfo_create(
-    ctrl_t * ctrl,
-    graph_t * graph);
+    ctrl_type * ctrl,
+    graph_type * graph);
 
 
-#define par_esinfo_free __mtmetis_par_esinfo_free
+#define par_esinfo_free MTMETIS_par_esinfo_free
 /**
  * @brief Free an esinfo and its associated memory.
  *
  * @param graph The graph to free the esinfo of.
  */
 void par_esinfo_free(
-    graph_t * graph);
+    graph_type * graph);
 
 
 

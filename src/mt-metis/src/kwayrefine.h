@@ -29,7 +29,7 @@
 ******************************************************************************/
 
 
-#define par_kwawyrefine __mtmetis_par_kwayrefine
+#define par_kwawyrefine MTMETIS_par_kwayrefine
 /**
 * @brief Parallel kway-refinement.
 *
@@ -39,10 +39,10 @@
 *
 * @return Total of moved vertices.
 */
-vtx_t par_kwayrefine(
-    ctrl_t * const ctrl, 
-    graph_t * const graph,
-    kwinfo_t * kwinfo);
+vtx_type par_kwayrefine(
+    ctrl_type * const ctrl, 
+    graph_type * const graph,
+    kwinfo_type * kwinfo);
 
 
 

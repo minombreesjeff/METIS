@@ -28,31 +28,31 @@
 ******************************************************************************/
 
 
-typedef struct adjinfo_t {
-  wgt_t ed;
-  pid_t pid;
-} adjinfo_t;
+typedef struct adjinfo_type {
+  wgt_type ed;
+  pid_type pid;
+} adjinfo_type;
 
 
-typedef struct kwnbrinfo_t {
-  wgt_t id;
-  wgt_t ed;
-  pid_t nnbrs;
-  adj_t nbrstart;
-} kwnbrinfo_t;
+typedef struct kwnbrinfo_type {
+  wgt_type id;
+  wgt_type ed;
+  pid_type nnbrs;
+  adj_type nbrstart;
+} kwnbrinfo_type;
 
 
-typedef struct kwinfo_t {
-  pid_t nparts;
+typedef struct kwinfo_type {
+  pid_type nparts;
   vtx_iset_t * bnd;
-  kwnbrinfo_t * nbrinfo;
-  adj_t nnbrpool;
-  adj_t basennbrs;
+  kwnbrinfo_type * nbrinfo;
+  adj_type nnbrpool;
+  adj_type basennbrs;
   size_t basebits;
   size_t npools;
-  adjinfo_t ** nbrpools;
+  adjinfo_type ** nbrpools;
   dlthread_lock_t lock;
-} kwinfo_t;
+} kwinfo_type;
 
 
 
@@ -63,14 +63,14 @@ typedef struct kwinfo_t {
 
 
 #define DLMEM_PREFIX kwnbrinfo
-#define DLMEM_TYPE_T kwnbrinfo_t
+#define DLMEM_TYPE_T kwnbrinfo_type
 #include <dlmem_headers.h>
 #undef DLMEM_TYPE_T
 #undef DLMEM_PREFIX
 
 
 #define DLMEM_PREFIX adjinfo
-#define DLMEM_TYPE_T adjinfo_t
+#define DLMEM_TYPE_T adjinfo_type
 #include <dlmem_headers.h>
 #undef DLMEM_TYPE_T
 #undef DLMEM_PREFIX
@@ -83,7 +83,7 @@ typedef struct kwinfo_t {
 ******************************************************************************/
 
 
-#define par_kwinfo_create __mtmetis_par_kwinfo_create
+#define par_kwinfo_create MTMETIS_par_kwinfo_create
 /**
  * @brief Allocate the memory arrays for refinement. 
  *
@@ -91,18 +91,18 @@ typedef struct kwinfo_t {
  * @param graph The graph.
  */
 void par_kwinfo_create(
-    ctrl_t * ctrl,
-    graph_t * graph);
+    ctrl_type * ctrl,
+    graph_type * graph);
 
 
-#define par_kwinfo_free __mtmetis_par_kwinfo_free
+#define par_kwinfo_free MTMETIS_par_kwinfo_free
 /**
  * @brief Free a kwinfo and its associate memory owned by graph.
  *
  * @param graph The graph to free the kwinfo of.
  */
 void par_kwinfo_free(
-    graph_t * graph);
+    graph_type * graph);
 
 
 
@@ -112,15 +112,15 @@ void par_kwinfo_free(
 ******************************************************************************/
 
 
-static inline adjinfo_t * kwinfo_get_nbrs(
-    kwinfo_t * const kwinfo,
-    vtx_t const v,
-    pid_t const maxnnbrs)
+static inline adjinfo_type * kwinfo_get_nbrs(
+    kwinfo_type * const kwinfo,
+    vtx_type const v,
+    pid_type const maxnnbrs)
 {
   size_t pool;
-  adj_t psize, pstart;
-  kwnbrinfo_t * myrinfo;
-  adjinfo_t * mynbrs;
+  adj_type psize, pstart;
+  kwnbrinfo_type * myrinfo;
+  adjinfo_type * mynbrs;
 
   if (maxnnbrs == 0) {
     return NULL;
@@ -140,7 +140,7 @@ static inline adjinfo_t * kwinfo_get_nbrs(
 
   /* allocate new pool if it doesn't exist */
   if (kwinfo->nbrpools[pool] == NULL) {
-    kwinfo->nbrpools[pool] = malloc(sizeof(adjinfo_t)*psize);
+    kwinfo->nbrpools[pool] = malloc(sizeof(adjinfo_type)*psize);
   }
 
   DL_ASSERT(myrinfo->nbrstart != NULL_ADJ,"Bad nbrstart");
@@ -162,15 +162,15 @@ static inline adjinfo_t * kwinfo_get_nbrs(
 }
 
 
-static inline adjinfo_t * kwinfo_get_nbrs_lk(
-    kwinfo_t * const kwinfo,
-    vtx_t const v,
-    pid_t const maxnnbrs)
+static inline adjinfo_type * kwinfo_get_nbrs_lk(
+    kwinfo_type * const kwinfo,
+    vtx_type const v,
+    pid_type const maxnnbrs)
 {
   size_t pool;
-  adj_t psize, pstart;
-  kwnbrinfo_t * myrinfo;
-  adjinfo_t * mynbrs;
+  adj_type psize, pstart;
+  kwnbrinfo_type * myrinfo;
+  adjinfo_type * mynbrs;
 
   if (maxnnbrs == 0) {
     return NULL;
@@ -194,7 +194,7 @@ static inline adjinfo_t * kwinfo_get_nbrs_lk(
   if (kwinfo->nbrpools[pool] == NULL) {
     dlthread_set_lock(&(kwinfo->lock));
     if (kwinfo->nbrpools[pool] == NULL) {
-      kwinfo->nbrpools[pool] = malloc(sizeof(adjinfo_t)*psize);
+      kwinfo->nbrpools[pool] = malloc(sizeof(adjinfo_type)*psize);
     }
     dlthread_unset_lock(&(kwinfo->lock));
   }
@@ -218,15 +218,15 @@ static inline adjinfo_t * kwinfo_get_nbrs_lk(
 }
 
 
-static inline adjinfo_t const * kwinfo_get_nbrs_ro(
-    kwinfo_t const * const kwinfo,
-    vtx_t const v,
-    pid_t const maxnnbrs)
+static inline adjinfo_type const * kwinfo_get_nbrs_ro(
+    kwinfo_type const * const kwinfo,
+    vtx_type const v,
+    pid_type const maxnnbrs)
 {
   size_t pool;
-  adj_t psize, pstart;
-  kwnbrinfo_t * myrinfo;
-  adjinfo_t * mynbrs;
+  adj_type psize, pstart;
+  kwnbrinfo_type * myrinfo;
+  adjinfo_type * mynbrs;
 
   myrinfo = kwinfo->nbrinfo + v;
 

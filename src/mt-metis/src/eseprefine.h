@@ -30,7 +30,7 @@
 ******************************************************************************/
 
 
-#define par_eseprefine __mtmetis_par_eseprefine
+#define par_eseprefine MTMETIS_par_eseprefine
 /**
  * @brief Refine an edge separator using the parameters specified in ctrl.
  *
@@ -40,10 +40,10 @@
  *
  * @return The number of vertices moved during refinement.
  */
-vtx_t par_eseprefine(
-    ctrl_t * ctrl,
-    graph_t * graph,
-    esinfo_t * esinfo);
+vtx_type par_eseprefine(
+    ctrl_type * ctrl,
+    graph_type * graph,
+    esinfo_type * esinfo);
 
 
 

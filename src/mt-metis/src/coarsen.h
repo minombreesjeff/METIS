@@ -27,7 +27,7 @@
 ******************************************************************************/
 
 
-#define par_coarsen_graph __mtmetis_par_coarsen_graph
+#define par_coarsen_graph MTMETIS_par_coarsen_graph
 /**
  * @brief Coarsen a graph. 
  *
@@ -36,9 +36,9 @@
  *
  * @return The coarse graph.
  */
-graph_t * par_coarsen_graph(
-    ctrl_t * ctrl,
-    graph_t * graph);
+graph_type * par_coarsen_graph(
+    ctrl_type * ctrl,
+    graph_type * graph);
 
 
 

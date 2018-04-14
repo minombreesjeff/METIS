@@ -17,13 +17,12 @@
 
 
 
+#include <wildriver.h>
 #include "base.h"
 #include "partition.h"
 #include "order.h"
 #include "graph.h"
 #include "ctrl.h"
-#include "internal.h"
-#include <bowstring.h>
 
 
 
@@ -33,7 +32,7 @@
 ******************************************************************************/
 
 
-#define __ARRAY_SIZE(a) \
+#define S_ARRAY_SIZE(a) \
   (sizeof(a) > 0 ? (sizeof(a) / sizeof((a)[0])) : 0)
 
 
@@ -67,6 +66,8 @@ static const cmd_opt_pair_t RTYPE_CHOICES[] = {
       MTMETIS_RTYPE_SFM},
   {MTMETIS_STR_RTYPE_SFG,"Segmented FM plus Greedy parallel refinement", \
       MTMETIS_RTYPE_SFG},
+  {MTMETIS_STR_RTYPE_HS,"Hill-Scanning refinement", \
+      MTMETIS_RTYPE_HS}
 };
 
 
@@ -115,16 +116,29 @@ static const cmd_opt_pair_t IGNOREWEIGHTS_CHOICES[] = {
 };
 
 
+static const cmd_opt_pair_t SCANTYPE_CHOICES[] = {
+  {MTMETIS_STR_SCANTYPE_SQRT,"Use the square-root of the number of boundary " \
+      "vertices.",MTMETIS_HS_SCAN_SQRT},
+  {MTMETIS_STR_SCANTYPE_1PC,"Use 1% of the number of boundary " \
+      "vertices.",MTMETIS_HS_SCAN_1PC},
+  {MTMETIS_STR_SCANTYPE_5PC,"Use 5% of the number of boundary " \
+      "vertices.",MTMETIS_HS_SCAN_5PC},
+  {MTMETIS_STR_SCANTYPE_25PC,"Use 25% of the number of boundary " \
+      "vertices.",MTMETIS_HS_SCAN_25PC},
+  {MTMETIS_STR_SCANTYPE_FULL,"Do a full-scan, no limit.",MTMETIS_HS_SCAN_FULL},
+};
+
+
 static const cmd_opt_t OPTS[] = {
   {MTMETIS_OPTION_HELP,'h',"help","Display this help page.",CMD_OPT_FLAG, \
       NULL,0},
   {MTMETIS_OPTION_CTYPE,'c',"ctype","The type of coarsening.", \
-      CMD_OPT_CHOICE,CTYPE_CHOICES,__ARRAY_SIZE(CTYPE_CHOICES)},
+      CMD_OPT_CHOICE,CTYPE_CHOICES,S_ARRAY_SIZE(CTYPE_CHOICES)},
   {MTMETIS_OPTION_CONTYPE,'d',"contype","How to merge adjacency lists " \
       "during contraction.",CMD_OPT_CHOICE,CONTYPE_CHOICES, \
-        __ARRAY_SIZE(CONTYPE_CHOICES)},
+        S_ARRAY_SIZE(CONTYPE_CHOICES)},
   {MTMETIS_OPTION_RTYPE,'r',"rtype","The type of refinement.", \
-      CMD_OPT_CHOICE,RTYPE_CHOICES,__ARRAY_SIZE(RTYPE_CHOICES)},
+      CMD_OPT_CHOICE,RTYPE_CHOICES,S_ARRAY_SIZE(RTYPE_CHOICES)},
   {MTMETIS_OPTION_SEED,'s',"seed","The random seed to use.",CMD_OPT_INT,NULL, \
       0},
   {MTMETIS_OPTION_NCUTS,'N',"cuts","The number of cuts to " \
@@ -141,14 +155,14 @@ static const cmd_opt_t OPTS[] = {
       CMD_OPT_INT,NULL,0},
   {MTMETIS_OPTION_VERBOSITY,'v',"verbosity","The amount of information to " \
       "print during partitioning.",CMD_OPT_CHOICE,VERBOSITY_CHOICES, \
-      __ARRAY_SIZE(VERBOSITY_CHOICES)},
+      S_ARRAY_SIZE(VERBOSITY_CHOICES)},
   {MTMETIS_OPTION_DISTRIBUTION,'D',"distribution","The distribution to use " \
       "for assigning vertices to threads.",CMD_OPT_CHOICE, \
-      DISTRIBUTION_CHOICES,__ARRAY_SIZE(DISTRIBUTION_CHOICES)},
+      DISTRIBUTION_CHOICES,S_ARRAY_SIZE(DISTRIBUTION_CHOICES)},
   {MTMETIS_OPTION_UBFACTOR,'b',"balance","The balance constraint (1.03 " \
       "means allowing for a 3% imbalance).",CMD_OPT_FLOAT,NULL,0},
   {MTMETIS_OPTION_PTYPE,'p',"ptype","The type of partition to compute", \
-      CMD_OPT_CHOICE,PTYPE_CHOICES,__ARRAY_SIZE(PTYPE_CHOICES)},
+      CMD_OPT_CHOICE,PTYPE_CHOICES,S_ARRAY_SIZE(PTYPE_CHOICES)},
   {MTMETIS_OPTION_RUNSTATS,'C',"partstats","Statics on quality of " \
       "partitions",CMD_OPT_FLAG,NULL,0},
   {MTMETIS_OPTION_METIS,'M',"metis","When run with one thread, call Metis " \
@@ -161,14 +175,22 @@ static const cmd_opt_t OPTS[] = {
       "vertex as its weight.",CMD_OPT_FLAG,NULL,0},
   {MTMETIS_OPTION_IGNORE,'W',"ignoreweights","Ignore input weights " \
       "on a graph file.",CMD_OPT_CHOICE,IGNOREWEIGHTS_CHOICES, \
-      __ARRAY_SIZE(IGNOREWEIGHTS_CHOICES)}
+      S_ARRAY_SIZE(IGNOREWEIGHTS_CHOICES)},
+  {MTMETIS_OPTION_HILLSIZE,'H',"hillsize","The limit to use when searching " \
+      "for hills (only applies to hill climbing refinement types).", \
+      CMD_OPT_INT,NULL,0},
+  {MTMETIS_OPTION_HS_SCANTYPE,'S',"scantype","The how many hills to scan " \
+      "before terminating (only applies to HS refinement).",CMD_OPT_CHOICE, \
+      SCANTYPE_CHOICES,S_ARRAY_SIZE(SCANTYPE_CHOICES)},
+  {MTMETIS_OPTION_VERSION,'\0',"version","Display the current version.", \
+      CMD_OPT_FLAG,NULL,0}
 };
 
 
-static const size_t NOPTS = __ARRAY_SIZE(OPTS);
+static const size_t NOPTS = S_ARRAY_SIZE(OPTS);
 
 
-#undef __ARRAY_SIZE
+#undef S_ARRAY_SIZE
 
 
 
@@ -178,31 +200,22 @@ static const size_t NOPTS = __ARRAY_SIZE(OPTS);
 ******************************************************************************/
 
 
-static char const * __bool2str(
-    int const b)
+static int S_usage(
+    char const * const name,
+    FILE * const fout)
 {
-  if (b) {
-    return "Yes";
-  } else {
-    return "No";
-  }
-}
-
-
-static int __usage(
-    char const * const name)
-{
-  fprintf(stderr,"USAGE:\n");
-  fprintf(stderr,"%s [options] <graphfile> <nparts> [ <partfile> | - ]\n", \
+  fprintf(fout,"USAGE:\n");
+  fprintf(fout,"%s [options] <graphfile> <nparts> [ <partfile> | - ]\n", \
       name);
-  fprintf(stderr,"\n");
-  fprintf(stderr,"Options:\n");
-  fprint_cmd_opts(stderr,OPTS,NOPTS);
+  fprintf(fout,"\n");
+  fprintf(fout,"Options:\n");
+  fprint_cmd_opts(fout,OPTS,NOPTS);
+
   return 1;
 }
 
 
-static double * __parse_args(
+static double * S_parse_args(
     cmd_arg_t * args, 
     size_t nargs,
     char const ** r_input, 
@@ -246,6 +259,11 @@ static double * __parse_args(
     /* check for help */
     if (args[i].id == MTMETIS_OPTION_HELP) {
       goto CLEANUP;
+    } else if (args[i].id == MTMETIS_OPTION_VERSION) {
+      printf("mt-Metis %d.%d.%d\n",MTMETIS_VER_MAJOR,MTMETIS_VER_MINOR, \
+          MTMETIS_VER_SUBMINOR);
+      printf("Copyright 2016, The Regents of the University of Minnesota\n");
+      goto CLEANUP;
     }
     if (args[i].type == CMD_OPT_XARG) {
       if (xarg == 0) {
@@ -254,7 +272,7 @@ static double * __parse_args(
         if (options[MTMETIS_OPTION_PTYPE] == MTMETIS_PTYPE_KWAY || \
             options[MTMETIS_OPTION_PTYPE] == MTMETIS_PTYPE_RB) {
           if (xarg == 1) {
-            options[MTMETIS_OPTION_NPARTS] = (pid_t)atoll(args[i].val.s);
+            options[MTMETIS_OPTION_NPARTS] = (pid_type)atoll(args[i].val.s);
           } else if (xarg == 2) {
             output_file = args[i].val.s;
             if (strcmp(output_file,"-") == 0) {
@@ -312,198 +330,98 @@ int main(
     int argc, 
     char ** argv) 
 {
-  int rv;
+  int rv, times, verbosity;
   size_t nargs;
-  vtx_t nvtxs, i;
-  adj_t * xadj = NULL;
-  vtx_t * adjncy = NULL;
-  wgt_t * vwgt = NULL, * adjwgt = NULL;
-  ctrl_t * ctrl = NULL;
+  vtx_type nvtxs, i;
+  adj_type * xadj = NULL;
+  vtx_type * adjncy = NULL;
+  wgt_type * vwgt = NULL, * adjwgt = NULL;
   double * options = NULL;
   cmd_arg_t * args = NULL;
-  pid_t * owhere = NULL;
+  pid_type * owhere = NULL;
   char const * output_file = NULL, * input_file = NULL;
-  graph_t * graph = NULL;
-  timers_t * timers;
+  dl_timer_t timer_input, timer_output;
 
   /* parse user specified options */
   rv = cmd_parse_args(argc-1,argv+1,OPTS,NOPTS,&args,&nargs);
   if (rv != DL_CMDLINE_SUCCESS) {
-    __usage(argv[0]);
+    S_usage(argv[0],stderr);
     rv = 1;
     goto CLEANUP;
   }
-  options = __parse_args(args,nargs,&input_file,&output_file);
+  options = S_parse_args(args,nargs,&input_file,&output_file);
   if (options == NULL) {
-    __usage(argv[0]);
+    S_usage(argv[0],stderr);
     rv = 2;
     goto CLEANUP;
   }
-  if (ctrl_parse(options,&ctrl) != MTMETIS_SUCCESS) {
-    __usage(argv[0]);
-    rv = 3;
-    goto CLEANUP;
-  }
-  dl_free(options);
-  options = NULL;
 
-  timers = &(ctrl->timers);
+  /* parse verbosity and timing */
+  times = options[MTMETIS_OPTION_TIME];
+  verbosity = options[MTMETIS_OPTION_VERBOSITY];
+
+  dl_init_timer(&timer_input);
+  dl_init_timer(&timer_output);
 
   /* start timers */
-  dl_start_timer(&timers->total);
-  dl_start_timer(&timers->io);
+  dl_start_timer(&timer_input);
 
-  if (ctrl->verbosity >= MTMETIS_VERBOSITY_LOW) {
-    dl_print_header("PARAMETERS",'%');
-    printf("Number of Threads: %"PF_TID_T" | Verbosity: %s\n",ctrl->nthreads, \
-        trans_verbosity_string(ctrl->verbosity));
-    printf("Number of Runs: %zu | Random Seed: %u\n",ctrl->nruns, \
-        ctrl->seed);
-    printf("Number of Partitions: %"PF_PID_T" | Partition Type: %s\n", \
-        ctrl->nparts,trans_ptype_string(ctrl->ptype));
-    printf("Coarsening Type: %s | Contraction Type: %s\n", \
-        trans_ctype_string(ctrl->ctype),trans_contype_string(ctrl->contype));
-    printf("Refinement Type: %s | Number of Refinement Passes: %zu\n",
-        trans_rtype_string(ctrl->rtype),ctrl->nrefpass);
-    printf("Balance: %0.2lf\n",ctrl->ubfactor);
-    printf("Leaf-Matching: %s | Remove Islands: %s\n", \
-        __bool2str(ctrl->leafmatch),__bool2str(ctrl->removeislands));
-    dl_print_footer('%');
-  }
+  rv = wildriver_read_graph(input_file,&nvtxs,NULL,NULL,NULL,&xadj,&adjncy, \
+      &vwgt,&adjwgt);
 
   /* read the input graph */
-  vprintf(ctrl->verbosity,MTMETIS_VERBOSITY_LOW,"Reading '%s'\n", \
-      input_file);
-  rv = bowstring_read_graph(input_file,BOWSTRING_FORMAT_AUTO,&nvtxs,&xadj,
-      &adjncy,(bowstring_wgt_t**)&vwgt,(bowstring_wgt_t**)&adjwgt);
-  if (rv != BOWSTRING_SUCCESS) {
+  vprintf(verbosity,MTMETIS_VERBOSITY_LOW,"Read '%s' with %"PF_VTX_T \
+      " vertices and %"PF_ADJ_T" edges.\n",input_file,nvtxs,xadj[nvtxs]/2);
+
+  if (rv != 1) {
     eprintf("Error reading from input file '%s'\n",input_file);
     rv = 4;
     goto CLEANUP;
   }
 
-  ctrl_setup(ctrl,NULL,nvtxs);
+  dl_stop_timer(&timer_input);
 
-  dl_stop_timer(&timers->io);
-  
   if (output_file) {
     owhere = pid_alloc(nvtxs);
   }
 
-  if (ctrl->ignore & MTMETIS_IGNORE_EDGEWEIGHTS) {
-    if (adjwgt) {
-      dl_free(adjwgt);
-      adjwgt = NULL;
-    }
-  }
-  if (ctrl->ignore & MTMETIS_IGNORE_VERTEXWEIGHTS) {
-    if (vwgt) {
-      dl_free(vwgt);
-      vwgt = NULL;
-    }
+  if (mtmetis_partition_explicit(nvtxs,xadj,adjncy,vwgt,adjwgt,options,
+      owhere,NULL) != MTMETIS_SUCCESS) {
+    rv = 3;
+    goto CLEANUP;
   }
 
-  if (ctrl->vwgtdegree) {
-    if (vwgt) {
-      /* discard file vertex weights */
-      dl_free(vwgt);
-    }
-    vwgt = wgt_alloc(nvtxs);
-    for (i=0;i<nvtxs;++i) {
-      vwgt[i] = xadj[i+1] - xadj[i];
-    }
-  }
-
-  graph = graph_distribute(MTMETIS_DISTRIBUTION_BLOCKCYCLIC,nvtxs,xadj, \
-      adjncy,vwgt,adjwgt,ctrl->nthreads);
-
-  switch (ctrl->ptype) {
-    case MTMETIS_PTYPE_RB:
-      mtmetis_partition_rb_int(ctrl,graph,owhere);
-      break;
-    case MTMETIS_PTYPE_KWAY:
-      mtmetis_partition_kway_int(ctrl,graph,owhere);
-      break;
-    case MTMETIS_PTYPE_ESEP:
-      mtmetis_partition_esep_int(ctrl,graph,owhere);
-      break;
-    case MTMETIS_PTYPE_VSEP:
-      mtmetis_partition_vsep_int(ctrl,graph,owhere);
-      break;
-    case MTMETIS_PTYPE_ND:
-      order_nd(ctrl,graph,owhere);
-      break;
-    default:
-      dl_error("Unknown ptype '%d'",ctrl->ptype);
-  }
-
-  dl_start_timer(&timers->io);
+  dl_start_timer(&timer_output);
 
   if (output_file) {
     if (strcmp(output_file,"-") == 0) {
       /* write to stdout */
-      for (i=0;i<graph->nvtxs;++i) {
+      for (i=0;i<nvtxs;++i) {
         printf("%"PF_PID_T"\n",owhere[i]);
       }
     } else {
       /* save to file */
-      bowstring_write_vertex_labels(output_file,nvtxs,owhere);
+      FILE * fout = fopen(output_file,"w");
+      for (i=0;i<nvtxs;++i) {
+        fprintf(fout,"%"PF_PID_T"\n",owhere[i]);
+      }
+      fclose(fout);
     }
   }
 
-  dl_stop_timer(&timers->io);
+  dl_stop_timer(&timer_output);
 
-  if (ctrl->runstats) {
-    dl_print_header("STATISTICS",'&');
-    printf("Best Objective: %"PF_WGT_T"\n",wgt_min_value(ctrl->runs, \
-          ctrl->nruns));
-    printf("Worst Objective: %"PF_WGT_T"\n",wgt_max_value(ctrl->runs, \
-          ctrl->nruns));
-    printf("Median Objective: %"PF_WGT_T"\n",wgt_median(ctrl->runs, \
-          ctrl->nruns));
-    printf("Mean Objective - Geo.: %0.2lf - Ari.: %.2lf\n", \
-        wgt_geometric_mean(ctrl->runs,ctrl->nruns), \
-        wgt_arithmetic_mean(ctrl->runs,ctrl->nruns));
-    dl_print_footer('&');
-  }
-
-  if (ctrl->time && ctrl->verbosity > MTMETIS_VERBOSITY_NONE) {
-    dl_print_header("TIMING",'$');
-    printf("Total Time: %.05fs\n",dl_poll_timer(&(timers->total)));
-    printf("\tIO: %.05fs\n",dl_poll_timer(&(timers->io)));
-    printf("\tPreprocessing: %.05fs\n",dl_poll_timer(&(timers->preprocess)));
-    if (ctrl->ptype == MTMETIS_PTYPE_ND) {
-      printf("\tOrdering: %.05fs\n",dl_poll_timer(&(timers->ordering)));
-    }
-    printf("\tPartitioning: %.05fs\n",dl_poll_timer(&(timers->partitioning)));
-    printf("\t\tCoarsening: %.05fs\n",dl_poll_timer(&(timers->coarsening)));
-    printf("\t\t\tMatching: %.05fs\n",dl_poll_timer(&(timers->matching)));
-    printf("\t\t\tContraction: %.05fs\n", \
-        dl_poll_timer(&(timers->contraction)));
-    printf("\t\tInitial Partitioning: %.05fs\n",
-        dl_poll_timer(&(timers->initpart))); \
-    printf("\t\tUncoarsening: %.05fs\n", \
-        dl_poll_timer(&(timers->uncoarsening)));
-    printf("\t\t\tProjection: %.05fs\n",dl_poll_timer(&(timers->projection)));
-    printf("\t\t\tRefinement: %.05fs\n",dl_poll_timer(&(timers->refinement)));
-    if (ctrl->ptype == MTMETIS_PTYPE_ND || ctrl->ptype == MTMETIS_PTYPE_RB) {
-      printf("\t\tRecursion Overhead: %.05fs\n", \
-          dl_poll_timer(&(timers->recursion)));
-    }
-    if (ctrl->ptype == MTMETIS_PTYPE_ND || ctrl->ptype == MTMETIS_PTYPE_RB || \
-        ctrl->metis_serial) {
-      printf("\tMetis: %.05fs\n",dl_poll_timer(&(timers->metis)));
-    }
+  if (times) {
+    dl_print_header("AUXILLARY TIME",'$');
+    printf("Input: %.05fs\n",dl_poll_timer(&timer_input));
+    printf("Output: %.05fs\n",dl_poll_timer(&timer_output));
     dl_print_footer('$');
   }
 
   CLEANUP:
 
-  if (ctrl) {
-    ctrl_free(ctrl);
-  }
-  if (graph) {
-    graph_free(graph);
+  if (options) {
+    dl_free(options);
   }
   if (xadj) {
     dl_free(xadj);

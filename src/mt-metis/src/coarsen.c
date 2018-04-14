@@ -29,17 +29,17 @@
 ******************************************************************************/
 
 
-graph_t * par_coarsen_graph(
-    ctrl_t * ctrl,
-    graph_t * graph)
+graph_type * par_coarsen_graph(
+    ctrl_type * ctrl,
+    graph_type * graph)
 {
-  vtx_t cnvtxs;
-  vtx_t ** gmatch;
-  vtx_t * fcmap;
-  vtx_t * match;
+  vtx_type cnvtxs;
+  vtx_type ** gmatch;
+  vtx_type * fcmap;
+  vtx_type * match;
 
-  tid_t const nthreads = dlthread_get_nthreads(ctrl->comm);
-  tid_t const myid = dlthread_get_id(ctrl->comm);
+  tid_type const nthreads = dlthread_get_nthreads(ctrl->comm);
+  tid_type const myid = dlthread_get_id(ctrl->comm);
 
   if (graph->nvtxs <= 1) {
     return graph;
@@ -56,7 +56,7 @@ graph_t * par_coarsen_graph(
 
   DL_ASSERT(check_graph(graph),"Invalid graph");
 
-  gmatch = dlthread_get_shmem(sizeof(vtx_t*)*nthreads,ctrl->comm);
+  gmatch = dlthread_get_shmem(sizeof(vtx_type*)*nthreads,ctrl->comm);
 
   gmatch[myid] = match;
 
@@ -83,7 +83,7 @@ graph_t * par_coarsen_graph(
 
   cnvtxs = par_aggregate_graph(ctrl,graph,gmatch,fcmap);
 
-  par_contract_graph(ctrl,graph,cnvtxs,(vtx_t const **)gmatch,fcmap);
+  par_contract_graph(ctrl,graph,cnvtxs,(vtx_type const **)gmatch,fcmap);
 
   dlthread_free_shmem(gmatch,ctrl->comm);
 

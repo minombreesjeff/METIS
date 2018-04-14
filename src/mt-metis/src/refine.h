@@ -27,7 +27,7 @@
 ******************************************************************************/
 
 
-#define par_refine_graph __mtmetis_par_refine_graph
+#define par_refine_graph MTMETIS_par_refine_graph
 /**
  * @brief Refine the partition of a graph.
  *
@@ -36,9 +36,9 @@
  *
  * @return The number of vertices moved while refining the partition.
  */
-vtx_t par_refine_graph(
-    ctrl_t * ctrl,
-    graph_t * graph);
+vtx_type par_refine_graph(
+    ctrl_type * ctrl,
+    graph_type * graph);
 
 
 

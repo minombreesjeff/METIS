@@ -87,8 +87,13 @@ void DLTHREAD_PUB(dlthread_minareduce)(
  * completition, val will contain the starting indexes for this thread, and if
  * provided, gval, will contain the starting indexes of each bucket.
  *
+ * If two thread call this function with val arrays of:
+ *   val1 = {3, 5} and val2 = {2, 4},
+ * then after the call the val arrays and gval will be:
+ *   val1 = {0, 3 + 2} val2 = {3, 3 + 2 + 5}, gval = {3 + 2, 3 + 2 + 5 + 4}.
+ *
  * @param val Element counts for each bucket. 
- * @param n The number of buckets.
+ * @param n The number of buckets per thread.
  * @param gval The global bucket prefix (optional).
  * @param comm The thread communicator.
  */

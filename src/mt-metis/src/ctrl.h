@@ -26,10 +26,11 @@
 ******************************************************************************/
 
 
-typedef struct timers_t {
+typedef struct timers_type {
   dl_timer_t total;
   dl_timer_t io;
   dl_timer_t preprocess;
+  dl_timer_t postprocess;
   dl_timer_t metis;
   dl_timer_t ordering;
   dl_timer_t partitioning;
@@ -41,50 +42,51 @@ typedef struct timers_t {
   dl_timer_t projection;
   dl_timer_t refinement;
   dl_timer_t recursion;
-} timers_t;
+} timers_type;
 
 
-typedef struct ctrl_t {
+typedef struct ctrl_type {
   /* runtime parameters */
   unsigned int seed;
-  tid_t nthreads;
+  tid_type nthreads;
   int verbosity;
   int time;
   int runstats;
   int dist;
-  timers_t timers;
-  wgt_t * runs;
+  timers_type timers;
+  wgt_type * runs;
   int vwgtdegree;
   int ignore;
   /* thread communication structures */
   dlthread_comm_t comm;
   /* partitioning parameters */
   int ptype;
-  pid_t nparts;
+  pid_type nparts;
   size_t nruns;
   size_t ncuts;
-  real_t * tpwgts;
-  real_t * pijbm;
-  real_t ubfactor;
+  real_type * tpwgts;
+  real_type * pijbm;
+  real_type ubfactor;
   int metis_serial;
   int removeislands;
   /* coarsening parameters */
   int ctype;
   int contype;
   int leafmatch;
-  vtx_t coarsen_to;
-  wgt_t maxvwgt;
+  vtx_type coarsen_to;
+  wgt_type maxvwgt;
   double stopratio;
   /* initial partitiong parameters */
   size_t ninitsolutions;
   /* refinement parameters */
   int rtype;
   size_t nrefpass;
-  vtx_t hillsize;
+  vtx_type hillsize;
+  int hs_stype;
   int global_relabel;
   /* pre-partitioning parameters */
   size_t partfactor;
-} ctrl_t;
+} ctrl_type;
 
 
 
@@ -94,16 +96,16 @@ typedef struct ctrl_t {
 ******************************************************************************/
 
 
-#define ctrl_create __mtmetis_ctrl_create
+#define ctrl_create MTMETIS_ctrl_create
 /**
  * @brief Allocate and initialize a control structure.
  *
  * @return The new control structure.
  */
-ctrl_t * ctrl_create(void);
+ctrl_type * ctrl_create(void);
 
 
-#define ctrl_setup __mtmetis_ctrl_setup
+#define ctrl_setup MTMETIS_ctrl_setup
 /**
  * @brief Setup a control structure to partition a graph with a specified
  * number of vertices. The structure should already be configured with nthreads
@@ -114,12 +116,12 @@ ctrl_t * ctrl_create(void);
  * @param nvtxs The number of vertices in the graph to partition.
  */
 void ctrl_setup(
-    ctrl_t * ctrl,
-    real_t * tpwgts,
-    vtx_t nvtxs);
+    ctrl_type * ctrl,
+    real_type * tpwgts,
+    vtx_type nvtxs);
 
 
-#define ctrl_parse __mtmetis_ctrl_parse
+#define ctrl_parse MTMETIS_ctrl_parse
 /**
  * @brief Create a control structure using the specified set of options.
  *
@@ -130,20 +132,20 @@ void ctrl_setup(
  */
 int ctrl_parse(
     double const * options,
-    ctrl_t ** ctrl);
+    ctrl_type ** ctrl);
 
 
-#define ctrl_free __mtmetis_ctrl_free
+#define ctrl_free MTMETIS_ctrl_free
 /**
  * @brief Free a control structure and its associated memory.
  *
  * @param ctrl The control structure to free.
  */
 void ctrl_free(
-    ctrl_t * ctrl);
+    ctrl_type * ctrl);
 
 
-#define ctrl_combine_timers __mtmetis_ctrl_combine_timers
+#define ctrl_combine_timers MTMETIS_ctrl_combine_timers
 /**
  * @brief Combine the times of the two timers into the first.
  *
@@ -151,11 +153,11 @@ void ctrl_free(
  * @param ctrl2 The timer to combine times with.
  */
 void ctrl_combine_timers(
-    ctrl_t * ctrl,
-    ctrl_t const * ctrl2);
+    ctrl_type * ctrl,
+    ctrl_type const * ctrl2);
 
 
-#define ser_ctrl_split __mtmetis_ser_ctrl_split
+#define ser_ctrl_split MTMETIS_ser_ctrl_split
 /**
  * @brief Split the control structure serially for recursive bisection or
  * nested dissection.
@@ -165,12 +167,12 @@ void ctrl_combine_timers(
  * @param hctrl The two resulting ctrls (output).
  */
 void ser_ctrl_split(
-    ctrl_t const * ctrl,
-    vtx_t const * hnvtxs,
-    ctrl_t ** hctrls);
+    ctrl_type const * ctrl,
+    vtx_type const * hnvtxs,
+    ctrl_type ** hctrls);
 
 
-#define ser_ctrl_rb __mtmetis_ser_ctrl_rb
+#define ser_ctrl_rb MTMETIS_ser_ctrl_rb
 /**
  * @brief Create a new control for creating an edge separator. 
  *
@@ -181,9 +183,9 @@ void ser_ctrl_split(
  *
  * @return The new control.
  */
-ctrl_t * ser_ctrl_rb(
-    ctrl_t * ctrl,
-    pid_t const * offset);
+ctrl_type * ser_ctrl_rb(
+    ctrl_type * ctrl,
+    pid_type const * offset);
 
 
 
@@ -193,7 +195,7 @@ ctrl_t * ser_ctrl_rb(
 ******************************************************************************/
 
 
-#define par_ctrl_split __mtmetis_par_ctrl_split
+#define par_ctrl_split MTMETIS_par_ctrl_split
 /**
  * @brief Duplicate a control structure.
  *
@@ -204,24 +206,24 @@ ctrl_t * ser_ctrl_rb(
  *
  * @return The duplicated contrl structure. 
  */
-ctrl_t * par_ctrl_split(
-    ctrl_t const * ctrl,
-    vtx_t nvtxs,
-    pid_t nparts,
+ctrl_type * par_ctrl_split(
+    ctrl_type const * ctrl,
+    vtx_type nvtxs,
+    pid_type nparts,
     dlthread_comm_t comm);
 
 
-#define par_ctrl_free __mtmetis_par_ctrl_free
+#define par_ctrl_free MTMETIS_par_ctrl_free
 /**
  * @brief Free a control structure and its associated memory.
  *
  * @param ctrl The control structure to free.
  */
 void par_ctrl_free(
-    ctrl_t * ctrl);
+    ctrl_type * ctrl);
 
 
-#define par_ctrl_parse __mtmetis_par_ctrl_parse
+#define par_ctrl_parse MTMETIS_par_ctrl_parse
 /**
  * @brief Parse a control structure options in parallel.
  *
@@ -233,11 +235,11 @@ void par_ctrl_free(
  */
 int par_ctrl_parse(
     double const * options,
-    ctrl_t ** r_ctrl,
+    ctrl_type ** r_ctrl,
     dlthread_comm_t comm);
 
 
-#define par_ctrl_setup __mtmetis_par_ctrl_setup
+#define par_ctrl_setup MTMETIS_par_ctrl_setup
 /**
  * @brief Setup a control structure in parallel.
  *
@@ -246,12 +248,12 @@ int par_ctrl_parse(
  * @param nvtxs The number of vertices in the graph.
  */
 void par_ctrl_setup(
-    ctrl_t * ctrl,
-    real_t * tpwgts,
-    vtx_t nvtxs);
+    ctrl_type * ctrl,
+    real_type * tpwgts,
+    vtx_type nvtxs);
 
 
-#define par_ctrl_rb __mtmetis_par_ctrl_rb
+#define par_ctrl_rb MTMETIS_par_ctrl_rb
 /**
  * @brief Create a new control for creating an edge separator. 
  *
@@ -262,9 +264,9 @@ void par_ctrl_setup(
  *
  * @return The new control.
  */
-ctrl_t * par_ctrl_rb(
-    ctrl_t * ctrl,
-    pid_t const * offset);
+ctrl_type * par_ctrl_rb(
+    ctrl_type * ctrl,
+    pid_type const * offset);
 
 
 
@@ -293,6 +295,10 @@ char const * trans_verbosity_string(
     mtmetis_verbosity_t type);
 
 
+char const * trans_dtype_string(
+    mtmetis_dtype_t type);
+
+
 mtmetis_ptype_t trans_string_ptype(
     char const * str);
 
@@ -310,6 +316,10 @@ mtmetis_rtype_t trans_string_rtype(
 
 
 mtmetis_verbosity_t trans_string_verbosity(
+    char const * str);
+
+
+mtmetis_dtype_t trans_string_dtype(
     char const * str);
 
 

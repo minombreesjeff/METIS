@@ -27,10 +27,10 @@
 ******************************************************************************/
 
 
-typedef struct edge_t {
-  vtx_t dst;
-  wgt_t wgt;
-} edge_t;
+typedef struct edge_type {
+  vtx_type dst;
+  wgt_type wgt;
+} edge_type;
 
 
 
@@ -43,7 +43,7 @@ typedef struct edge_t {
 #define DEF_MASK_SIZE (0x2000)
 static uint32_t const MASK_SIZE = DEF_MASK_SIZE;
 static uint32_t const MASK = DEF_MASK_SIZE-1;
-static vtx_t const MASK_MAX_DEG = DEF_MASK_SIZE >> 3;
+static vtx_type const MASK_MAX_DEG = DEF_MASK_SIZE >> 3;
 
 
 
@@ -54,7 +54,7 @@ static vtx_t const MASK_MAX_DEG = DEF_MASK_SIZE >> 3;
 
 
 #define DLSORT_PREFIX edge
-#define DLSORT_TYPE_T edge_t
+#define DLSORT_TYPE_T edge_type
 #define DLSORT_COMPARE(a,b) ((a).dst < (b).dst)
 #define DLSORT_STATIC
 #include "dlsort_headers.h"
@@ -82,13 +82,13 @@ static vtx_t const MASK_MAX_DEG = DEF_MASK_SIZE >> 3;
  *
  * @return The reversed key.
  */
-static inline vtx_t __reverse(
-    vtx_t const n, 
-    vtx_t const mask)
+static inline vtx_type S_reverse(
+    vtx_type const n, 
+    vtx_type const mask)
 {
-  vtx_t r = vtx_reversebits(n);
+  vtx_type r = vtx_reversebits(n);
   int const mb = vtx_downlog2(mask);
-  int const vs = sizeof(vtx_t)*8;
+  int const vs = sizeof(vtx_type)*8;
   if (vs >= 2*mb) {
     return (r >> (vs - (2*mb))) & mask;
   } else {
@@ -112,14 +112,14 @@ static inline vtx_t __reverse(
  * @param olddist The old graph distribution parameters.
  * @param newdist The new graph distribution parameters.
  */
-static void __adjust_cmap(
-    vtx_t * const cmap, 
-    vtx_t const mynvtxs, 
-    graphdist_t const olddist, 
-    graphdist_t const newdist)
+static void S_adjust_cmap(
+    vtx_type * const cmap, 
+    vtx_type const mynvtxs, 
+    graphdist_type const olddist, 
+    graphdist_type const newdist)
 {
-  vtx_t i,k;
-  tid_t o;
+  vtx_type i,k;
+  tid_type o;
 
   for (i=0;i<mynvtxs;++i) {
     if (cmap[i] >= olddist.offset) { /* remote vertex */
@@ -140,32 +140,32 @@ static void __adjust_cmap(
  * @param gmatch The global match array.
  * @param fcmap The first fine vertex for each coarse vertex.
  */
-static void __par_contract_DENSE(
-    ctrl_t * const ctrl, 
-    graph_t * const graph, 
-    vtx_t const mycnvtxs, 
-    vtx_t const * const * const gmatch, 
-    vtx_t const * const fcmap)
+static void S_par_contract_DENSE(
+    ctrl_type * const ctrl, 
+    graph_type * const graph, 
+    vtx_type const mycnvtxs, 
+    vtx_type const * const * const gmatch, 
+    vtx_type const * const fcmap)
 {
-  adj_t cnedges, l, maxdeg, j, i;
-  tid_t o, t;
-  vtx_t v, c, cg, k;
-  wgt_t ewgt;
-  adj_t * table;
-  graph_t * cgraph;
-  graphdist_t dist;
+  adj_type cnedges, l, maxdeg, j, i;
+  tid_type o, t;
+  vtx_type v, c, cg, k;
+  wgt_type ewgt;
+  adj_type * table;
+  graph_type * cgraph;
+  graphdist_type dist;
 
-  tid_t const myid = dlthread_get_id(ctrl->comm);
-  tid_t const nthreads = dlthread_get_nthreads(ctrl->comm);
+  tid_type const myid = dlthread_get_id(ctrl->comm);
+  tid_type const nthreads = dlthread_get_nthreads(ctrl->comm);
 
   /* make accessing my old graph easy */
-  vtx_t const mynvtxs = graph->mynvtxs[myid];
-  adj_t const * const * const gxadj = (adj_t const * const *)graph->xadj;
-  vtx_t const * const * const gadjncy = (vtx_t const * const *)graph->adjncy;
-  wgt_t const * const * const gvwgt = (wgt_t const * const *)graph->vwgt;
-  wgt_t const * const * const gadjwgt = (wgt_t const * const *)graph->adjwgt;
+  vtx_type const mynvtxs = graph->mynvtxs[myid];
+  adj_type const * const * const gxadj = (adj_type const * const *)graph->xadj;
+  vtx_type const * const * const gadjncy = (vtx_type const * const *)graph->adjncy;
+  wgt_type const * const * const gvwgt = (wgt_type const * const *)graph->vwgt;
+  wgt_type const * const * const gadjwgt = (wgt_type const * const *)graph->adjwgt;
 
-  vtx_t const * const * const gcmap = (vtx_t const **)graph->cmap;
+  vtx_type const * const * const gcmap = (vtx_type const **)graph->cmap;
 
   if (myid == 0) {
     dl_start_timer(&(ctrl->timers.contraction));
@@ -175,7 +175,7 @@ static void __par_contract_DENSE(
 
   dist = cgraph->dist;
 
-  __adjust_cmap(graph->cmap[myid],mynvtxs,graph->dist,dist);
+  S_adjust_cmap(graph->cmap[myid],mynvtxs,graph->dist,dist);
 
   /* count possible edges */
   cnedges = 0;
@@ -196,10 +196,10 @@ static void __par_contract_DENSE(
     cnedges += l;
   }
 
-  adj_t * const mycxadj = cgraph->xadj[myid];
-  vtx_t * const mycadjncy = cgraph->adjncy[myid] = vtx_alloc(cnedges);
-  wgt_t * const mycvwgt = cgraph->vwgt[myid];
-  wgt_t * const mycadjwgt = cgraph->adjwgt[myid] = wgt_alloc(cnedges);
+  adj_type * const mycxadj = cgraph->xadj[myid];
+  vtx_type * const mycadjncy = cgraph->adjncy[myid] = vtx_alloc(cnedges);
+  wgt_type * const mycvwgt = cgraph->vwgt[myid];
+  wgt_type * const mycadjwgt = cgraph->adjwgt[myid] = wgt_alloc(cnedges);
 
   table = NULL;
 
@@ -304,32 +304,32 @@ static void __par_contract_DENSE(
  * @param gmatch The global match array.
  * @param fcmap The first fine vertex for each coarse vertex.
  */
-static void __par_contract_CLS(
-    ctrl_t * const ctrl, 
-    graph_t * const graph, 
-    vtx_t const mycnvtxs, 
-    vtx_t const * const * const gmatch, 
-    vtx_t const * const fcmap)
+static void S_par_contract_CLS(
+    ctrl_type * const ctrl, 
+    graph_type * const graph, 
+    vtx_type const mycnvtxs, 
+    vtx_type const * const * const gmatch, 
+    vtx_type const * const fcmap)
 {
-  adj_t cnedges, l, maxdeg, j, i, jj, start;
-  tid_t o, t;
-  vtx_t v, c, cg, k;
-  wgt_t ewgt;
-  graph_t * cgraph;
-  graphdist_t dist;
-  offset_t * htable;
+  adj_type cnedges, l, maxdeg, j, i, jj, start;
+  tid_type o, t;
+  vtx_type v, c, cg, k;
+  wgt_type ewgt;
+  graph_type * cgraph;
+  graphdist_type dist;
+  offset_type * htable;
 
-  tid_t const myid = dlthread_get_id(ctrl->comm);
-  tid_t const nthreads = dlthread_get_nthreads(ctrl->comm);
+  tid_type const myid = dlthread_get_id(ctrl->comm);
+  tid_type const nthreads = dlthread_get_nthreads(ctrl->comm);
 
   /* make accessing my old graph easy */
-  vtx_t const mynvtxs = graph->mynvtxs[myid];
-  adj_t const * const * const gxadj = (adj_t const * const *)graph->xadj;
-  vtx_t const * const * const gadjncy = (vtx_t const * const *)graph->adjncy;
-  wgt_t const * const * const gvwgt = (wgt_t const * const *)graph->vwgt;
-  wgt_t const * const * const gadjwgt = (wgt_t const * const *)graph->adjwgt;
+  vtx_type const mynvtxs = graph->mynvtxs[myid];
+  adj_type const * const * const gxadj = (adj_type const * const *)graph->xadj;
+  vtx_type const * const * const gadjncy = (vtx_type const * const *)graph->adjncy;
+  wgt_type const * const * const gvwgt = (wgt_type const * const *)graph->vwgt;
+  wgt_type const * const * const gadjwgt = (wgt_type const * const *)graph->adjwgt;
 
-  vtx_t const * const * const gcmap = (vtx_t const **)graph->cmap;
+  vtx_type const * const * const gcmap = (vtx_type const **)graph->cmap;
 
   /* count possible edges */
   cnedges = 0;
@@ -351,7 +351,7 @@ static void __par_contract_CLS(
   }
 
   if (maxdeg > MASK_MAX_DEG) {
-    __par_contract_DENSE(ctrl,graph,mycnvtxs,gmatch,fcmap);
+    S_par_contract_DENSE(ctrl,graph,mycnvtxs,gmatch,fcmap);
     return;
   }
 
@@ -363,12 +363,12 @@ static void __par_contract_CLS(
 
   dist = cgraph->dist;
 
-  __adjust_cmap(graph->cmap[myid],mynvtxs,graph->dist,dist);
+  S_adjust_cmap(graph->cmap[myid],mynvtxs,graph->dist,dist);
 
-  adj_t * const mycxadj = cgraph->xadj[myid];
-  vtx_t * const mycadjncy = cgraph->adjncy[myid] = vtx_alloc(cnedges);
-  wgt_t * const mycvwgt = cgraph->vwgt[myid];
-  wgt_t * const mycadjwgt = cgraph->adjwgt[myid] = wgt_alloc(cnedges);
+  adj_type * const mycxadj = cgraph->xadj[myid];
+  vtx_type * const mycadjncy = cgraph->adjncy[myid] = vtx_alloc(cnedges);
+  wgt_type * const mycvwgt = cgraph->vwgt[myid];
+  wgt_type * const mycadjwgt = cgraph->adjwgt[myid] = wgt_alloc(cnedges);
 
   htable = offset_init_alloc(NULL_OFFSET,MASK_SIZE);
 
@@ -417,7 +417,7 @@ static void __par_contract_CLS(
             /* new edge */
             mycadjncy[cnedges] = k;
             mycadjwgt[cnedges] = ewgt;
-            htable[l] = (offset_t)(cnedges - start); 
+            htable[l] = (offset_type)(cnedges - start); 
             ++cnedges;
           } else {
             i += start;
@@ -485,31 +485,31 @@ static void __par_contract_CLS(
  * @param gmatch The global match array.
  * @param fcmap The first fine vertex for each coarse vertex.
  */
-static void __par_contract_SORT(
-    ctrl_t * const ctrl, 
-    graph_t * const graph, 
-    vtx_t const mycnvtxs, 
-    vtx_t const * const * const gmatch, 
-    vtx_t const * const fcmap)
+static void S_par_contract_SORT(
+    ctrl_type * const ctrl, 
+    graph_type * const graph, 
+    vtx_type const mycnvtxs, 
+    vtx_type const * const * const gmatch, 
+    vtx_type const * const fcmap)
 {
-  adj_t cnedges, maxdeg, j, l;
-  tid_t o, t;
-  vtx_t v, c, cg, k, nlst;
-  graph_t * cgraph;
-  graphdist_t dist;
-  edge_t * lst;
+  adj_type cnedges, maxdeg, j, l;
+  tid_type o, t;
+  vtx_type v, c, cg, k, nlst;
+  graph_type * cgraph;
+  graphdist_type dist;
+  edge_type * lst;
 
-  tid_t const myid = dlthread_get_id(ctrl->comm);
-  tid_t const nthreads = dlthread_get_nthreads(ctrl->comm);
+  tid_type const myid = dlthread_get_id(ctrl->comm);
+  tid_type const nthreads = dlthread_get_nthreads(ctrl->comm);
 
   /* make accessing my old graph easy */
-  vtx_t const mynvtxs = graph->mynvtxs[myid];
-  adj_t const * const * const gxadj = (adj_t const * const *)graph->xadj;
-  vtx_t const * const * const gadjncy = (vtx_t const * const *)graph->adjncy;
-  wgt_t const * const * const gvwgt = (wgt_t const * const *)graph->vwgt;
-  wgt_t const * const * const gadjwgt = (wgt_t const * const *)graph->adjwgt;
+  vtx_type const mynvtxs = graph->mynvtxs[myid];
+  adj_type const * const * const gxadj = (adj_type const * const *)graph->xadj;
+  vtx_type const * const * const gadjncy = (vtx_type const * const *)graph->adjncy;
+  wgt_type const * const * const gvwgt = (wgt_type const * const *)graph->vwgt;
+  wgt_type const * const * const gadjwgt = (wgt_type const * const *)graph->adjwgt;
 
-  vtx_t const * const * const gcmap = (vtx_t const **)graph->cmap;
+  vtx_type const * const * const gcmap = (vtx_type const **)graph->cmap;
 
   if (myid == 0) {
     dl_start_timer(&(ctrl->timers.contraction));
@@ -519,7 +519,7 @@ static void __par_contract_SORT(
 
   dist = cgraph->dist;
 
-  __adjust_cmap(graph->cmap[myid],mynvtxs,graph->dist,dist);
+  S_adjust_cmap(graph->cmap[myid],mynvtxs,graph->dist,dist);
 
   /* count possible edges */
   cnedges = 0;
@@ -540,12 +540,12 @@ static void __par_contract_SORT(
     cnedges += l;
   }
 
-  adj_t * const mycxadj = cgraph->xadj[myid];
-  vtx_t * const mycadjncy = cgraph->adjncy[myid] = vtx_alloc(cnedges);
-  wgt_t * const mycvwgt = cgraph->vwgt[myid];
-  wgt_t * const mycadjwgt = cgraph->adjwgt[myid] = wgt_alloc(cnedges);
+  adj_type * const mycxadj = cgraph->xadj[myid];
+  vtx_type * const mycadjncy = cgraph->adjncy[myid] = vtx_alloc(cnedges);
+  wgt_type * const mycvwgt = cgraph->vwgt[myid];
+  wgt_type * const mycadjwgt = cgraph->adjwgt[myid] = wgt_alloc(cnedges);
 
-  lst = malloc(sizeof(edge_t)*maxdeg);
+  lst = malloc(sizeof(edge_type)*maxdeg);
 
   cnedges = 0;
   mycxadj[0] = 0;
@@ -655,21 +655,21 @@ static void __par_contract_SORT(
 
 
 void par_contract_graph(
-    ctrl_t * const ctrl, 
-    graph_t * const graph, 
-    vtx_t const mycnvtxs, 
-    vtx_t const * const * const gmatch, 
-    vtx_t const * const fcmap)
+    ctrl_type * const ctrl, 
+    graph_type * const graph, 
+    vtx_type const mycnvtxs, 
+    vtx_type const * const * const gmatch, 
+    vtx_type const * const fcmap)
 {
   switch (ctrl->contype) {
     case MTMETIS_CONTYPE_CLS:
-      __par_contract_CLS(ctrl,graph,mycnvtxs,gmatch,fcmap);
+      S_par_contract_CLS(ctrl,graph,mycnvtxs,gmatch,fcmap);
       break;
     case MTMETIS_CONTYPE_DENSE:
-      __par_contract_DENSE(ctrl,graph,mycnvtxs,gmatch,fcmap);
+      S_par_contract_DENSE(ctrl,graph,mycnvtxs,gmatch,fcmap);
       break;
     case MTMETIS_CONTYPE_SORT:
-      __par_contract_SORT(ctrl,graph,mycnvtxs,gmatch,fcmap);
+      S_par_contract_SORT(ctrl,graph,mycnvtxs,gmatch,fcmap);
       break;
     default:
       dl_error("Unknown contraction type '%d'\n",ctrl->contype);

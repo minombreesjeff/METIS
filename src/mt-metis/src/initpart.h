@@ -29,7 +29,7 @@
 ******************************************************************************/
 
 
-#define par_initpart_cut __mtmetis_par_initpart_cut
+#define par_initpart_cut MTMETIS_par_initpart_cut
 /**
  * @brief Create a cut partitioning of a coarsened graph.
  *
@@ -38,12 +38,12 @@
  *
  * @return The edgecut of the new partitioning.  
  */
-wgt_t par_initpart_cut(
-    ctrl_t * ctrl,
-    graph_t * graph);
+wgt_type par_initpart_cut(
+    ctrl_type * ctrl,
+    graph_type * graph);
 
 
-#define par_initpart_vsep __mtmetis_par_initpart_vsep
+#define par_initpart_vsep MTMETIS_par_initpart_vsep
 /**
  * @brief Create a small vertex separator of a coarsened graph.
  *
@@ -52,9 +52,9 @@ wgt_t par_initpart_cut(
  *
  * @return The size of the vertex separator.
  */
-wgt_t par_initpart_vsep(
-    ctrl_t * ctrl,
-    graph_t * graph);
+wgt_type par_initpart_vsep(
+    ctrl_type * ctrl,
+    graph_type * graph);
 
 
 

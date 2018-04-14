@@ -27,7 +27,7 @@
 
 
 #define DLMEM_PREFIX vsnbrinfo
-#define DLMEM_TYPE_T vsnbrinfo_t
+#define DLMEM_TYPE_T vsnbrinfo_type
 #include <dlmem_funcs.h>
 #undef DLMEM_TYPE_T
 #undef DLMEM_PREFIX
@@ -41,10 +41,10 @@
 
 
 void vsinfo_free(
-    graph_t * const graph)
+    graph_type * const graph)
 {
-  tid_t myid;
-  vsinfo_t * vsinfo;
+  tid_type myid;
+  vsinfo_type * vsinfo;
 
   for (myid=0;myid<graph->dist.nthreads;++myid) {
     vsinfo = graph->vsinfo+myid;
@@ -62,15 +62,15 @@ void vsinfo_free(
 
 
 void par_vsinfo_create(
-    ctrl_t * const ctrl,
-    graph_t * const graph)
+    ctrl_type * const ctrl,
+    graph_type * const graph)
 {
-  vsinfo_t * vsinfo;
+  vsinfo_type * vsinfo;
 
-  tid_t const myid = dlthread_get_id(ctrl->comm);
-  tid_t const nthreads = dlthread_get_nthreads(ctrl->comm);
+  tid_type const myid = dlthread_get_id(ctrl->comm);
+  tid_type const nthreads = dlthread_get_nthreads(ctrl->comm);
 
-  vsinfo = dlthread_get_shmem(sizeof(vsinfo_t)*nthreads,ctrl->comm);
+  vsinfo = dlthread_get_shmem(sizeof(vsinfo_type)*nthreads,ctrl->comm);
 
   vsinfo += myid;
 
@@ -86,11 +86,11 @@ void par_vsinfo_create(
 
 
 void par_vsinfo_free(
-    graph_t * const graph)
+    graph_type * const graph)
 {
-  vsinfo_t * vsinfo;
+  vsinfo_type * vsinfo;
 
-  tid_t const myid = dlthread_get_id(graph->comm);
+  tid_type const myid = dlthread_get_id(graph->comm);
 
   vsinfo = graph->vsinfo+myid;
 

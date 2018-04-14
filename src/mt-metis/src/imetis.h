@@ -43,18 +43,18 @@
  *
  * @return The weight of the separator.
  */
-wgt_t metis_initcut(
-    ctrl_t * const ctrl,
-    pid_t const nparts,
-    real_t * tpwgts,
+wgt_type metis_initcut(
+    ctrl_type * const ctrl,
+    pid_type const nparts,
+    real_type * tpwgts,
     size_t const ncuts,
     int const rb,
-    vtx_t nvtxs,
-    adj_t * const xadj,
-    vtx_t * const adjncy,
-    wgt_t * const vwgt,
-    wgt_t * const adjwgt,
-    pid_t * const where);
+    vtx_type nvtxs,
+    adj_type * const xadj,
+    vtx_type * const adjncy,
+    wgt_type * const vwgt,
+    wgt_type * const adjwgt,
+    pid_type * const where);
 
 
 /**
@@ -71,15 +71,15 @@ wgt_t metis_initcut(
  *
  * @return The weight of the separator.
  */
-wgt_t metis_initsep(
-    ctrl_t * ctrl,
+wgt_type metis_initsep(
+    ctrl_type * ctrl,
     size_t nseps,
-    vtx_t nvtxs,
-    adj_t * xadj,
-    vtx_t * adjncy,
-    wgt_t * vwgt,
-    wgt_t * adjwgt,
-    pid_t * where);
+    vtx_type nvtxs,
+    adj_type * xadj,
+    vtx_type * adjncy,
+    wgt_type * vwgt,
+    wgt_type * adjwgt,
+    pid_type * where);
 
 
 /**
@@ -93,10 +93,10 @@ wgt_t metis_initsep(
  *
  * @return The weight of the edgecut. 
  */
-wgt_t metis_kway(
-    ctrl_t * ctrl,
-    graph_t * graph,
-    pid_t * const * where,
+wgt_type metis_kway(
+    ctrl_type * ctrl,
+    graph_type * graph,
+    pid_type * const * where,
     int rb);
 
 
@@ -109,10 +109,10 @@ wgt_t metis_kway(
  *
  * @return The weight of the edge separator.
  */
-wgt_t metis_esep(
-    ctrl_t * ctrl,
-    graph_t * graph,
-    pid_t * const * where);
+wgt_type metis_esep(
+    ctrl_type * ctrl,
+    graph_type * graph,
+    pid_type * const * where);
 
 
 /**
@@ -124,10 +124,24 @@ wgt_t metis_esep(
  *
  * @return The weight of the vertex separator.
  */
-wgt_t metis_vsep(
-    ctrl_t * ctrl,
-    graph_t * graph,
-    pid_t * const * where);
+wgt_type metis_vsep(
+    ctrl_type * ctrl,
+    graph_type * graph,
+    pid_type * const * where);
+
+
+/**
+ * @brief Generate a nested dissection, spawning parallel tasks if called by
+ * multiple threads.
+ *
+ * @param ctrl The control structure.
+ * @param graph The graph structure.
+ * @param perm The resulting permutation.
+ */
+void metis_nd(
+    ctrl_type * ctrl,
+    graph_type * graph,
+    pid_type * const * perm);
 
 
 

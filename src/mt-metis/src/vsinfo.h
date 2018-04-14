@@ -28,16 +28,16 @@
 ******************************************************************************/
 
 
-typedef struct vsnbrinfo_t {
+typedef struct vsnbrinfo_type {
   /* no need to store information about connectivity to separator */
-  wgt_t con[2];
-} vsnbrinfo_t;
+  wgt_type con[2];
+} vsnbrinfo_type;
 
 
-typedef struct vsinfo_t {
+typedef struct vsinfo_type {
   vtx_iset_t * bnd;
-  vsnbrinfo_t * nbrinfo;
-} vsinfo_t;
+  vsnbrinfo_type * nbrinfo;
+} vsinfo_type;
 
 
 
@@ -48,7 +48,7 @@ typedef struct vsinfo_t {
 
 
 #define DLMEM_PREFIX vsnbrinfo
-#define DLMEM_TYPE_T vsnbrinfo_t
+#define DLMEM_TYPE_T vsnbrinfo_type
 #include <dlmem_headers.h>
 #undef DLMEM_TYPE_T
 #undef DLMEM_PREFIX
@@ -61,17 +61,17 @@ typedef struct vsinfo_t {
 ******************************************************************************/
 
 
-#define vsinfo_free __mtmetis_vsinfo_free
+#define vsinfo_free MTMETIS_vsinfo_free
 /**
  * @brief Free a vsinfo and its associate memory.
  *
  * @param graph The graph to free the vsinfo of.
  */
 void vsinfo_free(
-    graph_t * graph);
+    graph_type * graph);
 
 
-#define par_vsinfo_create __mtmetis_par_vsinfo_create
+#define par_vsinfo_create MTMETIS_par_vsinfo_create
 /**
  * @brief Allocate the memory arrays for refinement of a vertex separator. 
  *
@@ -79,18 +79,18 @@ void vsinfo_free(
  * @param graph The graph to create vsinfo for.
  */
 void par_vsinfo_create(
-    ctrl_t * ctrl,
-    graph_t * graph);
+    ctrl_type * ctrl,
+    graph_type * graph);
 
 
-#define par_vsinfo_free __mtmetis_par_vsinfo_free
+#define par_vsinfo_free MTMETIS_par_vsinfo_free
 /**
  * @brief Free a vsinfo and its associate memory.
  *
  * @param graph The graph to free the vsinfo of.
  */
 void par_vsinfo_free(
-    graph_t * graph);
+    graph_type * graph);
 
 
 
@@ -100,22 +100,22 @@ void par_vsinfo_free(
 ******************************************************************************/
 
 
-static inline void __calc_conn(
-    vtx_t const v,
-    tid_t const myid,
-    vtx_t const mynvtxs,
-    adj_t const * const xadj,
-    vtx_t const * const adjncy,
-    wgt_t const * const * const gvwgt,
-    pid_t const * const * const gwhere,
-    graphdist_t const dist,
-    wgt_t * const con)
+static inline void S_calc_conn(
+    vtx_type const v,
+    tid_type const myid,
+    vtx_type const mynvtxs,
+    adj_type const * const xadj,
+    vtx_type const * const adjncy,
+    wgt_type const * const * const gvwgt,
+    pid_type const * const * const gwhere,
+    graphdist_type const dist,
+    wgt_type * const con)
 {
-  vtx_t k, lvtx;
-  adj_t j;
-  tid_t nbrid;
-  pid_t nbr;
-  wgt_t a, b, w;
+  vtx_type k, lvtx;
+  adj_type j;
+  tid_type nbrid;
+  pid_type nbr;
+  wgt_type a, b, w;
 
   a = 0;
   b = 0;

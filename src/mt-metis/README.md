@@ -38,26 +38,3 @@ functions, mtmetis_partkway() for partitioning, and mtmetis_nd() for generating
 orderings. At this time mt-Metis is highly experimental, and its
 API is subject to change.
 
-The following is an example of how to partition an unweighted graph stored in 
-CSR format in the arrays xadj and
-adjncy, with n vertices, and we want to generate k parts.
-
-    mtmetis_partkway(n,xadj,adjncy,NULL,NULL,k,part,edgecut);
-
-In this example, part is an array of length n that will have a partition ID
-assigned to each vertex (i.e., vertex v is assigned to partition part[v]).
-
-
-The following is an example of how to order an unweighted graph/matrix in 
-similar CSR format (with n rows/columns).
-
-    mtmetis_nd(n,xadj,adjncy,NULL,NULL,perm);
-
-In this example, perm is an array of length n that will have the new row ID
-and column ID assigned to each row/column (i.e., row r's index in the new
-ordering is perm[r]).
-
-
-
-These functions are documented [here](@ref mtmetis.h).
-

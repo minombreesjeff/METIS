@@ -31,11 +31,12 @@
 static size_t const DEFAULT_NCUTS = 1; 
 static size_t const DEFAULT_NRUNS = 1; 
 static size_t const DEFAULT_NREFPASS = 8;
-static real_t const DEFAULT_UBFACTOR = 1.03;
+static real_type const DEFAULT_UBFACTOR = 1.03;
 static size_t const DEFAULT_NINITSOLUTIONS = 8;
-static vtx_t const DEFAULT_VSEP_HILLSIZE = 300;
-static vtx_t const DEFAULT_ESEP_HILLSIZE = 100;
-static vtx_t const DEFAULT_KWAY_HILLSIZE = 16;
+static vtx_type const DEFAULT_VSEP_HILLSIZE = 300;
+static vtx_type const DEFAULT_ESEP_HILLSIZE = 100;
+static vtx_type const DEFAULT_KWAY_HILLSIZE = 16;
+static int const DEFAULT_HS_SCANTYPE = MTMETIS_HS_SCAN_SQRT;
 static int const DEFAULT_GLOBAL_RELABEL = 0;
 static int const DEFAULT_RUNSTATS = 0;
 static int const DEFAULT_TIMING = 0;
@@ -48,7 +49,6 @@ static int const DEFAULT_DISTRIBUTION = MTMETIS_DISTRIBUTION_BLOCKCYCLIC;
 static int const DEFAULT_METIS_SERIAL = 0;
 static int const DEFAULT_PARTFACTOR = 5;
 static double const DEFAULT_STOP_RATIO = 0.85;
-static vtx_t const PAR_COARSEN_FACTOR = 128;
 static int const DEFAULT_REMOVEISLANDS = 0;
 static int const DEFAULT_LEAFMATCH = 1;
 static int const DEFAULT_VWGTDEGREE = 0;
@@ -83,6 +83,7 @@ static char const * trans_table_refine[] = {
   [MTMETIS_RTYPE_FM] = MTMETIS_STR_RTYPE_FM,
   [MTMETIS_RTYPE_SFM] = MTMETIS_STR_RTYPE_SFM,
   [MTMETIS_RTYPE_SFG] = MTMETIS_STR_RTYPE_SFG,
+  [MTMETIS_RTYPE_HS] = MTMETIS_STR_RTYPE_HS
 };
 
 
@@ -95,6 +96,14 @@ static char const * trans_table_verbosity[] = {
 };
 
 
+static char const * trans_table_dtype[] = {
+  [MTMETIS_DISTRIBUTION_BLOCK] = MTMETIS_STR_DISTRIBUTION_BLOCK,
+  [MTMETIS_DISTRIBUTION_CYCLIC] = MTMETIS_STR_DISTRIBUTION_CYCLIC,
+  [MTMETIS_DISTRIBUTION_BLOCKCYCLIC] = MTMETIS_STR_DISTRIBUTION_BLOCKCYCLIC,
+};
+
+
+
 
 /******************************************************************************
 * PRIVATE FUNCTIONS ***********************************************************
@@ -103,10 +112,10 @@ static char const * trans_table_verbosity[] = {
 
 /* implicitly pass in size of array */
 #define FIND_STRING(table,str) \
-  __find_string(table,sizeof(table)/sizeof(char*),str)
+  S_find_string(table,sizeof(table)/sizeof(char*),str)
 
 
-static inline int __find_string(
+static inline int S_find_string(
     char const * const table[], 
     int const ntable,
     char const * const str)
@@ -129,13 +138,14 @@ static inline int __find_string(
 }
 
 
-static void __init_timers(
-    ctrl_t * const ctrl)
+static void S_init_timers(
+    ctrl_type * const ctrl)
 {
   dl_init_timer(&(ctrl->timers.total)); 
   dl_init_timer(&(ctrl->timers.io)); 
   dl_init_timer(&(ctrl->timers.ordering)); 
   dl_init_timer(&(ctrl->timers.preprocess)); 
+  dl_init_timer(&(ctrl->timers.postprocess)); 
   dl_init_timer(&(ctrl->timers.metis)); 
   dl_init_timer(&(ctrl->timers.partitioning)); 
   dl_init_timer(&(ctrl->timers.coarsening)); 
@@ -154,12 +164,12 @@ static void __init_timers(
 ******************************************************************************/
 
 
-ctrl_t * ctrl_create(void)
+ctrl_type * ctrl_create(void)
 {
-  ctrl_t * ctrl;
+  ctrl_type * ctrl;
 
   /* allocate my memory */
-  ctrl = (ctrl_t*)calloc(1,sizeof(ctrl_t));
+  ctrl = (ctrl_type*)calloc(1,sizeof(ctrl_type));
 
   ctrl->nthreads = omp_get_max_threads();
   ctrl->seed = (unsigned int)time(NULL);
@@ -172,6 +182,7 @@ ctrl_t * ctrl_create(void)
   ctrl->ninitsolutions = DEFAULT_NINITSOLUTIONS;
   ctrl->ctype = DEFAULT_CTYPE;
   ctrl->rtype = DEFAULT_RTYPE;
+  ctrl->hs_stype = DEFAULT_HS_SCANTYPE;
   ctrl->ptype = DEFAULT_PTYPE;
   ctrl->verbosity = DEFAULT_VERBOSITY;
   ctrl->dist = DEFAULT_DISTRIBUTION;
@@ -184,20 +195,21 @@ ctrl_t * ctrl_create(void)
   ctrl->leafmatch = DEFAULT_LEAFMATCH;
   ctrl->vwgtdegree = DEFAULT_VWGTDEGREE;
   ctrl->contype = DEFAULT_CONTYPE;
+  ctrl->ignore = DEFAULT_IGNORE;
 
   return ctrl;
 }
 
 
 void ctrl_setup(
-    ctrl_t * const ctrl,
-    real_t * const tpwgts,
-    vtx_t const nvtxs)
+    ctrl_type * const ctrl,
+    real_type * const tpwgts,
+    vtx_type const nvtxs)
 {
-  vtx_t i;
-  pid_t nparts;
+  vtx_type i;
+  pid_type nparts;
 
-  tid_t const nthreads = ctrl->nthreads;
+  tid_type const nthreads = ctrl->nthreads;
 
   if (ctrl->ptype == MTMETIS_PTYPE_VSEP || ctrl->ptype == MTMETIS_PTYPE_ND) {
     ctrl->nparts = 3;
@@ -247,11 +259,11 @@ void ctrl_setup(
 
 int ctrl_parse(
     double const * const options,
-    ctrl_t ** const r_ctrl)
+    ctrl_type ** const r_ctrl)
 {
   int rv;
-  pid_t nparts;
-  ctrl_t * ctrl = NULL;
+  pid_type nparts;
+  ctrl_type * ctrl = NULL;
 
   rv = MTMETIS_SUCCESS;
 
@@ -261,11 +273,11 @@ int ctrl_parse(
   if (options[MTMETIS_OPTION_NTHREADS] != MTMETIS_VAL_OFF) {
     if (options[MTMETIS_OPTION_NTHREADS] < 1) {
       eprintf("Invalid number of threads: %"PF_TID_T"\n", \
-          (tid_t)options[MTMETIS_OPTION_NTHREADS]);
+          (tid_type)options[MTMETIS_OPTION_NTHREADS]);
       rv = MTMETIS_ERROR_INVALIDINPUT;
       goto CLEANUP;
     }
-    ctrl->nthreads = (tid_t)options[MTMETIS_OPTION_NTHREADS];
+    ctrl->nthreads = (tid_type)options[MTMETIS_OPTION_NTHREADS];
   }
 
   if (options[MTMETIS_OPTION_PTYPE] != MTMETIS_VAL_OFF) {
@@ -310,7 +322,7 @@ int ctrl_parse(
       rv = MTMETIS_ERROR_INVALIDINPUT;
       goto CLEANUP;
     } 
-    nparts = (pid_t)options[MTMETIS_OPTION_NPARTS];
+    nparts = (pid_type)options[MTMETIS_OPTION_NPARTS];
 
     ctrl->nparts = nparts;
   }
@@ -343,7 +355,7 @@ int ctrl_parse(
   }
 
   if (options[MTMETIS_OPTION_UBFACTOR] != MTMETIS_VAL_OFF) {
-    ctrl->ubfactor = (real_t)options[MTMETIS_OPTION_UBFACTOR];
+    ctrl->ubfactor = (real_type)options[MTMETIS_OPTION_UBFACTOR];
   } else {
     if (ctrl->ptype == MTMETIS_PTYPE_ND) {
       ctrl->ubfactor = 1.20;
@@ -370,6 +382,14 @@ int ctrl_parse(
     ctrl->rtype = (int)options[MTMETIS_OPTION_RTYPE];
   }
 
+  if (options[MTMETIS_OPTION_HS_SCANTYPE] != MTMETIS_VAL_OFF) {
+    ctrl->hs_stype = (int)options[MTMETIS_OPTION_HS_SCANTYPE];
+  }
+
+  if (options[MTMETIS_OPTION_HILLSIZE] != MTMETIS_VAL_OFF) {
+    ctrl->hillsize = (int)options[MTMETIS_OPTION_HILLSIZE];
+  }
+
   if (options[MTMETIS_OPTION_VERBOSITY] != MTMETIS_VAL_OFF) {
     ctrl->verbosity = (int)options[MTMETIS_OPTION_VERBOSITY];
   }
@@ -391,7 +411,7 @@ int ctrl_parse(
 
   if (options[MTMETIS_OPTION_TIME] != MTMETIS_VAL_OFF) {
     ctrl->time = 1;
-    __init_timers(ctrl);
+    S_init_timers(ctrl);
   }
 
   if (options[MTMETIS_OPTION_REMOVEISLANDS] != MTMETIS_VAL_OFF) {
@@ -420,7 +440,7 @@ int ctrl_parse(
 
 
 void ctrl_free(
-    ctrl_t * ctrl)
+    ctrl_type * ctrl)
 {
   if (ctrl->tpwgts) {
     dl_free(ctrl->tpwgts);
@@ -436,8 +456,8 @@ void ctrl_free(
 
 
 void ctrl_combine_timers(
-    ctrl_t * const ctrl,
-    ctrl_t const * const ctrl2)
+    ctrl_type * const ctrl,
+    ctrl_type const * const ctrl2)
 {
   if (ctrl->ptype == MTMETIS_PTYPE_ND) {
     dl_combine_timer(&(ctrl->timers.partitioning), \
@@ -445,6 +465,7 @@ void ctrl_combine_timers(
   }
   dl_combine_timer(&(ctrl->timers.metis),&(ctrl2->timers.metis));
   dl_combine_timer(&(ctrl->timers.preprocess),&(ctrl2->timers.preprocess));
+  dl_combine_timer(&(ctrl->timers.postprocess),&(ctrl2->timers.postprocess));
   dl_combine_timer(&(ctrl->timers.coarsening),&(ctrl2->timers.coarsening));
   dl_combine_timer(&(ctrl->timers.matching),&(ctrl2->timers.matching));
   dl_combine_timer(&(ctrl->timers.contraction),&(ctrl2->timers.contraction));
@@ -457,20 +478,20 @@ void ctrl_combine_timers(
 
 
 void ser_ctrl_split(
-    ctrl_t const * const ctrl,
-    vtx_t const * const hnvtxs,
-    ctrl_t ** const hctrls)
+    ctrl_type const * const ctrl,
+    vtx_type const * const hnvtxs,
+    ctrl_type ** const hctrls)
 {
-  pid_t side;
-  ctrl_t * nctrl;
-  pid_t hnparts[2];
+  pid_type side;
+  ctrl_type * nctrl;
+  pid_type hnparts[2];
 
   hnparts[0] = ctrl->nparts/2;
   hnparts[1] = ctrl->nparts - hnparts[0];
 
   for (side=0;side<2;++side) {
-    nctrl = hctrls[side] = malloc(sizeof(ctrl_t));
-    memcpy(hctrls[side],ctrl,sizeof(ctrl_t));
+    nctrl = hctrls[side] = malloc(sizeof(ctrl_type));
+    memcpy(hctrls[side],ctrl,sizeof(ctrl_type));
 
     nctrl->nparts = hnparts[side];
 
@@ -486,31 +507,31 @@ void ser_ctrl_split(
     /* set nparts */
     nctrl->nparts = hnparts[side];
 
-    __init_timers(nctrl);
+    S_init_timers(nctrl);
 
     ctrl_setup(nctrl,nctrl->tpwgts,hnvtxs[side]);
   }
 }
 
 
-ctrl_t * ser_ctrl_rb(
-    ctrl_t * const ctrl,
-    pid_t const * const offset)
+ctrl_type * ser_ctrl_rb(
+    ctrl_type * const ctrl,
+    pid_type const * const offset)
 {
-  pid_t p, k;
-  ctrl_t * rbctrl;
+  pid_type p, k;
+  ctrl_type * rbctrl;
 
   DL_ASSERT_EQUALS(offset[0],0,"%"PF_PID_T);
   DL_ASSERT_EQUALS(offset[2],ctrl->nparts,"%"PF_PID_T);
   DL_ASSERT(offset[0] <= offset[1],"Bad offset #1");
   DL_ASSERT(offset[1] <= offset[2],"Bad offset #2");
 
-  rbctrl = malloc(sizeof(ctrl_t));
+  rbctrl = malloc(sizeof(ctrl_type));
 
-  memcpy(rbctrl,ctrl,sizeof(ctrl_t));
+  memcpy(rbctrl,ctrl,sizeof(ctrl_type));
 
   rbctrl->ptype = MTMETIS_PTYPE_ESEP;
-  rbctrl->tpwgts = malloc(sizeof(real_t)*2);
+  rbctrl->tpwgts = malloc(sizeof(real_type)*2);
   rbctrl->tpwgts[0] = rbctrl->tpwgts[1] = 0;
   for (p=0;p<2;++p) {
     for (k=offset[p];k<offset[p+1];++k) {
@@ -525,7 +546,7 @@ ctrl_t * ser_ctrl_rb(
   rbctrl->runs = NULL;
   rbctrl->pijbm = NULL;
 
-  __init_timers(rbctrl);
+  S_init_timers(rbctrl);
 
   return rbctrl;
 }
@@ -539,9 +560,9 @@ ctrl_t * ser_ctrl_rb(
 
 
 void par_ctrl_free(
-    ctrl_t * ctrl)
+    ctrl_type * ctrl)
 {
-  tid_t const myid = dlthread_get_id(ctrl->comm);
+  tid_type const myid = dlthread_get_id(ctrl->comm);
 
   dlthread_barrier(ctrl->comm);
 
@@ -551,24 +572,24 @@ void par_ctrl_free(
 }
 
 
-ctrl_t * par_ctrl_split(
-    ctrl_t const * const ctrl,
-    vtx_t const nvtxs,
-    pid_t const nparts,
+ctrl_type * par_ctrl_split(
+    ctrl_type const * const ctrl,
+    vtx_type const nvtxs,
+    pid_type const nparts,
     dlthread_comm_t comm)
 {
-  ctrl_t * nctrl;
+  ctrl_type * nctrl;
 
-  tid_t const myid = dlthread_get_id(comm);
+  tid_type const myid = dlthread_get_id(comm);
 
   DL_ASSERT(dlthread_get_nthreads(comm) <= dlthread_get_nthreads(ctrl->comm), \
       "More threads on split control that root (%zu vs %zu)\n", \
       dlthread_get_nthreads(comm),dlthread_get_nthreads(ctrl->comm));
 
-  nctrl = dlthread_get_shmem(sizeof(ctrl_t),comm);
+  nctrl = dlthread_get_shmem(sizeof(ctrl_type),comm);
 
   if (myid == 0) {
-    memcpy(nctrl,ctrl,sizeof(ctrl_t));
+    memcpy(nctrl,ctrl,sizeof(ctrl_type));
 
     /* make sure we don't touch the ctrl's memory */
     nctrl->tpwgts = NULL;
@@ -582,7 +603,7 @@ ctrl_t * par_ctrl_split(
     /* set nparts */
     nctrl->nparts = nparts;
 
-    __init_timers(nctrl);
+    S_init_timers(nctrl);
 
     ctrl_setup(nctrl,nctrl->tpwgts,nvtxs);
     nctrl->comm = comm;
@@ -595,14 +616,14 @@ ctrl_t * par_ctrl_split(
 
 int par_ctrl_parse(
     double const * const options,
-    ctrl_t ** const r_ctrl,
+    ctrl_type ** const r_ctrl,
     dlthread_comm_t comm)
 {
-  ctrl_t * ctrl, ** ptr;
+  ctrl_type * ctrl, ** ptr;
 
-  tid_t const myid = dlthread_get_id(comm);
+  tid_type const myid = dlthread_get_id(comm);
 
-  ptr = dlthread_get_shmem(sizeof(ctrl_t*),comm);
+  ptr = dlthread_get_shmem(sizeof(ctrl_type*),comm);
 
   if (myid == 0) {
     if (ctrl_parse(options,&ctrl) == MTMETIS_SUCCESS) {
@@ -628,9 +649,9 @@ int par_ctrl_parse(
 
 
 void par_ctrl_setup(
-    ctrl_t * const ctrl,
-    real_t * const tpwgts,
-    vtx_t const nvtxs)
+    ctrl_type * const ctrl,
+    real_type * const tpwgts,
+    vtx_type const nvtxs)
 {
   dlthread_barrier(ctrl->comm);
   if (dlthread_get_id(ctrl->comm) == 0) {
@@ -640,15 +661,15 @@ void par_ctrl_setup(
 }
 
 
-ctrl_t * par_ctrl_rb(
-    ctrl_t * const ctrl,
-    pid_t const * const offset)
+ctrl_type * par_ctrl_rb(
+    ctrl_type * const ctrl,
+    pid_type const * const offset)
 {
-  ctrl_t ** r_ctrl;
+  ctrl_type ** r_ctrl;
 
-  tid_t const myid = dlthread_get_id(ctrl->comm);
+  tid_type const myid = dlthread_get_id(ctrl->comm);
 
-  r_ctrl = dlthread_get_buffer(sizeof(ctrl_t*),ctrl->comm);
+  r_ctrl = dlthread_get_buffer(sizeof(ctrl_type*),ctrl->comm);
 
   if (myid == 0) {
     *r_ctrl = ser_ctrl_rb(ctrl,offset);
@@ -699,6 +720,13 @@ char const * trans_verbosity_string(
     const mtmetis_verbosity_t type)
 {
   return trans_table_verbosity[type];
+}
+
+
+char const * trans_dtype_string(
+    mtmetis_dtype_t const type)
+{
+  return trans_table_dtype[type];
 }
 
 
@@ -768,6 +796,20 @@ mtmetis_verbosity_t trans_string_verbosity(
     dl_error("Unknown Verbosity Level '%s'\n",str);
   } else {
     return (mtmetis_verbosity_t)i;
+  }
+}
+
+
+mtmetis_dtype_t trans_string_dtype(
+    char const * const str)
+{
+  int i;
+  
+  i = FIND_STRING(trans_table_dtype,str);
+  if (i < 0) {
+    dl_error("Unknown distribution type '%s'\n",str);
+  } else {
+    return (mtmetis_dtype_t)i;
   }
 }
 

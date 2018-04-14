@@ -36,42 +36,42 @@
  * @param ctrl The control structure.
  * @param graph The graph.
  */
-static void __partparams_kway(
-    ctrl_t * const ctrl,
-    graph_t * const graph)
+static void S_partparams_kway(
+    ctrl_type * const ctrl,
+    graph_type * const graph)
 {
-  vtx_t other,me,i,k,lvtx,nbrid,na;
-  adj_t j, l;
-  wgt_t mincut;
-  kwnbrinfo_t * nbrinfo; 
-  kwnbrinfo_t * myrinfo;
-  adjinfo_t * mynbrs;
+  vtx_type other,me,i,k,lvtx,nbrid,na;
+  adj_type j, l;
+  wgt_type mincut;
+  kwnbrinfo_type * nbrinfo; 
+  kwnbrinfo_type * myrinfo;
+  adjinfo_type * mynbrs;
   vtx_iset_t * bnd;
-  kwinfo_t * kwinfo;
-  wgt_t * mypwgts;
-  wgt_t ** gpwgts;
+  kwinfo_type * kwinfo;
+  wgt_type * mypwgts;
+  wgt_type ** gpwgts;
 
-  tid_t const myid = dlthread_get_id(ctrl->comm);
-  tid_t const nthreads = dlthread_get_nthreads(ctrl->comm);
+  tid_type const myid = dlthread_get_id(ctrl->comm);
+  tid_type const nthreads = dlthread_get_nthreads(ctrl->comm);
 
-  pid_t const nparts = ctrl->nparts;
+  pid_type const nparts = ctrl->nparts;
 
-  adj_t const * const * const gxadj = (adj_t const **)graph->xadj;
-  vtx_t const * const * const gadjncy = (vtx_t const **)graph->adjncy;
-  wgt_t const * const * const gvwgt = (wgt_t const **)graph->vwgt;
-  wgt_t const * const * const gadjwgt = (wgt_t const **)graph->adjwgt;
+  adj_type const * const * const gxadj = (adj_type const **)graph->xadj;
+  vtx_type const * const * const gadjncy = (vtx_type const **)graph->adjncy;
+  wgt_type const * const * const gvwgt = (wgt_type const **)graph->vwgt;
+  wgt_type const * const * const gadjwgt = (wgt_type const **)graph->adjwgt;
 
-  pid_t const * const * const gwhere  = (pid_t const **)graph->where;
+  pid_type const * const * const gwhere  = (pid_type const **)graph->where;
 
-  wgt_t * const pwgts = graph->pwgts;
+  wgt_type * const pwgts = graph->pwgts;
 
-  vtx_t const mynvtxs = graph->mynvtxs[myid];
+  vtx_type const mynvtxs = graph->mynvtxs[myid];
 
-  adj_t const * const xadj = gxadj[myid];
-  vtx_t const * const adjncy = gadjncy[myid];
-  wgt_t const * const vwgt = gvwgt[myid];
-  wgt_t const * const adjwgt = gadjwgt[myid];
-  pid_t const * const where = gwhere[myid];
+  adj_type const * const xadj = gxadj[myid];
+  vtx_type const * const adjncy = gadjncy[myid];
+  wgt_type const * const vwgt = gvwgt[myid];
+  wgt_type const * const adjwgt = gadjwgt[myid];
+  pid_type const * const where = gwhere[myid];
 
   int const greedy = ctrl->rtype == MTMETIS_RTYPE_GREEDY;
 
@@ -80,7 +80,7 @@ static void __partparams_kway(
 
   par_kwinfo_create(ctrl,graph);
 
-  gpwgts = dlthread_get_shmem(sizeof(wgt_t*)*nthreads,ctrl->comm);
+  gpwgts = dlthread_get_shmem(sizeof(wgt_type*)*nthreads,ctrl->comm);
 
   mypwgts = gpwgts[myid] = wgt_init_alloc(0,nparts);
 
@@ -193,7 +193,7 @@ static void __partparams_kway(
   dlthread_free_shmem(gpwgts,ctrl->comm);
 
   /* the checks */
-  DL_ASSERT(check_kwinfo(kwinfo,graph,(pid_t const **)gwhere),"Bad info");
+  DL_ASSERT(check_kwinfo(kwinfo,graph,(pid_type const **)gwhere),"Bad info");
 }
 
 
@@ -205,42 +205,42 @@ static void __partparams_kway(
  * 
  * @return The newly setup vsinfo.
  */
-static void __partparams_vsep(
-    ctrl_t * const ctrl,
-    graph_t * const graph)
+static void S_partparams_vsep(
+    ctrl_type * const ctrl,
+    graph_type * const graph)
 {
-  vtx_t me,i,k;
-  adj_t j;
-  wgt_t minsep;
-  vsnbrinfo_t * nbrinfo; 
-  vsnbrinfo_t * myrinfo;
+  vtx_type me,i,k;
+  adj_type j;
+  wgt_type minsep;
+  vsnbrinfo_type * nbrinfo; 
+  vsnbrinfo_type * myrinfo;
   vtx_iset_t * bnd;
-  vsinfo_t * vsinfo;
-  wgt_t * mypwgts;
-  wgt_t ** gpwgts;
+  vsinfo_type * vsinfo;
+  wgt_type * mypwgts;
+  wgt_type ** gpwgts;
 
-  adj_t const * const * const gxadj = (adj_t const **)graph->xadj;
-  vtx_t const * const * const gadjncy = (vtx_t const **)graph->adjncy;
-  wgt_t const * const * const gvwgt = (wgt_t const **)graph->vwgt;
+  adj_type const * const * const gxadj = (adj_type const **)graph->xadj;
+  vtx_type const * const * const gadjncy = (vtx_type const **)graph->adjncy;
+  wgt_type const * const * const gvwgt = (wgt_type const **)graph->vwgt;
 
-  pid_t const * const * const gwhere  = (pid_t const **)graph->where;
+  pid_type const * const * const gwhere  = (pid_type const **)graph->where;
 
-  tid_t const myid = dlthread_get_id(ctrl->comm);
-  tid_t const nthreads = dlthread_get_nthreads(ctrl->comm);
+  tid_type const myid = dlthread_get_id(ctrl->comm);
+  tid_type const nthreads = dlthread_get_nthreads(ctrl->comm);
 
-  wgt_t * const pwgts = graph->pwgts;
+  wgt_type * const pwgts = graph->pwgts;
 
-  vtx_t const mynvtxs = graph->mynvtxs[myid];
+  vtx_type const mynvtxs = graph->mynvtxs[myid];
 
-  adj_t const * const xadj = gxadj[myid];
-  vtx_t const * const adjncy = gadjncy[myid];
-  wgt_t const * const vwgt = gvwgt[myid];
-  pid_t const * const where = gwhere[myid];
+  adj_type const * const xadj = gxadj[myid];
+  vtx_type const * const adjncy = gadjncy[myid];
+  wgt_type const * const vwgt = gvwgt[myid];
+  pid_type const * const where = gwhere[myid];
 
   DL_ASSERT(graph->pwgts != NULL,"Non-allocated pwgts");
   DL_ASSERT(graph->where != NULL,"Non-allocated where");
 
-  gpwgts = dlthread_get_shmem(sizeof(wgt_t*)*nthreads,ctrl->comm);
+  gpwgts = dlthread_get_shmem(sizeof(wgt_type*)*nthreads,ctrl->comm);
 
   dlthread_barrier(ctrl->comm);
 
@@ -278,7 +278,7 @@ static void __partparams_vsep(
     me = where[i];
 
     if (me == MTMETIS_VSEP_SEP) {
-      __calc_conn(i,myid,mynvtxs,xadj,adjncy,gvwgt,gwhere,graph->dist, \
+      S_calc_conn(i,myid,mynvtxs,xadj,adjncy,gvwgt,gwhere,graph->dist, \
           myrinfo->con);
       minsep += vwgt[i];
       vtx_iset_add(i,bnd);
@@ -297,7 +297,7 @@ static void __partparams_vsep(
   dlthread_free_shmem(gpwgts,ctrl->comm);
 
   /* the checks */
-  DL_ASSERT(check_vsinfo(vsinfo,graph,(pid_t const **)gwhere),"Bad info");
+  DL_ASSERT(check_vsinfo(vsinfo,graph,(pid_type const **)gwhere),"Bad info");
   DL_ASSERT(check_vsbnd(vsinfo->bnd,graph),"Bad boundary");
 }
 
@@ -308,47 +308,47 @@ static void __partparams_vsep(
  * @param ctrl The control structure.
  * @param graph The graph.
  */
-static void __partparams_esep(
-    ctrl_t * const ctrl,
-    graph_t * const graph)
+static void S_partparams_esep(
+    ctrl_type * const ctrl,
+    graph_type * const graph)
 {
-  vtx_t me,i,k,lvtx;
-  adj_t j;
-  pid_t other;
-  tid_t nbrid;
-  wgt_t mincut;
-  wgt_t con[2];
-  esnbrinfo_t * nbrinfo; 
-  esnbrinfo_t * myrinfo;
+  vtx_type me,i,k,lvtx;
+  adj_type j;
+  pid_type other;
+  tid_type nbrid;
+  wgt_type mincut;
+  wgt_type con[2];
+  esnbrinfo_type * nbrinfo; 
+  esnbrinfo_type * myrinfo;
   vtx_iset_t * bnd;
-  esinfo_t * esinfo;
-  wgt_t * mypwgts;
-  wgt_t ** gpwgts;
+  esinfo_type * esinfo;
+  wgt_type * mypwgts;
+  wgt_type ** gpwgts;
 
-  adj_t const * const * const gxadj = (adj_t const **)graph->xadj;
-  vtx_t const * const * const gadjncy = (vtx_t const **)graph->adjncy;
-  wgt_t const * const * const gvwgt = (wgt_t const **)graph->vwgt;
-  wgt_t const * const * const gadjwgt = (wgt_t const **)graph->adjwgt;
+  adj_type const * const * const gxadj = (adj_type const **)graph->xadj;
+  vtx_type const * const * const gadjncy = (vtx_type const **)graph->adjncy;
+  wgt_type const * const * const gvwgt = (wgt_type const **)graph->vwgt;
+  wgt_type const * const * const gadjwgt = (wgt_type const **)graph->adjwgt;
 
-  pid_t const * const * const gwhere  = (pid_t const **)graph->where;
+  pid_type const * const * const gwhere  = (pid_type const **)graph->where;
 
-  tid_t const myid = dlthread_get_id(ctrl->comm);
-  tid_t const nthreads = dlthread_get_nthreads(ctrl->comm);
+  tid_type const myid = dlthread_get_id(ctrl->comm);
+  tid_type const nthreads = dlthread_get_nthreads(ctrl->comm);
 
-  wgt_t * const pwgts = graph->pwgts;
+  wgt_type * const pwgts = graph->pwgts;
 
-  vtx_t const mynvtxs = graph->mynvtxs[myid];
+  vtx_type const mynvtxs = graph->mynvtxs[myid];
 
-  adj_t const * const xadj = gxadj[myid];
-  vtx_t const * const adjncy = gadjncy[myid];
-  wgt_t const * const vwgt = gvwgt[myid];
-  wgt_t const * const adjwgt = gadjwgt[myid];
-  pid_t const * const where = gwhere[myid];
+  adj_type const * const xadj = gxadj[myid];
+  vtx_type const * const adjncy = gadjncy[myid];
+  wgt_type const * const vwgt = gvwgt[myid];
+  wgt_type const * const adjwgt = gadjwgt[myid];
+  pid_type const * const where = gwhere[myid];
 
   DL_ASSERT(graph->pwgts != NULL,"Non-allocated pwgts");
   DL_ASSERT(graph->where != NULL,"Non-allocated where");
 
-  gpwgts = dlthread_get_shmem(sizeof(wgt_t*)*nthreads,ctrl->comm);
+  gpwgts = dlthread_get_shmem(sizeof(wgt_type*)*nthreads,ctrl->comm);
 
   dlthread_barrier(ctrl->comm);
 
@@ -424,7 +424,7 @@ static void __partparams_esep(
   dlthread_free_shmem(gpwgts,ctrl->comm);
 
   /* the checks */
-  DL_ASSERT(check_esinfo(esinfo,graph,(pid_t const **)gwhere),"Bad info");
+  DL_ASSERT(check_esinfo(esinfo,graph,(pid_type const **)gwhere),"Bad info");
   DL_ASSERT(check_esbnd(esinfo->bnd,graph),"Bad boundary");
 }
 
@@ -436,13 +436,13 @@ static void __partparams_esep(
 ******************************************************************************/
 
 
-vtx_t par_refine_graph(
-    ctrl_t * const ctrl,
-    graph_t * const graph)
+vtx_type par_refine_graph(
+    ctrl_type * const ctrl,
+    graph_type * const graph)
 {
-  vtx_t nmoves; 
+  vtx_type nmoves; 
 
-  tid_t const myid = dlthread_get_id(ctrl->comm);
+  tid_type const myid = dlthread_get_id(ctrl->comm);
 
   nmoves = 0;
 
@@ -454,20 +454,20 @@ vtx_t par_refine_graph(
     case MTMETIS_PTYPE_ND:
     case MTMETIS_PTYPE_VSEP:
       if (graph->vsinfo == NULL) {
-        __partparams_vsep(ctrl,graph);
+        S_partparams_vsep(ctrl,graph);
       }
       nmoves = par_vseprefine(ctrl,graph,graph->vsinfo+myid);
       break;
     case MTMETIS_PTYPE_RB:
     case MTMETIS_PTYPE_ESEP:
       if (graph->esinfo == NULL) {
-        __partparams_esep(ctrl,graph);
+        S_partparams_esep(ctrl,graph);
       }
       nmoves = par_eseprefine(ctrl,graph,graph->esinfo+myid);
       break;
     case MTMETIS_PTYPE_KWAY:
       if (graph->kwinfo == NULL) {
-        __partparams_kway(ctrl,graph);
+        S_partparams_kway(ctrl,graph);
       }
       nmoves = par_kwayrefine(ctrl,graph,graph->kwinfo+myid);
       break;

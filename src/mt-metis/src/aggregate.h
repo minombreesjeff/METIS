@@ -28,7 +28,7 @@
 ******************************************************************************/
 
 
-#define par_aggregate_graph __mtmetis_par_aggregate_graph
+#define par_aggregate_graph MTMETIS_par_aggregate_graph
 /**
  * @brief Aggregate the vertices of a graph together for coarsening.
  *
@@ -40,11 +40,11 @@
  * @return The number of coarse vertices that will be generated when this
  * aggregation is contracted.
  */
-vtx_t par_aggregate_graph(
-    ctrl_t * ctrl,
-    graph_t * graph,
-    vtx_t * const * gmatch,
-    vtx_t * fcmap);
+vtx_type par_aggregate_graph(
+    ctrl_type * ctrl,
+    graph_type * graph,
+    vtx_type * const * gmatch,
+    vtx_type * fcmap);
 
 
 

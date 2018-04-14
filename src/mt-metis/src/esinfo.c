@@ -28,7 +28,7 @@
 
 
 #define DLMEM_PREFIX esnbrinfo
-#define DLMEM_TYPE_T esnbrinfo_t
+#define DLMEM_TYPE_T esnbrinfo_type
 #include <dlmem_funcs.h>
 #undef DLMEM_TYPE_T
 #undef DLMEM_PREFIX
@@ -42,10 +42,10 @@
 
 
 void esinfo_free(
-    graph_t * const graph)
+    graph_type * const graph)
 {
-  tid_t myid;
-  esinfo_t * esinfo;
+  tid_type myid;
+  esinfo_type * esinfo;
 
   for (myid=0;myid<graph->dist.nthreads;++myid) {
     esinfo = graph->esinfo+myid;
@@ -64,15 +64,15 @@ void esinfo_free(
 
 
 void par_esinfo_create(
-    ctrl_t * const ctrl,
-    graph_t * const graph)
+    ctrl_type * const ctrl,
+    graph_type * const graph)
 {
-  esinfo_t * esinfo;
+  esinfo_type * esinfo;
 
-  tid_t const myid = dlthread_get_id(ctrl->comm);
-  tid_t const nthreads = dlthread_get_nthreads(ctrl->comm);
+  tid_type const myid = dlthread_get_id(ctrl->comm);
+  tid_type const nthreads = dlthread_get_nthreads(ctrl->comm);
 
-  esinfo = dlthread_get_shmem(sizeof(esinfo_t)*nthreads,ctrl->comm);
+  esinfo = dlthread_get_shmem(sizeof(esinfo_type)*nthreads,ctrl->comm);
 
   esinfo += myid;
 
@@ -88,11 +88,11 @@ void par_esinfo_create(
 
 
 void par_esinfo_free(
-    graph_t * const graph)
+    graph_type * const graph)
 {
-  esinfo_t * esinfo;
+  esinfo_type * esinfo;
 
-  tid_t const myid = dlthread_get_id(graph->comm);
+  tid_type const myid = dlthread_get_id(graph->comm);
 
   esinfo = graph->esinfo+myid;
 

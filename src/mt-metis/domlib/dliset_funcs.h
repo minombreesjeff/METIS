@@ -330,6 +330,33 @@ DLISET_VISIBILITY DLISET_TYPE_T DLISET_PUB(iset_indexof)(
 }
 
 
+DLISET_VISIBILITY void DLISET_PUB(iset_expand)(
+    DLISET_TYPE_T nmax,
+    DLISET_PUB(iset_t) * const set)
+{
+  size_t i, nmaxsize;
+
+  if (nmax <= set->max) {
+    /* do nothing */
+    return;
+  }
+
+  nmaxsize = set->maxsize + (nmax - set->max);
+
+  /* expand arrays */
+  set->ind = realloc(set->ind,sizeof(*(set->ind))*nmaxsize);
+  set->ptr = realloc(set->ptr,sizeof(*(set->ptr))*nmaxsize);
+
+  /* initialize tail of ptr */
+  for (i=set->maxsize;i<nmaxsize;++i) {
+    set->ptr[i] = DLISET_PRI(iset_null_value);
+  }
+
+  set->max = nmax; 
+  set->maxsize = nmaxsize;
+}
+
+
 DLISET_VISIBILITY void DLISET_PUB(iset_free)(
     DLISET_PUB(iset_t) * set)
 {

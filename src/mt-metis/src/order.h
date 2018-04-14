@@ -36,12 +36,12 @@
  *
  * @param ctrl The control structure specifying parameters.
  * @param graph The graph to order.
- * @param perm The permutation vector (output).
+ * @param perm The permutation vector (output, but pre-allocated).
  */
-void order_nd(
-    ctrl_t * ctrl,
-    graph_t * graph,
-    pid_t * perm);
+void par_order_nd(
+    ctrl_type * ctrl,
+    graph_type * graph,
+    pid_type ** perm);
 
 
 
