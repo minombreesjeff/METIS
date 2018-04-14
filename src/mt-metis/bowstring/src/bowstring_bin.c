@@ -781,7 +781,7 @@ static int __analyze(
   adj_t ncut;
   vlbl_t nparts;
   vtx_t maxcycle, maxstar, maxdeg, nislands, ncomponents, nleafs, deg;
-  double tadjwgt, tvwgt;
+  double tadjwgt, tvwgt, wcut;
   int * dc;
   int err;
   bowstring_graph_type_t informat = BOWSTRING_FORMAT_AUTO;
@@ -896,9 +896,11 @@ static int __analyze(
         }
         dc = int_alloc(nparts);
         calc_domainconn(nvtxs,xadj,adjncy,nparts,wheres[i],dc);
-        ncut = calc_edgecut(nvtxs,xadj,adjncy,adjwgt,wheres[i]);
+        ncut = calc_edgecut(nvtxs,xadj,adjncy,NULL,wheres[i]);
+        wcut = calc_edgecut(nvtxs,xadj,adjncy,adjwgt,wheres[i]);
         printf("Number of Partitions  = %15zu\n",(size_t)nparts);
         printf("Edgecut               = %15zu\n",(size_t)ncut);
+        printf("Weighted Edgecut      = %19.3lf\n",wcut);
         printf("Internal edges        = %15zu\n",(size_t)(xadj[nvtxs]/2)-ncut);
         printf("Internal edges %%      = %19.3lf%%\n", \
             (100.0*((xadj[nvtxs]/2)-ncut))/(xadj[nvtxs]/2));

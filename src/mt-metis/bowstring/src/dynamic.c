@@ -579,7 +579,8 @@ bowstring_dyngraph_t * bowstring_dg_todynamic(
 int bowstring_dg_check(
     bowstring_dyngraph_t const * const graph)
 {
-  vtx_t i, k, j, l, n, m;
+  vtx_t i, k, j, l, n;
+  adj_t m;
   wgt_t wi, wk;
 
   n = 0;

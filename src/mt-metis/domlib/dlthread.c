@@ -142,9 +142,6 @@ static inline void wait_barrier(
   if (bar->nthreads == 1) {
     /* don't waste time for a single thread */
     return; 
-  } else if ((int)bar->nthreads == omp_get_num_threads()) {
-    /* all threads are in this barrier */
-    #pragma omp barrier
   }
 
   mybar = bar->vec;

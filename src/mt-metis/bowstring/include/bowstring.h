@@ -146,7 +146,7 @@ typedef uint64_t bowstring_adj_t;
 #else
 typedef uint32_t bowstring_adj_t;
 #endif /* BOWSTRING_64BIT_EDGES */
-#ifdef BOWSTRING_DOUBLE_WEIGHTS
+#ifdef BOWSTRING_64BIT_WEIGHTS
 #ifdef BOWSTRING_INT_WEIGHTS
 typedef int64_t bowstring_wgt_t;
 #else
@@ -488,7 +488,7 @@ void bowstring_label_partition_components(
     bowstring_vtx_t const nvtxs,
     bowstring_adj_t const * xadj,
     bowstring_vtx_t const * adjncy,
-    bowstring_vtx_t const * where,
+    bowstring_vlbl_t const * where,
     bowstring_vlbl_t ** r_lbl,
     bowstring_vlbl_t * r_nlbl);
 
@@ -906,7 +906,7 @@ void bowstring_label_partition_components(
     bowstring_vtx_t const nvtxs,
     bowstring_adj_t const * xadj,
     bowstring_vtx_t const * adjncy,
-    bowstring_vtx_t const * where,
+    bowstring_vlbl_t const * where,
     bowstring_vlbl_t ** r_lbl,
     bowstring_vlbl_t * r_nlbl);
 

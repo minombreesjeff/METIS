@@ -78,9 +78,9 @@ bowstring_dyngraph_t * bowstring_dg_create(
  */
 void bowstring_dg_addvtx(
     bowstring_vtx_t v,
-    bowstring_adj_t const * adjncy,
+    bowstring_vtx_t const * adjncy,
     bowstring_wgt_t const * adjwgt,
-    bowstring_adj_t nadj,
+    bowstring_vtx_t nadj,
     bowstring_dyngraph_t * graph);
 
 

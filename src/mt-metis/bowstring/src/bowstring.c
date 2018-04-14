@@ -290,7 +290,7 @@ void bowstring_label_partition_components(
     vtx_t const nvtxs,
     adj_t const * const xadj,
     vtx_t const * const adjncy,
-    vtx_t const * const where,
+    vlbl_t const * const where,
     vlbl_t ** r_lbl,
     vlbl_t * r_nlbl)
 {

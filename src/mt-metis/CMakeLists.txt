@@ -97,3 +97,10 @@ set(METIS_LIB_PATH "${CMAKE_SOURCE_DIR}/${METIS_PATH}/libmetis")
 add_subdirectory("include")
 add_subdirectory("src")
 
+if (DEFINED TESTS)
+  enable_testing()
+  add_subdirectory("apitest")
+endif()
+
+
+

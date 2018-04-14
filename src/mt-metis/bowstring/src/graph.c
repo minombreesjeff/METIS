@@ -866,10 +866,11 @@ void label_components(
 {
   vtx_t i, k, sq, nq, start, l;
   adj_t j;
-  vtx_t * q, * label;
+  vtx_t * q;
+  vlbl_t * label;
 
   q = vtx_alloc(nvtxs);
-  label = vtx_init_alloc(NULL_VTX,nvtxs);
+  label = vlbl_init_alloc(NULL_VTX,nvtxs);
 
   l = 0;
   start = 0;
@@ -918,10 +919,11 @@ void label_partition_components(
   vtx_t i, k, sq, nq, start, l;
   adj_t j;
   vlbl_t me;
-  vtx_t * q, * label;
+  vtx_t * q;
+  vlbl_t * label;
 
   q = vtx_alloc(nvtxs);
-  label = vtx_init_alloc(NULL_VTX,nvtxs);
+  label = vlbl_init_alloc(NULL_VTX,nvtxs);
 
   l = 0;
   start = 0;
@@ -966,7 +968,7 @@ int check_graph(
     vtx_t const * const adjncy,
     wgt_t const * const adjwgt)
 {
-  vtx_t i,k, kk;
+  vtx_t i, k, kk;
   adj_t j, jj;
 
   for (i=0;i<nvtxs;++i) {

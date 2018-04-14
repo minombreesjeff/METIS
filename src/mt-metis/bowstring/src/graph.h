@@ -350,7 +350,7 @@ void label_partition_components(
     vtx_t const nvtxs,
     adj_t const * xadj,
     vtx_t const * adjncy,
-    vtx_t const * where,
+    vlbl_t const * where,
     vlbl_t ** r_lbl,
     vlbl_t * r_nlbl);
 

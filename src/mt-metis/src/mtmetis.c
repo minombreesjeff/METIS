@@ -158,6 +158,7 @@ int mtmetis_nd(
 
   double_set(options,MTMETIS_VAL_OFF,MTMETIS_NOPTIONS);
   options[MTMETIS_OPTION_NTHREADS] = (double)nthreads;
+  options[MTMETIS_OPTION_PTYPE] = MTMETIS_PTYPE_ND;
   options[MTMETIS_OPTION_NPARTS] = 3;
 
   if ((rv = ctrl_parse(options,&ctrl)) != MTMETIS_SUCCESS) {

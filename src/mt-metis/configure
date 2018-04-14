@@ -53,6 +53,8 @@ show_help() {
   echo "    Use 64 bit data types for vertices instead of 32 bit."
   echo "  --weights64bit"
   echo "    Use 64 bit data types for weights instead of 32 bit."
+  echo "  --test"
+  echo "    Enable unit testing."
   echo ""
 }
 
@@ -114,8 +116,12 @@ for i in "${@}"; do
     --weights64bit)
     CONFIG_FLAGS="${CONFIG_FLAGS} -DBIGWEIGHTS=1"
     ;;
-    *)
+    # testing
+    --test)
+    CONFIG_FLAGS="${CONFIG_FLAGS} -DTESTS=1"
+    ;;
     # bad argument
+    *)
     die "Unknown option '${i}'"
     ;;
   esac
@@ -196,7 +202,7 @@ for d in ${CONFIG_FLAGS}; do
 done
 echo "#######################################################################"
 echo ""
-echo "all clean install:"
+echo "all test clean install:"
 echo "	make -C ${BUILDDIR} \$@ \$(MAKEFLAGS)"
 echo ""
 echo "distclean:"
