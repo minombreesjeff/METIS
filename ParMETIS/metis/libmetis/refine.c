@@ -5,7 +5,7 @@
 \date   Started 7/24/1997
 \author George  
 \author Copyright 1997-2009, Regents of the University of Minnesota 
-\version\verbatim $Id: refine.c 9987 2011-05-26 16:35:25Z karypis $ \endverbatim
+\version\verbatim $Id: refine.c 10513 2011-07-07 22:06:03Z karypis $ \endverbatim
 */
 
 #include "metislib.h"
@@ -70,10 +70,9 @@ void Allocate2WayPartitionMemory(ctrl_t *ctrl, graph_t *graph)
 /*************************************************************************/
 void Compute2WayPartitionParams(ctrl_t *ctrl, graph_t *graph)
 {
-  idx_t i, j, k, l, nvtxs, ncon, nbnd, mincut;
+  idx_t i, j, nvtxs, ncon, nbnd, mincut, istart, iend, tid, ted, me;
   idx_t *xadj, *vwgt, *adjncy, *adjwgt, *pwgts;
   idx_t *where, *bndptr, *bndind, *id, *ed;
-  idx_t me, other;
 
   nvtxs  = graph->nvtxs;
   ncon   = graph->ncon;
@@ -83,12 +82,12 @@ void Compute2WayPartitionParams(ctrl_t *ctrl, graph_t *graph)
   adjwgt = graph->adjwgt;
 
   where  = graph->where;
+  id     = graph->id;
+  ed     = graph->ed;
+
   pwgts  = iset(2*ncon, 0, graph->pwgts);
   bndptr = iset(nvtxs, -1, graph->bndptr);
   bndind = graph->bndind;
-
-  nbnd = 0;
-
 
   /* Compute pwgts */
   if (ncon == 1) {
@@ -108,22 +107,25 @@ void Compute2WayPartitionParams(ctrl_t *ctrl, graph_t *graph)
 
 
   /* Compute the required info for refinement  */
-  id = iset(nvtxs, 0, graph->id);
-  ed = iset(nvtxs, 0, graph->ed);
-  
-  for (mincut=0, i=0; i<nvtxs; i++) {
+  for (nbnd=0, mincut=0, i=0; i<nvtxs; i++) {
+    istart = xadj[i];
+    iend   = xadj[i+1];
+
     me = where[i];
-  
-    for (j=xadj[i]; j<xadj[i+1]; j++) {
+    tid = ted = 0;
+
+    for (j=istart; j<iend; j++) {
       if (me == where[adjncy[j]])
-        id[i] += adjwgt[j];
+        tid += adjwgt[j];
       else
-        ed[i] += adjwgt[j];
+        ted += adjwgt[j];
     }
+    id[i] = tid;
+    ed[i] = ted;
   
-    if (ed[i] > 0 || xadj[i] == xadj[i+1]) {
+    if (ted > 0 || istart == iend) {
       BNDInsert(nbnd, bndind, bndptr, i);
-      mincut += ed[i];
+      mincut += ted;
     }
   }
 
@@ -138,11 +140,11 @@ void Compute2WayPartitionParams(ctrl_t *ctrl, graph_t *graph)
 /*************************************************************************/
 void Project2WayPartition(ctrl_t *ctrl, graph_t *graph)
 {
-  idx_t i, j, k, nvtxs, nbnd, me;
-  idx_t *xadj, *adjncy, *adjwgt, *adjrsum;
+  idx_t i, j, istart, iend, nvtxs, nbnd, me, tid, ted;
+  idx_t *xadj, *adjncy, *adjwgt;
   idx_t *cmap, *where, *bndptr, *bndind;
   idx_t *cwhere, *cbndptr;
-  idx_t *id, *ed, *cid, *ced;
+  idx_t *id, *ed;
   graph_t *cgraph;
 
   Allocate2WayPartitionMemory(ctrl, graph);
@@ -156,50 +158,46 @@ void Project2WayPartition(ctrl_t *ctrl, graph_t *graph)
   xadj    = graph->xadj;
   adjncy  = graph->adjncy;
   adjwgt  = graph->adjwgt;
-  adjrsum = graph->adjrsum;
 
   where  = graph->where;
+  id     = graph->id;
+  ed     = graph->ed;
+
   bndptr = iset(nvtxs, -1, graph->bndptr);
   bndind = graph->bndind;
-
-  nbnd = 0;
 
   /* Project the partition and record which of these nodes came from the
      coarser boundary */
   for (i=0; i<nvtxs; i++) {
-    k = cmap[i];
-    where[i] = cwhere[k];
-    cmap[i]  = cbndptr[k];
+    j = cmap[i];
+    where[i] = cwhere[j];
+    cmap[i]  = cbndptr[j];
   }
 
-
   /* Compute the refinement information of the nodes */
-  id  = iset(nvtxs, 0, graph->id);
-  ed  = iset(nvtxs, 0, graph->ed);
-  cid = cgraph->id;
-  ced = cgraph->ed;
+  for (nbnd=0, i=0; i<nvtxs; i++) {
+    istart = xadj[i];
+    iend   = xadj[i+1];
   
-  for (i=0; i<nvtxs; i++) {
-    me = where[i];
-  
-    id[i] = adjrsum[i];
-  
-    if (xadj[i] == xadj[i+1]) {
-      BNDInsert(nbnd, bndind, bndptr, i);
+    tid = ted = 0;
+    if (cmap[i] == -1) { /* Interior node. Note that cmap[i] = cbndptr[cmap[i]] */
+      for (j=istart; j<iend; j++)
+        tid += adjwgt[j];
     }
-    else {
-      if (cmap[i] != -1) { /* If it is an interface node. Note that cmap[i] = cbndptr[cmap[i]] */
-        for (j=xadj[i]; j<xadj[i+1]; j++) {
-          if (me != where[adjncy[j]])
-            ed[i] += adjwgt[j];
-        }
-        id[i] -= ed[i];
-  
-        if (ed[i] > 0 || xadj[i] == xadj[i+1]) {
-          BNDInsert(nbnd, bndind, bndptr, i);
-        }
+    else { /* Potentially an interface node */
+      me = where[i];
+      for (j=istart; j<iend; j++) {
+        if (me == where[adjncy[j]])
+          tid += adjwgt[j];
+        else
+          ted += adjwgt[j];
       }
     }
+    id[i] = tid;
+    ed[i] = ted;
+
+    if (ted > 0 || istart == iend) 
+      BNDInsert(nbnd, bndind, bndptr, i);
   }
   graph->mincut = cgraph->mincut;
   graph->nbnd   = nbnd;
@@ -209,6 +207,5 @@ void Project2WayPartition(ctrl_t *ctrl, graph_t *graph)
 
   FreeGraph(&graph->coarser);
   graph->coarser = NULL;
-
 }
 

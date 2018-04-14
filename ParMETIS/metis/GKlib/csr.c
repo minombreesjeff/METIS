@@ -4,7 +4,7 @@
  * \brief Various routines with dealing with CSR matrices
  *
  * \author George Karypis
- * \version\verbatim $Id: csr.c 10134 2011-06-08 21:57:33Z benjamin $ \endverbatim
+ * \version\verbatim $Id: csr.c 10537 2011-07-11 05:27:54Z karypis $ \endverbatim
  */
 
 #include <GKlib.h>
@@ -35,11 +35,8 @@ gk_csr_t *gk_csr_Create()
 /*************************************************************************/
 void gk_csr_Init(gk_csr_t *mat)
 {
+  memset(mat, 0, sizeof(gk_csr_t));
   mat->nrows = mat->ncols = -1;
-  mat->rowptr = mat->rowind = mat->colptr = mat->colind = NULL;
-  mat->rowids = mat->colids = NULL;
-  mat->rowval = mat->colval = NULL;
-  mat->rnorms = mat->cnorms = NULL;
 }
 
 

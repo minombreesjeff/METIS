@@ -8,7 +8,7 @@
  * Started 8/1/97
  * George
  *
- * $Id: srefine.c 10154 2011-06-09 21:27:35Z karypis $
+ * $Id: srefine.c 10515 2011-07-08 15:46:18Z karypis $
  *
  */
 
@@ -16,39 +16,44 @@
 
 
 /*************************************************************************/
-/*! This function is the entry point of the separator refinement */
+/*! This function is the entry point of the separator refinement. 
+    It does not perform any refinement on graph, but it starts by first
+    projecting it to the next level finer graph and proceeds from there. */
 /*************************************************************************/
 void Refine2WayNode(ctrl_t *ctrl, graph_t *orggraph, graph_t *graph)
 {
+
   IFSET(ctrl->dbglvl, METIS_DBG_TIME, gk_startcputimer(ctrl->UncoarsenTmr));
 
-  for (;;) {
-    IFSET(ctrl->dbglvl, METIS_DBG_TIME, gk_startcputimer(ctrl->RefTmr));
-    FM_2WayNodeBalance(ctrl, graph); 
+  if (graph == orggraph) {
+    Compute2WayNodePartitionParams(ctrl, graph);
+  }
+  else {
+    do {
+      graph = graph->finer;
 
-    ASSERT(CheckNodePartitionParams(graph));
+      IFSET(ctrl->dbglvl, METIS_DBG_TIME, gk_startcputimer(ctrl->ProjectTmr));
+      Project2WayNodePartition(ctrl, graph);
+      IFSET(ctrl->dbglvl, METIS_DBG_TIME, gk_stopcputimer(ctrl->ProjectTmr));
 
-    switch (ctrl->rtype) {
-      case METIS_RTYPE_SEP2SIDED:
-        FM_2WayNodeRefine2Sided(ctrl, graph, ctrl->niter); 
-        FM_2WayNodeRefine1Sided(ctrl, graph, ctrl->niter); 
-        break;
-      case METIS_RTYPE_SEP1SIDED:
-        FM_2WayNodeRefine1Sided(ctrl, graph, ctrl->niter); 
-        FM_2WayNodeRefine2Sided(ctrl, graph, ctrl->niter); 
-        break;
-      default:
-        errexit("Unknown rtype of %d\n", ctrl->rtype);
-    }
-    IFSET(ctrl->dbglvl, METIS_DBG_TIME, gk_stopcputimer(ctrl->RefTmr));
+      IFSET(ctrl->dbglvl, METIS_DBG_TIME, gk_startcputimer(ctrl->RefTmr));
+      FM_2WayNodeBalance(ctrl, graph); 
 
-    if (graph == orggraph) 
-      break;
+      ASSERT(CheckNodePartitionParams(graph));
 
-    graph = graph->finer;
-    IFSET(ctrl->dbglvl, METIS_DBG_TIME, gk_startcputimer(ctrl->ProjectTmr));
-    Project2WayNodePartition(ctrl, graph);
-    IFSET(ctrl->dbglvl, METIS_DBG_TIME, gk_stopcputimer(ctrl->ProjectTmr));
+      switch (ctrl->rtype) {
+        case METIS_RTYPE_SEP2SIDED:
+          FM_2WayNodeRefine2Sided(ctrl, graph, ctrl->niter); 
+          break;
+        case METIS_RTYPE_SEP1SIDED:
+          FM_2WayNodeRefine1Sided(ctrl, graph, ctrl->niter); 
+          break;
+        default:
+          gk_errexit(SIGERR, "Unknown rtype of %d\n", ctrl->rtype);
+      }
+      IFSET(ctrl->dbglvl, METIS_DBG_TIME, gk_stopcputimer(ctrl->RefTmr));
+
+    } while (graph != orggraph);
   }
 
   IFSET(ctrl->dbglvl, METIS_DBG_TIME, gk_stopcputimer(ctrl->UncoarsenTmr));
@@ -77,8 +82,8 @@ void Allocate2WayNodePartitionMemory(ctrl_t *ctrl, graph_t *graph)
 /*************************************************************************/
 void Compute2WayNodePartitionParams(ctrl_t *ctrl, graph_t *graph)
 {
-  idx_t i, j, k, l, nvtxs, nbnd;
-  idx_t *xadj, *adjncy, *adjwgt, *vwgt;
+  idx_t i, j, nvtxs, nbnd;
+  idx_t *xadj, *adjncy, *vwgt;
   idx_t *where, *pwgts, *bndind, *bndptr, *edegrees;
   nrinfo_t *rinfo;
   idx_t me, other;
@@ -87,7 +92,6 @@ void Compute2WayNodePartitionParams(ctrl_t *ctrl, graph_t *graph)
   xadj   = graph->xadj;
   vwgt   = graph->vwgt;
   adjncy = graph->adjncy;
-  adjwgt = graph->adjwgt;
 
   where  = graph->where;
   rinfo  = graph->nrinfo;

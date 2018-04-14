@@ -9,7 +9,7 @@
  * Started 3/4/96
  * George
  *
- * $Id: initpart.c 10361 2011-06-21 19:16:22Z karypis $
+ * $Id: initpart.c 10542 2011-07-11 16:56:22Z karypis $
  */
 
 #include <parmetislib.h>
@@ -34,7 +34,7 @@ void InitPartition(ctrl_t *ctrl, graph_t *graph)
   graph_t *agraph;
   idx_t lnparts, fpart, fpe, lnpes; 
   idx_t twoparts=2, moptions[METIS_NOPTIONS], edgecut, max_cut;
-  real_t *tpwgts, *tpwgts2, lbvec[MAXNCON], lbsum, min_lbsum, wsum;
+  real_t *tpwgts, *tpwgts2, *lbvec, lbsum, min_lbsum, wsum;
   MPI_Comm ipcomm;
   struct {
     double sum;
@@ -49,6 +49,8 @@ void InitPartition(ctrl_t *ctrl, graph_t *graph)
 
   IFSET(ctrl->dbglvl, DBG_TIME, gkMPI_Barrier(ctrl->comm));
   IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->InitPartTmr));
+
+  lbvec = rwspacemalloc(ctrl, ncon);
 
   /* assemble the graph to all the processors */
   agraph = AssembleAdaptiveGraph(ctrl, graph);

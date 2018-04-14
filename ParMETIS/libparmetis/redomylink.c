@@ -8,7 +8,7 @@
  * Started 7/23/97
  * George
  *
- * $Id: redomylink.c 10416 2011-06-27 15:48:33Z karypis $
+ * $Id: redomylink.c 10542 2011-07-11 16:56:22Z karypis $
  */
 
 #include <parmetislib.h>
@@ -27,12 +27,13 @@ void RedoMyLink(ctrl_t *ctrl, graph_t *graph, idx_t *home, idx_t me,
   idx_t *costwhere, *lbwhere, *selectwhere;
   idx_t *ed, *id, *bndptr, *bndind, *perm;
   real_t *nvwgt, mycost;
-  real_t lbavg, lbvec[MAXNCON];
+  real_t lbavg, *lbvec;
   real_t best_lbavg, other_lbavg = -1.0, bestcost, othercost = -1.0;
-  real_t npwgts[2*MAXNCON], pwgts[MAXNCON*2], tpwgts[MAXNCON*2];
+  real_t *npwgts, *pwgts, *tpwgts;
   real_t ipc_factor, redist_factor, ftmp;
   idx_t mype;
   gkMPI_Comm_rank(MPI_COMM_WORLD, &mype);
+
 
   WCOREPUSH;
 
@@ -59,6 +60,11 @@ void RedoMyLink(ctrl_t *ctrl, graph_t *graph, idx_t *home, idx_t me,
   lbwhere   = iwspacemalloc(ctrl, nvtxs);
   perm      = iwspacemalloc(ctrl, nvtxs);
 
+  lbvec  = rwspacemalloc(ctrl, ncon);
+  pwgts  = rset(2*ncon, 0.0, rwspacemalloc(ctrl, 2*ncon));
+  npwgts = rwspacemalloc(ctrl, 2*ncon);
+  tpwgts = rwspacemalloc(ctrl, 2*ncon);
+
   graph->gnpwgts = npwgts;
 
   RandomPermute(nvtxs, perm, 1);
@@ -66,7 +72,6 @@ void RedoMyLink(ctrl_t *ctrl, graph_t *graph, idx_t *home, idx_t me,
   icopy(nvtxs, where, lbwhere);
 
   /* compute target pwgts */
-  rset(ncon*2, 0.0, pwgts);
   for (h=0; h<ncon; h++) {
     tpwgts[h]      = -1.0*flows[h];
     tpwgts[ncon+h] = flows[h];
@@ -168,7 +173,5 @@ void RedoMyLink(ctrl_t *ctrl, graph_t *graph, idx_t *home, idx_t me,
   icopy(nvtxs, selectwhere, where);
 
   WCOREPOP;
-
-  return;
 }
 

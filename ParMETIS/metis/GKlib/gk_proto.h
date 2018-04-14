@@ -4,7 +4,7 @@
 
 \date   Started 3/27/2007
 \author George
-\version\verbatim $Id: gk_proto.h 10407 2011-06-25 15:32:03Z karypis $ \endverbatim
+\version\verbatim $Id: gk_proto.h 10522 2011-07-08 21:05:23Z benjamin $ \endverbatim
 */
 
 #ifndef _GK_PROTO_H_
@@ -80,7 +80,7 @@ GK_MKALLOC_PROTO(gk_idxkv, gk_idxkv_t)
 
 void   gk_AllocMatrix(void ***, size_t, size_t , size_t);
 void   gk_FreeMatrix(void ***, size_t, size_t);
-void   gk_malloc_init();
+int    gk_malloc_init();
 void   gk_malloc_cleanup(int showstats);
 void  *gk_malloc(size_t nbytes, char *msg);
 void  *gk_realloc(void *oldptr, size_t nbytes, char *msg);
@@ -118,6 +118,9 @@ void gk_showcorruption(pdbf *p);
 void gk_set_exit_on_error(int value);
 void errexit(char *,...);
 void gk_errexit(int signum, char *,...);
+int gk_sigtrap();
+int gk_siguntrap();
+void gk_sigthrow(int signum);
 void gk_SetSignalHandlers();
 void gk_UnsetSignalHandlers();
 void gk_NonLocalExit_Handler(int signum);
@@ -318,12 +321,18 @@ float ComputeStdDev(int  n, float *values);
 
 /* mcore.c */
 gk_mcore_t *gk_mcoreCreate(size_t coresize);
+gk_mcore_t *gk_gkmcoreCreate();
 void gk_mcoreDestroy(gk_mcore_t **r_mcore, int showstats);
+void gk_gkmcoreDestroy(gk_mcore_t **r_mcore, int showstats);
 void *gk_mcoreMalloc(gk_mcore_t *mcore, size_t nbytes);
 void gk_mcorePush(gk_mcore_t *mcore);
+void gk_gkmcorePush(gk_mcore_t *mcore);
 void gk_mcorePop(gk_mcore_t *mcore);
+void gk_gkmcorePop(gk_mcore_t *mcore);
 void gk_mcoreAdd(gk_mcore_t *mcore, int type, size_t nbytes, void *ptr);
+void gk_gkmcoreAdd(gk_mcore_t *mcore, int type, size_t nbytes, void *ptr);
 void gk_mcoreDel(gk_mcore_t *mcore, void *ptr);
+void gk_gkmcoreDel(gk_mcore_t *mcore, void *ptr);
 
 
 #ifdef __cplusplus

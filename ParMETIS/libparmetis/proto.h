@@ -8,9 +8,17 @@
  * Started 10/19/95
  * George
  *
- * $Id: proto.h 10391 2011-06-23 19:00:08Z karypis $
+ * $Id: proto.h 10558 2011-07-13 13:12:44Z karypis $
  *
  */
+
+/* ctrl.c */
+ctrl_t *SetupCtrl(pmoptype_et optype, idx_t *options, idx_t ncon, idx_t nparts,
+            real_t *tpwgts, real_t *ubvec, MPI_Comm comm);
+void SetupCtrl_tvwgts(ctrl_t *ctrl, graph_t *graph);
+void FreeCtrl(ctrl_t **r_ctrl);
+
+
 
 /* kmetis.c */
 void Global_Partition(ctrl_t *, graph_t *);
@@ -49,11 +57,10 @@ void CheckMGraph(ctrl_t *, graph_t *);
 void ProjectInfoBack(ctrl_t *, graph_t *, idx_t *, idx_t *);
 void FindVtxPerm(ctrl_t *, graph_t *, idx_t *);
 
-/* memory.c */
-void AllocateWSpace(ctrl_t *, graph_t *);
+/* wspace.c */
+void AllocateWSpace(ctrl_t *ctrl, size_t nwords);
 void AllocateRefinementWorkSpace(ctrl_t *ctrl, idx_t nbrpoolsize);
 void FreeWSpace(ctrl_t *);
-void FreeCtrl(ctrl_t *);
 void *wspacemalloc(ctrl_t *ctrl, size_t nbytes);
 idx_t *iwspacemalloc(ctrl_t *ctrl, size_t n);
 real_t *rwspacemalloc(ctrl_t *ctrl, size_t n);
@@ -61,12 +68,6 @@ ikv_t *ikvwspacemalloc(ctrl_t *ctrl, size_t n);
 rkv_t *rkvwspacemalloc(ctrl_t *ctrl, size_t n);
 void cnbrpoolReset(ctrl_t *ctrl);
 idx_t cnbrpoolGetNext(ctrl_t *ctrl, idx_t nnbrs);
-graph_t *CreateGraph(void);
-void InitGraph(graph_t *);
-void FreeGraph(graph_t *graph);
-void FreeNonGraphFields(graph_t *graph);
-void FreeNonGraphNonSetupFields(graph_t *graph);
-void FreeInitialGraphAndRemap(graph_t *, idx_t, idx_t);
 
 
 /* ametis.c */
@@ -108,9 +109,11 @@ idx_t ComputeSerialTotalV(graph_t *, idx_t *);
 void KWayAdaptiveRefine(ctrl_t *, graph_t *, idx_t);
 
 /* selectq.c */
-void Mc_DynamicSelectQueue(idx_t, idx_t, idx_t, idx_t, idx_t *, real_t *, idx_t *, idx_t *, idx_t, real_t, real_t);
-idx_t Mc_HashVwgts(idx_t, real_t *);
-idx_t Mc_HashVRank(idx_t, idx_t *);
+void Mc_DynamicSelectQueue(ctrl_t *ctrl, idx_t nqueues, idx_t ncon, idx_t subdomain1,
+         idx_t subdomain2, idx_t *currentq, real_t *flows, idx_t *from, idx_t *qnum,
+         idx_t minval, real_t avgvwgt, real_t maxdiff);
+idx_t Mc_HashVwgts(ctrl_t *ctrl, idx_t ncon, real_t *nvwgt);
+idx_t Mc_HashVRank(idx_t ncon, idx_t *vwgt);
 
 
 /* csrmatch.c */
@@ -124,22 +127,40 @@ void ComputeHKWayLoadImbalance(idx_t, idx_t, real_t *, real_t *);
 void SerialRemap(ctrl_t *ctrl, graph_t *, idx_t, idx_t *, idx_t *, idx_t *, real_t *);
 int SSMIncKeyCmp(const void *, const void *);
 void Mc_Serial_FM_2WayRefine(ctrl_t *ctrl, graph_t *, real_t *, idx_t);
-void Serial_SelectQueue(idx_t, real_t *, real_t *, idx_t *, idx_t *, rpq_t *[MAXNCON][2]);
-idx_t Serial_BetterBalance(idx_t, real_t *, real_t *, real_t *);
+void Serial_SelectQueue(idx_t, real_t *, real_t *, idx_t *, idx_t *, rpq_t **[2]);
+idx_t Serial_BetterBalance(idx_t, real_t *, real_t *, real_t *, real_t *);
 real_t Serial_Compute2WayHLoadImbalance(idx_t, real_t *, real_t *);
 void Mc_Serial_Balance2Way(ctrl_t *ctrl, graph_t *, real_t *, real_t);
 void Mc_Serial_Init2WayBalance(ctrl_t *ctrl, graph_t *, real_t *);
-idx_t Serial_SelectQueueOneWay(idx_t, real_t *, real_t *, idx_t, rpq_t *[MAXNCON][2]);
+idx_t Serial_SelectQueueOneWay(idx_t, real_t *, real_t *, idx_t, rpq_t **[2]);
 void Mc_Serial_Compute2WayPartitionParams(ctrl_t *ctrl, graph_t *);
 idx_t Serial_AreAnyVwgtsBelow(idx_t, real_t, real_t *, real_t, real_t *, real_t *);
 
 /* weird.c */
+int CheckInputsPartKway(idx_t *vtxdist, idx_t *xadj, idx_t *adjncy, idx_t *vwgt,
+        idx_t *adjwgt, idx_t *wgtflag, idx_t *numflag, idx_t *ncon, idx_t *nparts,
+        real_t *tpwgts, real_t *ubvec, idx_t *options, idx_t *edgecut, idx_t *part,
+        MPI_Comm *comm);
+int CheckInputsPartGeomKway(idx_t *vtxdist, idx_t *xadj, idx_t *adjncy, idx_t *vwgt,
+        idx_t *adjwgt, idx_t *wgtflag, idx_t *numflag, idx_t *ndims, real_t *xyz, 
+        idx_t *ncon, idx_t *nparts, real_t *tpwgts, real_t *ubvec, idx_t *options, 
+        idx_t *edgecut, idx_t *part, MPI_Comm *comm);
+int CheckInputsPartGeom(idx_t *vtxdist, idx_t *ndims, real_t *xyz, 
+        idx_t *part, MPI_Comm *comm);
+int CheckInputsAdaptiveRepart(idx_t *vtxdist, idx_t *xadj, idx_t *adjncy,
+        idx_t *vwgt, idx_t *vsize, idx_t *adjwgt, idx_t *wgtflag, 
+        idx_t *numflag, idx_t *ncon, idx_t *nparts, real_t *tpwgts, 
+        real_t *ubvec, real_t *ipc2redist, idx_t *options, idx_t *edgecut, 
+        idx_t *part, MPI_Comm *comm);
+int CheckInputsNodeND(idx_t *vtxdist, idx_t *xadj, idx_t *adjncy, 
+        idx_t *numflag, idx_t *options, idx_t *order, idx_t *sizes,
+        MPI_Comm *comm);
+int CheckInputsPartMeshKway(idx_t *elmdist, idx_t *eptr, idx_t *eind, idx_t *elmwgt,
+        idx_t *wgtflag, idx_t *numflag, idx_t *ncon, idx_t *ncommon, idx_t *nparts,
+        real_t *tpwgts, real_t *ubvec, idx_t *options, idx_t *edgecut, idx_t *part,
+        MPI_Comm *comm);
 void PartitionSmallGraph(ctrl_t *, graph_t *);
-void CheckInputs(idx_t partType, idx_t npes, idx_t dbglvl, idx_t *wgtflag, idx_t *iwgtflag,
-                 idx_t *numflag, idx_t *inumflag, idx_t *ncon, idx_t *incon, idx_t *nparts, 
-		 idx_t *inparts, real_t *tpwgts, real_t **itpwgts, real_t *ubvec, 
-		 real_t *iubvec, real_t *ipc2redist, real_t *iipc2redist, idx_t *options, 
-		 idx_t *ioptions, idx_t *part, MPI_Comm *comm);
+
 
 /* mesh.c */
 
@@ -178,8 +199,9 @@ void PartSort(ctrl_t *, graph_t *, ikv_t *);
 /* stat.c */
 void ComputeSerialBalance(ctrl_t *, graph_t *, idx_t *, real_t *);
 void ComputeParallelBalance(ctrl_t *, graph_t *, idx_t *, real_t *);
-void Mc_Pridx_tThrottleMatrix(ctrl_t *, graph_t *, real_t *);
-void Mc_ComputeRefineStats(ctrl_t *, graph_t *, real_t *);
+void Mc_PrintThrottleMatrix(ctrl_t *, graph_t *, real_t *);
+void PrintPostPartInfo(ctrl_t *ctrl, graph_t *graph, idx_t movestats);
+void ComputeMoveStatistics(ctrl_t *, graph_t *, idx_t *, idx_t *, idx_t *);
 
 /* debug.c */
 void PrintVector(ctrl_t *, idx_t, idx_t, idx_t *, char *);
@@ -194,11 +216,14 @@ void WriteMetisGraph(idx_t, idx_t *, idx_t *, idx_t *, idx_t *);
 
 /* comm.c */
 void CommSetup(ctrl_t *, graph_t *);
+void CommUpdateNnbrs(ctrl_t *ctrl, idx_t nnbrs);
 void CommInterfaceData(ctrl_t *ctrl, graph_t *graph, idx_t *data, idx_t *recvvector);
 void CommChangedInterfaceData(ctrl_t *ctrl, graph_t *graph, idx_t nchanged,
          idx_t *changed, idx_t *data, ikv_t *sendpairs, ikv_t *recvpairs);
 idx_t GlobalSEMax(ctrl_t *, idx_t);
+idx_t GlobalSEMaxComm(MPI_Comm comm, idx_t value);
 idx_t GlobalSEMin(ctrl_t *, idx_t);
+idx_t GlobalSEMinComm(MPI_Comm comm, idx_t value);
 idx_t GlobalSESum(ctrl_t *, idx_t);
 real_t GlobalSEMaxFloat(ctrl_t *, real_t);
 real_t GlobalSEMinFloat(ctrl_t *, real_t);
@@ -226,15 +251,20 @@ real_t ravg(size_t n, real_t *x);
 real_t rfavg(size_t n, real_t *x);
 
 /* grsetup.c */
-graph_t *SetUpGraph(ctrl_t *, idx_t, idx_t *, idx_t *, idx_t *, idx_t *, idx_t *, idx_t *);
-void SetUpCtrl(ctrl_t *ctrl, idx_t, idx_t, MPI_Comm);
-void SetUpComm(ctrl_t *ctrl, MPI_Comm comm);
+graph_t *SetupGraph(ctrl_t *ctrl, idx_t ncon, idx_t *vtxdist, idx_t *xadj,
+             idx_t *vwgt, idx_t *vsize, idx_t *adjncy, idx_t *adjwgt, 
+             idx_t wgtflag);
+void SetupGraph_nvwgts(ctrl_t *ctrl, graph_t *graph);
+graph_t *CreateGraph(void);
+void InitGraph(graph_t *);
+void FreeGraph(graph_t *graph);
+void FreeNonGraphFields(graph_t *graph);
+void FreeNonGraphNonSetupFields(graph_t *graph);
+void FreeInitialGraphAndRemap(graph_t *graph);
 void ChangeNumbering(idx_t *, idx_t *, idx_t *, idx_t *, idx_t, idx_t, idx_t);
 void ChangeNumberingMesh(idx_t *elmdist, idx_t *eptr, idx_t *eind,
                          idx_t *xadj, idx_t *adjncy, idx_t *part,
 			 idx_t npes, idx_t mype, idx_t from);
-void GraphRandomPermute(graph_t *);
-void ComputeMoveStatistics(ctrl_t *, graph_t *, idx_t *, idx_t *, idx_t *);
 
 /* timer.c */
 void InitTimers(ctrl_t *);

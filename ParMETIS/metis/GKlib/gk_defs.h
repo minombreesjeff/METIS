@@ -4,7 +4,7 @@
 
 \date   Started 3/27/2007
 \author George
-\version\verbatim $Id: gk_defs.h 10407 2011-06-25 15:32:03Z karypis $ \endverbatim
+\version\verbatim $Id: gk_defs.h 10514 2011-07-07 22:27:16Z karypis $ \endverbatim
 */
 
 #ifndef _GK_DEFS_H_
@@ -33,9 +33,9 @@
 
 #define MAXLINELEN 300000
 
-/* custom signals */
-#define SIGMEM                  SIGABRT
-#define SIGERR                  SIGABRT
+/* GKlib signals to standard signal mapping */
+#define SIGMEM  SIGABRT
+#define SIGERR  SIGTERM
 
 
 /* CSR-related defines */

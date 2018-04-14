@@ -8,7 +8,7 @@
  * Started 10/19/96
  * George
  *
- * $Id: rmetis.c 10391 2011-06-23 19:00:08Z karypis $
+ * $Id: rmetis.c 10558 2011-07-13 13:12:44Z karypis $
  *
  */
 
@@ -21,153 +21,89 @@
 * algorithm. It uses parallel undirected diffusion followed by adaptive k-way 
 * refinement. This function utilizes local coarsening.
 ************************************************************************************/
-void ParMETIS_V3_RefineKway(idx_t *vtxdist, idx_t *xadj, idx_t *adjncy,
-              idx_t *vwgt, idx_t *adjwgt, idx_t *wgtflag, idx_t *numflag, idx_t *ncon, 
-	      idx_t *nparts, real_t *tpwgts, real_t *ubvec, idx_t *options, idx_t *edgecut, 
-	      idx_t *part, MPI_Comm *comm)
+int ParMETIS_V3_RefineKway(idx_t *vtxdist, idx_t *xadj, idx_t *adjncy, idx_t *vwgt, 
+        idx_t *adjwgt, idx_t *wgtflag, idx_t *numflag, idx_t *ncon, idx_t *nparts, 
+        real_t *tpwgts, real_t *ubvec, idx_t *options, idx_t *edgecut, idx_t *part, 
+        MPI_Comm *comm)
 {
-  idx_t h, i;
-  idx_t npes, mype;
-  ctrl_t ctrl;
-  graph_t *graph;
-  idx_t tewgt, tvsize, nmoved, maxin, maxout;
-  real_t gtewgt, gtvsize, avg, maximb;
-  idx_t ps_relation, seed, dbglvl = 0;
-  idx_t iwgtflag, inumflag, incon, inparts, ioptions[10];
-  real_t *itpwgts, iubvec[MAXNCON];
-
-  gkMPI_Comm_size(*comm, &npes);
-  gkMPI_Comm_rank(*comm, &mype);
-
-  /* Deal with poor vertex distributions */
-  ctrl.comm = *comm;
-  if (GlobalSEMin(&ctrl, vtxdist[mype+1]-vtxdist[mype]) < 1) {
-    if (mype == 0)
-      printf("Error: Poor vertex distribution (processor with no vertices).\n");
-    return;
-  }
+  idx_t npes, mype, status;
+  ctrl_t *ctrl=NULL;
+  graph_t *graph=NULL;
+  size_t curmem;
 
 
-  /********************************/
-  /* Try and take care bad inputs */
-  /********************************/
-  if (options != NULL && options[0] == 1)
-    dbglvl = options[PMV3_OPTION_DBGLVL];
+  /* Check the input parameters and return if an error */
+  status = CheckInputsPartKway(vtxdist, xadj, adjncy, vwgt, adjwgt, wgtflag, 
+               numflag, ncon, nparts, tpwgts, ubvec, options, edgecut, part, comm);
+  if (GlobalSEMinComm(*comm, status) == 0) 
+    return METIS_ERROR;
 
-  CheckInputs(REFINE_PARTITION, npes, dbglvl, wgtflag, &iwgtflag, numflag, &inumflag,
-              ncon, &incon, nparts, &inparts, tpwgts, &itpwgts, ubvec, iubvec, 
-              NULL, NULL, options, ioptions, part, comm);
+  status = METIS_OK;
+  gk_malloc_init();
+  curmem = gk_GetCurMemoryUsed();
 
-  /* ADD: take care of disconnected graph */
-  /* ADD: take care of highly unbalanced vtxdist */
-  /*********************************/
-  /* Take care the nparts = 1 case */
-  /*********************************/
-  if (inparts <= 1) {
+  /* Setup ctrl */
+  ctrl = SetupCtrl(PARMETIS_OP_RMETIS, options, *ncon, *nparts, tpwgts, ubvec, *comm);
+  npes = ctrl->npes;
+  mype = ctrl->mype;
+
+
+  /* Take care the nparts == 1 case */
+  if (*nparts == 1) {
     iset(vtxdist[mype+1]-vtxdist[mype], 0, part); 
     *edgecut = 0;
-    return;
+    goto DONE;
   }
 
-  /**************************/
-  /* Set up data structures */
-  /**************************/
-  if (inumflag == 1) 
+
+  /* setup the graph */
+  if (*numflag > 0) 
     ChangeNumbering(vtxdist, xadj, adjncy, part, npes, mype, 1);
 
-  /*****************************/
-  /* Set up control structures */
-  /*****************************/
-  if (ioptions[0] == 1) {
-    dbglvl      = ioptions[PMV3_OPTION_DBGLVL];
-    seed        = ioptions[PMV3_OPTION_SEED];
-    ps_relation = (npes == inparts) ? ioptions[PMV3_OPTION_PSR] : PARMETIS_PSR_UNCOUPLED;
-  }
-  else {
-    dbglvl      = GLOBAL_DBGLVL;
-    seed        = GLOBAL_SEED;
-    ps_relation = (npes == inparts) ? PARMETIS_PSR_COUPLED : PARMETIS_PSR_UNCOUPLED;
-  }
+  graph = SetupGraph(ctrl, *ncon, vtxdist, xadj, vwgt, NULL, adjncy, adjwgt, *wgtflag);
 
-  SetUpCtrl(&ctrl, inparts, dbglvl, *comm);
-  ctrl.CoarsenTo     = gk_min(vtxdist[npes]+1, 50*incon*gk_max(npes, inparts));
-  ctrl.ipc_factor    = 1000.0;
-  ctrl.redist_factor = 1.0;
-  ctrl.redist_base   = 1.0;
-  ctrl.seed          = (seed == 0) ? mype : seed*mype;
-  ctrl.sync          = GlobalSEMax(&ctrl, seed);
-  ctrl.partType      = REFINE_PARTITION;
-  ctrl.ps_relation   = ps_relation;
-  ctrl.tpwgts        = itpwgts;
-
-  graph = SetUpGraph(&ctrl, incon, vtxdist, xadj, vwgt, adjncy, adjwgt, &iwgtflag);
-  graph->vsize = ismalloc(graph->nvtxs, 1, "vsize");
-
-  graph->home = imalloc(graph->nvtxs, "home");
-  if (ctrl.ps_relation == PARMETIS_PSR_COUPLED)
+  if (ctrl->ps_relation == PARMETIS_PSR_COUPLED)
     iset(graph->nvtxs, mype, graph->home);
   else
     icopy(graph->nvtxs, part, graph->home);
 
-  tewgt   = isum(graph->nedges, graph->adjwgt, 1);
-  tvsize  = isum(graph->nvtxs, graph->vsize, 1);
-  gtewgt  = (real_t) GlobalSESum(&ctrl, tewgt) + 1.0/graph->gnvtxs;
-  gtvsize = (real_t) GlobalSESum(&ctrl, tvsize) + 1.0/graph->gnvtxs;
-  ctrl.edge_size_ratio = gtewgt/gtvsize;
-  rcopy(incon, iubvec, ctrl.ubvec);
 
-  AllocateWSpace(&ctrl, graph);
+  /* Allocate workspace */
+  AllocateWSpace(ctrl, 10*graph->nvtxs);
 
-  /***********************/
+
   /* Partition and Remap */
-  /***********************/
-  IFSET(ctrl.dbglvl, DBG_TIME, InitTimers(&ctrl));
-  IFSET(ctrl.dbglvl, DBG_TIME, gkMPI_Barrier(ctrl.gcomm));
-  IFSET(ctrl.dbglvl, DBG_TIME, starttimer(ctrl.TotalTmr));
+  STARTTIMER(ctrl, ctrl->TotalTmr);
 
-  Adaptive_Partition(&ctrl, graph);
-  ParallelReMapGraph(&ctrl, graph);
+  ctrl->CoarsenTo = gk_min(vtxdist[npes]+1, 50*(*ncon)*gk_max(npes, *nparts));
 
-  IFSET(ctrl.dbglvl, DBG_TIME, gkMPI_Barrier(ctrl.gcomm));
-  IFSET(ctrl.dbglvl, DBG_TIME, stoptimer(ctrl.TotalTmr));
+  Adaptive_Partition(ctrl, graph);
+  ParallelReMapGraph(ctrl, graph);
 
   icopy(graph->nvtxs, graph->where, part);
-  if (edgecut != NULL)
-    *edgecut = graph->mincut;
+  *edgecut = graph->mincut;
 
-  /***********************/
+  STOPTIMER(ctrl, ctrl->TotalTmr);
+
   /* Take care of output */
-  /***********************/
-  IFSET(ctrl.dbglvl, DBG_TIME, PrintTimingInfo(&ctrl));
-  IFSET(ctrl.dbglvl, DBG_TIME, gkMPI_Barrier(ctrl.gcomm));
+  IFSET(ctrl->dbglvl, DBG_TIME, PrintTimingInfo(ctrl));
+  IFSET(ctrl->dbglvl, DBG_TIME, gkMPI_Barrier(ctrl->gcomm));
+  IFSET(ctrl->dbglvl, DBG_INFO, PrintPostPartInfo(ctrl, graph, 1));
 
-  if (ctrl.dbglvl&DBG_INFO) {
-    Mc_ComputeMoveStatistics(&ctrl, graph, &nmoved, &maxin, &maxout);
-    rprintf(&ctrl, "Final %3"PRIDX"-way Cut: %6"PRIDX" \tBalance: ", inparts, graph->mincut);
-    avg = 0.0;
-    for (h=0; h<incon; h++) {
-      maximb = 0.0;
-      for (i=0; i<inparts; i++)
-        maximb =gk_max(maximb, graph->gnpwgts[i*incon+h]/itpwgts[i*incon+h]);
-      avg += maximb;
-      rprintf(&ctrl, "%.3"PRREAL" ", maximb);
-    }
-    rprintf(&ctrl, "\nNMoved: %"PRIDX" %"PRIDX" %"PRIDX" %"PRIDX"\n", nmoved, maxin, maxout, maxin+maxout);
-  }
+  FreeInitialGraphAndRemap(graph);
 
-  /*************************************/
-  /* Free memory, renumber, and return */
-  /*************************************/
-  gk_free((void **)&graph->lnpwgts, &graph->gnpwgts, &graph->nvwgt, &graph->home, 
-      &graph->vsize, &itpwgts, LTERM);
-
-  FreeInitialGraphAndRemap(graph, iwgtflag, 1);
-  FreeCtrl(&ctrl);
-
-  if (inumflag == 1)
+  if (*numflag > 0)
     ChangeNumbering(vtxdist, xadj, adjncy, part, npes, mype, 0);
 
-  return;
+DONE:
+  FreeCtrl(&ctrl);
+  if (gk_GetCurMemoryUsed() - curmem > 0) {
+    printf("ParMETIS appears to have a memory leak of %zdbytes. Report this.\n",
+        (ssize_t)(gk_GetCurMemoryUsed() - curmem));
+  }
+  gk_malloc_cleanup(0);
+
+  return (int)status;
 }
 
 

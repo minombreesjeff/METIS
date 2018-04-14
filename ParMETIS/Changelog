@@ -1,3 +1,14 @@
+
+Changes in version 4.0a2 
+r10566; 2011-07-13 11:15:54 -0500 (Wed, 13 Jul 2011) 
+
+- Removed MAXNCON and MAX_PES constant dependency.
+- Reduced memory requirements for MPI comm related data structures.
+- Restructuring of the parameter-checking part of the code.
+- Rewrote how ctrl/graph are being setup. Cleaner code; fewer bugs.
+- Fixed some bugs identified by the early testers.
+
+
 Changes in version 4.0a1
 - Serial parts of the code are now based on Metis 5.0.
 - Complete 64 bit support that is controlled at build time by setting

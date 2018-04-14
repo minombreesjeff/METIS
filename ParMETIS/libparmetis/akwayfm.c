@@ -8,7 +8,7 @@
  * Started 3/1/96
  * George
  *
- * $Id: akwayfm.c 10391 2011-06-23 19:00:08Z karypis $
+ * $Id: akwayfm.c 10528 2011-07-09 19:47:30Z karypis $
  */
 
 #include <parmetislib.h>
@@ -36,7 +36,7 @@ void KWayAdaptiveRefine(ctrl_t *ctrl, graph_t *graph, idx_t npasses)
   idx_t *changed, *perm, *pperm, *htable;
   idx_t *peind, *recvptr, *sendptr;
   ikv_t *swchanges, *rwchanges;
-  real_t lbvec[MAXNCON], *nvwgt, *badmaxpwgt, *ubvec, *tpwgts, lbavg, ubavg;
+  real_t *lbvec, *nvwgt, *badmaxpwgt, *ubvec, *tpwgts, lbavg, ubavg;
   real_t oldgain, gain;
   real_t ipc_factor, redist_factor, vsize;
   idx_t ndirty, nclean, dptr;
@@ -79,6 +79,8 @@ void KWayAdaptiveRefine(ctrl_t *ctrl, graph_t *graph, idx_t npasses)
   /************************************/
   /* set up important data structures */
   /************************************/
+  lbvec        = rwspacemalloc(ctrl, ncon);
+
   badmaxpwgt   = rwspacemalloc(ctrl, nparts*ncon);
   movewgts     = rwspacemalloc(ctrl, nparts*ncon);
   ognpwgts     = rwspacemalloc(ctrl, nparts*ncon);

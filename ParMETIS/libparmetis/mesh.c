@@ -9,7 +9,7 @@
  * Started 10/19/94
  * George
  *
- * $Id: mesh.c 10057 2011-06-02 13:44:44Z karypis $
+ * $Id: mesh.c 10535 2011-07-11 04:29:44Z karypis $
  *
  */
 
@@ -19,7 +19,7 @@
 /*************************************************************************
 * This function converts a mesh into a dual graph
 **************************************************************************/
-void ParMETIS_V3_Mesh2Dual(idx_t *elmdist, idx_t *eptr, idx_t *eind, 
+int ParMETIS_V3_Mesh2Dual(idx_t *elmdist, idx_t *eptr, idx_t *eind, 
                  idx_t *numflag, idx_t *ncommonnodes, idx_t **xadj, 
 		 idx_t **adjncy, MPI_Comm *comm)
 {
@@ -34,17 +34,19 @@ void ParMETIS_V3_Mesh2Dual(idx_t *elmdist, idx_t *eptr, idx_t *eind,
   ikv_t *nodelist, *recvbuffer;
   idx_t maxcount, *ind, *wgt;
   idx_t gmaxnode, gminnode;
-  ctrl_t ctrl;
+  size_t curmem;
 
+  gk_malloc_init();
+  curmem = gk_GetCurMemoryUsed();
+  
+  /* Get basic comm info */
+  gkMPI_Comm_size(*comm, &npes);
+  gkMPI_Comm_rank(*comm, &mype);
 
-  SetUpCtrl(&ctrl, -1, 0, *comm);
-
-  npes = ctrl.npes;
-  mype = ctrl.mype;
 
   nelms = elmdist[mype+1]-elmdist[mype];
 
-  if (*numflag == 1) 
+  if (*numflag > 0) 
     ChangeNumberingMesh(elmdist, eptr, eind, NULL, NULL, NULL, npes, mype, 1);
 
   mask = (1<<11)-1;
@@ -52,11 +54,11 @@ void ParMETIS_V3_Mesh2Dual(idx_t *elmdist, idx_t *eptr, idx_t *eind,
   /*****************************/
   /* Determine number of nodes */
   /*****************************/
-  gminnode = GlobalSEMin(&ctrl, imin(eptr[nelms], eind));
+  gminnode = GlobalSEMinComm(*comm, imin(eptr[nelms], eind));
   for (i=0; i<eptr[nelms]; i++)
     eind[i] -= gminnode;
 
-  gmaxnode = GlobalSEMax(&ctrl, imax(eptr[nelms], eind));
+  gmaxnode = GlobalSEMaxComm(*comm, imax(eptr[nelms], eind));
 
 
   /**************************/
@@ -349,8 +351,13 @@ void ParMETIS_V3_Mesh2Dual(idx_t *elmdist, idx_t *eptr, idx_t *eind,
          (void **)&htable, (void **)&nptr, (void **)&nind, (void **)&gnptr, 
 	 (void **)&gnind, (void **)&auxarray, &ind, &wgt, LTERM);
 
-  FreeCtrl(&ctrl);
+  
+  if (gk_GetCurMemoryUsed() - curmem > 0) {
+    printf("ParMETIS appears to have a memory leak of %zdbytes. Report this.\n",
+        (ssize_t)(gk_GetCurMemoryUsed() - curmem));
+  }
+  gk_malloc_cleanup(0);
 
-  return;
+  return METIS_OK;
 }
 

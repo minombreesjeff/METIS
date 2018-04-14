@@ -8,7 +8,7 @@
  * Started 8/28/94
  * George
  *
- * $Id: ndmetis.c 10409 2011-06-25 16:58:34Z karypis $
+ * $Id: ndmetis.c 10567 2011-07-13 16:17:07Z karypis $
  *
  */
 
@@ -25,6 +25,7 @@ int main(int argc, char *argv[])
   graph_t *graph;
   idx_t *perm, *iperm;
   params_t *params;
+  int status=0;
 
   params = parse_cmdline(argc, argv);
 
@@ -32,6 +33,17 @@ int main(int argc, char *argv[])
   graph = ReadGraph(params);
   gk_stopcputimer(params->iotimer);
 
+  /* This is just for internal use to clean up some files
+  {
+    char fileout[8192];
+
+    gk_free((void **)&graph->vwgt, &graph->adjwgt, &graph->vsize, LTERM);
+    sprintf(fileout, "ND/%s", params->filename);
+    if (graph->nvtxs > 25000)
+      WriteGraph(graph, fileout);
+    exit(0);
+  }
+  */
 
   /* Check if the graph is contiguous */
   if (graph->ncon != 1) {
@@ -61,8 +73,8 @@ int main(int argc, char *argv[])
   gk_malloc_init();
   gk_startcputimer(params->parttimer);
 
-  METIS_NodeND(&graph->nvtxs, graph->xadj, graph->adjncy, graph->vwgt, 
-        options, perm, iperm);
+  status = METIS_NodeND(&graph->nvtxs, graph->xadj, graph->adjncy, graph->vwgt, 
+               options, perm, iperm);
 
   gk_stopcputimer(params->parttimer);
   if (gk_GetCurMemoryUsed() != 0)
@@ -71,14 +83,19 @@ int main(int argc, char *argv[])
   gk_malloc_cleanup(0);
 
 
-  if (!params->nooutput) {
-    /* Write the solution */
-    gk_startcputimer(params->iotimer);
-    WritePermutation(params->filename, iperm, graph->nvtxs); 
-    gk_stopcputimer(params->iotimer);
+  if (status != METIS_OK) {
+    printf("\n***Metis returned with an error.\n");
   }
+  else {
+    if (!params->nooutput) {
+      /* Write the solution */
+      gk_startcputimer(params->iotimer);
+      WritePermutation(params->filename, iperm, graph->nvtxs); 
+      gk_stopcputimer(params->iotimer);
+    }
 
-  NDReportResults(params, graph, perm, iperm);
+    NDReportResults(params, graph, perm, iperm);
+  }
 
   FreeGraph(&graph);
   gk_free((void **)&perm, &iperm, LTERM);

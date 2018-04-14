@@ -97,11 +97,9 @@ graph_t *CompressGraph(ctrl_t *ctrl, idx_t nvtxs, idx_t *xadj, idx_t *adjncy,
 
     /* Allocate memory for the compressed graph */
     cxadj   = graph->xadj   = imalloc(cnvtxs+1, "CompressGraph: xadj");
-    cvwgt   = graph->vwgt   = imalloc(cnvtxs, "CompressGraph: vwgt");
+    cvwgt   = graph->vwgt   = ismalloc(cnvtxs, 0, "CompressGraph: vwgt");
     cadjncy = graph->adjncy = imalloc(cnedges, "CompressGraph: adjncy");
-    graph->adjrsum          = imalloc(cnvtxs, "CompressGraph: adjrsum");
-    graph->cmap             = imalloc(cnvtxs, "CompressGraph: cmap");
-    graph->adjwgt           = imalloc(cnedges, "CompressGraph: adjwgt");
+              graph->adjwgt = ismalloc(cnedges, 1, "CompressGraph: adjwgt");
 
     /* Now go and compress the graph */
     iset(nvtxs, -1, mark);
@@ -130,13 +128,8 @@ graph_t *CompressGraph(ctrl_t *ctrl, idx_t nvtxs, idx_t *xadj, idx_t *adjncy,
     graph->nedges = l;
     graph->ncon   = 1;
 
-    iset(graph->nedges, 1, graph->adjwgt);
-    for (i=0; i<cnvtxs; i++)
-      graph->adjrsum[i] = cxadj[i+1]-cxadj[i];
-
     SetupGraph_tvwgt(graph);
     SetupGraph_label(graph);
-
   }
 
   gk_free((void **)&keys, &map, &mark, LTERM);
@@ -189,11 +182,9 @@ graph_t *PruneGraph(ctrl_t *ctrl, idx_t nvtxs, idx_t *xadj, idx_t *adjncy,
 
     /* Allocate memory for the prunned graph*/
     pxadj   = graph->xadj   = imalloc(pnvtxs+1, "PruneGraph: xadj");
-    padjncy = graph->adjncy = imalloc(pnedges, "PruneGraph: adjncy");
     pvwgt   = graph->vwgt   = imalloc(pnvtxs, "PruneGraph: vwgt");
-    graph->adjrsum          = imalloc(pnvtxs, "PruneGraph: adjrsum");
-    graph->cmap             = imalloc(pnvtxs, "PruneGraph: cmap");
-    graph->adjwgt           = imalloc(pnedges, "PruneGraph: adjwgt");
+    padjncy = graph->adjncy = imalloc(pnedges, "PruneGraph: adjncy");
+              graph->adjwgt = ismalloc(pnedges, 1, "PruneGraph: adjwgt");
 
     pxadj[0] = pnedges = l = 0;
     for (i=0; i<nvtxs; i++) {
@@ -212,10 +203,6 @@ graph_t *PruneGraph(ctrl_t *ctrl, idx_t nvtxs, idx_t *xadj, idx_t *adjncy,
     graph->nvtxs  = pnvtxs;
     graph->nedges = pnedges;
     graph->ncon   = 1;
-
-    iset(pnedges, 1, graph->adjwgt);
-    for (i=0; i<pnvtxs; i++)
-      graph->adjrsum[i] = pxadj[i+1]-pxadj[i];
 
     SetupGraph_tvwgt(graph);
     SetupGraph_label(graph);

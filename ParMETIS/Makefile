@@ -13,7 +13,7 @@ cc         = not-set
 
 # Basically proxies everything to the builddir cmake.
 
-PKGNAME = parmetis-4.0a1
+PKGNAME = parmetis-4.0a2
 
 cputype = $(shell uname -m | sed "s/\\ /_/g")
 systype = $(shell uname -s)

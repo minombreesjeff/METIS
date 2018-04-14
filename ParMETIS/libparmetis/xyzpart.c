@@ -8,7 +8,7 @@
  * Started 7/11/97
  * George
  *
- * $Id: xyzpart.c 10361 2011-06-21 19:16:22Z karypis $
+ * $Id: xyzpart.c 10543 2011-07-11 19:32:24Z karypis $
  *
  */
 
@@ -120,6 +120,8 @@ void PartSort(ctrl_t *ctrl, graph_t *graph, ikv_t *elmnts)
   ikv_t *relmnts, *mypicks, *allpicks;
 
   WCOREPUSH;
+
+  CommUpdateNnbrs(ctrl, npes);
 
   nvtxs   = graph->nvtxs;
   vtxdist = graph->vtxdist;

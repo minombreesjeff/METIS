@@ -5,7 +5,7 @@
 \date Started 2/24/96
 \author George
 \author Copyright 1997-2009, Regents of the University of Minnesota 
-\version $Id: wspace.c 10399 2011-06-24 12:45:46Z karypis $
+\version $Id: wspace.c 10492 2011-07-06 09:28:42Z karypis $
 */
 
 #include "metislib.h"
@@ -20,16 +20,16 @@ void AllocateWorkSpace(ctrl_t *ctrl, graph_t *graph)
 
   switch (ctrl->optype) {
     case METIS_OP_PMETIS:
-      coresize = 4*(graph->nvtxs+1)*sizeof(idx_t) + 
+      coresize = 3*(graph->nvtxs+1)*sizeof(idx_t) + 
                  5*(ctrl->nparts+1)*graph->ncon*sizeof(idx_t) + 
                  5*(ctrl->nparts+1)*graph->ncon*sizeof(real_t);
       break;
     default:
-      coresize = 6*(graph->nvtxs+1)*sizeof(idx_t) + 
+      coresize = 4*(graph->nvtxs+1)*sizeof(idx_t) + 
                  5*(ctrl->nparts+1)*graph->ncon*sizeof(idx_t) + 
                  5*(ctrl->nparts+1)*graph->ncon*sizeof(real_t);
   }
-  /*coresize += graph->nedges*sizeof(idx_t);*/
+  /*coresize = 0;*/
   ctrl->mcore = gk_mcoreCreate(coresize);
 
   ctrl->nbrpoolsize = 0;
@@ -58,7 +58,7 @@ void AllocateRefinementWorkSpace(ctrl_t *ctrl, idx_t nbrpoolsize)
       break;
 
     default:
-      errexit("Unknown objtype of %d\n", ctrl->objtype);
+      gk_errexit(SIGERR, "Unknown objtype of %d\n", ctrl->objtype);
   }
 
 

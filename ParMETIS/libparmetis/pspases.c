@@ -7,7 +7,7 @@
  * Started 10/14/97
  * George
  *
- * $Id: pspases.c 10056 2011-06-02 12:09:46Z karypis $
+ * $Id: pspases.c 10535 2011-07-11 04:29:44Z karypis $
  *
  */
 
@@ -17,55 +17,51 @@
 /***********************************************************************************
 * This function is the entry point of the serial ordering algorithm.
 ************************************************************************************/
-void ParMETIS_SerialNodeND(idx_t *vtxdist, idx_t *xadj, idx_t *adjncy, idx_t *numflag,
-                idx_t *options, idx_t *order, idx_t *sizes, MPI_Comm *comm)
+int ParMETIS_SerialNodeND(idx_t *vtxdist, idx_t *xadj, idx_t *adjncy, 
+        idx_t *numflag, idx_t *options, idx_t *order, idx_t *sizes, 
+        MPI_Comm *comm)
 {
   idx_t i, npes, mype;
-  ctrl_t ctrl;
-  graph_t *agraph;
+  ctrl_t *ctrl=NULL;
+  graph_t *agraph=NULL;
   idx_t *perm=NULL, *iperm=NULL;
   idx_t *sendcount, *displs;
 
-  gkMPI_Comm_size(*comm, &npes);
-  gkMPI_Comm_rank(*comm, &mype);
+  /* Setup the ctrl */
+  ctrl = SetupCtrl(PARMETIS_OP_OMETIS, options, 1, 1, NULL, NULL, *comm);
+  npes = ctrl->npes;
+  mype = ctrl->mype;
 
   if (!ispow2(npes)) {
     if (mype == 0)
       printf("Error: The number of processors must be a power of 2!\n");
-    return;
+    FreeCtrl(&ctrl);
+    return METIS_ERROR;
   }
 
-  if (*numflag == 1) 
+
+  if (*numflag > 0) 
     ChangeNumbering(vtxdist, xadj, adjncy, order, npes, mype, 1);
 
-  SetUpCtrl(&ctrl, npes, options[OPTION_DBGLVL], *comm);
+  STARTTIMER(ctrl, ctrl->TotalTmr);
+  STARTTIMER(ctrl, ctrl->MoveTmr);
 
-  IFSET(ctrl.dbglvl, DBG_TIME, InitTimers(&ctrl));
-  IFSET(ctrl.dbglvl, DBG_TIME, gkMPI_Barrier(ctrl.gcomm));
-  IFSET(ctrl.dbglvl, DBG_TIME, starttimer(ctrl.TotalTmr));
+  agraph = AssembleEntireGraph(ctrl, vtxdist, xadj, adjncy);
 
-  IFSET(ctrl.dbglvl, DBG_TIME, gkMPI_Barrier(ctrl.gcomm));
-  IFSET(ctrl.dbglvl, DBG_TIME, starttimer(ctrl.MoveTmr));
-
-  agraph = AssembleEntireGraph(&ctrl, vtxdist, xadj, adjncy);
-
-  IFSET(ctrl.dbglvl, DBG_TIME, gkMPI_Barrier(ctrl.gcomm));
-  IFSET(ctrl.dbglvl, DBG_TIME, stoptimer(ctrl.MoveTmr));
-
+  STOPTIMER(ctrl, ctrl->MoveTmr);
 
   if (mype == 0) {
     perm  = imalloc(agraph->nvtxs, "PAROMETISS: perm");
     iperm = imalloc(agraph->nvtxs, "PAROMETISS: iperm");
 
-    METIS_NodeNDP(agraph->nvtxs, agraph->xadj, agraph->adjncy, agraph->vwgt,
-        npes, NULL, perm, iperm, sizes);
+    METIS_NodeNDP(agraph->nvtxs, agraph->xadj, agraph->adjncy, 
+        agraph->vwgt, npes, NULL, perm, iperm, sizes);
   }
 
-  IFSET(ctrl.dbglvl, DBG_TIME, gkMPI_Barrier(ctrl.gcomm));
-  IFSET(ctrl.dbglvl, DBG_TIME, starttimer(ctrl.MoveTmr));
+  STARTTIMER(ctrl, ctrl->MoveTmr);
 
   /* Broadcast the sizes array */
-  gkMPI_Bcast((void *)sizes, 2*npes, IDX_T, 0, ctrl.gcomm);
+  gkMPI_Bcast((void *)sizes, 2*npes, IDX_T, 0, ctrl->gcomm);
 
   /* Scatter the iperm */
   sendcount = imalloc(npes, "PAROMETISS: sendcount");
@@ -75,23 +71,25 @@ void ParMETIS_SerialNodeND(idx_t *vtxdist, idx_t *xadj, idx_t *adjncy, idx_t *nu
     displs[i] = vtxdist[i];
   }
 
-  gkMPI_Scatterv((void *)iperm, sendcount, displs, IDX_T, (void *)order, vtxdist[mype+1]-vtxdist[mype], IDX_T, 0, ctrl.gcomm);
+  gkMPI_Scatterv((void *)iperm, sendcount, displs, IDX_T, (void *)order, 
+      vtxdist[mype+1]-vtxdist[mype], IDX_T, 0, ctrl->gcomm);
 
-  IFSET(ctrl.dbglvl, DBG_TIME, gkMPI_Barrier(ctrl.gcomm));
-  IFSET(ctrl.dbglvl, DBG_TIME, stoptimer(ctrl.MoveTmr));
+  STOPTIMER(ctrl, ctrl->MoveTmr);
+  STOPTIMER(ctrl, ctrl->TotalTmr);
+  IFSET(ctrl->dbglvl, DBG_TIME, PrintTimingInfo(ctrl));
+  IFSET(ctrl->dbglvl, DBG_TIME, gkMPI_Barrier(ctrl->gcomm));
 
-  IFSET(ctrl.dbglvl, DBG_TIME, gkMPI_Barrier(ctrl.gcomm));
-  IFSET(ctrl.dbglvl, DBG_TIME, stoptimer(ctrl.TotalTmr));
-  IFSET(ctrl.dbglvl, DBG_TIME, PrintTimingInfo(&ctrl));
-  IFSET(ctrl.dbglvl, DBG_TIME, gkMPI_Barrier(ctrl.gcomm));
+  gk_free((void **)&agraph->xadj, &agraph->adjncy, &perm, &iperm, 
+      &sendcount, &displs, &agraph, LTERM);
 
-  gk_free((void **)&agraph->xadj, &agraph->adjncy, &perm, &iperm, &sendcount, 
-      &displs, &agraph, LTERM);
-  FreeCtrl(&ctrl);
-
-  if (*numflag == 1) 
+  if (*numflag > 0) 
     ChangeNumbering(vtxdist, xadj, adjncy, order, npes, mype, 0);
 
+  goto DONE;
+
+DONE:
+  FreeCtrl(&ctrl);
+  return METIS_OK;
 }
 
 

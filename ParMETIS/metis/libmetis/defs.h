@@ -8,7 +8,7 @@
  * Started 8/27/94
  * George
  *
- * $Id: defs.h 10188 2011-06-13 14:30:26Z karypis $
+ * $Id: defs.h 10550 2011-07-12 12:37:37Z karypis $
  *
  */
 
@@ -19,9 +19,6 @@
 #define MAXLINE			1280000
 
 #define LTERM			(void **) 0	/* List terminator for gk_free() */
-
-#define MAXNCON			16		/* The maximum number of constrains */
-#define MAXNOBJ			16		/* The maximum number of objectives */
 
 #define HTLENGTH		((1<<11)-1)
 
@@ -45,23 +42,14 @@
 
 #define UNMATCHED		-1
 
-#define HTABLE_EMPTY    	-1
-
-#define NGR_PASSES		4	/* Number of greedy refinement passes */
-#define NLGR_PASSES		5	/* Number of GR refinement during IPartition */
-
-#define LARGENIPARTS		8	/* Number of random initial partitions */
+#define LARGENIPARTS		6	/* Number of random initial partitions */
 #define SMALLNIPARTS		3	/* Number of random initial partitions */
 
 #define COARSEN_FRACTION	0.75	/* Node reduction between succesive coarsening levels */
 #define COARSEN_FRACTION2	0.99	/* Node reduction between succesive coarsening levels */
 
 
-#define UNBALANCE_FRACTION		1.03
-
 #define COMPRESSION_FRACTION		0.85
-
-#define ORDER_UNBALANCE_FRACTION	1.10
 
 #define MMDSWITCH		        120
 
@@ -69,6 +57,6 @@
 #define PMETIS_DEFAULT_UFACTOR          1
 #define MCPMETIS_DEFAULT_UFACTOR        10
 #define KMETIS_DEFAULT_UFACTOR          30
-#define OMETIS_DEFAULT_UFACTOR          30
+#define OMETIS_DEFAULT_UFACTOR          200
 
 #endif

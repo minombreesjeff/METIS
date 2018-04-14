@@ -4,7 +4,7 @@
 
 \date   Started 4/09/07
 \author George
-\version\verbatim $Id: gk_mkpqueue.h 9950 2011-05-19 12:29:32Z karypis $ \endverbatim
+\version\verbatim $Id: gk_mkpqueue.h 10516 2011-07-08 15:46:24Z karypis $ \endverbatim
 */
 
 
@@ -45,9 +45,13 @@ void FPRFX ## Init(PQT *queue, size_t maxnodes)\
 /**************************************************************************/\
 void FPRFX ## Reset(PQT *queue)\
 {\
-  queue->nnodes = 0;\
+  gk_idx_t i;\
+  gk_idx_t *locator=queue->locator;\
+  KVT *heap=queue->heap;\
 \
-  gk_idxset(queue->maxnodes, -1, queue->locator);\
+  for (i=queue->nnodes-1; i>=0; i--)\
+    locator[heap[i].val] = -1;\
+  queue->nnodes = 0;\
 }\
 \
 \
@@ -87,19 +91,16 @@ size_t FPRFX ## Length(PQT *queue)\
 int FPRFX ## Insert(PQT *queue, VT node, KT key)\
 {\
   gk_idx_t i, j;\
-  gk_idx_t *locator;\
-  KVT *heap;\
+  gk_idx_t *locator=queue->locator;\
+  KVT *heap=queue->heap;\
 \
   ASSERT2(FPRFX ## CheckHeap(queue));\
-\
-  heap = queue->heap;\
-  locator = queue->locator;\
 \
   ASSERT(locator[node] == -1);\
 \
   i = queue->nnodes++;\
   while (i > 0) {\
-    j = (i-1)/2;\
+    j = (i-1)>>1;\
     if (KEY_LT(key, heap[j].key)) {\
       heap[i] = heap[j];\
       locator[heap[i].val] = i;\
@@ -124,13 +125,10 @@ int FPRFX ## Insert(PQT *queue, VT node, KT key)\
 /**************************************************************************/\
 int FPRFX ## Delete(PQT *queue, VT node)\
 {\
-  gk_idx_t i, j;\
+  gk_idx_t i, j, nnodes;\
   KT newkey, oldkey;\
-  gk_idx_t *locator;\
-  KVT *heap;\
-\
-  heap = queue->heap;\
-  locator = queue->locator;\
+  gk_idx_t *locator=queue->locator;\
+  KVT *heap=queue->heap;\
 \
   ASSERT(locator[node] != -1);\
   ASSERT(heap[locator[node]].val == node);\
@@ -158,16 +156,17 @@ int FPRFX ## Delete(PQT *queue, VT node)\
       }\
     }\
     else { /* Filter down */\
-      while ((j=2*i+1) < queue->nnodes) {\
+      nnodes = queue->nnodes;\
+      while ((j=(i<<1)+1) < nnodes) {\
         if (KEY_LT(heap[j].key, newkey)) {\
-          if (j+1 < queue->nnodes && KEY_LT(heap[j+1].key, heap[j].key))\
-            j = j+1;\
+          if (j+1 < nnodes && KEY_LT(heap[j+1].key, heap[j].key))\
+            j++;\
           heap[i] = heap[j];\
           locator[heap[i].val] = i;\
           i = j;\
         }\
-        else if (j+1 < queue->nnodes && KEY_LT(heap[j+1].key, newkey)) {\
-          j = j+1;\
+        else if (j+1 < nnodes && KEY_LT(heap[j+1].key, newkey)) {\
+          j++;\
           heap[i] = heap[j];\
           locator[heap[i].val] = i;\
           i = j;\
@@ -193,13 +192,10 @@ int FPRFX ## Delete(PQT *queue, VT node)\
 /**************************************************************************/\
 int FPRFX ## Update(PQT *queue, VT node, KT newkey)\
 {\
-  gk_idx_t i, j;\
-  gk_idx_t *locator;\
-  KVT *heap;\
+  gk_idx_t i, j, nnodes;\
   KT oldkey;\
-\
-  heap    = queue->heap;\
-  locator = queue->locator;\
+  gk_idx_t *locator=queue->locator;\
+  KVT *heap=queue->heap;\
 \
   oldkey = heap[locator[node]].key;\
 \
@@ -222,16 +218,17 @@ int FPRFX ## Update(PQT *queue, VT node, KT newkey)\
     }\
   }\
   else { /* Filter down */\
-    while ((j=2*i+1) < queue->nnodes) {\
+    nnodes = queue->nnodes;\
+    while ((j=(i<<1)+1) < nnodes) {\
       if (KEY_LT(heap[j].key, newkey)) {\
-        if (j+1 < queue->nnodes && KEY_LT(heap[j+1].key, heap[j].key))\
-          j = j+1;\
+        if (j+1 < nnodes && KEY_LT(heap[j+1].key, heap[j].key))\
+          j++;\
         heap[i] = heap[j];\
         locator[heap[i].val] = i;\
         i = j;\
       }\
-      else if (j+1 < queue->nnodes && KEY_LT(heap[j+1].key, newkey)) {\
-        j = j+1;\
+      else if (j+1 < nnodes && KEY_LT(heap[j+1].key, newkey)) {\
+        j++;\
         heap[i] = heap[j];\
         locator[heap[i].val] = i;\
         i = j;\

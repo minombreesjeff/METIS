@@ -4,7 +4,7 @@
 
 \date   Started 5/17/07
 \author George
-\version\verbatim $Id: gk_mkrandom.h 10398 2011-06-24 04:52:10Z karypis $ \endverbatim
+\version\verbatim $Id: gk_mkrandom.h 10461 2011-07-01 18:49:05Z karypis $ \endverbatim
 */
 
 
@@ -35,11 +35,10 @@ void FPRFX ## srand(RNGT seed) \
 /**************************************************************************/\
 RNGT FPRFX ## rand() \
 {\
-  if (sizeof(RNGT) <= sizeof(int)) \
+  if (sizeof(RNGT) <= sizeof(int32_t)) \
     return (RNGT)gk_randint32(); \
-  else { \
+  else \
     return (RNGT)gk_randint64(); \
-  }\
 }\
 \
 \

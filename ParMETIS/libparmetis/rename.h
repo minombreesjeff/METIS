@@ -118,8 +118,12 @@
 #define	Serial_AreAnyVwgtsBelow Serial_AreAnyVwgtsBelow__
 
 /* weird.c */
+#define	CheckInputsPartKway CheckInputsPartKway__
+#define	CheckInputsPartGeomKway CheckInputsPartGeomKway__
+#define	CheckInputsPartGeom CheckInputsPartGeom__
+#define	CheckInputsAdaptiveRepart CheckInputsAdaptiveRepart__
+#define	CheckInputsNodeND CheckInputsNodeND__
 #define	PartitionSmallGraph PartitionSmallGraph__
-#define	CheckInputs CheckInputs__
 
 
 /****************************/
@@ -191,6 +195,7 @@
 #define	Mc_ComputeParallelBalance Mc_ComputeParallelBalance__
 #define	Mc_PrintThrottleMatrix Mc_PrintThrottleMatrix__
 #define	Mc_ComputeRefineStats Mc_ComputeRefineStats__
+#define PrintPostPartInfo PrintPostPartInfo__
 
 /* debug.c */
 #define	PrintVector PrintVector__
@@ -206,8 +211,10 @@
 #define	CommInterfaceData CommInterfaceData__
 #define	CommChangedInterfaceData CommChangedInterfaceData__
 #define	GlobalSEMax GlobalSEMax__
+#define	GlobalSEMaxComm GlobalSEMaxComm__
 #define	GlobalSEMaxDouble GlobalSEMaxDouble__
 #define	GlobalSEMin GlobalSEMin__
+#define	GlobalSEMinComm GlobalSEMinComm__
 #define	GlobalSESum GlobalSESum__
 #define	GlobalSEMaxFloat GlobalSEMaxFloat__
 #define	GlobalSEMinFloat GlobalSEMinFloat__
@@ -274,9 +281,8 @@
 #define	ikeyvalsort ikeyvalsort__
 
 /* grsetup.c */
-#define	SetUpGraph SetUpGraph__
-#define	SetUpCtrl SetUpCtrl__
-#define	SetUpComm SetUpComm__
+#define	SetupGraph SetupGraph__
+#define	SetupCtrl SetupCtrl__
 #define	ChangeNumbering ChangeNumbering__
 #define	ChangeNumberingMesh ChangeNumberingMesh__
 #define	GraphRandomPermute GraphRandomPermute__

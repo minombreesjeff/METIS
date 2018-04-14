@@ -687,7 +687,7 @@ void Mc_SerialReadMetisGraph(char *filename, idx_t *r_nvtxs, idx_t *r_ncon,
   idx_t *xadj, *adjncy, *vwgt, *adjwgt;
   char *line, *oldstr, *newstr;
   idx_t fmt, readew, readvw;
-  idx_t ewgt[MAXNOBJ];
+  idx_t ewgt[1024];
   FILE *fpin;
 
   line = (char *)gk_malloc(sizeof(char)*(MAXLINE+1), "line");

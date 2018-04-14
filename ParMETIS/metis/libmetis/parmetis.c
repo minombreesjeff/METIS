@@ -8,7 +8,7 @@
  * Started 10/14/97
  * George
  *
- * $Id: parmetis.c 10392 2011-06-23 19:07:54Z karypis $
+ * $Id: parmetis.c 10481 2011-07-05 18:01:23Z karypis $
  *
  */
 
@@ -25,7 +25,7 @@
       sizes array.
 */
 /*************************************************************************/
-void METIS_NodeNDP(idx_t nvtxs, idx_t *xadj, idx_t *adjncy, idx_t *vwgt,
+int METIS_NodeNDP(idx_t nvtxs, idx_t *xadj, idx_t *adjncy, idx_t *vwgt,
            idx_t npes, idx_t *options, idx_t *perm, idx_t *iperm, idx_t *sizes) 
 {
   idx_t i, ii, j, l, nnvtxs=0;
@@ -34,7 +34,7 @@ void METIS_NodeNDP(idx_t nvtxs, idx_t *xadj, idx_t *adjncy, idx_t *vwgt,
   idx_t *cptr, *cind;
 
   ctrl = SetupCtrl(METIS_OP_OMETIS, options, 1, 3, NULL, NULL);
-  if (!ctrl) return;
+  if (!ctrl) return METIS_ERROR_INPUT;
 
   IFSET(ctrl->dbglvl, METIS_DBG_TIME, InitTimers(ctrl));
   IFSET(ctrl->dbglvl, METIS_DBG_TIME, gk_startcputimer(ctrl->TotalTmr));
@@ -94,6 +94,7 @@ void METIS_NodeNDP(idx_t nvtxs, idx_t *xadj, idx_t *adjncy, idx_t *vwgt,
   /* clean up */
   FreeCtrl(&ctrl);
 
+  return METIS_OK;
 }
 
 
@@ -157,7 +158,7 @@ void MlevelNestedDissectionP(ctrl_t *ctrl, graph_t *graph, idx_t *order,
 /*************************************************************************/
 /*! This function bisects a graph by computing a vertex separator */
 /**************************************************************************/
-void METIS_ComputeVertexSeparator(idx_t *nvtxs, idx_t *xadj, idx_t *adjncy, 
+int METIS_ComputeVertexSeparator(idx_t *nvtxs, idx_t *xadj, idx_t *adjncy, 
            idx_t *vwgt, idx_t *options, idx_t *r_sepsize, idx_t *part) 
 {
   idx_t i, j;
@@ -165,7 +166,7 @@ void METIS_ComputeVertexSeparator(idx_t *nvtxs, idx_t *xadj, idx_t *adjncy,
   ctrl_t *ctrl;
 
   if ((ctrl = SetupCtrl(METIS_OP_OMETIS, options, 1, 3, NULL, NULL)) == NULL)
-    return;
+    return METIS_ERROR_INPUT;
 
   InitRandom(ctrl->seed);
 
@@ -186,6 +187,8 @@ void METIS_ComputeVertexSeparator(idx_t *nvtxs, idx_t *xadj, idx_t *adjncy,
   FreeGraph(&graph);
 
   FreeCtrl(&ctrl);
+
+  return METIS_OK;
 }
 
 
@@ -193,7 +196,7 @@ void METIS_ComputeVertexSeparator(idx_t *nvtxs, idx_t *xadj, idx_t *adjncy,
 /*! This function is the entry point of a node-based separator refinement
     of the nodes with an hmarker[] of 0. */
 /*************************************************************************/
-void METIS_NodeRefine(idx_t nvtxs, idx_t *xadj, idx_t *vwgt, idx_t *adjncy, 
+int METIS_NodeRefine(idx_t nvtxs, idx_t *xadj, idx_t *vwgt, idx_t *adjncy, 
            idx_t *where, idx_t *hmarker, real_t ubfactor)
 {
   graph_t *graph;
@@ -201,7 +204,7 @@ void METIS_NodeRefine(idx_t nvtxs, idx_t *xadj, idx_t *vwgt, idx_t *adjncy,
 
   /* set up the run time parameters */
   ctrl = SetupCtrl(METIS_OP_OMETIS, NULL, 1, 3, NULL, NULL);
-  if (!ctrl) return;
+  if (!ctrl) return METIS_ERROR_INPUT;
 
   /* set up the graph */
   graph = SetupGraph(ctrl, nvtxs, 1, xadj, adjncy, vwgt, NULL, NULL);
@@ -222,6 +225,8 @@ void METIS_NodeRefine(idx_t nvtxs, idx_t *xadj, idx_t *vwgt, idx_t *adjncy,
 
   FreeGraph(&graph);
   FreeCtrl(&ctrl);
+
+  return METIS_OK;
 }
 
 
@@ -234,7 +239,7 @@ void FM_2WayNodeRefine1SidedP(ctrl_t *ctrl, graph_t *graph,
 {
   idx_t i, ii, j, k, jj, kk, nvtxs, nbnd, nswaps, nmind, nbad, qsize;
   idx_t *xadj, *vwgt, *adjncy, *where, *pwgts, *edegrees, *bndind, *bndptr;
-  idx_t *mptr, *mind, *swaps, *perm, *inqueue;
+  idx_t *mptr, *mind, *swaps, *inqueue;
   rpq_t *queue; 
   nrinfo_t *rinfo;
   idx_t higain, oldgain, mincut, initcut, mincutorder;	
@@ -258,15 +263,12 @@ void FM_2WayNodeRefine1SidedP(ctrl_t *ctrl, graph_t *graph,
 
   queue = rpqCreate(nvtxs);
       
-  perm    = iwspacemalloc(ctrl, nvtxs);
+  inqueue = iset(nvtxs, -1, iwspacemalloc(ctrl, nvtxs));
   swaps   = iwspacemalloc(ctrl, nvtxs);
   mptr    = iwspacemalloc(ctrl, nvtxs+1);
-  mind    = iwspacemalloc(ctrl, nvtxs);
-  inqueue = iwspacemalloc(ctrl, nvtxs);
+  mind    = iwspacemalloc(ctrl, 2*nvtxs);
 
-  iset(nvtxs, -1, inqueue);
-
-  badmaxpwgt = (int)(ubfactor*gk_max(pwgts[0], pwgts[1]));
+  badmaxpwgt = (idx_t)(ubfactor*gk_max(pwgts[0], pwgts[1]));
 
   IFSET(ctrl->dbglvl, METIS_DBG_REFINE,
     printf("Partitions-N1: [%6"PRIDX" %6"PRIDX"] Nv-Nb[%6"PRIDX" %6"PRIDX"] "
@@ -285,9 +287,10 @@ void FM_2WayNodeRefine1SidedP(ctrl_t *ctrl, graph_t *graph,
     initcut = mincut = graph->mincut;
     nbnd = graph->nbnd;
 
-    irandArrayPermute(nbnd, perm, nbnd, 1);
+    /* use the swaps array in place of the traditional perm array to save memory */
+    irandArrayPermute(nbnd, swaps, nbnd, 1);
     for (ii=0; ii<nbnd; ii++) {
-      i = bndind[perm[ii]];
+      i = bndind[swaps[ii]];
       ASSERT(where[i] == 2);
       if (hmarker[i] == -1 || hmarker[i] == to) {
         rpqInsert(queue, i, vwgt[i]-rinfo[i].edegrees[from]);
@@ -310,9 +313,14 @@ void FM_2WayNodeRefine1SidedP(ctrl_t *ctrl, graph_t *graph,
       if ((higain = rpqGetTop(queue)) == -1) 
         break;
 
-      inqueue[higain] = -1;
-
       ASSERT(bndptr[higain] != -1);
+
+      /* The following check is to ensure we break out if there is a posibility
+         of over-running the mind array.  */
+      if (nmind + xadj[higain+1]-xadj[higain] >= 2*nvtxs-1)
+        break;
+
+      inqueue[higain] = -1;
 
       if (pwgts[to]+vwgt[higain] > badmaxpwgt) { /* Skip this vertex */
         if (nbad++ > limit) 
@@ -371,7 +379,7 @@ void FM_2WayNodeRefine1SidedP(ctrl_t *ctrl, graph_t *graph,
               oldgain = vwgt[kk]-rinfo[kk].edegrees[from];
               rinfo[kk].edegrees[from] -= vwgt[k];
 
-              /* Update the gain of this node if it was skipped */
+              /* Update the gain of this node if it was not skipped */
               if (inqueue[kk] == pass)
                 rpqUpdate(queue, kk, oldgain+vwgt[k]); 
             }
@@ -461,7 +469,7 @@ void FM_2WayNodeRefine2SidedP(ctrl_t *ctrl, graph_t *graph,
 {
   idx_t i, ii, j, k, jj, kk, nvtxs, nbnd, nswaps, nmind;
   idx_t *xadj, *vwgt, *adjncy, *where, *pwgts, *edegrees, *bndind, *bndptr;
-  idx_t *mptr, *mind, *moved, *swaps, *perm;
+  idx_t *mptr, *mind, *moved, *swaps;
   rpq_t *queues[2]; 
   nrinfo_t *rinfo;
   idx_t higain, oldgain, mincut, initcut, mincutorder;	
@@ -488,13 +496,12 @@ void FM_2WayNodeRefine2SidedP(ctrl_t *ctrl, graph_t *graph,
   moved = iwspacemalloc(ctrl, nvtxs);
   swaps = iwspacemalloc(ctrl, nvtxs);
   mptr  = iwspacemalloc(ctrl, nvtxs+1);
-  mind  = iwspacemalloc(ctrl, nvtxs);
-  perm  = iwspacemalloc(ctrl, nvtxs);
+  mind  = iwspacemalloc(ctrl, 2*nvtxs);
 
   IFSET(ctrl->dbglvl, METIS_DBG_REFINE,
     printf("Partitions: [%6"PRIDX" %6"PRIDX"] Nv-Nb[%6"PRIDX" %6"PRIDX"]. ISep: %6"PRIDX"\n", pwgts[0], pwgts[1], graph->nvtxs, graph->nbnd, graph->mincut));
 
-  badmaxpwgt = (int)(ubfactor*gk_max(pwgts[0], pwgts[1]));
+  badmaxpwgt = (idx_t)(ubfactor*gk_max(pwgts[0], pwgts[1]));
 
   for (pass=0; pass<npasses; pass++) {
     iset(nvtxs, -1, moved);
@@ -505,9 +512,10 @@ void FM_2WayNodeRefine2SidedP(ctrl_t *ctrl, graph_t *graph,
     initcut = mincut = graph->mincut;
     nbnd = graph->nbnd;
 
-    irandArrayPermute(nbnd, perm, nbnd, 1);
+    /* use the swaps array in place of the traditional perm array to save memory */
+    irandArrayPermute(nbnd, swaps, nbnd, 1);
     for (ii=0; ii<nbnd; ii++) {
-      i = bndind[perm[ii]];
+      i = bndind[swaps[ii]];
       ASSERT(where[i] == 2);
       if (hmarker[i] == -1) {
         rpqInsert(queues[0], i, vwgt[i]-rinfo[i].edegrees[1]);
@@ -564,6 +572,11 @@ void FM_2WayNodeRefine2SidedP(ctrl_t *ctrl, graph_t *graph,
         rpqDelete(queues[other], higain);
 
       ASSERT(bndptr[higain] != -1);
+
+      /* The following check is to ensure we break out if there is a posibility
+         of over-running the mind array.  */
+      if (nmind + xadj[higain+1]-xadj[higain] >= 2*nvtxs-1)
+        break;
 
       pwgts[2] -= (vwgt[higain]-rinfo[higain].edegrees[other]);
 

@@ -6,7 +6,7 @@
 \date   Started 7/24/1997
 \author George  
 \author Copyright 1997-2009, Regents of the University of Minnesota 
-\version\verbatim $Id: pmetis.c 10237 2011-06-14 15:22:13Z karypis $ \endverbatim
+\version\verbatim $Id: pmetis.c 10513 2011-07-07 22:06:03Z karypis $ \endverbatim
 */
 
 
@@ -93,12 +93,32 @@ int METIS_PartGraphRecursive(idx_t *nvtxs, idx_t *ncon, idx_t *xadj,
           idx_t *nparts, real_t *tpwgts, real_t *ubvec, idx_t *options, 
           idx_t *objval, idx_t *part)
 {
+  int sigrval=0, renumber=0;
   graph_t *graph;
   ctrl_t *ctrl;
 
+  /* set up malloc cleaning code and signal catchers */
+  if (!gk_malloc_init()) 
+    return METIS_ERROR_MEMORY;
+
+  gk_sigtrap();
+
+  if ((sigrval = gk_sigcatch()) != 0) 
+    goto SIGTHROW;
+
+
   /* set up the run parameters */
   ctrl = SetupCtrl(METIS_OP_PMETIS, options, *ncon, *nparts, tpwgts, ubvec);
-  if (!ctrl) return METIS_ERROR_INPUT;
+  if (!ctrl) {
+    gk_siguntrap();
+    return METIS_ERROR_INPUT;
+  }
+
+  /* if required, change the numbering to 0 */
+  if (ctrl->numflag == 1) {
+    Change2CNumbering(*nvtxs, xadj, adjncy);
+    renumber = 1;
+  }
 
   /* set up the graph */
   graph = SetupGraph(ctrl, *nvtxs, *ncon, xadj, adjncy, vwgt, vsize, adjwgt);
@@ -115,13 +135,18 @@ int METIS_PartGraphRecursive(idx_t *nvtxs, idx_t *ncon, idx_t *xadj,
   IFSET(ctrl->dbglvl, METIS_DBG_TIME, gk_stopcputimer(ctrl->TotalTmr));
   IFSET(ctrl->dbglvl, METIS_DBG_TIME, PrintTimers(ctrl));
 
-  if (ctrl->numflag == 1)
-    Change2FNumbering(*nvtxs, xadj, adjncy, part);
-
   /* clean up */
   FreeCtrl(&ctrl);
 
-  return METIS_OK;
+SIGTHROW:
+  /* if required, change the numbering back to 1 */
+  if (renumber)
+    Change2FNumbering(*nvtxs, xadj, adjncy, part);
+
+  gk_siguntrap();
+  gk_malloc_cleanup(0);
+
+  return metis_rcode(sigrval);
 }
 
 
@@ -200,42 +225,50 @@ idx_t MlevelRecursiveBisection(ctrl_t *ctrl, graph_t *graph, idx_t nparts,
 /*************************************************************************/
 idx_t MultilevelBisect(ctrl_t *ctrl, graph_t *graph, real_t *tpwgts)
 {
-  idx_t i, bestobj=0, curobj, *bestwhere;
+  idx_t i, niparts, bestobj=0, curobj=0, *bestwhere=NULL;
   graph_t *cgraph;
+  real_t bestbal=0.0, curbal=0.0;
 
   Setup2WayBalMultipliers(ctrl, graph, tpwgts);
 
+  WCOREPUSH;
+
   if (ctrl->ncuts > 1)
-    bestwhere = imalloc(graph->nvtxs, "MultilevelBisect: bestwhere");
+    bestwhere = iwspacemalloc(ctrl, graph->nvtxs);
 
   for (i=0; i<ctrl->ncuts; i++) {
     cgraph = CoarsenGraph(ctrl, graph);
 
-    Init2WayPartition(ctrl, cgraph, tpwgts);
+    niparts = (cgraph->nvtxs <= ctrl->CoarsenTo ? SMALLNIPARTS : LARGENIPARTS);
+    Init2WayPartition(ctrl, cgraph, tpwgts, niparts);
 
     Refine2Way(ctrl, graph, cgraph, tpwgts);
 
     curobj = graph->mincut;
+    curbal = ComputeLoadImbalanceDiff(graph, 2, ctrl->pijbm, ctrl->ubfactors);
 
-    if (ctrl->ncuts > 1) {
-      if (i == 0 || bestobj > curobj) {
-        icopy(graph->nvtxs, graph->where, bestwhere);
-        bestobj = curobj;
-      }
-
-      if (i < ctrl->ncuts-1)
-        FreeRData(graph);
-      else if (bestobj != curobj) {
-        icopy(graph->nvtxs, bestwhere, graph->where);
-        Compute2WayPartitionParams(ctrl, graph);
-      }
-    }
-    else /* ctrl->ncuts == 1 */
+    if (i == 0  
+        || (curbal <= 0.0005 && bestobj > curobj) 
+        || (bestbal > 0.0005 && curbal < bestbal)) {
       bestobj = curobj;
+      bestbal = curbal;
+      if (i < ctrl->ncuts-1)
+        icopy(graph->nvtxs, graph->where, bestwhere);
+    }
+
+    if (bestobj == 0)
+      break;
+
+    if (i < ctrl->ncuts-1)
+      FreeRData(graph);
   }
 
-  if (ctrl->ncuts > 1)
-    gk_free((void **)&bestwhere, LTERM);
+  if (bestobj != curobj) {
+    icopy(graph->nvtxs, bestwhere, graph->where);
+    Compute2WayPartitionParams(ctrl, graph);
+  }
+
+  WCOREPOP;
 
   return bestobj;
 }
@@ -247,10 +280,9 @@ idx_t MultilevelBisect(ctrl_t *ctrl, graph_t *graph, real_t *tpwgts)
 void SplitGraphPart(ctrl_t *ctrl, graph_t *graph, graph_t **r_lgraph, 
          graph_t **r_rgraph)
 {
-  idx_t i, j, k, l, istart, iend, mypart, nvtxs, ncon, snvtxs[2], snedges[2], sum;
-  idx_t *xadj, *vwgt, *adjncy, *adjwgt, *adjrsum, *label, *where, *bndptr;
-  idx_t *sxadj[2], *svwgt[2], *sadjncy[2], *sadjwgt[2], *sadjrsum[2], 
-        *slabel[2];
+  idx_t i, j, k, l, istart, iend, mypart, nvtxs, ncon, snvtxs[2], snedges[2];
+  idx_t *xadj, *vwgt, *adjncy, *adjwgt, *label, *where, *bndptr;
+  idx_t *sxadj[2], *svwgt[2], *sadjncy[2], *sadjwgt[2], *slabel[2];
   idx_t *rename;
   idx_t *auxadjncy, *auxadjwgt;
   graph_t *lgraph, *rgraph;
@@ -265,7 +297,6 @@ void SplitGraphPart(ctrl_t *ctrl, graph_t *graph, graph_t **r_lgraph,
   vwgt    = graph->vwgt;
   adjncy  = graph->adjncy;
   adjwgt  = graph->adjwgt;
-  adjrsum = graph->adjrsum;
   label   = graph->label;
   where   = graph->where;
   bndptr  = graph->bndptr;
@@ -284,7 +315,6 @@ void SplitGraphPart(ctrl_t *ctrl, graph_t *graph, graph_t **r_lgraph,
   lgraph      = SetupSplitGraph(graph, snvtxs[0], snedges[0]);
   sxadj[0]    = lgraph->xadj;
   svwgt[0]    = lgraph->vwgt;
-  sadjrsum[0] = lgraph->adjrsum;
   sadjncy[0]  = lgraph->adjncy; 	
   sadjwgt[0]  = lgraph->adjwgt; 
   slabel[0]   = lgraph->label;
@@ -292,7 +322,6 @@ void SplitGraphPart(ctrl_t *ctrl, graph_t *graph, graph_t **r_lgraph,
   rgraph      = SetupSplitGraph(graph, snvtxs[1], snedges[1]);
   sxadj[1]    = rgraph->xadj;
   svwgt[1]    = rgraph->vwgt;
-  sadjrsum[1] = rgraph->adjrsum;
   sadjncy[1]  = rgraph->adjncy; 	
   sadjwgt[1]  = rgraph->adjwgt; 
   slabel[1]   = rgraph->label;
@@ -301,7 +330,6 @@ void SplitGraphPart(ctrl_t *ctrl, graph_t *graph, graph_t **r_lgraph,
   sxadj[0][0] = sxadj[1][0] = 0;
   for (i=0; i<nvtxs; i++) {
     mypart = where[i];
-    sum = adjrsum[i];
 
     istart = xadj[i];
     iend = xadj[i+1];
@@ -324,9 +352,6 @@ void SplitGraphPart(ctrl_t *ctrl, graph_t *graph, graph_t **r_lgraph,
           auxadjncy[l] = k;
           auxadjwgt[l++] = adjwgt[j]; 
         }
-        else {
-          sum -= adjwgt[j];
-        }
       }
       snedges[mypart] = l;
     }
@@ -335,7 +360,6 @@ void SplitGraphPart(ctrl_t *ctrl, graph_t *graph, graph_t **r_lgraph,
     for (k=0; k<ncon; k++)
       svwgt[mypart][snvtxs[mypart]*ncon+k] = vwgt[i*ncon+k];
 
-    sadjrsum[mypart][snvtxs[mypart]] = sum;
     slabel[mypart][snvtxs[mypart]]   = label[i];
     sxadj[mypart][++snvtxs[mypart]]  = snedges[mypart];
   }

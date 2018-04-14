@@ -8,7 +8,7 @@
  * Started 3/1/96
  * George
  *
- * $Id: kwayrefine.c 10391 2011-06-23 19:00:08Z karypis $
+ * $Id: kwayrefine.c 10541 2011-07-11 15:50:58Z karypis $
  */
 
 #include <parmetislib.h>
@@ -263,7 +263,7 @@ void KWayFM(ctrl_t *ctrl, graph_t *graph, idx_t npasses)
   ikv_t *swchanges, *rwchanges;
   ckrinfo_t *myrinfo;
   cnbr_t *mynbrs;
-  real_t lbvec[MAXNCON], *nvwgt, *badmaxpwgt, *ubvec, *tpwgts, lbavg, ubavg;
+  real_t *lbvec, *nvwgt, *badmaxpwgt, *ubvec, *tpwgts, lbavg, ubavg;
   idx_t *nupds_pe;
 
   IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->KWayTmr));
@@ -299,6 +299,7 @@ void KWayFM(ctrl_t *ctrl, graph_t *graph, idx_t npasses)
   /************************************/
   /* set up important data structures */
   /************************************/
+  lbvec        = rwspacemalloc(ctrl, ncon);
   badmaxpwgt   = rwspacemalloc(ctrl, nparts*ncon);
   movewgts     = rwspacemalloc(ctrl, nparts*ncon);
   ognpwgts     = rwspacemalloc(ctrl, nparts*ncon);
@@ -520,7 +521,7 @@ void KWayFM(ctrl_t *ctrl, graph_t *graph, idx_t npasses)
             overfill[j*ncon+h] = 0.0;
           }
 
-          overfill[j*ncon+h] =gk_max(overfill[j*ncon+h], 0.0);
+          overfill[j*ncon+h]  = gk_max(overfill[j*ncon+h], 0.0);
           overfill[j*ncon+h] *= movewgts[j*ncon+h];
 
           if (overfill[j*ncon+h] > 0.0)
@@ -815,7 +816,7 @@ void KWayBalance(ctrl_t *ctrl, graph_t *graph, idx_t npasses)
   ikv_t *swchanges, *rwchanges;
   ckrinfo_t *myrinfo;
   cnbr_t *mynbrs;
-  real_t lbvec[MAXNCON], *nvwgt, *badmaxpwgt, *ubvec, *tpwgts, lbavg, ubavg;
+  real_t *lbvec, *nvwgt, *badmaxpwgt, *ubvec, *tpwgts, lbavg, ubavg;
   idx_t *nupds_pe;
 
   IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->KWayTmr));
@@ -850,6 +851,7 @@ void KWayBalance(ctrl_t *ctrl, graph_t *graph, idx_t npasses)
   /************************************/
   /* set up important data structures */
   /************************************/
+  lbvec        = rwspacemalloc(ctrl, ncon);
   badmaxpwgt   = rwspacemalloc(ctrl, nparts*ncon);
 
   pperm        = iwspacemalloc(ctrl, nparts);

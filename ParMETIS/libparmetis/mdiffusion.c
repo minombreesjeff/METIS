@@ -7,7 +7,7 @@
  * Started 9/16/99
  * George
  *
- * $Id: mdiffusion.c 10416 2011-06-27 15:48:33Z karypis $
+ * $Id: mdiffusion.c 10542 2011-07-11 16:56:22Z karypis $
  */
 
 #include <parmetislib.h>
@@ -30,8 +30,8 @@ idx_t Mc_Diffusion(ctrl_t *ctrl, graph_t *graph, idx_t *vtxdist, idx_t *where,
   idx_t *pack, *unpack, *match, *proc2sub, *sub2proc;
   idx_t *visited, *gvisited;
   real_t *transfer, *npwgts, maxdiff, minflow, maxflow;
-  real_t lbavg, oldlbavg, ubavg, lbvec[MAXNCON];
-  real_t diff_flows[MAXNCON], sr_flows[MAXNCON];
+  real_t lbavg, oldlbavg, ubavg, *lbvec;
+  real_t *diff_flows, *sr_flows;
   real_t diff_lbavg, sr_lbavg, diff_cost, sr_cost;
   idx_t *rbuffer, *sbuffer; 
   idx_t *rcount, *rdispl;
@@ -54,6 +54,10 @@ idx_t Mc_Diffusion(ctrl_t *ctrl, graph_t *graph, idx_t *vtxdist, idx_t *where,
   ubavg  = ravg(ncon, ctrl->ubvec);
 
   /* initialize variables and allocate memory */
+  lbvec      = rwspacemalloc(ctrl, ncon);
+  diff_flows = rwspacemalloc(ctrl, ncon);
+  sr_flows   = rwspacemalloc(ctrl, ncon);
+
   load                       = rwspacemalloc(ctrl, nparts);
   solution                   = rwspacemalloc(ctrl, nparts);
   npwgts = graph->gnpwgts    = rwspacemalloc(ctrl, ncon*nparts);

@@ -6,7 +6,7 @@
  * Started 11/1/99
  * George
  *
- * $Id: proto.h 10046 2011-06-01 14:13:40Z karypis $
+ * $Id: proto.h 10513 2011-07-07 22:06:03Z karypis $
  *
  */
 
@@ -18,7 +18,6 @@
 graph_t *ReadGraph(params_t *); 
 mesh_t *ReadMesh(params_t *); 
 void ReadTPwgts(params_t *params, idx_t ncon);
-void ReadCoordinates(graph_t *, char *); 
 void ReadPOVector(graph_t *graph, char *filename, idx_t *vector);
 void WritePartition(char *, idx_t *, idx_t, idx_t);
 void WriteMeshPartition(char *, idx_t, idx_t, idx_t *, idx_t, idx_t *);

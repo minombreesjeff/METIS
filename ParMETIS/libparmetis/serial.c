@@ -6,7 +6,7 @@
  * Started 7/28/97
  * George
  *
- * $Id: serial.c 10414 2011-06-27 12:45:05Z karypis $
+ * $Id: serial.c 10542 2011-07-11 16:56:22Z karypis $
  *
  */
 
@@ -109,7 +109,7 @@ void Mc_SerialKWayAdaptRefine(ctrl_t *ctrl, graph_t *graph, idx_t nparts,
   idx_t from, me, myhome, to, oldcut, gain, tmp;
   idx_t *xadj, *adjncy, *adjwgt;
   idx_t *where;
-  real_t *npwgts, *nvwgt, *minwgt, *maxwgt, ubvec[MAXNCON];
+  real_t *npwgts, *nvwgt, *minwgt, *maxwgt, *ubvec;
   idx_t gain_is_greater, gain_is_same, fit_in_to, fit_in_from, going_home;
   idx_t zero_gain, better_balance_ft, better_balance_tt;
   ikv_t *cand;
@@ -133,6 +133,7 @@ void Mc_SerialKWayAdaptRefine(ctrl_t *ctrl, graph_t *graph, idx_t nparts,
   cand   = ikvwspacemalloc(ctrl, nvtxs);
   minwgt = rwspacemalloc(ctrl, nparts*ncon);
   maxwgt = rwspacemalloc(ctrl, nparts*ncon);
+  ubvec  = rwspacemalloc(ctrl, ncon);
 
   ComputeHKWayLoadImbalance(ncon, nparts, npwgts, ubvec);
   for (i=0; i<ncon; i++)
@@ -523,10 +524,10 @@ void Mc_Serial_FM_2WayRefine(ctrl_t *ctrl, graph_t *graph, real_t *tpwgts, idx_t
   idx_t kwgt, nvtxs, ncon, nbnd, nswaps, from, to, pass, limit, tmp, cnum;
   idx_t *xadj, *adjncy, *adjwgt, *where, *id, *ed, *bndptr, *bndind;
   idx_t *moved, *swaps, *qnum;
-  real_t *nvwgt, *npwgts, mindiff[MAXNCON], origbal, minbal, newbal;
-  rpq_t *parts[MAXNCON][2];
+  real_t *nvwgt, *npwgts, *mindiff, *tmpdiff, origbal, minbal, newbal;
+  rpq_t **parts[2];
   idx_t higain, mincut, initcut, newcut, mincutorder;
-  real_t rtpwgts[MAXNCON*2];
+  real_t *rtpwgts;
   idx_t mype;
 
   WCOREPUSH;
@@ -546,16 +547,22 @@ void Mc_Serial_FM_2WayRefine(ctrl_t *ctrl, graph_t *graph, real_t *tpwgts, idx_t
   bndptr = graph->sendptr;
   bndind = graph->recvptr;
 
-  moved = iwspacemalloc(ctrl, nvtxs);
-  swaps = iwspacemalloc(ctrl, nvtxs);
-  qnum  = iwspacemalloc(ctrl, nvtxs);
+  mindiff  = rwspacemalloc(ctrl, ncon);
+  tmpdiff  = rwspacemalloc(ctrl, ncon);
+  rtpwgts  = rwspacemalloc(ctrl, 2*ncon);
+  parts[0] = (rpq_t **)wspacemalloc(ctrl, sizeof(rpq_t *)*ncon);
+  parts[1] = (rpq_t **)wspacemalloc(ctrl, sizeof(rpq_t *)*ncon);
+
+  moved   = iwspacemalloc(ctrl, nvtxs);
+  swaps   = iwspacemalloc(ctrl, nvtxs);
+  qnum    = iwspacemalloc(ctrl, nvtxs);
 
   limit = gk_min(gk_max(0.01*nvtxs, 25), 150);
 
   /* Initialize the queues */
   for (i=0; i<ncon; i++) {
-    parts[i][0] = rpqCreate(nvtxs);
-    parts[i][1] = rpqCreate(nvtxs);
+    parts[0][i] = rpqCreate(nvtxs);
+    parts[1][i] = rpqCreate(nvtxs);
   }
   for (i=0; i<nvtxs; i++)
     qnum[i] = rargmax(ncon, nvwgt+i*ncon);
@@ -570,8 +577,8 @@ void Mc_Serial_FM_2WayRefine(ctrl_t *ctrl, graph_t *graph, real_t *tpwgts, idx_t
   iset(nvtxs, -1, moved);
   for (pass=0; pass<npasses; pass++) { /* Do a number of passes */
     for (i=0; i<ncon; i++) {
-      rpqReset(parts[i][0]);
-      rpqReset(parts[i][1]);
+      rpqReset(parts[0][i]);
+      rpqReset(parts[1][i]);
     }
 
     mincutorder = -1;
@@ -584,14 +591,14 @@ void Mc_Serial_FM_2WayRefine(ctrl_t *ctrl, graph_t *graph, real_t *tpwgts, idx_t
     nbnd = graph->gnvtxs;
     for (ii=0; ii<nbnd; ii++) {
       i = bndind[ii];
-      rpqInsert(parts[qnum[i]][where[i]], i, (real_t)(ed[i]-id[i]));
+      rpqInsert(parts[where[i]][qnum[i]], i, (real_t)(ed[i]-id[i]));
     }
 
     for (nswaps=0; nswaps<nvtxs; nswaps++) {
       Serial_SelectQueue(ncon, npwgts, rtpwgts, &from, &cnum, parts);
       to = (from+1)%2;
 
-      if (from == -1 || (higain = rpqGetTop(parts[cnum][from])) == -1)
+      if (from == -1 || (higain = rpqGetTop(parts[from][cnum])) == -1)
         break;
 
       raxpy(ncon,  1.0, nvwgt+higain*ncon, 1, npwgts+to*ncon,   1);
@@ -602,7 +609,8 @@ void Mc_Serial_FM_2WayRefine(ctrl_t *ctrl, graph_t *graph, real_t *tpwgts, idx_t
 
       if ((newcut < mincut && newbal-origbal <= .00001) ||
           (newcut == mincut && (newbal < minbal ||
-                                (newbal == minbal && Serial_BetterBalance(ncon, npwgts, tpwgts, mindiff))))) {
+                                (newbal == minbal && 
+                                 Serial_BetterBalance(ncon, npwgts, tpwgts, mindiff, tmpdiff))))) {
         mincut = newcut;
         minbal = newbal;
         mincutorder = nswaps;
@@ -638,18 +646,18 @@ void Mc_Serial_FM_2WayRefine(ctrl_t *ctrl, graph_t *graph, real_t *tpwgts, idx_t
           if (ed[k] == 0) { /* Not a boundary vertex any more */
             BNDDelete(nbnd, bndind, bndptr, k);
             if (moved[k] == -1)  /* Remove it if in the queues */
-              rpqDelete(parts[qnum[k]][where[k]], k);
+              rpqDelete(parts[where[k]][qnum[k]], k);
           }
           else { /* If it has not been moved, update its position in the queue */
             if (moved[k] == -1)
-              rpqUpdate(parts[qnum[k]][where[k]], k, (real_t)(ed[k]-id[k]));
+              rpqUpdate(parts[where[k]][qnum[k]], k, (real_t)(ed[k]-id[k]));
           }
         }
         else {
           if (ed[k] > 0) {  /* It will now become a boundary vertex */
             BNDInsert(nbnd, bndind, bndptr, k);
             if (moved[k] == -1)
-              rpqInsert(parts[qnum[k]][where[k]], k, (real_t)(ed[k]-id[k]));
+              rpqInsert(parts[where[k]][qnum[k]], k, (real_t)(ed[k]-id[k]));
           }
         }
       }
@@ -693,8 +701,8 @@ void Mc_Serial_FM_2WayRefine(ctrl_t *ctrl, graph_t *graph, real_t *tpwgts, idx_t
   }
 
   for (i=0; i<ncon; i++) {
-    rpqDestroy(parts[i][0]);
-    rpqDestroy(parts[i][1]);
+    rpqDestroy(parts[0][i]);
+    rpqDestroy(parts[1][i]);
   }
 
   WCOREPOP;
@@ -707,14 +715,14 @@ void Mc_Serial_FM_2WayRefine(ctrl_t *ctrl, graph_t *graph, real_t *tpwgts, idx_t
 * This function selects the partition number and the queue from which
 * we will move vertices out
 **************************************************************************/
-void Serial_SelectQueue(idx_t ncon, real_t *npwgts, real_t *tpwgts, idx_t *from, idx_t *cnum,
-     rpq_t *queues[MAXNCON][2])
+void Serial_SelectQueue(idx_t ncon, real_t *npwgts, real_t *tpwgts, idx_t *from, 
+         idx_t *cnum, rpq_t **queues[2])
 {
   idx_t i, part;
   real_t maxgain=0.0;
   real_t max = -1.0, maxdiff=0.0;
-idx_t mype;
-gkMPI_Comm_rank(MPI_COMM_WORLD, &mype);
+  idx_t mype;
+  gkMPI_Comm_rank(MPI_COMM_WORLD, &mype);
 
   *from = -1;
   *cnum = -1;
@@ -730,10 +738,10 @@ gkMPI_Comm_rank(MPI_COMM_WORLD, &mype);
     }
   }
 
-  if (*from != -1 && rpqLength(queues[*cnum][*from]) == 0) {
+  if (*from != -1 && rpqLength(queues[*from][*cnum]) == 0) {
     /* The desired queue is empty, select a node from that side anyway */
     for (i=0; i<ncon; i++) {
-      if (rpqLength(queues[i][*from]) > 0) {
+      if (rpqLength(queues[*from][i]) > 0) {
         max = npwgts[(*from)*ncon + i];
         *cnum = i;
         break;
@@ -741,7 +749,7 @@ gkMPI_Comm_rank(MPI_COMM_WORLD, &mype);
     }
 
     for (i++; i<ncon; i++) {
-      if (npwgts[(*from)*ncon + i] > max && rpqLength(queues[i][*from]) > 0) {
+      if (npwgts[(*from)*ncon + i] > max && rpqLength(queues[*from][i]) > 0) {
         max = npwgts[(*from)*ncon + i];
         *cnum = i;
       }
@@ -755,9 +763,9 @@ gkMPI_Comm_rank(MPI_COMM_WORLD, &mype);
 
     for (part=0; part<2; part++) {
       for (i=0; i<ncon; i++) {
-        if (rpqLength(queues[i][part]) > 0 &&
-            rpqSeeTopKey(queues[i][part]) > maxgain) {
-          maxgain = rpqSeeTopKey(queues[i][part]);
+        if (rpqLength(queues[part][i]) > 0 &&
+            rpqSeeTopKey(queues[part][i]) > maxgain) {
+          maxgain = rpqSeeTopKey(queues[part][i]);
           *from = part;
           *cnum = i;
         }
@@ -768,19 +776,20 @@ gkMPI_Comm_rank(MPI_COMM_WORLD, &mype);
   return;
 }
 
+
 /*************************************************************************
 * This function checks if the balance achieved is better than the diff
 * For now, it uses a 2-norm measure
 **************************************************************************/
-idx_t Serial_BetterBalance(idx_t ncon, real_t *npwgts, real_t *tpwgts, real_t *diff)
+idx_t Serial_BetterBalance(idx_t ncon, real_t *npwgts, real_t *tpwgts, 
+          real_t *diff, real_t *tmpdiff)
 {
   idx_t i;
-  real_t ndiff[MAXNCON];
 
   for (i=0; i<ncon; i++)
-    ndiff[i] = fabs(tpwgts[i]-npwgts[i]);
+    tmpdiff[i] = fabs(tpwgts[i]-npwgts[i]);
 
-  return rnorm2(ncon, ndiff, 1) < rnorm2(ncon, diff, 1);
+  return rnorm2(ncon, tmpdiff, 1) < rnorm2(ncon, diff, 1);
 }
 
 
@@ -812,10 +821,10 @@ void Mc_Serial_Balance2Way(ctrl_t *ctrl, graph_t *graph, real_t *tpwgts, real_t 
   idx_t i, ii, j, k, kwgt, nvtxs, ncon, nbnd, nswaps, from, to, limit, tmp, cnum;
   idx_t *xadj, *adjncy, *adjwgt, *where, *id, *ed, *bndptr, *bndind;
   idx_t *moved, *swaps, *qnum;
-  real_t *nvwgt, *npwgts, mindiff[MAXNCON], origbal, minbal, newbal;
-  rpq_t *parts[MAXNCON][2];
+  real_t *nvwgt, *npwgts, *mindiff, *tmpdiff, origbal, minbal, newbal;
+  rpq_t **parts[2];
   idx_t higain, mincut, newcut, mincutorder;
-  idx_t qsizes[MAXNCON][2];
+  idx_t *qsizes[2];
 
   WCOREPUSH;
 
@@ -832,6 +841,13 @@ void Mc_Serial_Balance2Way(ctrl_t *ctrl, graph_t *graph, real_t *tpwgts, real_t 
   bndptr = graph->sendptr;
   bndind = graph->recvptr;
 
+  mindiff   = rwspacemalloc(ctrl, ncon);
+  tmpdiff   = rwspacemalloc(ctrl, ncon);
+  parts[0]  = (rpq_t **)wspacemalloc(ctrl, sizeof(rpq_t *)*ncon);
+  parts[1]  = (rpq_t **)wspacemalloc(ctrl, sizeof(rpq_t *)*ncon);
+  qsizes[0] = iset(ncon, 0, iwspacemalloc(ctrl, ncon));
+  qsizes[1] = iset(ncon, 0, iwspacemalloc(ctrl, ncon));
+
   moved = iwspacemalloc(ctrl, nvtxs);
   swaps = iwspacemalloc(ctrl, nvtxs);
   qnum  = iwspacemalloc(ctrl, nvtxs);
@@ -840,9 +856,8 @@ void Mc_Serial_Balance2Way(ctrl_t *ctrl, graph_t *graph, real_t *tpwgts, real_t 
 
   /* Initialize the queues */
   for (i=0; i<ncon; i++) {
-    parts[i][0] = rpqCreate(nvtxs);
-    parts[i][1] = rpqCreate(nvtxs);
-    qsizes[i][0] = qsizes[i][1] = 0;
+    parts[0][i] = rpqCreate(nvtxs);
+    parts[1][i] = rpqCreate(nvtxs);
   }
 
   for (i=0; i<nvtxs; i++) {
@@ -882,7 +897,7 @@ void Mc_Serial_Balance2Way(ctrl_t *ctrl, graph_t *graph, real_t *tpwgts, real_t 
   /* Insert all nodes in the priority queues */
   nbnd = graph->gnvtxs;
   for (i=0; i<nvtxs; i++) 
-    rpqInsert(parts[qnum[i]][where[i]], i, (real_t)(ed[i]-id[i]));
+    rpqInsert(parts[where[i]][qnum[i]], i, (real_t)(ed[i]-id[i]));
 
   for (nswaps=0; nswaps<nvtxs; nswaps++) {
     if (minbal < lbfactor)
@@ -891,7 +906,7 @@ void Mc_Serial_Balance2Way(ctrl_t *ctrl, graph_t *graph, real_t *tpwgts, real_t 
     Serial_SelectQueue(ncon, npwgts, tpwgts, &from, &cnum, parts);
     to = (from+1)%2;
 
-    if (from == -1 || (higain = rpqGetTop(parts[cnum][from])) == -1)
+    if (from == -1 || (higain = rpqGetTop(parts[from][cnum])) == -1)
       break;
 
     raxpy(ncon, 1.0, nvwgt+higain*ncon, 1, npwgts+to*ncon, 1);
@@ -901,7 +916,7 @@ void Mc_Serial_Balance2Way(ctrl_t *ctrl, graph_t *graph, real_t *tpwgts, real_t 
 
     if (newbal < minbal || (newbal == minbal &&
         (newcut < mincut || (newcut == mincut &&
-          Serial_BetterBalance(ncon, npwgts, tpwgts, mindiff))))) {
+          Serial_BetterBalance(ncon, npwgts, tpwgts, mindiff, tmpdiff))))) {
       mincut = newcut;
       minbal = newbal;
       mincutorder = nswaps;
@@ -936,7 +951,7 @@ void Mc_Serial_Balance2Way(ctrl_t *ctrl, graph_t *graph, real_t *tpwgts, real_t 
 
       /* Update the queue position */
       if (moved[k] == -1)
-        rpqUpdate(parts[qnum[k]][where[k]], k, (real_t)(ed[k]-id[k]));
+        rpqUpdate(parts[where[k]][qnum[k]], k, (real_t)(ed[k]-id[k]));
 
       /* Update its boundary information */
       if (ed[k] == 0 && bndptr[k] != -1)
@@ -980,14 +995,15 @@ void Mc_Serial_Balance2Way(ctrl_t *ctrl, graph_t *graph, real_t *tpwgts, real_t 
 
 
   for (i=0; i<ncon; i++) {
-    rpqDestroy(parts[i][0]);
-    rpqDestroy(parts[i][1]);
+    rpqDestroy(parts[0][i]);
+    rpqDestroy(parts[1][i]);
   }
 
   WCOREPOP;
 
   return;
 }
+
 
 
 /*************************************************************************
@@ -1005,7 +1021,7 @@ void Mc_Serial_Init2WayBalance(ctrl_t *ctrl, graph_t *graph, real_t *tpwgts)
   idx_t *xadj, *adjncy, *adjwgt, *where, *id, *ed, *bndptr, *bndind;
   idx_t *qnum;
   real_t *nvwgt, *npwgts;
-  rpq_t *parts[MAXNCON][2];
+  rpq_t **parts[2];
   idx_t higain, mincut;
 
   WCOREPUSH;
@@ -1023,6 +1039,9 @@ void Mc_Serial_Init2WayBalance(ctrl_t *ctrl, graph_t *graph, real_t *tpwgts)
   bndptr = graph->sendptr;
   bndind = graph->recvptr;
 
+  parts[0] = (rpq_t **)wspacemalloc(ctrl, sizeof(rpq_t *)*ncon);
+  parts[1] = (rpq_t **)wspacemalloc(ctrl, sizeof(rpq_t *)*ncon);
+
   qnum = iwspacemalloc(ctrl, nvtxs);
 
   /* This is called for initial partitioning so we know from where to pick nodes */
@@ -1030,8 +1049,8 @@ void Mc_Serial_Init2WayBalance(ctrl_t *ctrl, graph_t *graph, real_t *tpwgts)
   to = (from+1)%2;
 
   for (i=0; i<ncon; i++) {
-    parts[i][0] = rpqCreate(nvtxs);
-    parts[i][1] = rpqCreate(nvtxs);
+    parts[0][i] = rpqCreate(nvtxs);
+    parts[1][i] = rpqCreate(nvtxs);
   }
 
   /* Compute the queues in which each vertex will be assigned to */
@@ -1042,9 +1061,9 @@ void Mc_Serial_Init2WayBalance(ctrl_t *ctrl, graph_t *graph, real_t *tpwgts)
   for (i=0; i<nvtxs; i++) {
     if (where[i] == from) {
       if (ed[i] > 0)
-        rpqInsert(parts[qnum[i]][0], i, (real_t)(ed[i]-id[i]));
+        rpqInsert(parts[0][qnum[i]], i, (real_t)(ed[i]-id[i]));
       else
-        rpqInsert(parts[qnum[i]][1], i, (real_t)(ed[i]-id[i]));
+        rpqInsert(parts[1][qnum[i]], i, (real_t)(ed[i]-id[i]));
     }
   }
 
@@ -1058,8 +1077,8 @@ void Mc_Serial_Init2WayBalance(ctrl_t *ctrl, graph_t *graph, real_t *tpwgts)
       break;
 
 
-    if ((higain = rpqGetTop(parts[cnum][0])) == -1)
-      higain = rpqGetTop(parts[cnum][1]);
+    if ((higain = rpqGetTop(parts[0][cnum])) == -1)
+      higain = rpqGetTop(parts[1][cnum]);
 
     mincut -= (ed[higain]-id[higain]);
     raxpy(ncon, 1.0, nvwgt+higain*ncon, 1, npwgts+to*ncon, 1);
@@ -1085,11 +1104,11 @@ void Mc_Serial_Init2WayBalance(ctrl_t *ctrl, graph_t *graph, real_t *tpwgts)
       /* Update the queue position */
       if (where[k] == from) {
         if (ed[k] > 0 && bndptr[k] == -1) {  /* It moves in boundary */
-          rpqDelete(parts[qnum[k]][1], k);
-          rpqInsert(parts[qnum[k]][0], k, (real_t)(ed[k]-id[k]));
+          rpqDelete(parts[1][qnum[k]], k);
+          rpqInsert(parts[0][qnum[k]], k, (real_t)(ed[k]-id[k]));
         }
         else { /* It must be in the boundary already */
-          rpqUpdate(parts[qnum[k]][0], k, (real_t)(ed[k]-id[k]));
+          rpqUpdate(parts[0][qnum[k]], k, (real_t)(ed[k]-id[k]));
         }
       }
 
@@ -1105,8 +1124,8 @@ void Mc_Serial_Init2WayBalance(ctrl_t *ctrl, graph_t *graph, real_t *tpwgts)
   graph->gnvtxs = nbnd;
 
   for (i=0; i<ncon; i++) {
-    rpqDestroy(parts[i][0]);
-    rpqDestroy(parts[i][1]);
+    rpqDestroy(parts[0][i]);
+    rpqDestroy(parts[1][i]);
   }
 
   WCOREPOP;
@@ -1117,15 +1136,15 @@ void Mc_Serial_Init2WayBalance(ctrl_t *ctrl, graph_t *graph, real_t *tpwgts)
 * This function selects the partition number and the queue from which
 * we will move vertices out
 **************************************************************************/
-idx_t Serial_SelectQueueOneWay(idx_t ncon, real_t *npwgts, real_t *tpwgts, idx_t from,
-    rpq_t *queues[MAXNCON][2])
+idx_t Serial_SelectQueueOneWay(idx_t ncon, real_t *npwgts, real_t *tpwgts, 
+          idx_t from, rpq_t **queues[2])
 {
   idx_t i, cnum=-1;
   real_t max=0.0;
 
   for (i=0; i<ncon; i++) {
     if (npwgts[from*ncon+i]-tpwgts[from*ncon+i] >= max &&
-        rpqLength(queues[i][0]) + rpqLength(queues[i][1]) > 0) {
+        rpqLength(queues[0][i]) + rpqLength(queues[1][i]) > 0) {
       max = npwgts[from*ncon+i]-tpwgts[i];
       cnum = i;
     }

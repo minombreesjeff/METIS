@@ -8,7 +8,7 @@
  * Started 9/25/94
  * George
  *
- * $Id: macros.h 10413 2011-06-25 23:20:33Z karypis $
+ * $Id: macros.h 10534 2011-07-10 19:48:52Z karypis $
  *
  */
 
@@ -30,6 +30,17 @@
 #define starttimer(tmr) (tmr -= MPI_Wtime())
 #define stoptimer(tmr) (tmr += MPI_Wtime())
 #define gettimer(tmr) (tmr)
+#define STARTTIMER(ctrl, tmr) \
+   do { \
+     IFSET((ctrl)->dbglvl, DBG_TIME, gkMPI_Barrier((ctrl)->gcomm));\
+     IFSET((ctrl)->dbglvl, DBG_TIME, starttimer((tmr))); \
+   } while (0)
+#define STOPTIMER(ctrl, tmr) \
+   do { \
+     IFSET((ctrl)->dbglvl, DBG_TIME, gkMPI_Barrier((ctrl)->gcomm));\
+     IFSET((ctrl)->dbglvl, DBG_TIME, stoptimer((tmr))); \
+   } while (0)
+
 
 
 /* Debugging macros */

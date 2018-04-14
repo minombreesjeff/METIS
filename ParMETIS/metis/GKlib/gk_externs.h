@@ -4,7 +4,7 @@
 
 \date   Started 3/27/2007
 \author George
-\version\verbatim $Id: gk_externs.h 1277 2007-03-27 21:17:33Z karypis $ \endverbatim
+\version\verbatim $Id: gk_externs.h 10494 2011-07-06 14:53:45Z karypis $ \endverbatim
 */
 
 #ifndef _GK_EXTERNS_H_
@@ -15,7 +15,11 @@
 * Extern variable definition. Hopefully, the __thread makes them thread-safe.
 **************************************************************************/
 #ifndef _GK_ERROR_C_
-extern __thread jmp_buf gk_return_to_entry; /* declared in error.c */
+/* declared in error.c */
+extern __thread int gk_cur_jbufs;
+extern __thread jmp_buf gk_jbufs[];
+extern __thread jmp_buf gk_jbuf;
+
 #endif
 
 #endif

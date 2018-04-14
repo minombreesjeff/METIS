@@ -45,7 +45,9 @@ endif(OPENMP)
 # Add various definitions.
 if(GDB)
   set(GKlib_COPTS "${GKlib_COPTS} -g")
+  set(GKlib_COPTIONS "${GKlib_COPTIONS} -Werror")
 endif(GDB)
+
 
 if(DEBUG)
   set(GKlib_COPTS "-g")

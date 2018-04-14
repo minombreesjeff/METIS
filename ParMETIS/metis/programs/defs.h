@@ -50,7 +50,7 @@ static char objtypenames[][15] = {"cut", "vol", "node"};
 static char ctypenames[][15] = {"rm", "shem"};
 
 /* The text labels for RTypes */
-static char rtypenames[][15] = {"fm", "random", "greedy", "2sided", "1sided"};
+static char rtypenames[][15] = {"fm", "greedy", "2sided", "1sided"};
 
 /* The text labels for ITypes */
 static char iptypenames[][15] = {"grow", "random", "edge", "node", "metisrb"};

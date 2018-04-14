@@ -5,10 +5,11 @@
 \date   Started 7/25/1997
 \author George  
 \author Copyright 1997-2009, Regents of the University of Minnesota 
-\version\verbatim $Id: graph.c 10392 2011-06-23 19:07:54Z karypis $ \endverbatim
+\version\verbatim $Id: graph.c 10513 2011-07-07 22:06:03Z karypis $ \endverbatim
 */
 
 #include "metislib.h"
+
 
 /*************************************************************************/
 /*! This function sets up the graph from the user input */
@@ -19,11 +20,6 @@ graph_t *SetupGraph(ctrl_t *ctrl, idx_t nvtxs, idx_t ncon, idx_t *xadj,
   idx_t i, j, k, sum;
   real_t *nvwgt;
   graph_t *graph;
-
-  /* if required, change the numbering to 0 */
-  if (ctrl->numflag == 1)
-    Change2CNumbering(nvtxs, xadj, adjncy);
-
 
   /* allocate the graph and fill in the fields */
   graph = CreateGraph();
@@ -86,41 +82,14 @@ graph_t *SetupGraph(ctrl_t *ctrl, idx_t nvtxs, idx_t ncon, idx_t *xadj,
 
 
   /* setup various derived info */
-  SetupGraph_adjrsum(graph);
   SetupGraph_tvwgt(graph);
 
   if (ctrl->optype == METIS_OP_PMETIS || ctrl->optype == METIS_OP_OMETIS) 
     SetupGraph_label(graph);
 
-
-  graph->cmap = imalloc(nvtxs, "SetupGraph: cmap");
-
   ASSERT(CheckGraph(graph, ctrl->numflag, 1));
 
   return graph;
-}
-
-
-/*************************************************************************/
-/*! Set's up the adjrsum info */
-/*************************************************************************/
-void SetupGraph_adjrsum(graph_t *graph)
-{
-  idx_t i, j, sum;
-  idx_t *xadj, *adjncy, *adjwgt;
-
-  xadj   = graph->xadj;
-  adjncy = graph->adjncy;
-  adjwgt = graph->adjwgt;
-
-  if (graph->adjrsum == NULL)
-    graph->adjrsum = imalloc(graph->nvtxs, "SetupGraph_adjrsum: adjrsum");
-
-  for (i=0; i<graph->nvtxs; i++) {
-    for (sum=0, j=xadj[i]; j<xadj[i+1]; j++)
-      sum += adjwgt[j];
-    graph->adjrsum[i] = sum;
-  }
 }
 
 
@@ -167,7 +136,6 @@ graph_t *SetupSplitGraph(graph_t *graph, idx_t snvtxs, idx_t snedges)
 
   sgraph = CreateGraph();
 
-  sgraph->ncon   = graph->ncon;
   sgraph->nvtxs  = snvtxs;
   sgraph->nedges = snedges;
   sgraph->ncon   = graph->ncon;
@@ -175,8 +143,6 @@ graph_t *SetupSplitGraph(graph_t *graph, idx_t snvtxs, idx_t snedges)
   /* Allocate memory for the splitted graph */
   sgraph->xadj        = imalloc(snvtxs+1, "SetupSplitGraph: xadj");
   sgraph->vwgt        = imalloc(sgraph->ncon*snvtxs, "SetupSplitGraph: vwgt");
-  sgraph->adjrsum     = imalloc(snvtxs,   "SetupSplitGraph: adjrsum");
-  sgraph->cmap        = imalloc(snvtxs,   "SetupSplitGraph: cmap");
   sgraph->adjncy      = imalloc(snedges,  "SetupSplitGraph: adjncy");
   sgraph->adjwgt      = imalloc(snedges,  "SetupSplitGraph: adjwgt");
   sgraph->label	      = imalloc(snvtxs,   "SetupSplitGraph: label");
@@ -226,10 +192,8 @@ void InitGraph(graph_t *graph)
   graph->vsize     = NULL;
   graph->adjncy    = NULL;
   graph->adjwgt    = NULL;
-  graph->adjrsum   = NULL;
   graph->label     = NULL;
   graph->cmap      = NULL;
-  graph->coords    = NULL;
   graph->tvwgt     = NULL;
   graph->invtvwgt  = NULL;
 
@@ -301,8 +265,8 @@ void FreeGraph(graph_t **r_graph)
   /* free partition/refinement structure */
   FreeRData(graph);
 
-  gk_free((void **)&graph->tvwgt, &graph->invtvwgt, &graph->adjrsum, 
-      &graph->label, &graph->cmap, &graph->coords, &graph, LTERM);
+  gk_free((void **)&graph->tvwgt, &graph->invtvwgt, &graph->label, 
+      &graph->cmap, &graph, LTERM);
 
   *r_graph = NULL;
 }

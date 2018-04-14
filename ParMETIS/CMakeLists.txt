@@ -36,3 +36,6 @@ add_subdirectory(${METIS_PATH}/libmetis ${CMAKE_BINARY_DIR}/libmetis)
 add_subdirectory(include)
 add_subdirectory(libparmetis)
 add_subdirectory(programs)
+
+# This is for testing during development and is not being distributed
+#add_subdirectory(test)

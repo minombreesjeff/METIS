@@ -8,16 +8,16 @@
  * Started 9/28/95
  * George
  *
- * $Id: util.c 10395 2011-06-23 23:28:06Z karypis $
+ * $Id: util.c 10495 2011-07-06 16:04:45Z karypis $
  */
 
 #include "metislib.h"
 
 
-
-/*************************************************************************
-* This function initializes the random number generator
-**************************************************************************/
+/*************************************************************************/
+/*! This function initializes the random number generator 
+  */
+/*************************************************************************/
 void InitRandom(idx_t seed)
 {
   isrand((seed == -1 ? 4321 : seed)); 
@@ -25,7 +25,8 @@ void InitRandom(idx_t seed)
 
 
 /*************************************************************************/
-/*! Returns the highest weight index of x[i]*y[i] */
+/*! Returns the highest weight index of x[i]*y[i] 
+ */
 /*************************************************************************/
 idx_t iargmax_nrm(size_t n, idx_t *x, real_t *y)
 {
@@ -38,10 +39,10 @@ idx_t iargmax_nrm(size_t n, idx_t *x, real_t *y)
 }
 
 
-
-/*************************************************************************
-* These functions return the index of the maximum element in a vector
-**************************************************************************/
+/*************************************************************************/
+/*! These functions return the index of the maximum element in a vector
+  */
+/*************************************************************************/
 idx_t iargmax_strd(size_t n, idx_t *x, idx_t incx)
 {
   size_t i, max=0;
@@ -54,9 +55,11 @@ idx_t iargmax_strd(size_t n, idx_t *x, idx_t incx)
 }
 
 
-/*************************************************************************
-* These functions return the index of the almost maximum element in a vector
-**************************************************************************/
+/*************************************************************************/
+/*! These functions return the index of the almost maximum element in a 
+    vector
+ */
+/*************************************************************************/
 idx_t rargmax2(size_t n, real_t *x)
 {
   size_t i, max1, max2;
@@ -111,3 +114,25 @@ idx_t iargmax2_nrm(size_t n, idx_t *x, real_t *y)
 
   return max2;
 }
+
+
+/*************************************************************************/
+/*! converts a signal code into a Metis return code 
+ */
+/*************************************************************************/
+int metis_rcode(int sigrval)
+{
+  switch (sigrval) {
+    case 0:
+      return METIS_OK;
+      break;
+    case SIGMEM:
+      return METIS_ERROR_MEMORY;
+      break;
+    default:
+      return METIS_ERROR;
+      break;
+  }
+}
+
+

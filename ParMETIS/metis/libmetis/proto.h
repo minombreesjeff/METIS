@@ -8,7 +8,7 @@
  * Started 10/19/95
  * George
  *
- * $Id: proto.h 10402 2011-06-24 15:33:59Z karypis $
+ * $Id: proto.h 10565 2011-07-13 16:07:36Z karypis $
  *
  */
 
@@ -31,11 +31,14 @@ void BucketSortKeysInc(ctrl_t *ctrl, idx_t n, idx_t max, idx_t *keys,
 
 /* checkgraph.c */
 int CheckGraph(graph_t *graph, int numflag, int verbose);
+int CheckInputGraphWeights(idx_t nvtxs, idx_t ncon, idx_t *xadj, idx_t *adjncy,
+        idx_t *vwgt, idx_t *vsize, idx_t *adjwgt);
 graph_t *FixGraph(graph_t *graph);
 
 
 /* coarsen.c */
 graph_t *CoarsenGraph(ctrl_t *ctrl, graph_t *graph);
+graph_t *CoarsenGraphNlevels(ctrl_t *ctrl, graph_t *graph, idx_t nlevels);
 idx_t Match_RM(ctrl_t *ctrl, graph_t *graph);
 idx_t Match_SHEM(ctrl_t *ctrl, graph_t *graph);
 void PrintCGraphStats(ctrl_t *ctrl, graph_t *graph);
@@ -46,7 +49,7 @@ void CreateCoarseGraphNoMask(ctrl_t *ctrl, graph_t *graph, idx_t cnvtxs,
 void CreateCoarseGraphPerm(ctrl_t *ctrl, graph_t *graph, idx_t cnvtxs, 
          idx_t *match, idx_t *perm);
 graph_t *SetupCoarseGraph(graph_t *graph, idx_t cnvtxs, idx_t dovsize);
-void ReAdjustMemory(graph_t *graph, graph_t *cgraph, idx_t dovsize);
+void ReAdjustMemory(ctrl_t *ctrl, graph_t *graph, graph_t *cgraph);
 
 
 
@@ -73,7 +76,7 @@ void MoveGroupContigForVol(ctrl_t *ctrl, graph_t *graph, idx_t to, idx_t gid,
 
 
 /* debug.c */
-idx_t ComputeCut(graph_t *, idx_t *);
+idx_t ComputeCut(graph_t *graph, idx_t *where);
 idx_t ComputeVolume(graph_t *, idx_t *);
 idx_t ComputeMaxCut(graph_t *graph, idx_t nparts, idx_t *where);
 idx_t CheckBnd(graph_t *);
@@ -110,7 +113,6 @@ void ChangeMesh2FNumbering2(idx_t ne, idx_t nn, idx_t *ptr, idx_t *ind,
 /* graph.c */
 graph_t *SetupGraph(ctrl_t *ctrl, idx_t nvtxs, idx_t ncon, idx_t *xadj, 
              idx_t *adjncy, idx_t *vwgt, idx_t *vsize, idx_t *adjwgt);
-void SetupGraph_adjrsum(graph_t *graph);
 void SetupGraph_tvwgt(graph_t *graph);
 void SetupGraph_label(graph_t *graph);
 graph_t *SetupSplitGraph(graph_t *graph, idx_t snvtxs, idx_t snedges);
@@ -121,17 +123,19 @@ void FreeGraph(graph_t **graph);
 
 
 /* initpart.c */
-void Init2WayPartition(ctrl_t *ctrl, graph_t *graph, real_t *ntpwgts);
-void InitSeparator(ctrl_t *ctrl, graph_t *graph);
-void RandomBisection(ctrl_t *ctrl, graph_t *graph, real_t *ntpwgts);
-void GrowBisection(ctrl_t *ctrl, graph_t *graph, real_t *ntpwgts);
-void McRandomBisection(ctrl_t *ctrl, graph_t *graph, real_t *ntpwgts);
-void McGrowBisection(ctrl_t *ctrl, graph_t *graph, real_t *ntpwgts);
-void GrowBisectionNode(ctrl_t *ctrl, graph_t *graph, real_t *ntpwgts);
+void Init2WayPartition(ctrl_t *ctrl, graph_t *graph, real_t *ntpwgts, idx_t niparts);
+void InitSeparator(ctrl_t *ctrl, graph_t *graph, idx_t niparts);
+void RandomBisection(ctrl_t *ctrl, graph_t *graph, real_t *ntpwgts, idx_t niparts);
+void GrowBisection(ctrl_t *ctrl, graph_t *graph, real_t *ntpwgts, idx_t niparts);
+void McRandomBisection(ctrl_t *ctrl, graph_t *graph, real_t *ntpwgts, idx_t niparts);
+void McGrowBisection(ctrl_t *ctrl, graph_t *graph, real_t *ntpwgts, idx_t niparts);
+void GrowBisectionNode(ctrl_t *ctrl, graph_t *graph, real_t *ntpwgts, idx_t niparts);
+void GrowBisectionNode2(ctrl_t *ctrl, graph_t *graph, real_t *ntpwgts, idx_t niparts);
 
 
 /* kmetis.c */
 idx_t MlevelKWayPartitioning(ctrl_t *ctrl, graph_t *graph, idx_t *part);
+void InitKWayPartitioning(ctrl_t *ctrl, graph_t *graph);
 
 
 /* kwayfm.c */
@@ -200,7 +204,7 @@ void FreeMesh(mesh_t **mesh);
 
 /* meshpart.c */
 void InduceRowPartFromColumnPart(idx_t nrows, idx_t *rowptr, idx_t *rowind,
-         idx_t *rpart, idx_t *cpart, idx_t nparts);
+         idx_t *rpart, idx_t *cpart, idx_t nparts, real_t *tpwgts);
 
 
 /* minconn.c */
@@ -237,7 +241,8 @@ void MlevelNestedDissection(ctrl_t *ctrl, graph_t *graph, idx_t *order,
 void MlevelNestedDissectionCC(ctrl_t *ctrl, graph_t *graph, idx_t *order,
          idx_t lastvtx);
 void MlevelNodeBisectionMultiple(ctrl_t *ctrl, graph_t *graph);
-void MlevelNodeBisection(ctrl_t *ctrl, graph_t *graph);
+void MlevelNodeBisectionL2(ctrl_t *ctrl, graph_t *graph, idx_t niparts);
+void MlevelNodeBisectionL1(ctrl_t *ctrl, graph_t *graph, idx_t niparts);
 void SplitGraphOrder(ctrl_t *ctrl, graph_t *graph, graph_t **r_lgraph, 
          graph_t **r_rgraph);
 graph_t **SplitGraphOrderCC(ctrl_t *ctrl, graph_t *graph, idx_t ncmps,
@@ -251,8 +256,8 @@ ctrl_t *SetupCtrl(moptype_et optype, idx_t *options, idx_t ncon, idx_t nparts,
 void SetupKWayBalMultipliers(ctrl_t *ctrl, graph_t *graph);
 void Setup2WayBalMultipliers(ctrl_t *ctrl, graph_t *graph, real_t *tpwgts);
 void PrintCtrl(ctrl_t *ctrl);
+int CheckParams(ctrl_t *ctrl);
 void FreeCtrl(ctrl_t **r_ctrl);
-idx_t CheckParams(ctrl_t *ctrl);
 
 
 /* parmetis.c */
@@ -312,6 +317,8 @@ idx_t iargmax_nrm(size_t n, idx_t *x, real_t *y);
 idx_t iargmax2_nrm(size_t n, idx_t *x, real_t *y);
 idx_t rargmax2(size_t, real_t *);
 void InitRandom(idx_t);
+int metis_rcode(int sigrval);
+
 
 
 /* wspace.c */
