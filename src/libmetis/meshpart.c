@@ -8,195 +8,73 @@
  * Started 9/29/97
  * George
  *
- * $Id: meshpart.c,v 1.2 2002/08/10 06:29:31 karypis Exp $
+ * $Id: meshpart.c 10495 2011-07-06 16:04:45Z karypis $
  *
  */
 
-#include <metislib.h>
+#include "metislib.h"
 
 
 /*************************************************************************
 * This function partitions a finite element mesh by partitioning its nodal
 * graph using KMETIS and then assigning elements in a load balanced fashion.
 **************************************************************************/
-void METIS_PartMeshNodal(idxtype *ne, idxtype *nn, idxtype *elmnts, idxtype *etype, 
-idxtype *numflag, idxtype *nparts, idxtype *edgecut, idxtype *epart, idxtype *npart)
-
+int METIS_PartMeshNodal(idx_t *ne, idx_t *nn, idx_t *eptr, idx_t *eind, 
+          idx_t *vwgt, idx_t *vsize, idx_t *nparts, real_t *tpwgts, 
+          idx_t *options, idx_t *objval, idx_t *epart, idx_t *npart)
 {
-  idxtype i, j, k, me;
-  idxtype *xadj, *adjncy, *pwgts;
-  idxtype options[10], pnumflag=0, wgtflag=0;
-  idxtype nnbrs, nbrind[200], nbrwgt[200], maxpwgt;
-  idxtype esize, esizes[] = {-1, 3, 4, 8, 4, 2};
+  int sigrval=0, renumber=0;
+  idx_t *xadj=NULL, *adjncy=NULL;
+  idx_t ncon=1, pnumflag=0;
+  int rstatus=METIS_OK;
 
-  esize = esizes[*etype];
+  /* set up malloc cleaning code and signal catchers */
+  if (!gk_malloc_init()) 
+    return METIS_ERROR_MEMORY;
 
-  if (*numflag == 1)
-    ChangeMesh2CNumbering((*ne)*esize, elmnts);
+  gk_sigtrap();
 
-  xadj = idxmalloc(*nn+1, "METIS_MESHPARTNODAL: xadj");
-  adjncy = idxmalloc(20*(*nn), "METIS_MESHPARTNODAL: adjncy");
+  if ((sigrval = gk_sigcatch()) != 0) 
+    goto SIGTHROW;
 
-  METIS_MeshToNodal(ne, nn, elmnts, etype, &pnumflag, xadj, adjncy);
 
-  adjncy = realloc(adjncy, xadj[*nn]*sizeof(idxtype));
-
-  options[0] = 0;
-  METIS_PartGraphKway(nn, xadj, adjncy, NULL, NULL, &wgtflag, &pnumflag, nparts, options, edgecut, npart);
-
-  /* OK, now compute an element partition based on the nodal partition npart */
-  idxset(*ne, -1, epart);
-  pwgts = idxsmalloc(*nparts, 0, "METIS_MESHPARTNODAL: pwgts");
-  for (i=0; i<*ne; i++) {
-    me = npart[elmnts[i*esize]];
-    for (j=1; j<esize; j++) {
-      if (npart[elmnts[i*esize+j]] != me)
-        break;
-    }
-    if (j == esize) {
-      epart[i] = me;
-      pwgts[me]++;
-    }
+  /* renumber the mesh */
+  if (options && options[METIS_OPTION_NUMBERING] == 1) {
+    ChangeMesh2CNumbering(*ne, eptr, eind);
+    renumber = 1;
   }
 
-  maxpwgt = 1.03*(*ne)/(*nparts);
-  for (i=0; i<*ne; i++) {
-    if (epart[i] == -1) { /* Assign the boundary element */
-      nnbrs = 0;
-      for (j=0; j<esize; j++) {
-        me = npart[elmnts[i*esize+j]];
-        for (k=0; k<nnbrs; k++) {
-          if (nbrind[k] == me) {
-            nbrwgt[k]++;
-            break;
-          }
-        }
-        if (k == nnbrs) {
-          nbrind[nnbrs] = me;
-          nbrwgt[nnbrs++] = 1;
-        }
-      }
-      /* Try to assign it first to the domain with most things in common */
-      j = idxargmax(nnbrs, nbrwgt);
-      if (pwgts[nbrind[j]] < maxpwgt) {
-        epart[i] = nbrind[j];
-      }
-      else {
-        /* If that fails, assign it to a light domain */
-        for (j=0; j<nnbrs; j++) {
-          if (pwgts[nbrind[j]] < maxpwgt) {
-            epart[i] = nbrind[j];
-            break;
-          }
-        }
-        if (j == nnbrs) 
-          epart[i] = nbrind[idxargmax(nnbrs, nbrwgt)];
-      }
-      pwgts[epart[i]]++;
-    }
-  }
+  /* get the nodal graph */
+  rstatus = METIS_MeshToNodal(ne, nn, eptr, eind, &pnumflag, &xadj, &adjncy);
+  if (rstatus != METIS_OK)
+    raise(SIGERR);
 
-  if (*numflag == 1)
-    ChangeMesh2FNumbering2((*ne)*esize, elmnts, *ne, *nn, epart, npart);
+  /* partition the graph */
+  if (options == NULL || options[METIS_OPTION_PTYPE] == METIS_PTYPE_KWAY) 
+    rstatus = METIS_PartGraphKway(nn, &ncon, xadj, adjncy, vwgt, vsize, NULL, 
+                  nparts, tpwgts, NULL, options, objval, npart);
+  else 
+    rstatus = METIS_PartGraphRecursive(nn, &ncon, xadj, adjncy, vwgt, vsize, NULL, 
+                  nparts, tpwgts, NULL, options, objval, npart);
 
-  gk_free((void **)&xadj, &adjncy, &pwgts, LTERM);
+  if (rstatus != METIS_OK)
+    raise(SIGERR);
 
-}
+  /* partition the other side of the mesh */
+  InduceRowPartFromColumnPart(*ne, eptr, eind, epart, npart, *nparts, tpwgts);
 
 
+SIGTHROW:
+  if (renumber)
+    ChangeMesh2FNumbering2(*ne, *nn, eptr, eind, epart, npart);
 
+  METIS_Free(xadj);
+  METIS_Free(adjncy);
 
-/*************************************************************************
-* This function partitions a Mixed element mesh by partitioning its nodal
-* graph using KMETIS and then assigning elements in a load balanced fashion.
-**************************************************************************/
-void METIS_PartMixedMeshNodal(idxtype *ne, idxtype *nn, idxtype *elmnts, idxtype *etype, 
-idxtype *numflag, idxtype *nparts, idxtype *edgecut, idxtype *epart, idxtype *npart)
+  gk_siguntrap();
+  gk_malloc_cleanup(0);
 
-{
-  idxtype i, j, k, me, tot;
-  idxtype *xadj, *adjncy, *pwgts, *hash;
-  idxtype options[10], pnumflag=0, wgtflag=0;
-  idxtype nnbrs, nbrind[200], nbrwgt[200], maxpwgt;
-  idxtype esize, sizes[] = {-1, 3, 4, 8, 4, 2};
-
-  hash = idxsmalloc((*ne), 0, "METIS_MIXEDMESHPARTNODAL: hash");
-   tot=0;
-   for (i=0;i<(*ne);i++){
-      hash[i]=tot;
-      tot+=sizes[etype[i]];
-      }
-
-  if (*numflag == 1)
-    ChangeMesh2CNumbering(tot,  elmnts);
-
-  xadj = idxmalloc(*nn+1, "METIS_MIXEDMESHPARTNODAL: xadj");
-  adjncy = idxmalloc(20*(*nn), "METIS_MIXEDMESHPARTNODAL: adjncy");
-
-  METIS_MixedMeshToNodal(ne, nn, elmnts, etype, &pnumflag, xadj, adjncy);
-
-  adjncy = realloc(adjncy, xadj[*nn]*sizeof(idxtype));
-
-  options[0] = 0;
-  METIS_PartGraphKway(nn, xadj, adjncy, NULL, NULL, &wgtflag, &pnumflag, nparts, options, edgecut, npart);
-
-  /* OK, now compute an element partition based on the nodal partition npart */
-  idxset(*ne, -1, epart);
-  pwgts = idxsmalloc(*nparts, 0, "METIS_MIXEDMESHPARTNODAL: pwgts");
-  for (i=0; i<*ne; i++) {
-    me = npart[elmnts[hash[i]]];
-    for (j=1; j<sizes[etype[i]]; j++) {
-      if (npart[elmnts[hash[i]+j]] != me)
-        break;
-    }
-    if (j == sizes[etype[i]]) {
-      epart[i] = me;
-      pwgts[me]++;
-    }
-  }
-
-  maxpwgt = 1.03*(*ne)/(*nparts);
-  for (i=0; i<*ne; i++) {
-    if (epart[i] == -1) { /* Assign the boundary element */
-      nnbrs = 0;
-      for (j=0; j<sizes[etype[i]]; j++) {
-        me = npart[elmnts[hash[i]+j]];
-        for (k=0; k<nnbrs; k++) {
-          if (nbrind[k] == me) {
-            nbrwgt[k]++;
-            break;
-          }
-        }
-        if (k == nnbrs) {
-          nbrind[nnbrs] = me;
-          nbrwgt[nnbrs++] = 1;
-        }
-      }
-      /* Try to assign it first to the domain with most things in common */
-      j = idxargmax(nnbrs, nbrwgt);
-      if (pwgts[nbrind[j]] < maxpwgt) {
-        epart[i] = nbrind[j];
-      }
-      else {
-        /* If that fails, assign it to a light domain */
-        for (j=0; j<nnbrs; j++) {
-          if (pwgts[nbrind[j]] < maxpwgt) {
-  epart[i] = nbrind[j];
-            break;
-          }
-        }
-        if (j == nnbrs)
-          epart[i] = nbrind[idxargmax(nnbrs, nbrwgt)];
-      }
-      pwgts[epart[i]]++;
-    }
-  }
-
-  if (*numflag == 1)
-    ChangeMesh2FNumbering2(tot, elmnts, *ne, *nn, epart, npart);
-
-  gk_free((void **)&xadj, &adjncy, &pwgts, &hash, LTERM);
-
+  return metis_rcode(sigrval);
 }
 
 
@@ -205,229 +83,171 @@ idxtype *numflag, idxtype *nparts, idxtype *edgecut, idxtype *epart, idxtype *np
 * This function partitions a finite element mesh by partitioning its dual
 * graph using KMETIS and then assigning nodes in a load balanced fashion.
 **************************************************************************/
-void METIS_PartMeshDual(idxtype *ne, idxtype *nn, idxtype *elmnts, idxtype *etype, 
-idxtype *numflag, idxtype *nparts, idxtype *edgecut, idxtype *epart, idxtype *npart,
-idxtype wgtflag, idxtype * vwgt) 
+int METIS_PartMeshDual(idx_t *ne, idx_t *nn, idx_t *eptr, idx_t *eind, 
+          idx_t *vwgt, idx_t *vsize, idx_t *ncommon, idx_t *nparts, 
+          real_t *tpwgts, idx_t *options, idx_t *objval, idx_t *epart, 
+          idx_t *npart) 
 {
-  idxtype i, j, k, me;
-  idxtype *xadj, *adjncy, *pwgts, *nptr, *nind, *elms, cnt;
-  idxtype options[10], pnumflag=0;
-  idxtype nnbrs, nbrind[200], nbrwgt[200], maxpwgt;
-  idxtype esize, esizes[] = {-1, 3, 4, 8, 4, 2};
+  int sigrval=0, renumber=0;
+  idx_t i, j;
+  idx_t *xadj=NULL, *adjncy=NULL, *nptr=NULL, *nind=NULL;
+  idx_t ncon=1, pnumflag=0;
+  int rstatus = METIS_OK;
 
-  esize = esizes[*etype];
+  /* set up malloc cleaning code and signal catchers */
+  if (!gk_malloc_init()) 
+    return METIS_ERROR_MEMORY;
 
-  if (*numflag == 1)
-    ChangeMesh2CNumbering((*ne)*esize, elmnts);
+  gk_sigtrap();
 
-  xadj = idxmalloc(*ne+1, "METIS_MESHPARTNODAL: xadj");
-  elms = idxsmalloc(*ne+1, 0, "main: elms");
+  if ((sigrval = gk_sigcatch()) != 0) 
+    goto SIGTHROW;
+
+  /* renumber the mesh */
+  if (options && options[METIS_OPTION_NUMBERING] == 1) {
+    ChangeMesh2CNumbering(*ne, eptr, eind);
+    renumber = 1;
+  }
+
+  /* get the dual graph */
+  rstatus = METIS_MeshToDual(ne, nn, eptr, eind, ncommon, &pnumflag, &xadj, &adjncy);
+  if (rstatus != METIS_OK)
+    raise(SIGERR);
+
+  /* partition the graph */
+  if (options == NULL || options[METIS_OPTION_PTYPE] == METIS_PTYPE_KWAY) 
+    rstatus = METIS_PartGraphKway(ne, &ncon, xadj, adjncy, vwgt, vsize, NULL, 
+                  nparts, tpwgts, NULL, options, objval, epart);
+  else 
+    rstatus = METIS_PartGraphRecursive(ne, &ncon, xadj, adjncy, vwgt, vsize, NULL, 
+                  nparts, tpwgts, NULL, options, objval, epart);
+
+  if (rstatus != METIS_OK)
+    raise(SIGERR);
 
 
-  cnt=METIS_MeshToDualCount(ne, nn, elmnts, elms, etype, &pnumflag);
-  adjncy = idxmalloc(cnt+1, "main: adjncy");
-  METIS_MeshToDual(ne, nn, elmnts, elms, etype, &pnumflag, xadj, adjncy);
+  /* construct the node-element list */
+  nptr = ismalloc(*nn+1, 0, "METIS_PartMeshDual: nptr");
+  nind = imalloc(eptr[*ne], "METIS_PartMeshDual: nind");
 
-
-  options[0] = 0;
-  METIS_PartGraphKway(ne, xadj, adjncy, vwgt, NULL, &wgtflag, &pnumflag, nparts, options, edgecut, epart);
-
-  /* Construct the node-element list */
-  nptr = idxsmalloc(*nn+1, 0, "METIS_MESHPARTDUAL: nptr");
-  for (j=esize*(*ne), i=0; i<j; i++) 
-    nptr[elmnts[i]]++;
+  for (i=0; i<*ne; i++) {
+    for (j=eptr[i]; j<eptr[i+1]; j++)
+      nptr[eind[j]]++;
+  }
   MAKECSR(i, *nn, nptr);
 
-  nind = idxmalloc(nptr[*nn], "METIS_MESHPARTDUAL: nind");
-  for (k=i=0; i<(*ne); i++) {
-    for (j=0; j<esize; j++, k++) 
-      nind[nptr[elmnts[k]]++] = i;
+  for (i=0; i<*ne; i++) {
+    for (j=eptr[i]; j<eptr[i+1]; j++)
+      nind[nptr[eind[j]]++] = i;
   }
-  for (i=(*nn); i>0; i--)
-    nptr[i] = nptr[i-1];
-  nptr[0] = 0;
+  SHIFTCSR(i, *nn, nptr);
+
+  /* partition the other side of the mesh */
+  InduceRowPartFromColumnPart(*nn, nptr, nind, npart, epart, *nparts, tpwgts);
+
+  gk_free((void **)&nptr, &nind, LTERM);
 
 
-  /* OK, now compute a nodal partition based on the element partition npart */
-  idxset(*nn, -1, npart);
-  pwgts = idxsmalloc(*nparts, 0, "METIS_MESHPARTDUAL: pwgts");
-  for (i=0; i<*nn; i++) {
-    me = epart[nind[nptr[i]]];
-    for (j=nptr[i]+1; j<nptr[i+1]; j++) {
-      if (epart[nind[j]] != me)
-        break;
-    }
-    if (j == nptr[i+1]) {
-      npart[i] = me;
-      pwgts[me]++;
-    }
-  }
+SIGTHROW:
+  if (renumber)
+    ChangeMesh2FNumbering2(*ne, *nn, eptr, eind, epart, npart);
 
-  maxpwgt = 1.03*(*nn)/(*nparts);
-  for (i=0; i<*nn; i++) {
-    if (npart[i] == -1) { /* Assign the boundary element */
-      nnbrs = 0;
-      for (j=nptr[i]; j<nptr[i+1]; j++) {
-        me = epart[nind[j]];
-        for (k=0; k<nnbrs; k++) {
-          if (nbrind[k] == me) {
-            nbrwgt[k]++;
-            break;
-          }
-        }
-        if (k == nnbrs) {
-          nbrind[nnbrs] = me;
-          nbrwgt[nnbrs++] = 1;
-        }
-      }
-      /* Try to assign it first to the domain with most things in common */
-      j = idxargmax(nnbrs, nbrwgt);
-      if (pwgts[nbrind[j]] < maxpwgt) {
-        npart[i] = nbrind[j];
-      }
-      else {
-        /* If that fails, assign it to a light domain */
-        npart[i] = nbrind[0];
-        for (j=0; j<nnbrs; j++) {
-          if (pwgts[nbrind[j]] < maxpwgt) {
-            npart[i] = nbrind[j];
-            break;
-          }
-        }
-      }
-      pwgts[npart[i]]++;
-    }
-  }
+  METIS_Free(xadj);
+  METIS_Free(adjncy);
 
-  if (*numflag == 1)
-    ChangeMesh2FNumbering2((*ne)*esize, elmnts, *ne, *nn, epart, npart);
+  gk_siguntrap();
+  gk_malloc_cleanup(0);
 
-  gk_free((void **)&xadj, &adjncy, &pwgts, &nptr, &nind, LTERM);
-
+  return metis_rcode(sigrval);
 }
 
 
 
-/*************************************************************************
-* This function partitions a finite element mesh by partitioning its dual
-* graph using KMETIS and then assigning nodes in a load balanced fashion.
-**************************************************************************/
-void METIS_PartMixedMeshDual(idxtype *ne, idxtype *nn, idxtype *elmnts, idxtype *etype, 
-idxtype *numflag,  idxtype *nparts, idxtype *edgecut, idxtype *epart, idxtype *npart,
-idxtype *conmat, idxtype custom, idxtype wgtflag, idxtype *vwgt)
+/*************************************************************************/
+/*! Induces a partitioning of the rows based on a a partitioning of the
+    columns. It is used by both the Nodal and Dual routines. */
+/*************************************************************************/
+void InduceRowPartFromColumnPart(idx_t nrows, idx_t *rowptr, idx_t *rowind,
+         idx_t *rpart, idx_t *cpart, idx_t nparts, real_t *tpwgts)
 {
-  idxtype i, j, k, l, me, tot, cnt;
-  idxtype *xadj, *adjncy, *pwgts, *nptr, *nind, *hash, *elms;
-  idxtype options[10], pnumflag=0;
-  idxtype nnbrs, nbrind[200], nbrwgt[200], maxpwgt;
-  idxtype esize, sizes[] = {-1, 3, 4, 8, 4, 2};
+  idx_t i, j, k, me;
+  idx_t nnbrs, *pwgts, *nbrdom, *nbrwgt, *nbrmrk;
+  idx_t *itpwgts;
 
-  hash = idxsmalloc((*ne), 0, "METIS_MIXEDMESHPARTNODAL: hash");
-   tot=0;
-   for (i=0;i<(*ne);i++){
-      hash[i]=tot;
-      tot+=sizes[etype[i]];
-      }
- 
+  pwgts  = ismalloc(nparts, 0, "InduceRowPartFromColumnPart: pwgts");
+  nbrdom = ismalloc(nparts, 0, "InduceRowPartFromColumnPart: nbrdom");
+  nbrwgt = ismalloc(nparts, 0, "InduceRowPartFromColumnPart: nbrwgt");
+  nbrmrk = ismalloc(nparts, -1, "InduceRowPartFromColumnPart: nbrmrk");
 
-  if (*numflag == 1)
-    ChangeMesh2CNumbering(tot, elmnts);
+  iset(nrows, -1, rpart);
 
-  xadj = idxmalloc(*ne+1, "METIS_MESHPARTNODAL: xadj");
-  elms = idxsmalloc(*ne+1, 0, ": elms"); 
-
-  if (custom==1){
-  cnt=METIS_MixedMeshToDualCount(ne, nn, elmnts, elms, etype, &pnumflag, conmat, 1);
-  adjncy = idxmalloc(cnt+1, "main: adjncy");
-  METIS_MixedMeshToDual(ne, nn, elmnts, elms, etype, &pnumflag, xadj, adjncy, conmat, 1);
+  /* setup the integer target partition weights */
+  itpwgts = imalloc(nparts, "InduceRowPartFromColumnPart: itpwgts");
+  if (tpwgts == NULL) {
+    iset(nparts, 1+nrows/nparts, itpwgts);
   }
-  else{
-  cnt=METIS_MixedMeshToDualCount(ne, nn, elmnts, elms, etype, &pnumflag, conmat, 0);
-  adjncy = idxmalloc(cnt+1, "main: adjncy");
-  METIS_MixedMeshToDual(ne, nn, elmnts, elms, etype, &pnumflag, xadj, adjncy, conmat, 0);
+  else {
+    for (i=0; i<nparts; i++)
+      itpwgts[i] = 1+nrows*tpwgts[i];
   }
 
-  options[0] = 0;
-  METIS_PartGraphKway(ne, xadj, adjncy, vwgt, NULL, &wgtflag, &pnumflag, nparts, options, edgecut, epart);
+  /* first assign the rows consisting only of columns that belong to 
+     a single partition. Assign rows that are empty to -2 (un-assigned) */
+  for (i=0; i<nrows; i++) {
+    if (rowptr[i+1]-rowptr[i] == 0) {
+      rpart[i] = -2;
+      continue;
+    }
 
-  /* Construct the node-element list */
-  nptr = idxsmalloc(*nn+1, 0, "METIS_MESHPARTDUAL: nptr");
- 
-   for(i=0;i<(*ne);i++){
-   l=hash[i];
-   for (j=(sizes[etype[i]]), k=0; k<j; k++)
-     nptr[elmnts[l+k]]++;
-
-   }
- 
-  MAKECSR(i, *nn, nptr);
-
-  nind = idxmalloc(nptr[*nn], "METIS_MESHPARTDUAL: nind");
-  for (k=i=0; i<(*ne); i++) {
-    for (j=0; j<sizes[etype[i]]; j++, k++)
-      nind[nptr[elmnts[k]]++] = i;
-  }
-  for (i=(*nn); i>0; i--)
-    nptr[i] = nptr[i-1];
-  nptr[0] = 0;
-
-
-  /* OK, now compute a nodal partition based on the element partition npart */
-  idxset(*nn, -1, npart);
-  pwgts = idxsmalloc(*nparts, 0, "METIS_MESHPARTDUAL: pwgts");
-  for (i=0; i<*nn; i++) {
-    me = epart[nind[nptr[i]]];
-    for (j=nptr[i]+1; j<nptr[i+1]; j++) {
-      if (epart[nind[j]] != me)
+    me = cpart[rowind[rowptr[i]]];
+    for (j=rowptr[i]+1; j<rowptr[i+1]; j++) {
+      if (rpart[rowind[j]] != me)
         break;
     }
-    if (j == nptr[i+1]) {
-      npart[i] = me;
+    if (j == rowptr[i+1]) {
+      rpart[i] = me;
       pwgts[me]++;
     }
   }
 
-  maxpwgt = 1.03*(*nn)/(*nparts);
-  for (i=0; i<*nn; i++) {
-    if (npart[i] == -1) { /* Assign the boundary element */
-      nnbrs = 0;
-      for (j=nptr[i]; j<nptr[i+1]; j++) {
-        me = epart[nind[j]];
-        for (k=0; k<nnbrs; k++) {
-          if (nbrind[k] == me) {
-            nbrwgt[k]++;
-            break;
-          }
+  /* next assign the rows consisting of columns belonging to multiple
+     partitions in a  balanced way */
+  for (i=0; i<nrows; i++) {
+    if (rpart[i] == -1) { 
+      for (nnbrs=0, j=rowptr[i]; j<rowptr[i+1]; j++) {
+        me = cpart[rowind[j]];
+        if (nbrmrk[me] == -1) {
+          nbrdom[nnbrs] = me; 
+          nbrwgt[nnbrs] = 1; 
+          nbrmrk[me] = nnbrs++;
         }
-        if (k == nnbrs) {
-          nbrind[nnbrs] = me;
-          nbrwgt[nnbrs++] = 1;
+        else {
+          nbrwgt[nbrmrk[me]]++;
         }
       }
-  /* Try to assign it first to the domain with most things in common */
-      j = idxargmax(nnbrs, nbrwgt);
-      if (pwgts[nbrind[j]] < maxpwgt) {
-        npart[i] = nbrind[j];
-      }
-      else {
-        /* If that fails, assign it to a light domain */
-        npart[i] = nbrind[0];
+      ASSERT(nnbrs > 0);
+
+      /* assign it first to the domain with most things in common */
+      rpart[i] = nbrdom[iargmax(nnbrs, nbrwgt)];
+
+      /* if overweight, assign it to the light domain */
+      if (pwgts[rpart[i]] > itpwgts[rpart[i]]) {
         for (j=0; j<nnbrs; j++) {
-          if (pwgts[nbrind[j]] < maxpwgt) {
-            npart[i] = nbrind[j];
+          if (pwgts[nbrdom[j]] < itpwgts[nbrdom[j]] ||
+              pwgts[nbrdom[j]]-itpwgts[nbrdom[j]] < pwgts[rpart[i]]-itpwgts[rpart[i]]) {
+            rpart[i] = nbrdom[j];
             break;
           }
         }
       }
-      pwgts[npart[i]]++;
+      pwgts[rpart[i]]++;
+
+      /* reset nbrmrk array */
+      for (j=0; j<nnbrs; j++) 
+        nbrmrk[nbrdom[j]] = -1;
     }
   }
 
-  if (*numflag == 1)
-    ChangeMesh2FNumbering2((*ne)*esize, elmnts, *ne, *nn, epart, npart);
-
-  gk_free((void **)&xadj, &adjncy, &pwgts, &nptr, &nind, LTERM);
+  gk_free((void **)&pwgts, &nbrdom, &nbrwgt, &nbrmrk, &itpwgts, LTERM);
 
 }
-
-

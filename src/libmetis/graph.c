@@ -1,154 +1,28 @@
-/*
- * Copyright 1997, Regents of the University of Minnesota
- *
- * graph.c
- *
- * This file contains functions that deal with setting up the graphs
- * for METIS.
- *
- * Started 7/25/97
- * George
- *
- */
+/**
+\file
+\brief Functions that deal with setting up the graphs for METIS.
 
-#include <metislib.h>
+\date   Started 7/25/1997
+\author George  
+\author Copyright 1997-2009, Regents of the University of Minnesota 
+\version\verbatim $Id: graph.c 10513 2011-07-07 22:06:03Z karypis $ \endverbatim
+*/
 
-/*************************************************************************
-* This function sets up the graph from the user input
-**************************************************************************/
-void SetUpGraph(GraphType *graph, idxtype OpType, idxtype nvtxs, idxtype ncon,
-       idxtype *xadj, idxtype *adjncy, idxtype *vwgt, idxtype *adjwgt, idxtype wgtflag)
+#include "metislib.h"
+
+
+/*************************************************************************/
+/*! This function sets up the graph from the user input */
+/*************************************************************************/
+graph_t *SetupGraph(ctrl_t *ctrl, idx_t nvtxs, idx_t ncon, idx_t *xadj, 
+             idx_t *adjncy, idx_t *vwgt, idx_t *vsize, idx_t *adjwgt) 
 {
-  idxtype i, j, k, sum;
-  float *nvwgt;
-  idxtype tvwgt[MAXNCON];
+  idx_t i, j, k, sum;
+  real_t *nvwgt;
+  graph_t *graph;
 
-
-  InitGraph(graph);
-
-  graph->nvtxs  = nvtxs;
-  graph->nedges = xadj[nvtxs];
-  graph->ncon   = ncon;
-
-  graph->xadj        = xadj;
-  graph->free_xadj   = 0;
-
-  graph->adjncy      = adjncy;
-  graph->free_adjncy = 0;
-
-  /* setup the vertex weights */
-  if (ncon == 1) { /* We are in the non mC mode */
-    if ((wgtflag&2) == 0) {
-      vwgt = graph->vwgt = idxsmalloc(nvtxs, 1, "SetUpGraph: vwgt");
-    }
-    else {
-      graph->vwgt      = vwgt;
-      graph->free_vwgt = 0;
-    }
-  }
-  else {  /* Set up the graph in MOC mode */
-    for (i=0; i<ncon; i++) 
-      tvwgt[i] = idxsum(nvtxs, vwgt+i, ncon);
-    
-    nvwgt = graph->nvwgt = gk_fmalloc(ncon*nvtxs, "SetUpGraph: nvwgt");
-
-    for (i=0; i<nvtxs; i++) {
-      for (j=0; j<ncon; j++) 
-        nvwgt[i*ncon+j] = (1.0*vwgt[i*ncon+j])/(1.0*tvwgt[j]);
-    }
-  }
-
-  /* setup the edge weights */
-  if ((wgtflag&1) == 0) {
-    adjwgt = graph->adjwgt = idxsmalloc(graph->nedges, 1, "SetUpGraph: adjwgt");
-  }
-  else {
-    graph->adjwgt      = adjwgt;
-    graph->free_adjwgt = 0;
-  }
-
-  /* Compute the initial values of the adjwgtsum */
-  graph->adjwgtsum = idxmalloc(nvtxs, "SetUpGraph: adjwgtsum");
-
-  for (i=0; i<nvtxs; i++) {
-    for (sum=0, j=xadj[i]; j<xadj[i+1]; j++)
-      sum += adjwgt[j];
-    graph->adjwgtsum[i] = sum;
-  }
-
-  graph->cmap = idxmalloc(nvtxs, "SetUpGraph: cmap");
-
-
-  if (OpType != OP_KMETIS && OpType != OP_KVMETIS) {
-    graph->label = idxmalloc(nvtxs, "SetUpGraph: label");
-
-    for (i=0; i<nvtxs; i++)
-      graph->label[i] = i;
-  }
-
-}
-
-
-
-
-/*************************************************************************
-* This function sets up the graph from the user input. The difference 
-* from the previous routine is that the vertex weights came already in
-* a normalized fashion.
-**************************************************************************/
-void SetUpGraph2(GraphType *graph, idxtype nvtxs, idxtype ncon, idxtype *xadj, 
-       idxtype *adjncy, float *nvwgt, idxtype *adjwgt)
-{
-  idxtype i, j, sum;
-
-  InitGraph(graph);
-
-  graph->nvtxs  = nvtxs;
-  graph->nedges = xadj[nvtxs];
-  graph->ncon   = ncon;
-
-  graph->xadj        = xadj;
-  graph->free_xadj   = 0;
-
-  graph->adjncy      = adjncy;
-  graph->free_adjncy = 0;
-
-  graph->adjwgt      = adjwgt;
-  graph->free_adjwgt = 0;
-
-  graph->nvwgt = gk_fmalloc(nvtxs*ncon, "SetUpGraph2: graph->nvwgt");
-  gk_fcopy(nvtxs*ncon, nvwgt, graph->nvwgt);
-
-
-  /* Compute the initial values of the adjwgtsum */
-  graph->adjwgtsum = idxmalloc(nvtxs, "SetUpGraph2: adjwgtsum");
-  for (i=0; i<nvtxs; i++) {
-    for (sum=0, j=xadj[i]; j<xadj[i+1]; j++)
-      sum += adjwgt[j];
-    graph->adjwgtsum[i] = sum;
-  }
-
-  graph->cmap = idxmalloc(nvtxs, "SetUpGraph2: cmap");
-
-  graph->label = idxmalloc(nvtxs, "SetUpGraph: label");
-  for (i=0; i<nvtxs; i++)
-    graph->label[i] = i;
-
-}
-
-
-/*************************************************************************
-* This function sets up the graph from the user input
-**************************************************************************/
-void VolSetUpGraph(GraphType *graph, idxtype OpType, idxtype nvtxs, idxtype ncon, idxtype *xadj, 
-                   idxtype *adjncy, idxtype *vwgt, idxtype *vsize, idxtype wgtflag)
-{
-  idxtype i, j, k, sum;
-  idxtype *adjwgt;
-  float *nvwgt;
-  idxtype tvwgt[MAXNCON];
-
-  InitGraph(graph);
+  /* allocate the graph and fill in the fields */
+  graph = CreateGraph();
 
   graph->nvtxs  = nvtxs;
   graph->nedges = xadj[nvtxs];
@@ -160,333 +34,241 @@ void VolSetUpGraph(GraphType *graph, idxtype OpType, idxtype nvtxs, idxtype ncon
   graph->adjncy      = adjncy;
   graph->free_adjncy = 0;
 
-  /* Setup the vwgt/vwgt */
-  if (ncon == 1) { /* We are in the non mC mode */
-    if ((wgtflag&2) == 0) {
-      vwgt = graph->vwgt = idxsmalloc(nvtxs, 1, "VolSetUpGraph: vwgt");
-    }
-    else {
-      graph->vwgt      = vwgt;
-      graph->free_vwgt = 0;
-    }
-  }
-  else {  /* Set up the graph in MOC mode */
-    /* Create the normalized vertex weights along each constraint */
-    for (i=0; i<ncon; i++) 
-      tvwgt[i] = idxsum(nvtxs, vwgt+i, ncon);
-    
-    nvwgt = graph->nvwgt = gk_fmalloc(ncon*nvtxs, "SetUpGraph: nvwgt");
 
-    for (i=0; i<nvtxs; i++) {
-      for (j=0; j<ncon; j++) 
-        nvwgt[i*ncon+j] = (1.0*vwgt[i*ncon+j])/(1.0*tvwgt[j]);
-    }
-  }
-
-
-  /* Setup the vsize */
-  if ((wgtflag&1) == 0) {
-    vsize = graph->vsize = idxsmalloc(nvtxs, 1, "VolSetUpGraph: vsize");
+  /* setup the vertex weights */
+  if (vwgt) {
+    graph->vwgt      = vwgt;
+    graph->free_vwgt = 0;
   }
   else {
-    graph->vsize      = vsize;
-    graph->free_vsize = 0;
+    vwgt = graph->vwgt = ismalloc(ncon*nvtxs, 1, "SetupGraph: vwgt");
   }
 
-  /* Allocate memory for edge weights and initialize them to the sum of the vsize */
-  adjwgt = graph->adjwgt = idxmalloc(graph->nedges, "VolSetUpGraph: adjwgt");
-  for (i=0; i<nvtxs; i++) {
-    for (j=xadj[i]; j<xadj[i+1]; j++)
-      adjwgt[j] = 1+vsize[i]+vsize[adjncy[j]];
+  graph->tvwgt    = imalloc(ncon, "SetupGraph: tvwgts");
+  graph->invtvwgt = rmalloc(ncon, "SetupGraph: invtvwgts");
+  for (i=0; i<ncon; i++) {
+    graph->tvwgt[i]    = isum(nvtxs, vwgt+i, ncon);
+    graph->invtvwgt[i] = 1.0/(graph->tvwgt[i] > 0 ? graph->tvwgt[i] : 1);
   }
 
 
-  /* Compute the initial values of the adjwgtsum */
-  graph->adjwgtsum = idxmalloc(nvtxs, "VolSetUpGraph: adjwgtsum");
-  for (i=0; i<nvtxs; i++) {
-    for (sum=0, j=xadj[i]; j<xadj[i+1]; j++)
-      sum += adjwgt[j];
-    graph->adjwgtsum[i] = sum;
+  if (ctrl->objtype == METIS_OBJTYPE_VOL) { 
+    /* Setup the vsize */
+    if (vsize) {
+      graph->vsize      = vsize;
+      graph->free_vsize = 0;
+    }
+    else {
+      vsize = graph->vsize = ismalloc(nvtxs, 1, "SetupGraph: vsize");
+    }
+
+    /* Allocate memory for edge weights and initialize them to the sum of the vsize */
+    adjwgt = graph->adjwgt = imalloc(graph->nedges, "SetupGraph: adjwgt");
+    for (i=0; i<nvtxs; i++) {
+      for (j=xadj[i]; j<xadj[i+1]; j++)
+        adjwgt[j] = 1+vsize[i]+vsize[adjncy[j]];
+    }
+  }
+  else { /* For edgecut minimization */
+    /* setup the edge weights */
+    if (adjwgt) {
+      graph->adjwgt      = adjwgt;
+      graph->free_adjwgt = 0;
+    }
+    else {
+      adjwgt = graph->adjwgt = ismalloc(graph->nedges, 1, "SetupGraph: adjwgt");
+    }
   }
 
-  graph->cmap = idxmalloc(nvtxs, "VolSetUpGraph: cmap");
 
+  /* setup various derived info */
+  SetupGraph_tvwgt(graph);
 
-  if (OpType != OP_KVMETIS) {
-    graph->label = idxmalloc(nvtxs, "SetUpGraph: label");
+  if (ctrl->optype == METIS_OP_PMETIS || ctrl->optype == METIS_OP_OMETIS) 
+    SetupGraph_label(graph);
 
-    for (i=0; i<nvtxs; i++)
-      graph->label[i] = i;
-  }
+  ASSERT(CheckGraph(graph, ctrl->numflag, 1));
 
+  return graph;
 }
 
 
-/*************************************************************************
-* This function randomly permutes the adjacency lists of a graph
-**************************************************************************/
-void RandomizeGraph(GraphType *graph)
+/*************************************************************************/
+/*! Set's up the tvwgt/invtvwgt info */
+/*************************************************************************/
+void SetupGraph_tvwgt(graph_t *graph)
 {
-  idxtype i, j, k, l, tmp, nvtxs;
-  idxtype *xadj, *adjncy, *adjwgt;
+  idx_t i;
 
-  nvtxs = graph->nvtxs;
-  xadj = graph->xadj;
-  adjncy = graph->adjncy;
-  adjwgt = graph->adjwgt;
+  if (graph->tvwgt == NULL) 
+    graph->tvwgt  = imalloc(graph->ncon, "SetupGraph_tvwgt: tvwgt");
+  if (graph->invtvwgt == NULL) 
+    graph->invtvwgt = rmalloc(graph->ncon, "SetupGraph_tvwgt: invtvwgt");
 
-  for (i=0; i<nvtxs; i++) {
-    l = xadj[i+1]-xadj[i];
-    for (j=xadj[i]; j<xadj[i+1]; j++) {
-      k = xadj[i] + RandomInRange(l);
-      SWAP(adjncy[j], adjncy[k], tmp);
-      SWAP(adjwgt[j], adjwgt[k], tmp);
-    }
+  for (i=0; i<graph->ncon; i++) {
+    graph->tvwgt[i]    = isum(graph->nvtxs, graph->vwgt+i, graph->ncon);
+    graph->invtvwgt[i] = 1.0/(graph->tvwgt[i] > 0 ? graph->tvwgt[i] : 1);
   }
 }
 
 
-/*************************************************************************
-* This function checks whether or not partition pid is contigous
-**************************************************************************/
-idxtype IsConnectedSubdomain(CtrlType *ctrl, GraphType *graph, idxtype pid, idxtype report)
+/*************************************************************************/
+/*! Set's up the label info */
+/*************************************************************************/
+void SetupGraph_label(graph_t *graph)
 {
-  idxtype i, j, k, nvtxs, first, last, nleft, ncmps, wgt;
-  idxtype *xadj, *adjncy, *where, *touched, *queue;
-  idxtype *cptr;
+  idx_t i;
 
-  nvtxs = graph->nvtxs;
-  xadj = graph->xadj;
-  adjncy = graph->adjncy;
-  where = graph->where;
+  if (graph->label == NULL)
+    graph->label = imalloc(graph->nvtxs, "SetupGraph_label: label");
 
-  touched = idxsmalloc(nvtxs, 0, "IsConnected: touched");
-  queue   = idxmalloc(nvtxs, "IsConnected: queue");
-  cptr    = idxmalloc(nvtxs+1, "IsConnected: cptr");
-
-  nleft = 0;
-  for (i=0; i<nvtxs; i++) {
-    if (where[i] == pid) 
-      nleft++;
-  }
-
-  for (i=0; i<nvtxs; i++) {
-    if (where[i] == pid) 
-      break;
-  }
-
-  touched[i] = 1;
-  queue[0] = i;
-  first = 0; last = 1;
-
-  cptr[0] = 0;  /* This actually points to queue */
-  ncmps = 0;
-  while (first != nleft) {
-    if (first == last) { /* Find another starting vertex */
-      cptr[++ncmps] = first;
-      for (i=0; i<nvtxs; i++) {
-        if (where[i] == pid && !touched[i])
-          break;
-      }
-      queue[last++] = i;
-      touched[i] = 1;
-    }
-
-    i = queue[first++];
-    for (j=xadj[i]; j<xadj[i+1]; j++) {
-      k = adjncy[j];
-      if (where[k] == pid && !touched[k]) {
-        queue[last++] = k;
-        touched[k] = 1;
-      }
-    }
-  }
-  cptr[++ncmps] = first;
-
-  if (ncmps > 1 && report) {
-    mprintf("The graph has %D connected components in partition %D:\t", ncmps, pid);
-    for (i=0; i<ncmps; i++) {
-      wgt = 0;
-      for (j=cptr[i]; j<cptr[i+1]; j++)
-        wgt += graph->vwgt[queue[j]];
-      mprintf("[%5D %5D] ", cptr[i+1]-cptr[i], wgt);
-      /*
-      if (cptr[i+1]-cptr[i] == 1)
-        mprintf("[%D %D] ", queue[cptr[i]], xadj[queue[cptr[i]]+1]-xadj[queue[cptr[i]]]);
-      */
-    }
-    mprintf("\n");
-  }
-
-  gk_free((void **)&touched, &queue, &cptr, LTERM);
-
-  return (ncmps == 1 ? 1 : 0);
+  for (i=0; i<graph->nvtxs; i++)
+    graph->label[i] = i;
 }
 
 
-/*************************************************************************
-* This function checks whether a graph is contigous or not
-**************************************************************************/
-idxtype IsConnected(CtrlType *ctrl, GraphType *graph, idxtype report)
+/*************************************************************************/
+/*! Setup the various arrays for the splitted graph */
+/*************************************************************************/
+graph_t *SetupSplitGraph(graph_t *graph, idx_t snvtxs, idx_t snedges)
 {
-  idxtype i, j, k, nvtxs, first, last;
-  idxtype *xadj, *adjncy, *touched, *queue;
+  graph_t *sgraph;
 
-  nvtxs = graph->nvtxs;
-  xadj = graph->xadj;
-  adjncy = graph->adjncy;
+  sgraph = CreateGraph();
 
-  touched = idxsmalloc(nvtxs, 0, "IsConnected: touched");
-  queue = idxmalloc(nvtxs, "IsConnected: queue");
+  sgraph->nvtxs  = snvtxs;
+  sgraph->nedges = snedges;
+  sgraph->ncon   = graph->ncon;
 
-  touched[0] = 1;
-  queue[0] = 0;
-  first = 0; last = 1;
+  /* Allocate memory for the splitted graph */
+  sgraph->xadj        = imalloc(snvtxs+1, "SetupSplitGraph: xadj");
+  sgraph->vwgt        = imalloc(sgraph->ncon*snvtxs, "SetupSplitGraph: vwgt");
+  sgraph->adjncy      = imalloc(snedges,  "SetupSplitGraph: adjncy");
+  sgraph->adjwgt      = imalloc(snedges,  "SetupSplitGraph: adjwgt");
+  sgraph->label	      = imalloc(snvtxs,   "SetupSplitGraph: label");
+  sgraph->tvwgt       = imalloc(sgraph->ncon, "SetupSplitGraph: tvwgt");
+  sgraph->invtvwgt    = rmalloc(sgraph->ncon, "SetupSplitGraph: invtvwgt");
 
-  while (first < last) {
-    i = queue[first++];
-    for (j=xadj[i]; j<xadj[i+1]; j++) {
-      k = adjncy[j];
-      if (!touched[k]) {
-        queue[last++] = k;
-        touched[k] = 1;
-      }
-    }
-  }
+  if (graph->vsize)
+    sgraph->vsize     = imalloc(snvtxs,   "SetupSplitGraph: vsize");
 
-  if (first != nvtxs && report)
-    mprintf("The graph is not connected. It has %D disconnected vertices!\n", nvtxs-first);
-
-  return (first == nvtxs ? 1 : 0);
+  return sgraph;
 }
 
 
-/*************************************************************************
-* This function checks whether or not partition pid is contigous
-**************************************************************************/
-idxtype IsConnected2(GraphType *graph, idxtype report)
+/*************************************************************************/
+/*! This function creates and initializes a graph_t data structure */
+/*************************************************************************/
+graph_t *CreateGraph(void)
 {
-  idxtype i, j, k, nvtxs, first, last, nleft, ncmps, wgt;
-  idxtype *xadj, *adjncy, *where, *touched, *queue;
-  idxtype *cptr;
+  graph_t *graph;
 
-  nvtxs = graph->nvtxs;
-  xadj = graph->xadj;
-  adjncy = graph->adjncy;
-  where = graph->where;
+  graph = (graph_t *)gk_malloc(sizeof(graph_t), "CreateGraph: graph");
 
-  touched = idxsmalloc(nvtxs, 0, "IsConnected: touched");
-  queue   = idxmalloc(nvtxs, "IsConnected: queue");
-  cptr    = idxmalloc(nvtxs+1, "IsConnected: cptr");
+  InitGraph(graph);
 
-  nleft = nvtxs;
-  touched[0] = 1;
-  queue[0] = 0;
-  first = 0; last = 1;
-
-  cptr[0] = 0;  /* This actually points to queue */
-  ncmps = 0;
-  while (first != nleft) {
-    if (first == last) { /* Find another starting vertex */
-      cptr[++ncmps] = first;
-      for (i=0; i<nvtxs; i++) {
-        if (!touched[i])
-          break;
-      }
-      queue[last++] = i;
-      touched[i] = 1;
-    }
-
-    i = queue[first++];
-    for (j=xadj[i]; j<xadj[i+1]; j++) {
-      k = adjncy[j];
-      if (!touched[k]) {
-        queue[last++] = k;
-        touched[k] = 1;
-      }
-    }
-  }
-  cptr[++ncmps] = first;
-
-  if (ncmps > 1 && report) {
-    mprintf("%D connected components:\t", ncmps);
-    for (i=0; i<ncmps; i++) {
-      if (cptr[i+1]-cptr[i] > 200)
-        mprintf("[%5D] ", cptr[i+1]-cptr[i]);
-    }
-    mprintf("\n");
-  }
-
-  gk_free((void **)&touched, &queue, &cptr, LTERM);
-
-  return (ncmps == 1 ? 1 : 0);
+  return graph;
 }
 
 
-/*************************************************************************
-* This function returns the number of connected components in cptr,cind
-* The separator of the graph is used to split it and then find its components.
-**************************************************************************/
-idxtype FindComponents(CtrlType *ctrl, GraphType *graph, idxtype *cptr, idxtype *cind)
+/*************************************************************************/
+/*! This function initializes a graph_t data structure */
+/*************************************************************************/
+void InitGraph(graph_t *graph) 
 {
-  idxtype i, j, k, nvtxs, first, last, nleft, ncmps, wgt;
-  idxtype *xadj, *adjncy, *where, *touched, *queue;
+  memset((void *)graph, 0, sizeof(graph_t));
 
-  nvtxs = graph->nvtxs;
-  xadj = graph->xadj;
-  adjncy = graph->adjncy;
-  where = graph->where;
+  /* graph size constants */
+  graph->nvtxs     = -1;
+  graph->nedges    = -1;
+  graph->ncon      = -1;
+  graph->mincut    = -1;
+  graph->minvol    = -1;
+  graph->nbnd      = -1;
 
-  touched = idxsmalloc(nvtxs, 0, "IsConnected: queue");
+  /* memory for the graph structure */
+  graph->xadj      = NULL;
+  graph->vwgt      = NULL;
+  graph->vsize     = NULL;
+  graph->adjncy    = NULL;
+  graph->adjwgt    = NULL;
+  graph->label     = NULL;
+  graph->cmap      = NULL;
+  graph->tvwgt     = NULL;
+  graph->invtvwgt  = NULL;
 
-  for (i=0; i<graph->nbnd; i++)
-    touched[graph->bndind[i]] = 1;
+  /* by default these are set to true, but the can be explicitly changed afterwards */
+  graph->free_xadj   = 1;
+  graph->free_vwgt   = 1;
+  graph->free_vsize  = 1;
+  graph->free_adjncy = 1;
+  graph->free_adjwgt = 1;
 
-  queue = cind;
 
-  nleft = 0;
-  for (i=0; i<nvtxs; i++) {
-    if (where[i] != 2) 
-      nleft++;
-  }
+  /* memory for the partition/refinement structure */
+  graph->where     = NULL;
+  graph->pwgts     = NULL;
+  graph->id        = NULL;
+  graph->ed        = NULL;
+  graph->bndptr    = NULL;
+  graph->bndind    = NULL;
+  graph->nrinfo    = NULL;
+  graph->ckrinfo   = NULL;
+  graph->vkrinfo   = NULL;
 
-  for (i=0; i<nvtxs; i++) {
-    if (where[i] != 2)
-      break;
-  }
-
-  touched[i] = 1;
-  queue[0] = i;
-  first = 0; last = 1;
-
-  cptr[0] = 0;  /* This actually points to queue */
-  ncmps = 0;
-  while (first != nleft) {
-    if (first == last) { /* Find another starting vertex */
-      cptr[++ncmps] = first;
-      for (i=0; i<nvtxs; i++) {
-        if (!touched[i])
-          break;
-      }
-      queue[last++] = i;
-      touched[i] = 1;
-    }
-
-    i = queue[first++];
-    for (j=xadj[i]; j<xadj[i+1]; j++) {
-      k = adjncy[j];
-      if (!touched[k]) {
-        queue[last++] = k;
-        touched[k] = 1;
-      }
-    }
-  }
-  cptr[++ncmps] = first;
-
-  gk_free((void **)&touched, LTERM);
-
-  return ncmps;
+  /* linked-list structure */
+  graph->coarser   = NULL;
+  graph->finer     = NULL;
 }
 
+
+/*************************************************************************/
+/*! This function frees the refinement/partition memory stored in a graph */
+/*************************************************************************/
+void FreeRData(graph_t *graph) 
+{
+
+  /* The following is for the -minconn and -contig to work properly in
+     the vol-refinement routines */
+  if ((void *)graph->ckrinfo == (void *)graph->vkrinfo)
+    graph->ckrinfo = NULL;
+
+
+  /* free partition/refinement structure */
+  gk_free((void **)&graph->where, &graph->pwgts, &graph->id, &graph->ed, 
+      &graph->bndptr, &graph->bndind, &graph->nrinfo, &graph->ckrinfo, 
+      &graph->vkrinfo, LTERM);
+}
+
+
+/*************************************************************************/
+/*! This function deallocates any memory stored in a graph */
+/*************************************************************************/
+void FreeGraph(graph_t **r_graph) 
+{
+  graph_t *graph;
+
+  graph = *r_graph;
+
+  /* free graph structure */
+  if (graph->free_xadj)
+    gk_free((void **)&graph->xadj, LTERM);
+  if (graph->free_vwgt)
+    gk_free((void **)&graph->vwgt, LTERM);
+  if (graph->free_vsize)
+    gk_free((void **)&graph->vsize, LTERM);
+  if (graph->free_adjncy)
+    gk_free((void **)&graph->adjncy, LTERM);
+  if (graph->free_adjwgt)
+    gk_free((void **)&graph->adjwgt, LTERM);
+    
+  /* free partition/refinement structure */
+  FreeRData(graph);
+
+  gk_free((void **)&graph->tvwgt, &graph->invtvwgt, &graph->label, 
+      &graph->cmap, &graph, LTERM);
+
+  *r_graph = NULL;
+}
 
 

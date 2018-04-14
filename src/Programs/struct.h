@@ -6,49 +6,63 @@
  * Started 8/9/02
  * George
  *
- * $Id: struct.h,v 1.8 2003/04/04 23:22:50 karypis Exp $
+ * $Id: struct.h 10409 2011-06-25 16:58:34Z karypis $
  */
 
 #ifndef _STRUCTBIN_H_
 #define _STRUCTBIN_H_
 
 
-/*************************************************************************
-* The following data structure implements a string-2-idxtype mapping
-* table used for parsing command-line options
-**************************************************************************/
+/*************************************************************************/
+/*! This data structure stores the various command line arguments */
+/*************************************************************************/
 typedef struct {
-  char *name;
-  idxtype id;
-} StringMapType;
+  idx_t ptype;
+  idx_t objtype;
+  idx_t ctype;
+  idx_t iptype;
+  idx_t rtype;
 
+  idx_t minconn;
+  idx_t contig;
 
+  idx_t nooutput;
 
-/*************************************************************************
-* This data structure stores the various command line arguments
-**************************************************************************/
-typedef struct {
-  idxtype mtype;
-  idxtype itype;
-  idxtype rtype;
+  idx_t balance;
+  idx_t ncuts;
+  idx_t niter;
 
-  idxtype balance;
-  idxtype ntrials;
-  idxtype niter;
+  idx_t gtype;
+  idx_t ncommon;
 
-  idxtype seed;
-  idxtype dbglvl;
+  idx_t seed;
+  idx_t dbglvl;
 
-  idxtype nparts;
+  idx_t nparts;
+
+  idx_t nseps;
+  idx_t ufactor;
+  idx_t pfactor;
+  idx_t compress;
+  idx_t ccorder;
 
   char *filename;
-  char *xyzfilename;
-  char *tpwgts;
+  char *outfile;
+  char *xyzfile;
+  char *tpwgtsfile;
+  char *ubvecstr;
 
-  float iotimer;
-  float clustertimer;
-  float reporttimer;
-} ParamType;
+  idx_t wgtflag;
+  idx_t numflag;
+  real_t *tpwgts;
+  real_t *ubvec;
+
+  real_t iotimer;
+  real_t parttimer;
+  real_t reporttimer;
+
+  size_t maxmemory;
+} params_t;
 
 
 #endif 

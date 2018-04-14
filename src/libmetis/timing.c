@@ -8,17 +8,17 @@
  * Started 7/24/97
  * George
  *
- * $Id: timing.c,v 1.2 2002/08/10 06:29:34 karypis Exp $
+ * $Id: timing.c 10467 2011-07-02 17:57:30Z karypis $
  *
  */
 
-#include <metislib.h>
+#include "metislib.h"
 
 
 /*************************************************************************
 * This function clears the timers
 **************************************************************************/
-void InitTimers(CtrlType *ctrl)
+void InitTimers(ctrl_t *ctrl)
 {
   gk_clearcputimer(ctrl->TotalTmr);
   gk_clearcputimer(ctrl->InitPartTmr);
@@ -29,13 +29,6 @@ void InitTimers(CtrlType *ctrl)
   gk_clearcputimer(ctrl->RefTmr);
   gk_clearcputimer(ctrl->ProjectTmr);
   gk_clearcputimer(ctrl->SplitTmr);
-  gk_clearcputimer(ctrl->SepTmr);
-  gk_clearcputimer(ctrl->AuxTmr1);
-  gk_clearcputimer(ctrl->AuxTmr2);
-  gk_clearcputimer(ctrl->AuxTmr3);
-  gk_clearcputimer(ctrl->AuxTmr4);
-  gk_clearcputimer(ctrl->AuxTmr5);
-  gk_clearcputimer(ctrl->AuxTmr6);
 }
 
 
@@ -43,23 +36,19 @@ void InitTimers(CtrlType *ctrl)
 /*************************************************************************
 * This function prints the various timers
 **************************************************************************/
-void PrintTimers(CtrlType *ctrl)
+void PrintTimers(ctrl_t *ctrl)
 {
-  mprintf("\nTiming Information -------------------------------------------------");
-  mprintf("\n Multilevel: \t\t %7.3f", gk_getcputimer(ctrl->TotalTmr));
-  mprintf("\n     Coarsening: \t\t %7.3f", gk_getcputimer(ctrl->CoarsenTmr));
-  mprintf("\n            Matching: \t\t\t %7.3f", gk_getcputimer(ctrl->MatchTmr));
-  mprintf("\n            Contract: \t\t\t %7.3f", gk_getcputimer(ctrl->ContractTmr));
-  mprintf("\n     Initial Partition: \t %7.3f", gk_getcputimer(ctrl->InitPartTmr));
-  mprintf("\n   Construct Separator: \t %7.3f", gk_getcputimer(ctrl->SepTmr));
-  mprintf("\n     Uncoarsening: \t\t %7.3f", gk_getcputimer(ctrl->UncoarsenTmr));
-  mprintf("\n          Refinement: \t\t\t %7.3f", gk_getcputimer(ctrl->RefTmr));
-  mprintf("\n          Projection: \t\t\t %7.3f", gk_getcputimer(ctrl->ProjectTmr));
-  mprintf("\n     Splitting: \t\t %7.3f", gk_getcputimer(ctrl->SplitTmr));
-  mprintf("\n          AUX1: \t\t %7.3f", gk_getcputimer(ctrl->AuxTmr1));
-  mprintf("\n          AUX2: \t\t %7.3f", gk_getcputimer(ctrl->AuxTmr2));
-  mprintf("\n          AUX3: \t\t %7.3f", gk_getcputimer(ctrl->AuxTmr3));
-  mprintf("\n********************************************************************\n");
+  printf("\nTiming Information -------------------------------------------------");
+  printf("\n Multilevel: \t\t %7.3"PRREAL"", gk_getcputimer(ctrl->TotalTmr));
+  printf("\n     Coarsening: \t\t %7.3"PRREAL"", gk_getcputimer(ctrl->CoarsenTmr));
+  printf("\n            Matching: \t\t\t %7.3"PRREAL"", gk_getcputimer(ctrl->MatchTmr));
+  printf("\n            Contract: \t\t\t %7.3"PRREAL"", gk_getcputimer(ctrl->ContractTmr));
+  printf("\n     Initial Partition: \t %7.3"PRREAL"", gk_getcputimer(ctrl->InitPartTmr));
+  printf("\n     Uncoarsening: \t\t %7.3"PRREAL"", gk_getcputimer(ctrl->UncoarsenTmr));
+  printf("\n          Refinement: \t\t\t %7.3"PRREAL"", gk_getcputimer(ctrl->RefTmr));
+  printf("\n          Projection: \t\t\t %7.3"PRREAL"", gk_getcputimer(ctrl->ProjectTmr));
+  printf("\n     Splitting: \t\t %7.3"PRREAL"", gk_getcputimer(ctrl->SplitTmr));
+  printf("\n********************************************************************\n");
 }
 
 

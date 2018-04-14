@@ -10,21 +10,29 @@
  * George
  */
 
-#include <metislib.h>
+#include "metislib.h"
 
-/*************************************************************************
-* This function compresses a graph by merging identical vertices
-* The compression should lead to at least 10% reduction.
-**************************************************************************/
-void CompressGraph(CtrlType *ctrl, GraphType *graph, idxtype nvtxs, idxtype *xadj, idxtype *adjncy, idxtype *cptr, idxtype *cind)
+/*************************************************************************/
+/*! This function compresses a graph by merging identical vertices
+    The compression should lead to at least 10% reduction. 
+
+    The compressed graph that is generated has its adjwgts set to 1.
+
+    \returns 1 if compression was performed, otherwise it returns 0.
+ 
+*/
+/**************************************************************************/
+graph_t *CompressGraph(ctrl_t *ctrl, idx_t nvtxs, idx_t *xadj, idx_t *adjncy, 
+             idx_t *vwgt, idx_t *cptr, idx_t *cind)
 {
-  idxtype i, ii, iii, j, jj, k, l, cnvtxs, cnedges;
-  idxtype *cxadj, *cadjncy, *cvwgt, *mark, *map;
-  KeyValueType *keys;
+  idx_t i, ii, iii, j, jj, k, l, cnvtxs, cnedges;
+  idx_t *cxadj, *cadjncy, *cvwgt, *mark, *map;
+  ikv_t *keys;
+  graph_t *graph=NULL;
 
-  mark = idxsmalloc(nvtxs, -1, "CompressGraph: mark");
-  map = idxsmalloc(nvtxs, -1, "CompressGraph: map");
-  keys = (KeyValueType *)gk_malloc(nvtxs*sizeof(KeyValueType), "CompressGraph: keys");
+  mark = ismalloc(nvtxs, -1, "CompressGraph: mark");
+  map  = ismalloc(nvtxs, -1, "CompressGraph: map");
+  keys = ikvmalloc(nvtxs, "CompressGraph: keys");
 
   /* Compute a key for each adjacency list */
   for (i=0; i<nvtxs; i++) {
@@ -35,18 +43,18 @@ void CompressGraph(CtrlType *ctrl, GraphType *graph, idxtype nvtxs, idxtype *xad
     keys[i].val = i;
   }
 
-  ikeysort(nvtxs, keys);
+  ikvsorti(nvtxs, keys);
 
   l = cptr[0] = 0;
   for (cnvtxs=i=0; i<nvtxs; i++) {
     ii = keys[i].val;
-    if (map[ii] == -1) { 
+    if (map[ii] == -1) {
       mark[ii] = i;  /* Add the diagonal entry */
       for (j=xadj[ii]; j<xadj[ii+1]; j++) 
         mark[adjncy[j]] = i;
 
+      map[ii]   = cnvtxs;
       cind[l++] = ii;
-      map[ii] = cnvtxs;
 
       for (j=i+1; j<nvtxs; j++) {
         iii = keys[j].val;
@@ -61,7 +69,7 @@ void CompressGraph(CtrlType *ctrl, GraphType *graph, idxtype nvtxs, idxtype *xad
           }
 
           if (jj == xadj[iii+1]) { /* Identical adjacency structure */
-            map[iii] = cnvtxs;
+            map[iii]  = cnvtxs;
             cind[l++] = iii;
           }
         }
@@ -71,98 +79,83 @@ void CompressGraph(CtrlType *ctrl, GraphType *graph, idxtype nvtxs, idxtype *xad
     }
   }
 
-  /* mprintf("Original: %6D, Compressed: %6D\n", nvtxs, cnvtxs); */
+  IFSET(ctrl->dbglvl, METIS_DBG_INFO, 
+        printf("  Compression: reduction in # of vertices: %"PRIDX".\n", nvtxs-cnvtxs)); 
 
 
-  InitGraph(graph);
+  if (cnvtxs < COMPRESSION_FRACTION*nvtxs) {
+    /* Sufficient compression is possible, so go ahead and create the 
+       compressed graph */
 
-  if (cnvtxs >= COMPRESSION_FRACTION*nvtxs) {
-    graph->nvtxs  = nvtxs;
-    graph->nedges = xadj[nvtxs];
-    graph->ncon   = 1;
-    graph->xadj      = xadj;
-    graph->free_xadj = 0;
-    graph->adjncy      = adjncy;
-    graph->free_adjncy = 0;
+    graph = CreateGraph();
 
-    graph->vwgt    	= idxmalloc(nvtxs, "CompressGraph: vwgt");
-    graph->adjwgtsum    = idxmalloc(nvtxs, "CompressGraph: adjwgtsum");
-    graph->cmap		= idxmalloc(nvtxs, "CompressGraph: cmap");
-    graph->adjwgt	= idxmalloc(graph->nedges, "CompressGraph: adjwgt");
-
-    idxset(nvtxs, 1, graph->vwgt);
-    idxset(graph->nedges, 1, graph->adjwgt);
-    for (i=0; i<nvtxs; i++)
-      graph->adjwgtsum[i] = xadj[i+1]-xadj[i];
-
-    graph->label = idxmalloc(nvtxs, "CompressGraph: label");
-    for (i=0; i<nvtxs; i++)
-      graph->label[i] = i;
-  }
-  else { /* Ok, form the compressed graph  */
     cnedges = 0;
     for (i=0; i<cnvtxs; i++) {
       ii = cind[cptr[i]];
       cnedges += xadj[ii+1]-xadj[ii];
     }
 
-    /* Allocate memory for the compressed graph*/
-    cxadj = graph->xadj		= idxmalloc(cnvtxs+1, "CompressGraph: xadj");
-    cvwgt = graph->vwgt         = idxmalloc(cnvtxs, "CompressGraph: vwgt");
-    graph->adjwgtsum        	= idxmalloc(cnvtxs, "CompressGraph: adjwgtsum");
-    graph->cmap                 = idxmalloc(cnvtxs, "CompressGraph: cmap");
-    cadjncy = graph->adjncy     = idxmalloc(cnedges, "CompressGraph: adjncy");
-    graph->adjwgt            	= idxmalloc(cnedges, "CompressGraph: adjwgt");
+    /* Allocate memory for the compressed graph */
+    cxadj   = graph->xadj   = imalloc(cnvtxs+1, "CompressGraph: xadj");
+    cvwgt   = graph->vwgt   = ismalloc(cnvtxs, 0, "CompressGraph: vwgt");
+    cadjncy = graph->adjncy = imalloc(cnedges, "CompressGraph: adjncy");
+              graph->adjwgt = ismalloc(cnedges, 1, "CompressGraph: adjwgt");
 
     /* Now go and compress the graph */
-    idxset(nvtxs, -1, mark);
+    iset(nvtxs, -1, mark);
     l = cxadj[0] = 0;
     for (i=0; i<cnvtxs; i++) {
-      cvwgt[i] = cptr[i+1]-cptr[i];
       mark[i] = i;  /* Remove any dioganal entries in the compressed graph */
       for (j=cptr[i]; j<cptr[i+1]; j++) {
         ii = cind[j];
+
+        /* accumulate the vertex weights of the consistuent vertices */
+        cvwgt[i] += (vwgt == NULL ? 1 : vwgt[ii]);
+
+        /* generate the combined adjancency list */
         for (jj=xadj[ii]; jj<xadj[ii+1]; jj++) {
           k = map[adjncy[jj]];
-          if (mark[k] != i) 
+          if (mark[k] != i) {
+            mark[k] = i;
             cadjncy[l++] = k;
-          mark[k] = i;
+          }
         }
       }
       cxadj[i+1] = l;
     }
 
-    graph->nvtxs = cnvtxs;
+    graph->nvtxs  = cnvtxs;
     graph->nedges = l;
-    graph->ncon = 1;
+    graph->ncon   = 1;
 
-    idxset(graph->nedges, 1, graph->adjwgt);
-    for (i=0; i<cnvtxs; i++)
-      graph->adjwgtsum[i] = cxadj[i+1]-cxadj[i];
-
-    graph->label = idxmalloc(cnvtxs, "CompressGraph: label");
-    for (i=0; i<cnvtxs; i++)
-      graph->label[i] = i;
-
+    SetupGraph_tvwgt(graph);
+    SetupGraph_label(graph);
   }
 
   gk_free((void **)&keys, &map, &mark, LTERM);
+
+  return graph;
+
 }
 
 
 
-/*************************************************************************
-* This function prunes all the vertices in a graph with degree greater 
-* than factor*average
-**************************************************************************/
-void PruneGraph(CtrlType *ctrl, GraphType *graph, idxtype nvtxs, idxtype *xadj, 
-                idxtype *adjncy, idxtype *iperm, float factor)
-{
-  idxtype i, j, k, l, nlarge, pnvtxs, pnedges;
-  idxtype *pxadj, *padjncy, *padjwgt;
-  idxtype *perm;
+/*************************************************************************/
+/*! This function prunes all the vertices in a graph with degree greater 
+    than factor*average. 
 
-  perm = idxmalloc(nvtxs, "PruneGraph: perm");
+    \returns the number of vertices that were prunned.
+*/
+/*************************************************************************/
+graph_t *PruneGraph(ctrl_t *ctrl, idx_t nvtxs, idx_t *xadj, idx_t *adjncy, 
+             idx_t *vwgt, idx_t *iperm, real_t factor)
+{
+  idx_t i, j, k, l, nlarge, pnvtxs, pnedges;
+  idx_t *pxadj, *padjncy, *padjwgt, *pvwgt;
+  idx_t *perm;
+  graph_t *graph=NULL;
+
+  perm = imalloc(nvtxs, "PruneGraph: perm");
 
   factor = factor*xadj[nvtxs]/nvtxs;
 
@@ -179,45 +172,25 @@ void PruneGraph(CtrlType *ctrl, GraphType *graph, idxtype nvtxs, idxtype *xadj,
     }
   }
 
-  /* mprintf("Pruned %D vertices\n", nlarge); */
+  IFSET(ctrl->dbglvl, METIS_DBG_INFO, 
+        printf("  Pruned %"PRIDX" of %"PRIDX" vertices.\n", nlarge, nvtxs)); 
 
-  InitGraph(graph);
 
-  if (nlarge == 0) { /* No prunning */
-    graph->nvtxs = nvtxs;
-    graph->nedges = xadj[nvtxs];
-    graph->ncon = 1;
-    graph->xadj      = xadj;
-    graph->free_xadj = 0;
-    graph->adjncy      = adjncy;
-    graph->free_adjncy = 0;
+  if (nlarge > 0 && nlarge < nvtxs) {  
+    /* Prunning is possible, so go ahead and create the prunned graph */
+    graph = CreateGraph();
 
-    graph->vwgt    	= idxmalloc(nvtxs, "PruneGraph: vwgt");
-    graph->adjwgtsum    = idxmalloc(nvtxs, "PruneGraph: adjwgtsum");
-    graph->cmap		= idxmalloc(nvtxs, "PruneGraph: cmap");
-    graph->adjwgt	= idxmalloc(graph->nedges, "PruneGraph: adjwgt");
-
-    idxset(nvtxs, 1, graph->vwgt);
-    idxset(graph->nedges, 1, graph->adjwgt);
-    for (i=0; i<nvtxs; i++)
-      graph->adjwgtsum[i] = xadj[i+1]-xadj[i];
-
-    graph->label = idxmalloc(nvtxs, "CompressGraph: label");
-    for (i=0; i<nvtxs; i++)
-      graph->label[i] = i;
-  }
-  else { /* Prune the graph */
     /* Allocate memory for the prunned graph*/
-    pxadj = graph->xadj		= idxmalloc(pnvtxs+1, "PruneGraph: xadj");
-    graph->vwgt                 = idxmalloc(pnvtxs, "PruneGraph: vwgt");
-    graph->adjwgtsum        	= idxmalloc(pnvtxs, "PruneGraph: adjwgtsum");
-    graph->cmap                 = idxmalloc(pnvtxs, "PruneGraph: cmap");
-    padjncy = graph->adjncy     = idxmalloc(pnedges, "PruneGraph: adjncy");
-    graph->adjwgt            	= idxmalloc(pnedges, "PruneGraph: adjwgt");
+    pxadj   = graph->xadj   = imalloc(pnvtxs+1, "PruneGraph: xadj");
+    pvwgt   = graph->vwgt   = imalloc(pnvtxs, "PruneGraph: vwgt");
+    padjncy = graph->adjncy = imalloc(pnedges, "PruneGraph: adjncy");
+              graph->adjwgt = ismalloc(pnedges, 1, "PruneGraph: adjwgt");
 
     pxadj[0] = pnedges = l = 0;
     for (i=0; i<nvtxs; i++) {
       if (xadj[i+1]-xadj[i] < factor) {
+        pvwgt[l] = (vwgt == NULL ? 1 : vwgt[i]);
+        
         for (j=xadj[i]; j<xadj[i+1]; j++) {
           k = perm[adjncy[j]];
           if (k < pnvtxs) 
@@ -227,22 +200,23 @@ void PruneGraph(CtrlType *ctrl, GraphType *graph, idxtype nvtxs, idxtype *xadj,
       }
     }
 
-    graph->nvtxs = pnvtxs;
+    graph->nvtxs  = pnvtxs;
     graph->nedges = pnedges;
-    graph->ncon = 1;
+    graph->ncon   = 1;
 
-    idxset(pnvtxs, 1, graph->vwgt);
-    idxset(pnedges, 1, graph->adjwgt);
-    for (i=0; i<pnvtxs; i++)
-      graph->adjwgtsum[i] = pxadj[i+1]-pxadj[i];
-
-    graph->label = idxmalloc(pnvtxs, "CompressGraph: label");
-    for (i=0; i<pnvtxs; i++)
-      graph->label[i] = i;
+    SetupGraph_tvwgt(graph);
+    SetupGraph_label(graph);
   }
+  else if (nlarge > 0 && nlarge == nvtxs) {  
+    IFSET(ctrl->dbglvl, METIS_DBG_INFO, 
+          printf("  Pruning is ignored as it removes all vertices.\n"));
+    nlarge = 0;
+  }
+
 
   gk_free((void **)&perm, LTERM);
 
+  return graph;
 }
 
 

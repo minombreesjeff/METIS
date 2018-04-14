@@ -8,22 +8,13 @@
  * Started 8/27/94
  * George
  *
- * $Id: metislib.h,v 1.1 2002/08/10 06:29:31 karypis Exp $
+ * $Id: metislib.h 10655 2011-08-02 17:38:11Z benjamin $
  */
 
+#ifndef _LIBMETIS_METISLIB_H_
+#define _LIBMETIS_METISLIB_H_
+
 #include <GKlib.h>
-#include <stddef.h>
-#include <stdlib.h>
-#include <stdarg.h>
-#include <stdio.h>
-#include <ctype.h>
-#include <math.h>
-#include <time.h>
-#include <string.h>
-#include <limits.h>
-#include <signal.h>
-#include <setjmp.h>
-#include <assert.h>
 
 #if defined(ENABLE_OPENMP)
   #include <omp.h>
@@ -31,20 +22,20 @@
 
 
 #include <metis.h>
+#include <rename.h>
+#include <gklib_defs.h>
 
 #include <defs.h>
 #include <struct.h>
 #include <macros.h>
-#include <rename.h>
 #include <proto.h>
 
 
 #if defined(COMPILER_MSC)
-#define rint(x) ((idxtype)((x)+0.5))  /* MSC does not have rint() function */
+#if defined(rint)
+  #undef rint
+#endif
+#define rint(x) ((idx_t)((x)+0.5))  /* MSC does not have rint() function */
 #endif
 
-
-#if defined(COMPILER_GCC)
-extern char* strdup (const char *);
 #endif
-
