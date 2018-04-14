@@ -1,0 +1,21 @@
+
+This file contains two test problems
+
+4elt.graph
+	This is a small graph corresponding to a 2D finite element mesh
+
+metis.mesh
+	This is a small 2D mesh (It is a triangulation of 'METIS')
+
+
+You can use them to test the various partitioning, and ordering routines.
+For example try something like
+
+	kmetis 4elt.graph 40
+	onmetis 4elt.graph
+	partnmesh metis.mesh 10
+	partdmesh metis.mesh 10
+	mesh2dual metis.mesh
+	kmetis metis.mesh.dgraph 10
+
+and so on...

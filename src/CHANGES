@@ -1,25 +1,113 @@
 
-METIS 2.0 contains a number of changes over METIS 1.0.
+METIS 3.0.6, 1/28/98
+-------------------------------------------------------------------------------
+  - Fixed some problems when too many partitions were asked, and each partition
+    end up having 0 vertices
+  - Fixed some bugs in the I/O routines
+  - Added support for the g77 compiler under Linux
+
+
+METIS 3.0.5, 12/22/97
+-------------------------------------------------------------------------------
+  - Fixed problems on 64-bit architectures (eg., -64 option on SGIs).
+  - Added some options in Makefile.in
+
+
+METIS 3.0.4, 12/1/97
+-------------------------------------------------------------------------------
+  Fixed a memory leak in the ordering code.
+
+
+METIS 3.0.3, 11/5/97
+-------------------------------------------------------------------------------
+  This is mostly a bug-fix release with just a few additions
+
+  Added functionality
+    - Added support for quadrilateral elements.
+    - Added a routine METIS_EstimateMemory that estimates the amount of
+      memory that will be allocated by METIS. This is useful in determining
+      if a problem can run on your system.
+    - Added hooks to allow PARMETIS to use the orderings produced by METIS.
+      This is hidden from the user but it will be used in the next release
+      of PARMETIS.
+
+  Bug-fixes
+    - Fixed a bug related to memory allocation. This should somewhat reduce the 
+      overall memory used by METIS.
+    - Fixed some bugs in the 'graphchk' program in the case of weighted graphs.
+    - Removed some code corresponding to unused options.
+    - Fixed some minor bugs in the node-refinement code
+      
+
+
+-------------------------------------------------------------------------------
+METIS 3.0 contains a number of changes over METIS 2.0.
 The major changes are the following:
 
-- A new faster k-way partitioning algorithm has been implemented
-  that produces good partitions for moderately large k (k>10), and
-  it is up to 5 times faster the previous recursive bisection
-  algorithm used in version 1.0.
+  General Changes
+  ---------------
+    1.  Added code to directly partition finite element meshes.
 
-- The algorithms have been extended to handle non-power of 2 partitions.  
+    2.  Added code to convert finite element meshes into graphs so they
+        can be used by METIS.
 
-- A stand-alone library is provided to directly use the partitioning
-  and ordering algorithms in METIS.
+    1.  The names, calling sequences, and options  of the routines in 
+        METISlib have been changed.
 
-- A number of modifications to the existing matching schemes have been
-  incorporated to better handle weighted graphs.
+    2.  Better support has been added for Fortran programs.
 
-- Some speed improvements over 1.0, up to 15\% faster in some cases.
+    3.  Eliminated the 'metis' program. The only way to tune METIS's
+        behavior is to use METISlib.
 
-- Added code to check the validity of the input graph. This tends to
-  increase the time required during I/O. Validity checking is turned
-  off in the stand-alone library.
+    4.  Improved memory management. METIS should now only abort if truly
+        there is no more memory left in the system.
 
-- Better memory management. Hopefully this should solve memory problems.
+
+  Graph Partitioning
+  ------------------
+    1.  Added partitioning routines that can be used to compute a partition 
+        with prescribed partition weights. For example, they can be used to 
+        compute a 3-way partition such that partition 1 has 50% of the weight, 
+        partition 2 has 20% of the way, and partition 3 has 30% of the weight. 
+
+    2.  Improved the speed of the k-way partitioning algorithm (kmetis). The
+        new code has better cache locality which dramatically improves the 
+        speed for large graphs. A factor of 4 speedup can be obtained for
+        certain graphs. METIS can now partition a 4 million node graph
+        in well under a minute on a MIPS R10000.
+
+    3.  Eliminated some of the options that were seldom used. 
+  
+
+  Fill-Reducing Orderings
+  ----------------------
+    1.  Added a node based ordering code `onmetis' that greatly improves 
+        ordering quality.
+
+    2.  Improved the quality of the orderings produced by the original
+        edge-based ordering code (it is now called 'oemetis').
+
+    3.  METIS can now analyze the graph and try to compress together 
+        nodes with identical sparsity pattern. For some problems, this 
+        significantly reduces ordering time 
+
+    4.  METIS can now prune dense columns prior to ordering. This can be
+        helpful for LP matrices.
+        
+
+  Mesh Partitioning
+  -----------------
+    1.  METIS can now directly partition the element node array of finite
+        element meshes. It produces two partitioning vectors. One for the
+        elements and one for the nodes. METIS supports the following 
+        elements: triangles, tetrahedra, hexahedra
+
+
+  Mesh-To-Graph Conversion Routines
+  ---------------------------------
+    1.  METIS now includes a number of mesh conversion functions that can 
+        be used to create the dual and nodal graphs directly from the 
+        element connectivity arrays. These are highly optimized routines. 
+
+
 

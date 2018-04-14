@@ -1,0 +1,15 @@
+
+This directory contains three test programs.
+
+ndcompare <GraphFile>
+  This programs reads in a graph and performs four orderings.
+  The first three of them are using onmetis but with the three
+  different matching schemes. The fourth ordering uses oemetis.
+  It reports the number of non-zeros for all four of them.
+  It is a good program to test the various matching schemes.
+
+pwtest <GraphFile> <Nparts>
+  This program can be used to test the METIS_WPartGraphRecursive routine
+
+kwtest <GraphFile> <Nparts>
+  This program can be used to test the METIS_WPartGraphKway routine
