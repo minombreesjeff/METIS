@@ -112,15 +112,15 @@ void ComputePartitionInfo(GraphType *graph, int nparts, idxtype *where)
   graph->where = tmpptr;
 
   if (mustfree == 1 || mustfree == 3) {
-    free(vwgt);
+    GKfree((void **)&vwgt, LTERM);
     graph->vwgt = NULL;
   }
   if (mustfree == 2 || mustfree == 3) {
-    free(adjwgt);
+    GKfree((void **)&adjwgt, LTERM);
     graph->adjwgt = NULL;
   }
 
-  GKfree(&kpwgts, &padjncy, &padjwgt, &padjcut, LTERM);
+  GKfree((void **)&kpwgts, &padjncy, &padjwgt, &padjcut, LTERM);
 }
 
 
@@ -216,15 +216,15 @@ void ComputePartitionInfoBipartite(GraphType *graph, int nparts, idxtype *where)
 
 
   if (mustfree == 1 || mustfree == 3) {
-    free(vwgt);
+   GKfree((void **)&vwgt,LTERM);
     graph->vwgt = NULL;
   }
   if (mustfree == 2 || mustfree == 3) {
-    free(adjwgt);
+    GKfree((void **)&adjwgt, LTERM);
     graph->adjwgt = NULL;
   }
 
-  GKfree(&kpwgts, &padjncy, &padjwgt, &padjcut, LTERM);
+  GKfree((void **)&kpwgts, &padjncy, &padjwgt, &padjcut, LTERM);
 }
 
 
@@ -258,9 +258,7 @@ void ComputePartitionBalance(GraphType *graph, int nparts, idxtype *where, float
       ubvec[j] = 1.0*nparts*kpwgts[idxamax(nparts, kpwgts)]/(1.0*idxsum(nparts, kpwgts));
     }
   }
-
-  free(kpwgts);
-
+  GKfree((void **)&kpwgts, LTERM);
 }
 
 
@@ -280,10 +278,9 @@ float ComputeElementBalance(int ne, int nparts, idxtype *where)
 
   balance = 1.0*nparts*kpwgts[idxamax(nparts, kpwgts)]/(1.0*idxsum(nparts, kpwgts));
 
-  free(kpwgts);
+  GKfree((void **)&kpwgts, LTERM);
 
   return balance;
-
 }
 
 
@@ -310,7 +307,6 @@ void Moc_ComputePartitionBalance(GraphType *graph, int nparts, idxtype *where, f
     ubvec[j] = (float)nparts*kpwgts[samax(nparts, kpwgts)]/ssum(nparts, kpwgts);
   }
 
-  free(kpwgts);
-
+  GKfree((void **)&kpwgts, LTERM);
 }
 

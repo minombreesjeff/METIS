@@ -37,7 +37,6 @@ void AllocateNodePartitionParams(CtrlType *ctrl, GraphType *graph, WorkSpaceType
   graph->lpwgts  = idxmalloc(2*nparts, "AllocateNodePartitionParams: lpwgts");
   graph->gpwgts  = idxmalloc(2*nparts, "AllocateNodePartitionParams: gpwgts");
   graph->sepind  = idxmalloc(nvtxs, "AllocateNodePartitionParams: sepind");
-  graph->hmarker = idxmalloc(nvtxs, "AllocateNodePartitionParams: hmarker");
 
   /* Allocate additional memory for graph->vwgt in order to store the weights
      of the remote vertices */
@@ -60,8 +59,8 @@ void AllocateNodePartitionParams(CtrlType *ctrl, GraphType *graph, WorkSpaceType
 /************************************************************************************/
 void ComputeNodePartitionParams(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
 {
-  int i, j, nparts, nvtxs, nsep, firstvtx, lastvtx;
-  idxtype *xadj, *adjncy, *adjwgt, *vtxdist, *vwgt, *lpwgts, *gpwgts, *sepind, *hmarker;
+  int i, j, nparts, nvtxs, nsep;
+  idxtype *xadj, *adjncy, *adjwgt, *vtxdist, *vwgt, *lpwgts, *gpwgts, *sepind;
   idxtype *where;
   NRInfoType *rinfo, *myrinfo;
   int me, other, otherwgt;
@@ -82,14 +81,9 @@ void ComputeNodePartitionParams(CtrlType *ctrl, GraphType *graph, WorkSpaceType 
   lpwgts  = graph->lpwgts;
   gpwgts  = graph->gpwgts;
   sepind  = graph->sepind;
-  hmarker = graph->hmarker;
-
-  firstvtx = vtxdist[ctrl->mype];
-  lastvtx  = vtxdist[ctrl->mype+1];
 
   /* Reset refinement data structures */
   idxset(2*nparts, 0, lpwgts);
-  idxset(nvtxs, 0, hmarker);
 
   /* Send/Receive the where and vwgt information of interface vertices. */
   CommInterfaceData(ctrl, graph, where, wspace->indices, where+nvtxs); 
@@ -124,30 +118,79 @@ void ComputeNodePartitionParams(CtrlType *ctrl, GraphType *graph, WorkSpaceType 
   MPI_Allreduce((void *)lpwgts, (void *)gpwgts, 2*nparts, IDX_DATATYPE, MPI_SUM, ctrl->comm);
   graph->mincut = gpwgts[2*nparts-1];
 
+  IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->KWayInitTmr));
+}
 
-  /* Mark the halo vertices by determining how many non-local vertices they are
-   * connected to. */
-  idxset(nvtxs, 0, hmarker);
-  for (i=0; i<nvtxs; i++) {
-    for (j=xadj[i]; j<xadj[i+1]; j++) {
-      if (adjncy[j] >= nvtxs) {
-        hmarker[i]++;
+
+/************************************************************************************/
+/*! 
+  This function updates the node refinment information after a where[] change 
+
+*/
+/************************************************************************************/
+void UpdateNodePartitionParams(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
+{
+  int i, j, nparts, nvtxs, nsep;
+  idxtype *xadj, *adjncy, *adjwgt, *vtxdist, *vwgt, *lpwgts, *gpwgts, *sepind;
+  idxtype *where;
+  NRInfoType *rinfo, *myrinfo;
+  int me, other, otherwgt;
+
+  IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->KWayInitTmr));
+
+  nvtxs  = graph->nvtxs;
+  nparts = ctrl->nparts;
+
+  vtxdist = graph->vtxdist;
+  xadj    = graph->xadj;
+  adjncy  = graph->adjncy;
+  adjwgt  = graph->adjwgt;
+  vwgt    = graph->vwgt;
+
+  where   = graph->where;
+  rinfo   = graph->nrinfo;
+  lpwgts  = graph->lpwgts;
+  gpwgts  = graph->gpwgts;
+  sepind  = graph->sepind;
+
+  /* Reset refinement data structures */
+  idxset(2*nparts, 0, lpwgts);
+
+  /* Send/Receive the where and vwgt information of interface vertices. */
+  CommInterfaceData(ctrl, graph, where, wspace->indices, where+nvtxs); 
+
+
+  /*------------------------------------------------------------
+  / Compute now the degrees
+  /------------------------------------------------------------*/
+  for (nsep=i=0; i<nvtxs; i++) {
+    me = where[i];
+    ASSERT(ctrl, me >= 0 && me < 2*nparts);
+    lpwgts[me] += vwgt[i];
+
+    if (me >= nparts) {  /* If it is a separator vertex */
+      sepind[nsep++] = i;
+      lpwgts[2*nparts-1] += vwgt[i];  /* Keep track of total separator weight */
+
+      myrinfo = rinfo+i;
+      myrinfo->edegrees[0] = myrinfo->edegrees[1] = 0;
+
+      for (j=xadj[i]; j<xadj[i+1]; j++) {
+        other = where[adjncy[j]];
+        if (me != other)
+          myrinfo->edegrees[other%2] += vwgt[adjncy[j]];
       }
     }
   }
+  graph->nsep = nsep;
 
-
-#ifdef XX
-  /* Print Weight information */
-  if (ctrl->mype == 0) {
-    for (i=0; i<nparts; i+=2) 
-      printf("[%5d %5d %5d] ", gpwgts[i], gpwgts[i+1], gpwgts[nparts+i]); 
-    printf("\n");
-  }
-#endif
+  /* Finally, sum-up the partition weights */
+  MPI_Allreduce((void *)lpwgts, (void *)gpwgts, 2*nparts, IDX_DATATYPE, MPI_SUM, ctrl->comm);
+  graph->mincut = gpwgts[2*nparts-1];
 
   IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->KWayInitTmr));
 }
+
 
 
 /************************************************************************************/
@@ -157,27 +200,38 @@ void ComputeNodePartitionParams(CtrlType *ctrl, GraphType *graph, WorkSpaceType 
   partitions is disconnected from each other due to the removal of the previous level
   separators.
 
+  This version uses a priority queue to order the nodes and incorporates gain updates 
+  from the local information within each inner iteration.
+
+  The refinement exits when there is no improvement in two successive itereations
+  in order to account for the fact that a 0 => 1 iteration may have no gain but a
+  1 => 0 iteration may have a gain.
 */
 /************************************************************************************/
-void KWayNodeRefine(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace, 
-         int npasses, float ubfraction)
+void KWayNodeRefine_Greedy(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace, 
+         int npasses, float ubfrac)
 {
-  int i, ii, iii, j, k, pass, nvtxs, firstvtx, lastvtx, otherlastvtx, c, nmoves, 
-      nlupd, nsupd, nnbrs, nchanged, nsep;
+  int i, ii, iii, j, jj, k, pass, nvtxs, nrecv, firstvtx, lastvtx, otherlastvtx, 
+      side, c, cc, nmoves, nlupd, nsupd, nnbrs, nchanged, nsep, nzerogainiterations;
   int npes = ctrl->npes, mype = ctrl->mype, nparts = ctrl->nparts;
   idxtype *xadj, *adjncy, *adjwgt, *vtxdist, *vwgt;
   idxtype *where, *lpwgts, *gpwgts, *sepind;
   idxtype *peind, *recvptr, *sendptr;
-  idxtype *update, *supdate, *rupdate, *pe_updates, *htable, *changed;
-  idxtype *badminpwgt, *badmaxpwgt;
+  idxtype *update, *supdate, *rupdate, *pe_updates, *marker, *changed;
+  idxtype *badmaxpwgt;
   KeyValueType *swchanges, *rwchanges;
   int *nupds_pe;
   NRInfoType *rinfo, *myrinfo;
   int from, to, me, other, oldcut;
+  FPQueueType queue;
+  idxtype *inqueue;
+  idxtype *rxadj, *radjncy;
+  char title[1024];
 
   IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->KWayTmr));
 
   nvtxs = graph->nvtxs;
+  nrecv = graph->nrecv;
 
   vtxdist = graph->vtxdist;
   xadj    = graph->xadj;
@@ -210,87 +264,144 @@ void KWayNodeRefine(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace,
   rupdate  = supdate + recvptr[nnbrs];
   nupds_pe = imalloc(npes, "KWayRefine: nupds_pe");
 
-  htable = idxsmalloc(nvtxs+graph->nrecv, 0, "KWayRefine: lhtable");
+  marker = idxsmalloc(nvtxs+nrecv, 0, "KWayRefine: marker");
 
-  badminpwgt = wspace->pv1;
-  badmaxpwgt = wspace->pv2;
+  FPQueueInit(&queue, nvtxs);
 
-  for (i=0; i<nparts; i+=2) {
-    badminpwgt[i] = badminpwgt[i+1] = (1.0/ubfraction)*(gpwgts[i]+gpwgts[i+1])/2;
-    badmaxpwgt[i] = badmaxpwgt[i+1] = ubfraction*(gpwgts[i]+gpwgts[i+1])/2;
+  inqueue = idxmalloc(nvtxs+nrecv, "KWayRefine:: inqueue");
+
+  badmaxpwgt = wspace->pv1;
+
+  for (i=0; i<nparts; i+=2) 
+    //badmaxpwgt[i] = badmaxpwgt[i+1] = ubfrac*(gpwgts[i]+gpwgts[i+1]+gpwgts[nparts+i])/2;
+    badmaxpwgt[i] = badmaxpwgt[i+1] = ubfrac*(gpwgts[i]+gpwgts[i+1])/2;
+
+  /* construct the local adjacency list of the interface nodes */
+  rxadj = idxsmalloc(nrecv+1, 0, "KWayRefine: rxadj");
+  for (i=0; i<nvtxs; i++) {
+    for (j=xadj[i]; j<xadj[i+1]; j++) {
+      if ((k = adjncy[j]-nvtxs) >= 0)
+        rxadj[k]++;
+    }
   }
-  //myprintf(ctrl, "%6d %6d %6d %6d %6d %6d %6d\n", lpwgts[0], lpwgts[1], lpwgts[2], gpwgts[0], gpwgts[1], gpwgts[2], badmaxpwgt[0]);
+  MAKECSR(i, nrecv, rxadj);
+  radjncy = idxmalloc(rxadj[nrecv], "KWayRefine: radjncy");
+  for (i=0; i<nvtxs; i++) {
+    for (j=xadj[i]; j<xadj[i+1]; j++) {
+      if ((k = adjncy[j]-nvtxs) >= 0)
+        radjncy[rxadj[k]++] = i;
+    }
+  }
+  SHIFTCSR(i, nrecv, rxadj);
+
 
   IFSET(ctrl->dbglvl, DBG_REFINEINFO, 
-      PrintNodeBalanceInfo(ctrl, nparts, gpwgts, badminpwgt, badmaxpwgt, 1));
+      PrintNodeBalanceInfo(ctrl, nparts, gpwgts, badmaxpwgt, "K-way sep-refinement"));
 
+  c = GlobalSESum(ctrl, RandomInRange(2))%2;
+  nzerogainiterations = 0;
   for (pass=0; pass<npasses; pass++) {
     oldcut = graph->mincut;
 
-    for (c=0; c<2; c++) {
-      for (i=0; i<nparts; i+=2) {
-        badminpwgt[i] = badminpwgt[i+1] = (1.0/ubfraction)*(gpwgts[i]+gpwgts[i+1])/2;
-        badmaxpwgt[i] = badmaxpwgt[i+1] = ubfraction*(gpwgts[i]+gpwgts[i+1])/2;
-      }
+    for (side=0; side<2; side++) {
+      cc = (c+1)%2;
 
-      nlupd = nsupd = nmoves = nchanged = 0;
+#ifndef NDEBUG
+      /* This is for debugging purposes */
+      for (ii=0, i=0; i<nvtxs; i++) {
+        if (where[i] >= nparts)
+          ii++;
+      }
+      ASSERT(ctrl, ii == nsep);
+#endif
+
+      /* Put the separator nodes in queue */
+      FPQueueReset(&queue);
+      idxset(nvtxs+nrecv, 0, inqueue);
       for (ii=0; ii<nsep; ii++) {
         i = sepind[ii];
-        from = where[i];
+        ASSERT(ctrl, inqueue[i] == 0);
+        ASSERT(ctrl, where[i] >= nparts);
+        FPQueueInsert(&queue, i, vwgt[i] - rinfo[i].edegrees[cc]);
+        inqueue[i] = 1;
+      }
 
+      nlupd = nsupd = nmoves = nchanged = nsep = 0;
+      while ((i = FPQueueGetMax(&queue)) != -1) {
+        inqueue[i] = 0; 
+
+        from = where[i];
         ASSERT(ctrl, from >= nparts);
 
+        /* It is a one-sided move so it will go to the other partition. 
+           Look at the comments in InitMultisection to understand the meaning 
+           of from%nparts */
+        to    = from%nparts+c;   /* where to move the separator node */
+        other = from%nparts+cc;  /* the other partition involved in the 3-way view */
+
+
         /* Go through the loop to see if gain is possible for the separator vertex */
-        if (rinfo[i].edegrees[(c+1)%2] <= vwgt[i]) {
-          /* It is a one-sded move so it will go to the other partition. 
-             Look at the comments in InitMultisection to understand the meaning 
-             of from%nparts */
-          to = from%nparts+c;  
-
-          if (gpwgts[to]+vwgt[i] > badmaxpwgt[to]) {
-            /* printf("Skip because of weight! %d\n", vwgt[i]-rinfo[i].edegrees[(c+1)%2]); */
-            continue;   /* We cannot move it there because it gets too heavy */
-          }
-
+        if (gpwgts[to]+vwgt[i] <= badmaxpwgt[to] && vwgt[i] - rinfo[i].edegrees[cc] >= 0) {
           /* Update the where information of the vertex you moved */
           where[i] = to;
-
-          /* Remove this vertex from the sepind. Note the trick for looking at 
-             the sepind[ii] again */
-          sepind[ii--] = sepind[--nsep]; 
-
-          /* myprintf(ctrl, "Vertex %d [%d %d] is moving to %d from %d [%d]\n", 
-                  i+firstvtx, vwgt[i], rinfo[i].edegrees[(c+1)%2], to, from, where[i]); */
 
           lpwgts[from]       -= vwgt[i];
           lpwgts[2*nparts-1] -= vwgt[i];
           lpwgts[to]         += vwgt[i];
           gpwgts[to]         += vwgt[i];
 
-          /* Put the vertices adjacent to i that belong to either the separator or
-             the (c+1)%2 partition into the update array */
+          /* Update and record future updates */
           for (j=xadj[i]; j<xadj[i+1]; j++) {
-            k = adjncy[j];
-            if (htable[k] == 0 && where[k] != to) {
-              htable[k] = 1;
-              if (k<nvtxs)
-                update[nlupd++] = k;
+            ii = adjncy[j];
+
+            /* If vertex ii is being pulled into the separator for the first time, 
+               then update the edegrees[] of the nodes currently in the queue that
+               vertex ii is connected to */
+            if (marker[ii] == 0 && where[ii] == other) {
+              if (ii < nvtxs) { /* local vertices */
+                for (jj=xadj[ii]; jj<xadj[ii+1]; jj++) {
+                  iii = adjncy[jj];
+                  if (inqueue[iii] == 1) {
+                    ASSERT(ctrl, rinfo[iii].edegrees[cc] >= vwgt[ii]);
+                    rinfo[iii].edegrees[cc] -= vwgt[ii];
+                    FPQueueUpdate(&queue, iii, vwgt[iii]-rinfo[iii].edegrees[cc]);
+                  }
+                }
+              }
+              else { /* remote vertices */
+                for (jj=rxadj[ii-nvtxs]; jj<rxadj[ii-nvtxs+1]; jj++) {
+                  iii = radjncy[jj];
+                  if (inqueue[iii] == 1) {
+                    ASSERT(ctrl, rinfo[iii].edegrees[cc] >= vwgt[ii]);
+                    rinfo[iii].edegrees[cc] -= vwgt[ii];
+                    FPQueueUpdate(&queue, iii, vwgt[iii]-rinfo[iii].edegrees[cc]);
+                  }
+                }
+              }
+            }
+
+
+            /* Put the vertices adjacent to i that belong to either the separator or
+               the cc partition into the update array */
+            if (marker[ii] == 0 && where[ii] != to) {
+              marker[ii] = 1;
+              if (ii<nvtxs)
+                update[nlupd++] = ii;
               else
-                supdate[nsupd++] = k;
+                supdate[nsupd++] = ii;
             }
           }
           nmoves++;
           if (graph->pexadj[i+1]-graph->pexadj[i] > 0)
             changed[nchanged++] = i;
         }
+        else {
+          /* This node will remain in the separator for the next iteration */
+          sepind[nsep++] = i;
+        }
       }
 
       /* myprintf(ctrl, "nmoves: %d, nlupd: %d, nsupd: %d\n", nmoves, nlupd, nsupd); */
-
-      /* Tell everybody interested what the new where[] info is for the interface vertices */
-      CommChangedInterfaceData(ctrl, graph, nchanged, changed, where, swchanges, 
-          rwchanges, wspace->pv4); 
-
 
       IFSET(ctrl->dbglvl, DBG_RMOVEINFO, rprintf(ctrl, "\t[%d %d], [%d %d %d]\n", 
                 pass, c, GlobalSESum(ctrl, nmoves), GlobalSESum(ctrl, nsupd), 
@@ -309,7 +420,7 @@ void KWayNodeRefine(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace,
 
       /* Issue the sends next. This needs some preporcessing */
       for (i=0; i<nsupd; i++) {
-        htable[supdate[i]] = 0;
+        marker[supdate[i]] = 0;
         supdate[i] = graph->imap[supdate[i]];
       }
       iidxsort(nsupd, supdate);
@@ -336,8 +447,8 @@ void KWayNodeRefine(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace,
         pe_updates = rupdate+sendptr[i];
         for (j=0; j<nupds_pe[i]; j++) {
           k = pe_updates[j];
-          if (htable[k-firstvtx] == 0) {
-            htable[k-firstvtx] = 1;
+          if (marker[k-firstvtx] == 0) {
+            marker[k-firstvtx] = 1;
             update[nlupd++] = k-firstvtx;
           }
         }
@@ -348,11 +459,10 @@ void KWayNodeRefine(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace,
       / Update the where information of the vertices that are pulled
       / into the separator.
       /-------------------------------------------------------------*/
-      nchanged = 0;
       for (ii=0; ii<nlupd; ii++) {
         i = update[ii];
         me = where[i];
-        if (me < nparts && me%2 == (c+1)%2) { /* This vertex is pulled into the separator */
+        if (me < nparts && me%2 == cc) { /* This vertex is pulled into the separator */
           lpwgts[me] -= vwgt[i];
           where[i] = nparts+me-(me%2); 
           sepind[nsep++] = i;  /* Put the vertex into the sepind array */
@@ -376,9 +486,9 @@ void KWayNodeRefine(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace,
       /-------------------------------------------------------------*/
       for (ii=0; ii<nlupd; ii++) {
         i = update[ii];
-        ASSERT(ctrl, htable[i] == 1);
+        ASSERT(ctrl, marker[i] == 1);
 
-        htable[i] = 0;
+        marker[i] = 0;
 
         me = where[i];
         if (me >= nparts) {  /* If it is a separator vertex */
@@ -400,41 +510,210 @@ void KWayNodeRefine(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace,
           ctrl->comm);
       graph->mincut = gpwgts[2*nparts-1];
 
+      sprintf(title, "\tTotalSep [%d]", c);
       IFSET(ctrl->dbglvl, DBG_REFINEINFO, PrintNodeBalanceInfo(ctrl, nparts, gpwgts, 
-            badminpwgt, badmaxpwgt, 0));
+            badmaxpwgt, title));
+
+      /* break out if there is no improvement in two successive inner iterations that
+         can span successive outer iterations */
+      if (graph->mincut == oldcut) {
+        if (++nzerogainiterations == 2)
+          break;
+      }
+      else {
+        nzerogainiterations = 0;
+      }
+
+      c = cc;
     }
 
-    if (graph->mincut == oldcut)
+    /* break out if there is no improvement in two successive inner iterations that
+       can span successive outer iterations */
+    if (graph->mincut == oldcut && nzerogainiterations == 2) 
       break;
   }
 
-  GKfree((void **)&update, &nupds_pe, &htable, &changed, LTERM);
+  FPQueueFree(&queue);
+  GKfree((void **)&update, &nupds_pe, &marker, &changed, &inqueue, 
+      &rxadj, &radjncy, LTERM);
 
   IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->KWayTmr));
 }
 
 
+/************************************************************************************/
+/*! 
+  This function performs k-way node-based refinement. The key difference between
+  this and the previous routine is that the well-interior nodes are refined using 
+  a serial node-based refinement algortihm.
+*/
+/************************************************************************************/
+void KWayNodeRefine2Phase(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace, 
+         int npasses, float ubfrac)
+{
+  int i, oldcut;
 
-/*************************************************************************
-* This function prints balance information for the parallel k-section 
-* refinement algorithm
-**************************************************************************/
-void PrintNodeBalanceInfo(CtrlType *ctrl, int nparts, idxtype *gpwgts, idxtype *badminpwgt, 
-         idxtype *badmaxpwgt, int title)
+  oldcut = graph->mincut+1;
+  for (i=0; i<npasses; i++) {
+    KWayNodeRefine_Greedy(ctrl, graph, wspace, npasses, ubfrac);
+    if (graph->mincut == oldcut)
+      break;
+    oldcut = graph->mincut;
+
+    KWayNodeRefineInterior(ctrl, graph, wspace, 2, ubfrac);
+    UpdateNodePartitionParams(ctrl, graph, wspace);
+    if (graph->mincut == oldcut)
+      break;
+    oldcut = graph->mincut;
+  }
+}
+
+
+/************************************************************************************/
+/*! 
+  This function performs k-way node-based refinement of the interior nodes of the 
+  graph assigned to each processor using a serial node-refinement algorithm.
+
+*/
+/************************************************************************************/
+void KWayNodeRefineInterior(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace, 
+         int npasses, float ubfrac)
+{
+  int i, j, k, ii, gnnz, gid, qsize;
+  int npes = ctrl->npes, mype = ctrl->mype, nparts = ctrl->nparts;
+  idxtype nvtxs, *xadj, *adjncy, *vwgt, *where, *pexadj;
+  idxtype gnvtxs, *gxadj, *gadjncy, *gvwgt, *gwhere, *ghmarker;
+  idxtype *gmap, *gimap;
+  idxtype *pptr, *pind;
+
+  IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->AuxTmr1));
+  IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->KWayTmr));
+
+  nvtxs   = graph->nvtxs;
+  xadj    = graph->xadj;
+  adjncy  = graph->adjncy;
+  vwgt    = graph->vwgt;
+  where   = graph->where;
+  pexadj  = graph->pexadj;
+
+  gxadj    = idxmalloc(nvtxs+1, "KWayNodeRefineInterior: gxadj");
+  gvwgt    = idxmalloc(nvtxs, "KWayNodeRefineInterior: gvwgt");
+  gadjncy  = idxmalloc(xadj[nvtxs], "KWayNodeRefineInterior: gadjncy");
+  gwhere   = idxmalloc(nvtxs, "KWayNodeRefineInterior: gwhere");
+  ghmarker = idxmalloc(nvtxs, "KWayNodeRefineInterior: ghmarker");
+  gmap     = idxsmalloc(nvtxs, -1, "KWayNodeRefineInterior: gmap");
+  gimap    = idxmalloc(nvtxs, "KWayNodeRefineInterior: gimap");
+  pptr     = idxsmalloc(2*nparts+1, 0, "KWayNodeRefineInterior: pptr");
+  pind     = idxmalloc(nvtxs, "KWayNodeRefineInterior: pind");
+
+
+  /* Set pptr/pind to contain the vertices in each one of the partitions */
+  for (i=0; i<nvtxs; i++)
+    pptr[where[i]]++;
+  MAKECSR(i, 2*nparts, pptr);
+  for (i=0; i<nvtxs; i++) 
+    pind[pptr[where[i]]++] = i;
+  SHIFTCSR(i, 2*nparts, pptr);
+
+
+  /* Extract each individual graph and refine it */
+  for (gid=0; gid<nparts; gid+=2) {
+    if (graph->lpwgts[nparts+gid] == 0)
+      continue;
+
+    /* a quick test to determine if there are sufficient non-interface separator nodes */
+    for (qsize=0, ii=pptr[nparts+gid]; ii<pptr[nparts+gid+1]; ii++) {
+      if (pexadj[pind[ii]] == pexadj[pind[ii]+1]) {
+        if (++qsize >= 2)
+          break;
+      }
+    }
+    if (ii == pptr[nparts+gid+1]) 
+      break;  /* no need to proceed. not enough non-interface separator nodes */
+    
+    /* compute the gmap/gimap and other node info for the extracted graph */
+    for (gnvtxs=0, ii=pptr[nparts+gid]; ii<pptr[nparts+gid+1]; ii++, gnvtxs++) {
+      i                = pind[ii];
+      gmap[i]          = gnvtxs;
+      gimap[gnvtxs]    = i;
+      gvwgt[gnvtxs]    = vwgt[i];
+      gwhere[gnvtxs]   = 2;
+      ghmarker[gnvtxs] = (pexadj[i+1]-pexadj[i] > 0 ? gwhere[gnvtxs] : -1);
+    }
+
+    for (ii=pptr[gid]; ii<pptr[gid+2]; ii++, gnvtxs++) {
+      i                = pind[ii];
+      gmap[i]          = gnvtxs;
+      gimap[gnvtxs]    = i;
+      gvwgt[gnvtxs]    = vwgt[i];
+      gwhere[gnvtxs]   = where[i] - gid;
+      ghmarker[gnvtxs] = (pexadj[i+1]-pexadj[i] > 0 ? gwhere[gnvtxs] : -1);
+      ASSERT(ctrl, gwhere[gnvtxs] >= 0 && gwhere[gnvtxs] <= 1);
+    }
+
+    gxadj[0]=0; gnvtxs=0; gnnz=0;
+    /* go over the separator nodes */
+    for (ii=pptr[nparts+gid]; ii<pptr[nparts+gid+1]; ii++) {
+      i = pind[ii];
+      for (j=xadj[i]; j<xadj[i+1]; j++) {
+        if (adjncy[j] < nvtxs) 
+          gadjncy[gnnz++] = gmap[adjncy[j]];
+      }
+      gxadj[++gnvtxs] = gnnz;
+    }
+
+    /* go over the interior nodes */
+    for (ii=pptr[gid]; ii<pptr[gid+2]; ii++) {
+      i = pind[ii];
+      for (j=xadj[i]; j<xadj[i+1]; j++) {
+        if (adjncy[j] < nvtxs) 
+          gadjncy[gnnz++] = gmap[adjncy[j]];
+      }
+      gxadj[++gnvtxs] = gnnz;
+    }
+
+    if (gnnz == 0)
+      continue;
+
+    /* graph->adjwgt is used as a dummy argument, as it is not used in node refinement */
+    /* The 1.03 is here by choice as it is better to refine using tight constraints */
+    METIS_NodeRefine(gnvtxs, gxadj, gvwgt, gadjncy, graph->adjwgt, gwhere, ghmarker, 1.03);
+
+    for (i=0; i<gnvtxs; i++) {
+      if (gwhere[i] == 2)
+        where[gimap[i]] = nparts + gid;
+      else
+        where[gimap[i]] = gwhere[i] + gid;
+    }
+  }
+
+  GKfree((void **)&gxadj, &gvwgt, &gadjncy, &gwhere, &ghmarker, 
+      &gmap, &gimap, &pptr, &pind, LTERM);
+
+  IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->KWayTmr));
+  IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->AuxTmr1));
+}
+
+
+/************************************************************************************/
+/*! 
+  This function prints balance information for the parallel k-section refinement 
+  algorithm
+*/
+/************************************************************************************/
+void PrintNodeBalanceInfo(CtrlType *ctrl, int nparts, idxtype *gpwgts, idxtype *badmaxpwgt, 
+         char *title)
 {
   int i;
 
   if (ctrl->mype == 0) {
-    if (title)
-      printf("K-way sep-refinement: TotalSep: %d, ", gpwgts[2*nparts-1]);
-    else
-      printf("\tTotalSep: %d, ", gpwgts[2*nparts-1]);
+    printf("%s: %d, ", title, gpwgts[2*nparts-1]);
 
     for (i=0; i<nparts; i+=2) 
-      printf(" [%5d %5d %5d %5d %5d]", gpwgts[i], gpwgts[i+1], gpwgts[nparts+i], 
-          badminpwgt[i], badmaxpwgt[i]); 
+      printf(" [%5d %5d %5d %5d]", gpwgts[i], gpwgts[i+1], gpwgts[nparts+i], badmaxpwgt[i]); 
     printf("\n");
   }
   MPI_Barrier(ctrl->comm);
 }
+
 

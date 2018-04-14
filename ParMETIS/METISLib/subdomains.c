@@ -664,8 +664,7 @@ void PrintSubDomainGraph(GraphType *graph, int nparts, idxtype *where)
 */
   }
   printf("Total adjacent subdomains: %d, Max: %d\n", total, max);
-
-  free(pmat);
+  GKfree((void **)&pmat, LTERM);
 }
 
 
@@ -882,7 +881,7 @@ void EliminateSubDomainEdges(CtrlType *ctrl, GraphType *graph, int nparts, float
   idxwspacefree(ctrl, nparts);
   idxwspacefree(ctrl, nvtxs);
 
-  GKfree(&cand, &cand2, LTERM);
+  GKfree((void **)&cand, &cand2, LTERM);
 }
 
 

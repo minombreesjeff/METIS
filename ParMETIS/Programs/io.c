@@ -13,7 +13,7 @@
  */
 
 #include <parmetisbin.h>
-#define	MAXLINE	8192
+#define	MAXLINE	64*1024*1024
 
 /*************************************************************************
 * This function reads the CSR matrix
@@ -41,7 +41,7 @@ void ParallelReadGraph(GraphType *graph, char *filename, MPI_Comm comm)
     ier = 0;
     fpin = fopen(filename, "r");
 
-    if (fpin == NULL){
+    if (fpin == NULL) {
       printf("COULD NOT OPEN FILE '%s' FOR SOME REASON!\n", filename);
       ier++;
     }
@@ -54,9 +54,7 @@ void ParallelReadGraph(GraphType *graph, char *filename, MPI_Comm comm)
 
     line = (char *)GKmalloc(sizeof(char)*(MAXLINE+1), "line");
 
-    do {
-      fgets(line, MAXLINE, fpin);
-    } while (line[0] == '%' && !feof(fpin));
+    while (fgets(line, MAXLINE, fpin) && line[0] == '%');
 
     fmt = ncon = nobj = 0;
     sscanf(line, "%d %d %d %d %d", &gnvtxs, &gnedges, &fmt, &ncon, &nobj);
@@ -66,7 +64,7 @@ void ParallelReadGraph(GraphType *graph, char *filename, MPI_Comm comm)
     graph->ncon = ncon = (ncon == 0 ? 1 : ncon);
     graph->nobj = nobj = (nobj == 0 ? 1 : nobj);
 
-/*    printf("Nvtxs: %d, Nedges: %d, Ncon: %d\n", gnvtxs, gnedges, ncon); */
+    /* printf("Nvtxs: %d, Nedges: %d, Ncon: %d\n", gnvtxs, gnedges, ncon); */
 
     graphinfo[0] = ncon;
     graphinfo[1] = nobj;
@@ -106,32 +104,31 @@ void ParallelReadGraph(GraphType *graph, char *filename, MPI_Comm comm)
     exit(-1);
   }
 
+
   graph->gnvtxs = vtxdist[npes];
   nvtxs = graph->nvtxs = vtxdist[mype+1]-vtxdist[mype];
-  xadj = graph->xadj = idxmalloc(graph->nvtxs+1, "ParallelReadGraph: xadj");
-  vwgt = graph->vwgt = idxmalloc(graph->nvtxs*ncon, "ParallelReadGraph: vwgt");
+  xadj  = graph->xadj  = idxmalloc(graph->nvtxs+1, "ParallelReadGraph: xadj");
+  vwgt  = graph->vwgt  = idxmalloc(graph->nvtxs*ncon, "ParallelReadGraph: vwgt");
+
   /*******************************************/
   /* Go through first time and generate xadj */
   /*******************************************/
   if (mype == npes-1) {
-    maxnvtxs = 0;
-    for (i=0; i<npes; i++) 
+    maxnvtxs = vtxdist[1];
+    for (i=1; i<npes; i++) 
       maxnvtxs = (maxnvtxs < vtxdist[i+1]-vtxdist[i] ? vtxdist[i+1]-vtxdist[i] : maxnvtxs);
 
     your_xadj = idxmalloc(maxnvtxs+1, "your_xadj");
-    your_vwgt = idxmalloc(maxnvtxs*ncon, "your_vwgt");
+    your_vwgt = idxsmalloc(maxnvtxs*ncon, 1, "your_vwgt");
 
     maxnedges = 0;
     for (pe=0; pe<npes; pe++) {
-      idxset(maxnvtxs*ncon, 1, your_vwgt);
       your_nvtxs = vtxdist[pe+1]-vtxdist[pe];
+
       for (i=0; i<your_nvtxs; i++) {
         your_nedges = 0;
 
-        do {
-          fgets(line, MAXLINE, fpin);
-        } while (line[0] == '%' && !feof(fpin));
-
+        while (fgets(line, MAXLINE, fpin) && line[0] == '%'); /* skip lines with '#' */
         oldstr = line;
         newstr = NULL;
 
@@ -151,7 +148,7 @@ void ParallelReadGraph(GraphType *graph, char *filename, MPI_Comm comm)
 
           if (readew) {
             for (l=0; l<nobj; l++) {
-              dummy = (int)strtol(oldstr, &newstr, 10);
+              dummy  = (int)strtol(oldstr, &newstr, 10);
               oldstr = newstr;
             }
           }
@@ -175,7 +172,7 @@ void ParallelReadGraph(GraphType *graph, char *filename, MPI_Comm comm)
       }
     }
     fclose(fpin);
-    GKfree(&your_xadj, &your_vwgt, LTERM);
+    GKfree((void **)&your_xadj, &your_vwgt, LTERM);
   }
   else {
     MPI_Recv((void *)xadj, nvtxs+1, IDX_DATATYPE, npes-1, 0, comm, &stat);
@@ -204,22 +201,17 @@ void ParallelReadGraph(GraphType *graph, char *filename, MPI_Comm comm)
     }
 
     /* get first line again */
-    do {
-      fgets(line, MAXLINE, fpin);
-    } while (line[0] == '%' && !feof(fpin));
+    while (fgets(line, MAXLINE, fpin) && line[0] == '%');
 
     your_adjncy = idxmalloc(maxnedges, "your_adjncy");
-    your_adjwgt = idxmalloc(maxnedges*nobj, "your_adjwgt");
+    your_adjwgt = idxsmalloc(maxnedges*nobj, 1, "your_adjwgt");
 
     for (pe=0; pe<npes; pe++) {
+      your_nvtxs  = vtxdist[pe+1]-vtxdist[pe];
       your_nedges = 0;
-      idxset(maxnedges*nobj, 1, your_adjwgt);
-      your_nvtxs = vtxdist[pe+1]-vtxdist[pe];
-      for (i=0; i<your_nvtxs; i++) {
-        do {
-          fgets(line, MAXLINE, fpin);
-        } while (line[0] == '%' && !feof(fpin));
 
+      for (i=0; i<your_nvtxs; i++) {
+        while (fgets(line, MAXLINE, fpin) && line[0] == '%');
         oldstr = line;
         newstr = NULL;
 
@@ -245,7 +237,6 @@ void ParallelReadGraph(GraphType *graph, char *filename, MPI_Comm comm)
             }
           }
           your_nedges++;
-
         }
       }
       if (pe < npes-1) {
@@ -260,7 +251,7 @@ void ParallelReadGraph(GraphType *graph, char *filename, MPI_Comm comm)
       }
     }
     fclose(fpin);
-    GKfree(&your_adjncy, &your_adjwgt, &line, LTERM);
+    GKfree((void **)&your_adjncy, &your_adjwgt, &line, LTERM);
   }
   else {
     MPI_Bcast(&ier, 1, MPI_INT, npes-1, comm);
@@ -411,54 +402,62 @@ void ReadTestGraph(GraphType *graph, char *filename, MPI_Comm comm)
   graph->adjwgt = NULL;
 
   if (mype == 0) 
-    GKfree(&gxadj, &gadjncy, LTERM);
+    GKfree((void **)&gxadj, &gadjncy, LTERM);
 
   MALLOC_CHECK(NULL);
 }
 
 
 
-/*************************************************************************
-* This function reads the CSR matrix
-**************************************************************************/
-float *ReadTestCoordinates(GraphType *graph, char *filename, int ndims, MPI_Comm comm)
+/*************************************************************************/
+/*! Reads the coordinates associated with the vertices of a graph */
+/*************************************************************************/
+float *ReadTestCoordinates(GraphType *graph, char *filename, int *r_ndims, MPI_Comm comm)
 {
-  int i, j, k, npes, mype, penum;
-  float *xyz, *txyz;
+  int i, j, k, npes, mype, penum, ndims;
+  float *xyz, *txyz, ftmp;
+  char line[8192];
   FILE *fpin;
   idxtype *vtxdist;
   MPI_Status status;
-  char xyzfile[256];
 
   MPI_Comm_size(comm, &npes);
   MPI_Comm_rank(comm, &mype);
 
   vtxdist = graph->vtxdist;
 
-  xyz = fmalloc(graph->nvtxs*ndims, "io");
-
   if (mype == 0) {
-    sprintf(xyzfile, "%s.xyz", filename);
-    if ((fpin = fopen(xyzfile, "r")) == NULL) 
-      errexit("Failed to open file %s\n", xyzfile);
+    if ((fpin = fopen(filename, "r")) == NULL) 
+      errexit("Failed to open file %s\n", filename);
+
+    /* determine the number of dimensions */
+    if (fgets(line, 8191, fpin) == NULL)
+      errexit("Failed to read from file %s\n", filename);
+    ndims = sscanf(line, "%e %e %e", &ftmp, &ftmp, &ftmp);
+    fclose(fpin);
+    if ((fpin = fopen(filename, "r")) == NULL) 
+      errexit("Failed to open file %s\n", filename);
   }
+  MPI_Bcast((void *)&ndims, 1, MPI_INT, 0, comm);
+  *r_ndims = ndims;
 
+
+  xyz = fmalloc(graph->nvtxs*ndims, "ReadTestCoordinates");
   if (mype == 0) {
-    txyz = fmalloc(2*graph->nvtxs*ndims, "io");
-
     for (penum=0; penum<npes; penum++) {
+      txyz = fmalloc((vtxdist[penum+1]-vtxdist[penum])*ndims, "ReadTestCoordinates");
       for (k=0, i=vtxdist[penum]; i<vtxdist[penum+1]; i++, k++) {
         for (j=0; j<ndims; j++)
-          fscanf(fpin, "%e ", txyz+k*ndims+j);
+          if (fscanf(fpin, "%e ", txyz+k*ndims+j) != 1)
+            errexit("Failed to read coordinate for node\n");
       }
 
       if (penum == mype) 
         memcpy((void *)xyz, (void *)txyz, sizeof(float)*ndims*k);
-      else {
+      else 
         MPI_Send((void *)txyz, ndims*k, MPI_FLOAT, penum, 1, comm); 
-      }
+      GKfree((void **)&txyz, LTERM);
     }
-    free(txyz);
     fclose(fpin);
   }
   else 
@@ -479,14 +478,14 @@ void ReadMetisGraph(char *filename, int *r_nvtxs, idxtype **r_xadj, idxtype **r_
   char *line, *oldstr, *newstr;
   FILE *fpin;
 
-  line = (char *)malloc(sizeof(char)*(8192+1));
+  line = (char *)malloc(sizeof(char)*(MAXLINE+1));
 
   if ((fpin = fopen(filename, "r")) == NULL) {
     printf("Failed to open file %s\n", filename);
     exit(0);
   }
 
-  fgets(line, 8192, fpin);
+  oldstr = fgets(line, MAXLINE, fpin);
   sscanf(line, "%d %d", &nvtxs, &nedges);
   nedges *=2;
 
@@ -495,7 +494,7 @@ void ReadMetisGraph(char *filename, int *r_nvtxs, idxtype **r_xadj, idxtype **r_
 
   /* Start reading the graph file */
   for (xadj[0]=0, k=0, i=0; i<nvtxs; i++) {
-    fgets(line, 8192, fpin);
+    oldstr = fgets(line, MAXLINE, fpin);
     oldstr = line;
     newstr = NULL;
 
@@ -665,7 +664,7 @@ void Mc_SerialReadGraph(GraphType *graph, char *filename, int *wgtflag, MPI_Comm
   }
 
   if (mype == 0) 
-    GKfree((void *)&gxadj, (void *)&gadjncy, (void *)&gvwgt, (void *)&gadjwgt, LTERM);
+    GKfree((void **)&gxadj, &gadjncy, &gvwgt, &gadjwgt, LTERM);
 
   MALLOC_CHECK(NULL);
 }
@@ -687,14 +686,14 @@ void Mc_SerialReadMetisGraph(char *filename, int *r_nvtxs, int *r_ncon, int *r_n
   int ewgt[MAXNOBJ];
   FILE *fpin;
 
-  line = (char *)GKmalloc(sizeof(char)*(8192+1), "line");
+  line = (char *)GKmalloc(sizeof(char)*(MAXLINE+1), "line");
 
   if ((fpin = fopen(filename, "r")) == NULL) {
     printf("Failed to open file %s\n", filename);
     exit(-1);
   }
 
-  fgets(line, 8192, fpin);
+  oldstr = fgets(line, MAXLINE, fpin);
   fmt = ncon = nobj = 0;
   sscanf(line, "%d %d %d %d %d", &nvtxs, &nedges, &fmt, &ncon, &nobj);
   readew = (fmt%10 > 0);
@@ -722,9 +721,7 @@ void Mc_SerialReadMetisGraph(char *filename, int *r_nvtxs, int *r_ncon, int *r_n
 
   /* Start reading the graph file */
   for (xadj[0]=0, k=0, i=0; i<nvtxs; i++) {
-    do {
-      fgets(line, 8192, fpin);
-    } while (line[0] == '%' && !feof(fpin));
+    while (fgets(line, MAXLINE, fpin) && line[0] == '%');
     oldstr = line;
     newstr = NULL;
 
@@ -821,7 +818,7 @@ void WriteOVector(char *gname, idxtype *vtxdist, idxtype *order, MPI_Comm comm)
 {
   int i, j, k, l, rnvtxs, npes, mype, penum;
   FILE *fpout;
-  idxtype *rorder;
+  idxtype *rorder, *gorder;
   char orderfile[256];
   MPI_Status status;
 
@@ -829,24 +826,37 @@ void WriteOVector(char *gname, idxtype *vtxdist, idxtype *order, MPI_Comm comm)
   MPI_Comm_rank(comm, &mype);
 
   if (mype == 0) {
+    gorder = idxsmalloc(vtxdist[npes], 0, "WriteOVector: gorder");
+
     sprintf(orderfile, "%s.order.%d", gname, npes);
     if ((fpout = fopen(orderfile, "w")) == NULL) 
       errexit("Failed to open file %s", orderfile);
 
-    for (i=0; i<vtxdist[1]; i++)
+    for (i=0; i<vtxdist[1]; i++) {
+      gorder[order[i]]++;
       fprintf(fpout, "%d\n", order[i]);
+    }
 
     for (penum=1; penum<npes; penum++) {
       rnvtxs = vtxdist[penum+1]-vtxdist[penum];
       rorder = idxmalloc(rnvtxs, "rorder");
       MPI_Recv((void *)rorder, rnvtxs, IDX_DATATYPE, penum, 1, comm, &status);
 
-      for (i=0; i<rnvtxs; i++)
+      for (i=0; i<rnvtxs; i++) {
+        gorder[rorder[i]]++;
         fprintf(fpout, "%d\n", rorder[i]);
+      }
 
-      free(rorder);
+      GKfree((void **)&rorder, LTERM);
     }
     fclose(fpout);
+
+    /* Check the global ordering */
+    for (i=0; i<vtxdist[npes]; i++) {
+      if (gorder[i] != 1)
+        printf("Global ordering problems with index: %d [%d]\n", i, gorder[i]);
+    }
+    GKfree((void **)&gorder, LTERM);
   }
   else
     MPI_Send((void *)order, vtxdist[mype+1]-vtxdist[mype], IDX_DATATYPE, 0, 1, comm); 
@@ -894,7 +904,7 @@ void ParallelReadMesh(MeshType *mesh, char *filename, MPI_Comm comm)
 
     line = (char *)GKmalloc(sizeof(char)*(MAXLINE+1), "line");
 
-    fgets(line, MAXLINE, fpin);
+    while (fgets(line, MAXLINE, fpin) && line[0] == '%');
     sscanf(line, "%d %d", &gnelms, &etype);
 
     /* Construct elmdist and send it to all the processors */
@@ -940,7 +950,7 @@ void ParallelReadMesh(MeshType *mesh, char *filename, MPI_Comm comm)
       your_nelms = elmdist[pe+1]-elmdist[pe];
       for (i=0; i<your_nelms; i++) {
 
-        fgets(line, MAXLINE, fpin);
+        oldstr = fgets(line, MAXLINE, fpin);
         oldstr = line;
         newstr = NULL;
 

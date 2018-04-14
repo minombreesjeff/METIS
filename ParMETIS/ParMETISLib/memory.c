@@ -20,11 +20,13 @@
 /*************************************************************************/
 void AllocateWSpace(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
 {
-  wspace->nlarge  = 2*graph->nedges;
+  int nitems = amax(graph->nedges+graph->nvtxs, 1+(graph->nsend+graph->nrecv)/2);
+
+  wspace->nlarge  = 2*nitems;
   wspace->nparts  = ctrl->nparts;
   wspace->npes    = ctrl->npes;
 
-  wspace->maxcore = 8*graph->nedges+1;
+  wspace->maxcore = 8*nitems+1;
   wspace->core    = idxmalloc(wspace->maxcore, "AllocateWSpace: wspace->core");
 
   wspace->pairs   = (KeyValueType *)wspace->core;
@@ -48,7 +50,11 @@ void AllocateWSpace(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
 /*************************************************************************/
 void AdjustWSpace(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
 {
-  if (wspace->nlarge < 2*graph->nedges || wspace->nparts < ctrl->nparts || wspace->npes < ctrl->npes) {
+  int nitems = amax(graph->nedges+graph->nvtxs, 1+(graph->nsend+graph->nrecv)/2);
+
+  if (wspace->nlarge < 2*nitems || 
+      wspace->nparts < ctrl->nparts || 
+      wspace->npes < ctrl->npes) {
     FreeWSpace(wspace);
     AllocateWSpace(ctrl, graph, wspace);
   }
@@ -125,18 +131,18 @@ void InitGraph(GraphType *graph)
 
   graph->nrinfo  = NULL;
   graph->sepind  = NULL;
-  graph->hmarker = NULL;
 
   graph->coarser = graph->finer = NULL;
 
 }
 
-/*************************************************************************
-* This function deallocates any memory stored in a graph
-**************************************************************************/
+/*************************************************************************/
+/*! This function deallocates any memory stored in a graph */
+/*************************************************************************/
 void FreeGraph(GraphType *graph) 
 {
 
+  /* Graph structure fields */
   GKfree((void **)&graph->xadj, 
          (void **)&graph->vwgt,
          (void **)&graph->nvwgt,
@@ -144,42 +150,101 @@ void FreeGraph(GraphType *graph)
          (void **)&graph->adjncy,
          (void **)&graph->adjwgt,
          (void **)&graph->vtxdist, 
-         (void **)&graph->match, 
-         (void **)&graph->cmap, 
-         (void **)&graph->lperm, 
-         (void **)&graph->label, 
-         (void **)&graph->where, 
          (void **)&graph->home, 
-         (void **)&graph->rinfo, 
-         (void **)&graph->nrinfo, 
-         (void **)&graph->sepind,
-         (void **)&graph->hmarker,
-         (void **)&graph->lpwgts, 
-         (void **)&graph->gpwgts, 
-         (void **)&graph->lnpwgts, 
-         (void **)&graph->gnpwgts, 
-         (void **)&graph->peind, 
-         (void **)&graph->sendptr, 
-         (void **)&graph->sendind, 
-         (void **)&graph->recvptr, 
-         (void **)&graph->recvind, 
-         (void **)&graph->imap,
-         (void **)&graph->rlens,
-         (void **)&graph->slens,
-         (void **)&graph->rcand,
-         (void **)&graph->pexadj,
-         (void **)&graph->peadjncy,
-         (void **)&graph->peadjloc,
          LTERM);
 
-  free(graph);
+  FreeNonGraphFields(graph); 
+
+  GKfree((void **)&graph, LTERM);
 }
 
 
+/*************************************************************************/
+/*! This function deallocates the non-graph structure fields of a graph
+    data structure */
+/*************************************************************************/
+void FreeNonGraphFields(GraphType *graph) 
+{
 
-/*************************************************************************
-* This function deallocates any memory stored in a graph
-**************************************************************************/
+  GKfree(
+      /* Coarsening fields */
+      (void **)&graph->match, 
+      (void **)&graph->cmap, 
+
+      /* Initial partitioning fields */
+      (void **)&graph->label, 
+
+      /* Communication/Setup fields */
+      (void **)&graph->peind, 
+      (void **)&graph->sendptr, 
+      (void **)&graph->sendind, 
+      (void **)&graph->recvptr, 
+      (void **)&graph->recvind, 
+      (void **)&graph->imap,
+      (void **)&graph->pexadj,
+      (void **)&graph->peadjncy,
+      (void **)&graph->peadjloc,
+      (void **)&graph->lperm, 
+
+      /* Projection fields */
+      (void **)&graph->rlens,
+      (void **)&graph->slens,
+      (void **)&graph->rcand,
+
+      /* Refinement fields */
+      (void **)&graph->where, 
+      (void **)&graph->lpwgts, 
+      (void **)&graph->gpwgts, 
+      (void **)&graph->lnpwgts, 
+      (void **)&graph->gnpwgts, 
+      (void **)&graph->rinfo, 
+      (void **)&graph->nrinfo, 
+      (void **)&graph->sepind,
+
+      LTERM);
+}
+
+
+/*************************************************************************/
+/*! This function deallocates the non-graph and non-setup structure fields 
+    of a graph data structure */
+/*************************************************************************/
+void FreeNonGraphNonSetupFields(GraphType *graph) 
+{
+
+  GKfree(
+      /* Coarsening fields */
+      (void **)&graph->match, 
+      (void **)&graph->cmap, 
+
+      /* Initial partitioning fields */
+      (void **)&graph->label, 
+
+      /* Projection fields */
+      (void **)&graph->rlens,
+      (void **)&graph->slens,
+      (void **)&graph->rcand,
+
+      /* Refinement fields */
+      (void **)&graph->where, 
+      (void **)&graph->lpwgts, 
+      (void **)&graph->gpwgts, 
+      (void **)&graph->lnpwgts, 
+      (void **)&graph->gnpwgts, 
+      (void **)&graph->rinfo, 
+      (void **)&graph->nrinfo, 
+      (void **)&graph->sepind,
+
+      LTERM);
+}
+
+
+/*************************************************************************/
+/*! This function frees any memory allocated for storing the initial graph
+    and performs the local to global (i.e., original numbering of the
+    adjacency list)
+*/
+/*************************************************************************/
 void FreeInitialGraphAndRemap(GraphType *graph, int wgtflag, int freevsize) 
 {
   int i, nedges;
@@ -194,33 +259,11 @@ void FreeInitialGraphAndRemap(GraphType *graph, int wgtflag, int freevsize)
       adjncy[i] = imap[adjncy[i]];  /* Apply local to global transformation */
   }
 
-  /* Free Metis's things */
-  GKfree((void **)&graph->match, 
-         (void **)&graph->cmap, 
-         (void **)&graph->lperm, 
-         (void **)&graph->where, 
-         (void **)&graph->label, 
-         (void **)&graph->rinfo, 
-         (void **)&graph->nrinfo, 
-         (void **)&graph->nvwgt, 
-         (void **)&graph->lpwgts, 
-         (void **)&graph->gpwgts, 
-         (void **)&graph->lnpwgts, 
-         (void **)&graph->gnpwgts, 
-         (void **)&graph->sepind,
-         (void **)&graph->peind, 
-         (void **)&graph->sendptr, 
-         (void **)&graph->sendind, 
-         (void **)&graph->recvptr, 
-         (void **)&graph->recvind, 
-         (void **)&graph->imap,
-         (void **)&graph->rlens,
-         (void **)&graph->slens,
-         (void **)&graph->rcand,
-         (void **)&graph->pexadj,
-         (void **)&graph->peadjncy,
-         (void **)&graph->peadjloc,
-         LTERM);
+  /* Free fields that are not related to the structure of the graph */
+  FreeNonGraphFields(graph); 
+
+  /* Free some derived graph-structure fields */
+  GKfree((void **)&graph->nvwgt, &graph->home, LTERM);
 
   if (freevsize)
     GKfree((void **)&graph->vsize, LTERM);
@@ -229,5 +272,5 @@ void FreeInitialGraphAndRemap(GraphType *graph, int wgtflag, int freevsize)
   if ((wgtflag&1) == 0) 
     GKfree((void **)&graph->adjwgt, LTERM);
 
-  free(graph);
+  GKfree((void **)&graph, LTERM);
 }

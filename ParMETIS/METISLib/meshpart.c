@@ -38,7 +38,7 @@ void METIS_PartMeshNodal(int *ne, int *nn, idxtype *elmnts, int *etype, int *num
 
   METIS_MeshToNodal(ne, nn, elmnts, etype, &pnumflag, xadj, adjncy);
 
-  adjncy = realloc(adjncy, xadj[*nn]*sizeof(idxtype));
+  adjncy = (idxtype *)realloc(adjncy, xadj[*nn]*sizeof(idxtype));
 
   options[0] = 0;
   METIS_PartGraphKway(nn, xadj, adjncy, NULL, NULL, &wgtflag, &pnumflag, nparts, options, edgecut, npart);
@@ -98,7 +98,7 @@ void METIS_PartMeshNodal(int *ne, int *nn, idxtype *elmnts, int *etype, int *num
   if (*numflag == 1)
     ChangeMesh2FNumbering2((*ne)*esize, elmnts, *ne, *nn, epart, npart);
 
-  GKfree(&xadj, &adjncy, &pwgts, LTERM);
+  GKfree((void **)(&xadj), &adjncy, &pwgts, LTERM);
 
 }
 
@@ -199,6 +199,6 @@ void METIS_PartMeshDual(int *ne, int *nn, idxtype *elmnts, int *etype, int *numf
   if (*numflag == 1)
     ChangeMesh2FNumbering2((*ne)*esize, elmnts, *ne, *nn, epart, npart);
 
-  GKfree(&xadj, &adjncy, &pwgts, &nptr, &nind, LTERM);
+  GKfree((void **)(&xadj), &adjncy, &pwgts, &nptr, &nind, LTERM);
 
 }

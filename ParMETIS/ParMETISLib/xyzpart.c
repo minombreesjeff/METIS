@@ -95,7 +95,7 @@ void Coordinate_Partition(CtrlType *ctrl, GraphType *graph, int ndims, float *xy
   /* Partition using sorting */
   PartSort(ctrl, graph, cand, wspace);
 
-  free(cand);
+  GKfree((void **)&cand, LTERM);
 
 }
 
@@ -103,7 +103,13 @@ void Coordinate_Partition(CtrlType *ctrl, GraphType *graph, int ndims, float *xy
 
 /**************************************************************************/
 /*! This function sorts a distributed list of KeyValueType in increasing 
-    order, and uses it to compute a partition. It uses samplesort. */
+    order, and uses it to compute a partition. It uses samplesort. 
+
+    This function is poorly implemented and makes the assumption that the
+    number of vertices in each processor is greater than npes. 
+    This constraint is currently enforced by the calling functions. 
+    \todo fix it in 4.0.
+*/
 /**************************************************************************/
 void PartSort(CtrlType *ctrl, GraphType *graph, KeyValueType *elmnts, WorkSpaceType *wspace)
 {
@@ -251,7 +257,7 @@ void PartSort(CtrlType *ctrl, GraphType *graph, KeyValueType *elmnts, WorkSpaceT
 
   GKfree((void **)&mypicks, (void **)&allpicks, (void **)&perm, LTERM);
   if (wspace->nlarge < nrecv)
-    free(relmnts);
+    GKfree((void **)&relmnts, LTERM);
 
 }
 

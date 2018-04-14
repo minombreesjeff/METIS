@@ -20,11 +20,11 @@
 int main(int argc, char *argv[])
 {
   int i, j, npes, mype, optype, nparts, adptf, options[10];
-  idxtype *part, *sizes;
+  idxtype *part=NULL, *sizes=NULL;
   GraphType graph;
-  float ipc2redist, *xyz, *tpwgts, ubvec[MAXNCON];
+  float ipc2redist, *xyz=NULL, *tpwgts=NULL, ubvec[MAXNCON];
   MPI_Comm comm;
-  int numflag=0, wgtflag=0, ndims=3, edgecut;
+  int numflag=0, wgtflag=0, ndims, edgecut;
 
   MPI_Init(&argc, &argv);
   MPI_Comm_dup(MPI_COMM_WORLD, &comm);
@@ -39,23 +39,24 @@ int main(int argc, char *argv[])
     exit(0);
   }
 
-  optype = atoi(argv[2]);
-  nparts = atoi(argv[3]);
-  adptf = atoi(argv[4]);
+  optype     = atoi(argv[2]);
+  nparts     = atoi(argv[3]);
+  adptf      = atoi(argv[4]);
   ipc2redist = atof(argv[5]);
 
   options[0] = 1;
   options[PMV3_OPTION_DBGLVL] = atoi(argv[6]);
-  options[PMV3_OPTION_SEED] = atoi(argv[7]);
+  options[PMV3_OPTION_SEED]   = atoi(argv[7]);
 
-  if (mype == 0) printf("reading file: %s\n", argv[1]);
+  if (mype == 0) 
+    printf("reading file: %s\n", argv[1]);
   ParallelReadGraph(&graph, argv[1], comm);
 
   /* Remove the edges for testing */
   /*idxset(graph.vtxdist[mype+1]-graph.vtxdist[mype]+1, 0, graph.xadj); */
 
   sset(graph.ncon, 1.05, ubvec);
-  tpwgts = fmalloc(nparts, "tpwgts");
+  tpwgts = fmalloc(nparts*graph.ncon, "tpwgts");
   sset(nparts*graph.ncon, 1.0/(float)nparts, tpwgts);
 
   /*
@@ -68,36 +69,41 @@ int main(int argc, char *argv[])
   */
 
 
-  xyz = NULL;
-  if (optype >= 20) 
-    xyz = ReadTestCoordinates(&graph, argv[1], ndims, comm);
-  if (mype == 0) printf("finished reading file: %s\n", argv[1]);
+  if (optype >= 20)  
+    xyz = ReadTestCoordinates(&graph, argv[1], &ndims, comm);
+
+  if (mype == 0) 
+    printf("finished reading file: %s\n", argv[1]);
   
-  part = idxsmalloc(graph.nvtxs, mype%nparts, "main: part");
+  part  = idxsmalloc(graph.nvtxs, mype%nparts, "main: part");
   sizes = idxmalloc(2*npes, "main: sizes");
 
   switch (optype) {
     case 1: 
-      ParMETIS_V3_PartKway(graph.vtxdist, graph.xadj, graph.adjncy, NULL, NULL, &wgtflag, 
-               &numflag, &graph.ncon, &nparts, tpwgts, ubvec, options, &edgecut, part, &comm);
+      wgtflag = 3;
+      ParMETIS_V3_PartKway(graph.vtxdist, graph.xadj, graph.adjncy, graph.vwgt, 
+          graph.adjwgt, &wgtflag, &numflag, &graph.ncon, &nparts, tpwgts, ubvec, 
+          options, &edgecut, part, &comm);
       WritePVector(argv[1], graph.vtxdist, part, MPI_COMM_WORLD); 
       break;
     case 2:
-      options[PMV3_OPTION_PSR] = COUPLED;
-      ParMETIS_V3_RefineKway(graph.vtxdist, graph.xadj, graph.adjncy, NULL, NULL, 
-               &wgtflag, &numflag, &graph.ncon, &nparts, tpwgts, ubvec, options, 
-	       &edgecut, part, &comm);
+      wgtflag = 3;
+      options[PMV3_OPTION_PSR] = PARMETIS_PSR_COUPLED;
+      ParMETIS_V3_RefineKway(graph.vtxdist, graph.xadj, graph.adjncy, graph.vwgt, 
+          graph.adjwgt, &wgtflag, &numflag, &graph.ncon, &nparts, tpwgts, ubvec, 
+          options, &edgecut, part, &comm);
       break;
     case 3:
-      options[PMV3_OPTION_PSR] = COUPLED;
+      options[PMV3_OPTION_PSR] = PARMETIS_PSR_COUPLED;
       graph.vwgt = idxsmalloc(graph.nvtxs, 1, "main: vwgt");
       if (npes > 1) {
         AdaptGraph(&graph, adptf, comm);
       }
       else {
-        wgtflag = 0;
-        ParMETIS_V3_PartKway(graph.vtxdist, graph.xadj, graph.adjncy, NULL, NULL, &wgtflag, 
-                 &numflag, &graph.ncon, &nparts, tpwgts, ubvec, options, &edgecut, part, &comm);
+        wgtflag = 3;
+        ParMETIS_V3_PartKway(graph.vtxdist, graph.xadj, graph.adjncy, graph.vwgt, 
+            graph.adjwgt, &wgtflag, &numflag, &graph.ncon, &nparts, tpwgts, 
+            ubvec, options, &edgecut, part, &comm);
 
         printf("Initial partitioning with edgecut of %d\n", edgecut);
         for (i=0; i<graph.ncon; i++) {
@@ -109,24 +115,21 @@ int main(int argc, char *argv[])
           }
         }
       }
-/*
-wgtflag = 0;
-ParMETIS_V3_PartKway(graph.vtxdist, graph.xadj, graph.adjncy, NULL, NULL, &wgtflag, 
-&numflag, &graph.ncon, &nparts, tpwgts, ubvec, options, &edgecut, part, &comm);
-if (mype == 0) printf("Initial partitioning with edgecut of %d\n", edgecut);
-*/
+
       wgtflag = 3;
-      ParMETIS_V3_AdaptiveRepart(graph.vtxdist, graph.xadj, graph.adjncy, graph.vwgt, NULL, 
-               graph.adjwgt, &wgtflag, &numflag, &graph.ncon, &nparts, tpwgts, ubvec, 
-	       &ipc2redist, options, &edgecut, part, &comm);
+      ParMETIS_V3_AdaptiveRepart(graph.vtxdist, graph.xadj, graph.adjncy, graph.vwgt, 
+          NULL, graph.adjwgt, &wgtflag, &numflag, &graph.ncon, &nparts, tpwgts, ubvec, 
+	  &ipc2redist, options, &edgecut, part, &comm);
       break;
     case 4: 
-      ParMETIS_V3_NodeND(graph.vtxdist, graph.xadj, graph.adjncy, &numflag, options, part, sizes, &comm);
+      ParMETIS_V3_NodeND(graph.vtxdist, graph.xadj, graph.adjncy, &numflag, options, 
+          part, sizes, &comm);
       /* WriteOVector(argv[1], graph.vtxdist, part, comm);   */
-      MALLOC_CHECK(NULL);
       break;
+
     case 5: 
-      ParMETIS_SerialNodeND(graph.vtxdist, graph.xadj, graph.adjncy, &numflag, options, part, sizes, &comm);
+      ParMETIS_SerialNodeND(graph.vtxdist, graph.xadj, graph.adjncy, &numflag, options, 
+          part, sizes, &comm);
       /* WriteOVector(argv[1], graph.vtxdist, part, comm);  */ 
       printf("%d %d %d %d %d %d %d\n", sizes[0], sizes[1], sizes[2], sizes[3], sizes[4], sizes[5], sizes[6]);
       break;
@@ -134,20 +137,20 @@ if (mype == 0) printf("Initial partitioning with edgecut of %d\n", edgecut);
       /* TestAdaptiveMETIS(graph.vtxdist, graph.xadj, graph.adjncy, part, options, adptf, comm); */
       break;
     case 20: 
-      ParMETIS_V3_PartGeomKway(graph.vtxdist, graph.xadj, graph.adjncy, NULL, NULL, &wgtflag, 
-        &numflag, &ndims, xyz, &graph.ncon, &nparts, tpwgts, ubvec, options, &edgecut, part, &comm);
+      wgtflag = 3;
+      ParMETIS_V3_PartGeomKway(graph.vtxdist, graph.xadj, graph.adjncy, graph.vwgt, 
+          graph.adjwgt, &wgtflag, &numflag, &ndims, xyz, &graph.ncon, &nparts, 
+          tpwgts, ubvec, options, &edgecut, part, &comm);
       break;
     case 21: 
       ParMETIS_V3_PartGeom(graph.vtxdist, &ndims, xyz, part, &comm);
-      break;
-    case 22: 
-      /* ParMETIS_PartGeomRefine(graph.vtxdist, graph.xadj, graph.adjncy, NULL, NULL, &wgtflag, &numflag, &ndims, xyz, options, &edgecut, part, &comm); */
       break;
   }
 
   /* printf("%d %d\n", idxsum(nvtxs, graph.xadj), idxsum(nedges, graph.adjncy)); */
 
-  GKfree(&part, &sizes, &graph.vtxdist, &graph.xadj, &graph.adjncy, &graph.vwgt, &xyz, LTERM);
+  GKfree((void **)&part, &sizes, &tpwgts, &graph.vtxdist, &graph.xadj, &graph.adjncy, 
+         &graph.vwgt, &graph.adjwgt, &xyz, LTERM);
 
   MPI_Comm_free(&comm);
 

@@ -14,7 +14,7 @@ OBJS = coarsen.o fm.o initpart.o match.o ccgraph.o \
        mutil.o mkmetis.o mkwayrefine.o mkwayfmh.o \
        mrefine2.o minitpart2.o mbalance2.o mfm2.o \
        kvmetis.o kwayvolrefine.o kwayvolfm.o subdomains.o \
-       mfm.o memory.o mrefine.o checkgraph.o
+       mfm.o memory.o mrefine.o checkgraph.o 
 
 .c.o:
 	$(CC) $(CFLAGS) -c $*.c

@@ -34,6 +34,7 @@ void InitTimers(CtrlType *ctrl)
   cleartimer(ctrl->KWayTmr);
   cleartimer(ctrl->MoveTmr);
   cleartimer(ctrl->RemapTmr);
+  cleartimer(ctrl->SerialTmr);
 
   cleartimer(ctrl->AuxTmr1); 
   cleartimer(ctrl->AuxTmr2); 
@@ -58,6 +59,7 @@ void PrintTimingInfo(CtrlType *ctrl)
   PrintTimer(ctrl, ctrl->ProjectTmr,  "    Project");
   PrintTimer(ctrl, ctrl->KWayInitTmr, " Initialize");
   PrintTimer(ctrl, ctrl->KWayTmr,     "      K-way");
+  PrintTimer(ctrl, ctrl->SerialTmr,   "     Serial");
   PrintTimer(ctrl, ctrl->MoveTmr,     "       Move");
   PrintTimer(ctrl, ctrl->RemapTmr,    "      Remap");
   PrintTimer(ctrl, ctrl->TotalTmr,    "      Total");

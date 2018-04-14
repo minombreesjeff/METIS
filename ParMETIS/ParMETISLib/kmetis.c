@@ -38,6 +38,14 @@ void ParMETIS_V3_PartKway(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy, idxt
   MPI_Comm_size(*comm, &npes);
   MPI_Comm_rank(*comm, &mype);
 
+  /* Deal with poor vertex distributions */
+  ctrl.comm = *comm;
+  if (GlobalSEMin(&ctrl, vtxdist[mype+1]-vtxdist[mype]) < 1) {
+    if (mype == 0)
+      printf("Error: Poor vertex distribution (processor with no vertices).\n");
+    return;
+  }
+
 
   /********************************/
   /* Try and take care bad inputs */
@@ -45,9 +53,9 @@ void ParMETIS_V3_PartKway(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy, idxt
   if (options != NULL && options[0] == 1)
     dbglvl = options[PMV3_OPTION_DBGLVL];
 
-  CheckInputs(STATIC_PARTITION, npes, dbglvl, wgtflag, &iwgtflag, numflag, &inumflag, ncon, 
-              &incon, nparts, &inparts, tpwgts, &itpwgts, ubvec, iubvec, NULL, NULL, 
-	      options, ioptions, part, comm);
+  CheckInputs(STATIC_PARTITION, npes, dbglvl, wgtflag, &iwgtflag, numflag, &inumflag, 
+              ncon, &incon, nparts, &inparts, tpwgts, &itpwgts, ubvec, iubvec, NULL, 
+              NULL, options, ioptions, part, comm);
 
 
   /**********************************/
@@ -80,7 +88,7 @@ void ParMETIS_V3_PartKway(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy, idxt
       METIS_mCPartGraphRecursive2(&nvtxs, &incon, xadj, adjncy, vwgt, adjwgt, &iwgtflag, 
             &inumflag, &inparts, mytpwgts, moptions, edgecut, part);
 
-      free(mytpwgts);
+      GKfree((void **)&mytpwgts, LTERM);
     }
  
     return;
@@ -102,12 +110,12 @@ void ParMETIS_V3_PartKway(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy, idxt
     seed   = GLOBAL_SEED;
   }
   SetUpCtrl(&ctrl, inparts, dbglvl, *comm);
-  ctrl.CoarsenTo = amin(vtxdist[npes]+1, 25*incon*amax(npes, inparts));
-  ctrl.seed = (seed == 0) ? mype : seed*mype;
-  ctrl.sync = GlobalSEMax(&ctrl, seed);
-  ctrl.partType = STATIC_PARTITION;
+  ctrl.CoarsenTo   = amin(vtxdist[npes]+1, 25*incon*amax(npes, inparts));
+  ctrl.seed        = (seed == 0) ? mype : seed*mype;
+  ctrl.sync        = GlobalSEMax(&ctrl, seed);
+  ctrl.partType    = STATIC_PARTITION;
   ctrl.ps_relation = -1;
-  ctrl.tpwgts = itpwgts;
+  ctrl.tpwgts      = itpwgts;
   scopy(incon, iubvec, ctrl.ubvec);
 
   graph = Mc_SetUpGraph(&ctrl, incon, vtxdist, xadj, vwgt, adjncy, adjwgt, &iwgtflag);
@@ -122,20 +130,22 @@ void ParMETIS_V3_PartKway(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy, idxt
   /* Check for funny cases                   */
   /* 	-graph with no edges                 */
   /* 	-graph with self edges               */
-  /* 	-graph with poor vertex distribution */
-  /* 	-graph with less than 2*npe nodes    */
+  /* 	-graph with less than 20*npe nodes    */
   /*******************************************/
-  if (vtxdist[npes] < SMALLGRAPH || vtxdist[npes] < npes*20 || GlobalSESum(&ctrl, graph->nedges) == 0) {
+  if (vtxdist[npes] < SMALLGRAPH || 
+      vtxdist[npes] < npes*20 || 
+      GlobalSESum(&ctrl, graph->nedges) == 0) {
     IFSET(ctrl.dbglvl, DBG_INFO, rprintf(&ctrl, "Partitioning a graph of size %d serially\n", vtxdist[npes]));
     PartitionSmallGraph(&ctrl, graph, &wspace);
+    rprintf(&ctrl, "Small graph\n");
   }
   else {
     /***********************/
     /* Partition the graph */
     /***********************/
     Mc_Global_Partition(&ctrl, graph, &wspace);
-    ParallelReMapGraph(&ctrl, graph, &wspace);
   }
+  ParallelReMapGraph(&ctrl, graph, &wspace);
 
   IFSET(ctrl.dbglvl, DBG_TIME, MPI_Barrier(ctrl.gcomm));
   IFSET(ctrl.dbglvl, DBG_TIME, stoptimer(ctrl.TotalTmr));
@@ -162,7 +172,8 @@ void ParMETIS_V3_PartKway(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy, idxt
     rprintf(&ctrl, "  avg: %.3f\n", avg/(float)incon);
   }
 
-  GKfree((void **)&itpwgts, (void **)&graph->lnpwgts, (void **)&graph->gnpwgts, (void **)&graph->nvwgt, LTERM);
+  GKfree((void **)&itpwgts, (void **)&graph->lnpwgts, (void **)&graph->gnpwgts, 
+         (void **)&graph->nvwgt, LTERM);
   FreeInitialGraphAndRemap(graph, iwgtflag, 1);
   FreeWSpace(&wspace);
   FreeCtrl(&ctrl);
@@ -182,8 +193,6 @@ void Mc_Global_Partition(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace
   int i, ncon, nparts;
   float ftmp, ubavg, lbavg, lbvec[MAXNCON];
  
-  AdjustWSpace(ctrl, graph, wspace);
-
   ncon   = graph->ncon;
   nparts = ctrl->nparts;
   ubavg  = savg(graph->ncon, ctrl->ubvec);
@@ -224,7 +233,7 @@ void Mc_Global_Partition(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace
     }
   }
   else {
-    Mc_GlobalMatch_Balance(ctrl, graph, wspace);
+    Match_Global(ctrl, graph, wspace);
 
     Mc_Global_Partition(ctrl, graph->coarser, wspace);
 

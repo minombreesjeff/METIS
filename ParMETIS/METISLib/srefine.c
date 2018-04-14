@@ -73,12 +73,12 @@ void Allocate2WayNodePartitionMemory(CtrlType *ctrl, GraphType *graph)
 
   pad64 = (3*nvtxs+3)%2;
 
-  graph->rdata = idxmalloc(3*nvtxs+3+(sizeof(NRInfoType)/sizeof(idxtype))*nvtxs+pad64, "Allocate2WayPartitionMemory: rdata");
-  graph->pwgts          = graph->rdata;
-  graph->where          = graph->rdata + 3;
-  graph->bndptr         = graph->rdata + nvtxs + 3;
-  graph->bndind         = graph->rdata + 2*nvtxs + 3;
-  graph->nrinfo         = (NRInfoType *)(graph->rdata + 3*nvtxs + 3 + pad64);
+  graph->rdata    = idxmalloc(3*nvtxs+3+(sizeof(NRInfoType)/sizeof(idxtype))*nvtxs+pad64, "Allocate2WayPartitionMemory: rdata");
+  graph->pwgts    = graph->rdata;
+  graph->where    = graph->rdata + 3;
+  graph->bndptr   = graph->rdata + nvtxs + 3;
+  graph->bndind   = graph->rdata + 2*nvtxs + 3;
+  graph->nrinfo   = (NRInfoType *)(graph->rdata + 3*nvtxs + 3 + pad64);
 }
 
 
@@ -94,15 +94,15 @@ void Compute2WayNodePartitionParams(CtrlType *ctrl, GraphType *graph)
   NRInfoType *rinfo;
   int me, other;
 
-  nvtxs = graph->nvtxs;
-  xadj = graph->xadj;
-  vwgt = graph->vwgt;
+  nvtxs  = graph->nvtxs;
+  xadj   = graph->xadj;
+  vwgt   = graph->vwgt;
   adjncy = graph->adjncy;
   adjwgt = graph->adjwgt;
 
-  where = graph->where;
-  rinfo = graph->nrinfo;
-  pwgts = idxset(3, 0, graph->pwgts);
+  where  = graph->where;
+  rinfo  = graph->nrinfo;
+  pwgts  = idxset(3, 0, graph->pwgts);
   bndind = graph->bndind;
   bndptr = idxset(nvtxs, -1, graph->bndptr);
 

@@ -30,7 +30,7 @@ void PartitionSmallGraph(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace
   int *sendcounts, *displs;
   float *mytpwgts, *gnpwgts, *lnpwgts;
 
-  ncon = graph->ncon;
+  ncon   = graph->ncon;
   nparts = ctrl->nparts;
 
   MPI_Comm_size(ctrl->comm, &npes);
@@ -59,7 +59,7 @@ void PartitionSmallGraph(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace
           agraph->vwgt, agraph->adjwgt, &mywgtflag, &mynumflag, &nparts, mytpwgts, 
 	  moptions, &graph->mincut, mypart);
 
-    free(mytpwgts);
+    GKfree((void **)&mytpwgts, LTERM);
   }
 
   lpecut[0] = graph->mincut;

@@ -85,7 +85,7 @@ void CompressGraph(CtrlType *ctrl, GraphType *graph, int nvtxs, idxtype *xadj, i
     graph->xadj = xadj;
     graph->adjncy = adjncy;
 
-    graph->gdata = idxmalloc(3*nvtxs+graph->nedges, "CompressGraph: gdata");
+    graph->gdata        = idxmalloc(3*nvtxs+graph->nedges, "CompressGraph: gdata");
     graph->vwgt    	= graph->gdata;
     graph->adjwgtsum    = graph->gdata+nvtxs;
     graph->cmap		= graph->gdata+2*nvtxs;
@@ -148,7 +148,7 @@ void CompressGraph(CtrlType *ctrl, GraphType *graph, int nvtxs, idxtype *xadj, i
 
   }
 
-  GKfree(&keys, &map, &mark, LTERM);
+  GKfree((void **)(&keys), &map, &mark, LTERM);
 }
 
 
@@ -241,9 +241,7 @@ void PruneGraph(CtrlType *ctrl, GraphType *graph, int nvtxs, idxtype *xadj, idxt
     for (i=0; i<pnvtxs; i++)
       graph->label[i] = i;
   }
-
-  free(perm);
-
+  GKfree((void **)&perm, LTERM);
 }
 
 

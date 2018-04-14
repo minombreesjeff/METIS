@@ -148,7 +148,7 @@ void Random_KWayVolRefine(CtrlType *ctrl, GraphType *graph, int nparts, float *t
       break;
   }
 
-  GKfree(&marker, &updind, &phtable, LTERM);
+  GKfree((void **)(&marker), &updind, &phtable, LTERM);
 
   idxwspacefree(ctrl, nparts);
   idxwspacefree(ctrl, nparts);
@@ -384,7 +384,7 @@ void Random_KWayVolRefineMConn(CtrlType *ctrl, GraphType *graph, int nparts, flo
       break;
   }
 
-  GKfree(&marker, &updind, &phtable, LTERM);
+  GKfree((void **)(&marker), &updind, &phtable, LTERM);
 
   idxwspacefree(ctrl, nparts);
   idxwspacefree(ctrl, nparts);
@@ -537,7 +537,7 @@ void Greedy_KWayVolBalance(CtrlType *ctrl, GraphType *graph, int nparts, float *
 
   }
 
-  GKfree(&marker, &updind, &phtable, LTERM);
+  GKfree((void **)(&marker), &updind, &phtable, LTERM);
 
   PQueueFree(ctrl, &queue);
 
@@ -781,7 +781,7 @@ void Greedy_KWayVolBalanceMConn(CtrlType *ctrl, GraphType *graph, int nparts, fl
 
   }
 
-  GKfree(&marker, &updind, &phtable, LTERM);
+  GKfree((void **)(&marker), &updind, &phtable, LTERM);
 
   PQueueFree(ctrl, &queue);
 
@@ -1203,8 +1203,7 @@ int ComputeVolume(GraphType *graph, idxtype *where)
       }
     }
   }
-
-  free(marker);
+  GKfree((void **)&marker, LTERM);
 
   return totalv;
 }
@@ -1333,8 +1332,7 @@ void CheckVolKWayPartitionParams(CtrlType *ctrl, GraphType *graph, int nparts)
     }
 
   }
-
-  free(tmpdegrees);
+  GKfree((void **)&tmpdegrees, LTERM);
 
 }
 
@@ -1601,7 +1599,7 @@ void EliminateVolSubDomainEdges(CtrlType *ctrl, GraphType *graph, int nparts, fl
   idxwspacefree(ctrl, nparts);
   idxwspacefree(ctrl, nvtxs);
 
-  GKfree(&cand, &cand2, LTERM);
+  GKfree((void **)(&cand), &cand2, LTERM);
 }
 
 
@@ -1744,8 +1742,7 @@ void EliminateVolComponents(CtrlType *ctrl, GraphType *graph, int nparts, float 
         recompute = 1;
       }
     }
-
-    free(cand);
+    GKfree((void **)&cand, LTERM);
   }
 
   if (recompute) {

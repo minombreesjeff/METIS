@@ -246,7 +246,7 @@ void Mc_KeepPart(GraphType *graph, WorkSpaceType *wspace, idxtype *part, int myp
   graph->nvtxs = mynvtxs;
   graph->nedges = mynedges;
 
-  free(rename);
+  GKfree((void **)&rename, LTERM);
 }
 
 

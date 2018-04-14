@@ -19,9 +19,13 @@
 #define DEBUG_SETUPINFO_
 
 
-/*************************************************************************
-* This function tests the repeated shmem_put
-**************************************************************************/
+/*************************************************************************/
+/*! This function performs the following functions:
+    - determines the processors that contain adjacent vertices and setup
+      the infrastructure for efficient communication.
+    - localizes the numbering of the adjancency lists.
+*/
+/**************************************************************************/
 void SetUp(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
 {
   int i, j, k, islocal, penum, gnvtxs, nvtxs, nlocal, firstvtx, lastvtx, nsend, nrecv, nnbrs, nadj;
@@ -32,8 +36,14 @@ void SetUp(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
   idxtype *pexadj, *peadjncy, *peadjloc, *startsind;
   KeyValueType *recvrequests, *sendrequests, *adjpairs;
 
+  if (graph->lperm != NULL)
+    return; /* The communication structure has already been setup */
+
   IFSET(ctrl->dbglvl, DBG_TIME, MPI_Barrier(ctrl->comm));
   IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->SetupTmr));
+
+  /* See if there is a need to adjust the memory allocated for the wspace */
+  AdjustWSpace(ctrl, graph, wspace);
 
   gnvtxs  = graph->gnvtxs;
   nvtxs   = graph->nvtxs;
@@ -54,20 +64,23 @@ void SetUp(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
   /************************************************************* 
    * Determine what you need to receive 
    *************************************************************/
-  receive  = wspace->indices;  		/* Use the large global received array for now */
+  receive  = wspace->indices;  /* Use the large global received array for now */
   adjpairs = wspace->pairs;
 
   for (nlocal = nadj = i = 0; i<nvtxs; i++) {
     islocal = 1;
     for (j=xadj[i]; j<xadj[i+1]; j++) {
       k = adjncy[j];
-      if (k >= firstvtx && k < lastvtx) {
-        adjncy[j] = k-firstvtx;
-        continue;  /* local vertex */
+      if (k >= firstvtx && k < lastvtx) { 
+        /* local vertex */
+        adjncy[j] = k-firstvtx; 
       }
-      adjpairs[nadj].key   = k;
-      adjpairs[nadj++].val = j;
-      islocal = 0;
+      else { 
+        /* remote vertex */
+        adjpairs[nadj].key   = k;
+        adjpairs[nadj++].val = j;
+        islocal = 0;
+      }
     }
     if (islocal) {
       lperm[i]        = lperm[nlocal];
@@ -105,7 +118,7 @@ void SetUp(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
       i = j;
     }
   }
-  //PrintVector(ctrl, nnbrs+1, 0, recvptr, "recvptr");
+  /* PrintVector(ctrl, nnbrs+1, 0, recvptr, "recvptr"); */
 
 
   /************************************************************* 
@@ -122,10 +135,11 @@ void SetUp(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
     recvrequests[peind[i]].key = recvptr[i+1]-recvptr[i];
     recvrequests[peind[i]].val = nvtxs+recvptr[i];
   }
-  MPI_Alltoall((void *)recvrequests, 2, IDX_DATATYPE, (void *)sendrequests, 2, IDX_DATATYPE, ctrl->comm);
+  MPI_Alltoall((void *)recvrequests, 2, IDX_DATATYPE, (void *)sendrequests, 
+      2, IDX_DATATYPE, ctrl->comm);
 
-  //PrintPairs(ctrl, npes, recvrequests, "recvrequests");
-  //PrintPairs(ctrl, npes, sendrequests, "sendrequests");
+  /* PrintPairs(ctrl, npes, recvrequests, "recvrequests"); */
+  /* PrintPairs(ctrl, npes, sendrequests, "sendrequests"); */
 
   sendptr = graph->sendptr = idxmalloc(npes+1, "SetUp: sendptr");
   startsind = wspace->pv2;
@@ -162,12 +176,13 @@ void SetUp(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
 
 
   /* Create the peadjncy data structure for sparse boundary exchanges */
-  pexadj   = graph->pexadj = idxsmalloc(nvtxs+1, 0, "SetUp: pexadj");
+  pexadj   = graph->pexadj   = idxsmalloc(nvtxs+1, 0, "SetUp: pexadj");
   peadjncy = graph->peadjncy = idxmalloc(nsend, "SetUp: peadjncy");
   peadjloc = graph->peadjloc = idxmalloc(nsend, "SetUp: peadjloc");
 
   for (i=0; i<nsend; i++) {
-    ASSERTP(ctrl, sendind[i] >= firstvtx && sendind[i] < lastvtx, (ctrl, "%d %d %d\n", sendind[i], firstvtx, lastvtx));
+    ASSERTP(ctrl, sendind[i] >= firstvtx && sendind[i] < lastvtx, 
+            (ctrl, "%d %d %d\n", sendind[i], firstvtx, lastvtx));
     pexadj[sendind[i]-firstvtx]++;
   }
   MAKECSR(i, nvtxs, pexadj);
@@ -200,14 +215,9 @@ void SetUp(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
     imap[nvtxs+i] = recvind[i];
 
 
-  /* Check if wspace->nlarge is large enough for nrecv and nsend */
-  if (wspace->nlarge < nrecv+nsend) {
-    free(wspace->indices);
-    free(wspace->pairs);
-    wspace->nlarge = nrecv+nsend;
-    wspace->indices = idxmalloc(wspace->nlarge, "SetUp: wspace->indices");
-    wspace->pairs = (KeyValueType *)GKmalloc(sizeof(KeyValueType)*wspace->nlarge, "SetUp: wspace->pairs");
-  }
+  /* See if there is a need to adjust the memory allocated to deal with nsend+nrecv */
+  AdjustWSpace(ctrl, graph, wspace);
+
 
   IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->SetupTmr));
 

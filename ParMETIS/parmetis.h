@@ -39,8 +39,8 @@ typedef short idxtype;
 * Constants 
 **************************************************************************/
 #define PARMETIS_MAJOR_VERSION        3
-#define PARMETIS_MINOR_VERSION        1
-#define PARMETIS_SUBMINOR_VERSION     1
+#define PARMETIS_MINOR_VERSION        2
+#define PARMETIS_SUBMINOR_VERSION     0
 
 
 /*************************************************************************
@@ -93,6 +93,13 @@ void __cdecl ParMETIS_V3_RefineKway(
 	     idxtype *adjwgt, int *wgtflag, int *numflag, int *ncon, int *nparts, 
 	     float *tpwgts, float *ubvec, int *options, int *edgecut, 
 	     idxtype *part, MPI_Comm *comm);
+
+void __cdecl ParMETIS_V32_NodeND(
+             idxtype *vtxdist, idxtype *xadj, idxtype *adjncy, idxtype *vwgt,
+             idxtype *numflag, int *mtype, int *rtype, int *p_nseps, int *s_nseps,
+             float *ubfrac, int *seed, int *dbglvl, idxtype *order, 
+             idxtype *sizes, MPI_Comm *comm);
+
 
 
 /*------------------------------------------------------------------
@@ -192,12 +199,26 @@ void __cdecl PARDAMETIS(
 * Various constants used for the different parameters
 **************************************************************************/
 /* Matching types */
-#define PARMETIS_MTYPE_LOCAL    1
-#define PARMETIS_MTYPE_GLOBAL   2
+#define PARMETIS_MTYPE_LOCAL     1    /* Restrict matching to within processor vertices */
+#define PARMETIS_MTYPE_GLOBAL    2    /* Remote vertices can be matched */
 
-/* Refinement types */
-#define PARMETIS_RTYPE_RANDOM    1
-#define PARMETIS_RTYPE_GREEDY    2
-#define PARMETIS_RTYPE_2PHASE    3
+/* Separator refinement types */
+#define PARMETIS_SRTYPE_GREEDY    1    /* Vertices are visted from highest to lowest gain */
+#define PARMETIS_SRTYPE_2PHASE    2    /* Separators are refined in a two-phase fashion using
+                                          PARMETIS_SRTYPE_GREEDY for the 2nd phase */
+
+/* Coupling types for ParMETIS_V3_RefineKway & ParMETIS_V3_AdaptiveRepart */
+#define PARMETIS_PSR_COUPLED    1    /* # of partitions == # of processors */
+#define PARMETIS_PSR_UNCOUPLED  2    /* # of partitions != # of processors */
+
+
+/* Debug levels (fields should be ORed) */
+#define PARMETIS_DBGLVL_TIME        1      /* Perform timing analysis */
+#define PARMETIS_DBGLVL_INFO        2      /* Perform timing analysis */
+#define PARMETIS_DBGLVL_PROGRESS    4      /* Show the coarsening progress */
+#define PARMETIS_DBGLVL_REFINEINFO  8      /* Show info on communication during folding */
+#define PARMETIS_DBGLVL_MATCHINFO   16     /* Show info on matching */
+#define PARMETIS_DBGLVL_RMOVEINFO   32     /* Show info on communication during folding */
+#define PARMETIS_DBGLVL_REMAP       64     /* Determines if remapping will take place */
 
 #endif 

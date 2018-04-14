@@ -174,15 +174,18 @@ struct graphdef {
   int gnvtxs, nvtxs, nedges, ncon, nobj;
   idxtype *xadj;		/* Pointers to the locally stored vertices */
   idxtype *vwgt;		/* Vertex weights */
-  float *nvwgt;		/* Vertex weights */
+  float   *nvwgt;		/* Vertex weights */
   idxtype *vsize;		/* Vertex size */
   idxtype *adjncy;		/* Array that stores the adjacency lists of nvtxs */
   idxtype *adjwgt;		/* Array that stores the weights of the adjacency lists */
   idxtype *vtxdist;		/* Distribution of vertices */
+  idxtype *home;		/* The initial partition of the vertex */
 
+  /* Coarsening structures */
   idxtype *match;
   idxtype *cmap;
 
+  /* Used during initial partitioning */
   idxtype *label;
 
   /* Communication/Setup parameters */
@@ -205,17 +208,15 @@ struct graphdef {
 
 
   /* Partition parameters */
-  idxtype *where, *home;
+  idxtype *where;
   idxtype *lpwgts, *gpwgts;
   float *lnpwgts, *gnpwgts;
   RInfoType *rinfo;
 
   /* Node refinement information */
-  NRInfoType *nrinfo;
   int nsep;  			/* The number of vertices in the separator */
+  NRInfoType *nrinfo;
   idxtype *sepind;		/* The indices of the vertices in the separator */
-  idxtype *hmarker;             /* Marker for halo nodes (i.e, nodes 2 steps ways
-                                   from the boundary) */
 
   int lmincut, mincut;
 
@@ -248,7 +249,10 @@ struct controldef {
   int ipart;			/* The initial partitioning type */
   int rtype;                    /* The refinement type */
   int xyztype;			/* The coordinate indexing type */
-  int nseps;                    /* The number of separators to compute at each bisection */
+  int p_nseps;                  /* The number of separators to compute at each 
+                                   parallel bisection */
+  int s_nseps;                  /* The number of separators to compute at each 
+                                   serial bisection */
   float ubfrac;                 /* The max/avg fraction for separator bisections */
   int seed;			/* Random number seed */
   int sync;			/* Random number seed */
@@ -272,7 +276,8 @@ struct controldef {
   /* Various Timers */
   timer TotalTmr, InitPartTmr, MatchTmr, ContractTmr, CoarsenTmr, RefTmr,
         SetupTmr, ColorTmr, ProjectTmr, KWayInitTmr, KWayTmr, MoveTmr,
-        RemapTmr, AuxTmr1, AuxTmr2, AuxTmr3, AuxTmr4, AuxTmr5, AuxTmr6;
+        RemapTmr, SerialTmr, AuxTmr1, AuxTmr2, AuxTmr3, AuxTmr4, AuxTmr5, 
+        AuxTmr6;
 };
 
 typedef struct controldef CtrlType;

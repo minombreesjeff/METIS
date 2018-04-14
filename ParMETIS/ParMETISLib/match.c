@@ -14,11 +14,13 @@
 
 #include <parmetislib.h>
 
+#define LHTSIZE 8192 /* This should be a power of two */
+#define MASK    8191 /* This should be equal to LHTSIZE-1 */
 
-/*************************************************************************
-* This function finds a matching
-**************************************************************************/
-void Mc_GlobalMatch_Balance(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
+/*************************************************************************/
+/*! Finds a HEM matching involving both local and remote vertices */
+/*************************************************************************/
+void Match_Global(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
 {
   int h, i, ii, j, k;
   int nnbrs, nvtxs, ncon, cnvtxs, firstvtx, lastvtx, maxi, maxidx, nkept;
@@ -30,12 +32,13 @@ void Mc_GlobalMatch_Balance(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wsp
   float *nvwgt, maxnvwgt;
   int *nreqs_pe;
   KeyValueType *match_requests, *match_granted, *pe_requests;
+  int last_unmatched;
 
   ASSERT(ctrl, wspace->nlarge > graph->xadj[graph->nvtxs]);
 
-  maxnvwgt = 1.0/((float)(ctrl->nparts)*MAXNVWGT_FACTOR);
+  maxnvwgt = 0.75/((float)(ctrl->CoarsenTo));
 
-  graph->match_type = MATCH_GLOBAL;
+  graph->match_type = PARMETIS_MTYPE_GLOBAL;
 
   IFSET(ctrl->dbglvl, DBG_TIME, MPI_Barrier(ctrl->comm));
   IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->MatchTmr));
@@ -52,34 +55,44 @@ void Mc_GlobalMatch_Balance(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wsp
   firstvtx = vtxdist[ctrl->mype];
   lastvtx  = vtxdist[ctrl->mype+1];
 
-  match  = graph->match = idxsmalloc(nvtxs+graph->nrecv, UNMATCHED, "HEM_Match: match");
-  myhome = idxsmalloc(nvtxs+graph->nrecv, UNMATCHED, "HEM_Match: myhome");
+  match  = graph->match = idxsmalloc(nvtxs+graph->nrecv, UNMATCHED, "GlobalMatch: match");
+  myhome = idxsmalloc(nvtxs+graph->nrecv, UNMATCHED, "GlobalMatch: myhome");
 
   /*------------------------------------------------------------
   / Send/Receive the home information of interface vertices
   /------------------------------------------------------------*/
   if (ctrl->partType == ADAPTIVE_PARTITION || ctrl->partType == REFINE_PARTITION) {
+    ASSERT(ctrl, home != NULL);
     idxcopy(nvtxs, home, myhome);
     shome = wspace->indices;
     rhome = myhome + nvtxs;
     CommInterfaceData(ctrl, graph, myhome, shome, rhome);
   }
 
-  nnbrs = graph->nnbrs;
-  peind = graph->peind;
+  /* If coarsening for ordering, replace home with where information */
+  if (ctrl->partType == ORDER_PARTITION) {
+    ASSERT(ctrl, graph->where != NULL);
+    idxcopy(nvtxs, graph->where, myhome);
+    shome = wspace->indices;
+    rhome = myhome + nvtxs;
+    CommInterfaceData(ctrl, graph, myhome, shome, rhome);
+  }
+
+  nnbrs   = graph->nnbrs;
+  peind   = graph->peind;
   sendptr = graph->sendptr;
   recvptr = graph->recvptr;
 
   /* Use wspace->indices as the tmp space for matching info of the boundary
    * vertices that are sent and received */
-  rmatch = match + nvtxs;
-  smatch = wspace->indices;
+  rmatch  = match + nvtxs;
+  smatch  = wspace->indices;
   changed = smatch+graph->nsend;
 
   /* Use wspace->indices as the tmp space for match requests of the boundary
    * vertices that are sent and received */
   match_requests = wspace->pairs;
-  match_granted = match_requests + graph->nsend;
+  match_granted  = match_requests + graph->nsend;
 
   nreqs_pe = ismalloc(nnbrs, 0, "Match_HEM: nreqs_pe");
 
@@ -95,50 +108,79 @@ void Mc_GlobalMatch_Balance(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wsp
   for (i=0; i<nnbrs; i++)
     nperm[i] = i;
 
+
+  /* First mark all heavy vertices as TOO_HEAVY so they will not be matched */
+  for (nchanged=i=0; i<nvtxs; i++) {
+    for (h=0; h<ncon; h++) {
+      if (nvwgt[i*ncon+h] > maxnvwgt) {
+        match[i] = TOO_HEAVY;
+        break;
+      }
+    }
+  }
+
+  /* If no heavy vertices, pick one at random and treat it as such so that
+     at the end of the matching each partition will still have one vertex.
+     This is to eliminate the cases in which once a matching has been 
+     computed, a processor ends up having no vertices */
+  if (nchanged == 0) 
+    match[RandomInRange(nvtxs)] = TOO_HEAVY;
+
+  CommInterfaceData(ctrl, graph, match, smatch, rmatch);
+
+
   /*************************************************************
    * Go now and find a matching by doing multiple iterations
    *************************************************************/
-  /* First nullify the heavy vertices */
-  for (nchanged=i=0; i<nvtxs; i++) {
-    for (h=0; h<ncon; h++)
-      if (nvwgt[i*ncon+h] > maxnvwgt) {
-        break;
-      }
-
-    if (h != ncon) {
-      match[i] = TOO_HEAVY;
-      nchanged++;
-    }
-  }
-  if (GlobalSESum(ctrl, nchanged) > 0) {
-    IFSET(ctrl->dbglvl, DBG_PROGRESS,
-    rprintf(ctrl, "We found %d heavy vertices!\n", GlobalSESum(ctrl, nchanged)));
-    CommInterfaceData(ctrl, graph, match, smatch, rmatch);
-  }
-
-
   for (nmatched=pass=0; pass<NMATCH_PASSES; pass++) {
     wside = (graph->level+pass)%2;
     nchanged = nrequests = 0;
-    for (ii=nmatched; ii<nvtxs; ii++) {
+    for (last_unmatched=ii=nmatched; ii<nvtxs; ii++) {
       i = perm[ii];
       if (match[i] == UNMATCHED) {  /* Unmatched */
         maxidx = i;
-        maxi = -1;
+        maxi   = -1;
 
-        /* Find a heavy-edge matching */
+        /* Deal with islands. Find another vertex and match it with */
+        if (xadj[i] == xadj[i+1]) {
+          last_unmatched = amax(ii, last_unmatched)+1;
+          for (; last_unmatched<nvtxs; last_unmatched++) {
+            k = perm[last_unmatched];
+            if (match[k] == UNMATCHED && myhome[i] == myhome[k]) {
+              /* Here we give preference the local matching by granting it right away */
+              if (i <= k) {
+                match[i] = firstvtx+k + KEEP_BIT;
+                match[k] = firstvtx+i;
+              }
+              else {
+                match[i] = firstvtx+k;
+                match[k] = firstvtx+i + KEEP_BIT;
+              }
+              break;
+            }
+          }
+          continue;
+        }
+
+        /* Find a heavy-edge matching. */
         for (j=xadj[i]; j<xadj[i+1]; j++) {
           k = ladjncy[j];
-          if (match[k] == UNMATCHED &&
-               myhome[k] == myhome[i] &&
-               (maxi == -1 ||
-               adjwgt[maxi] < adjwgt[j] ||
-               (maxidx < nvtxs &&
-               k < nvtxs &&
-               adjwgt[maxi] == adjwgt[j] &&
-               BetterVBalance(ncon,nvwgt+i*ncon,nvwgt+maxidx*ncon,nvwgt+k*ncon) >= 0))) {
-            maxi = j;
-            maxidx = k;
+          if (match[k] == UNMATCHED && myhome[k] == myhome[i]) { 
+            if (ncon == 1) {
+              if (maxi == -1 || adjwgt[maxi] < adjwgt[j] ||
+                  (adjwgt[maxi] == adjwgt[j] && RandomInRange(xadj[i+1]-xadj[i]) == 0)) {
+                maxi   = j;
+                maxidx = k;
+              }
+            }
+            else {
+              if (maxi == -1 || adjwgt[maxi] < adjwgt[j] ||
+                  (adjwgt[maxi] == adjwgt[j] && maxidx < nvtxs && k < nvtxs &&
+                   BetterVBalance(ncon,nvwgt+i*ncon,nvwgt+maxidx*ncon,nvwgt+k*ncon) >= 0)) {
+                maxi   = j;
+                maxidx = k;
+              }
+            }
           }
         }
 
@@ -313,7 +355,7 @@ void Mc_GlobalMatch_Balance(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wsp
   IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->MatchTmr));
   IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->ContractTmr));
 
-  Mc_Global_CreateCoarseGraph(ctrl, graph, wspace, cnvtxs);
+  CreateCoarseGraph_Global(ctrl, graph, wspace, cnvtxs);
 
   IFSET(ctrl->dbglvl, DBG_TIME, MPI_Barrier(ctrl->comm));
   IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->ContractTmr));
@@ -321,11 +363,140 @@ void Mc_GlobalMatch_Balance(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wsp
 }
 
 
-/*************************************************************************
-* This function creates the coarser graph
-**************************************************************************/
-void Mc_Global_CreateCoarseGraph(CtrlType *ctrl, GraphType *graph,
-	WorkSpaceType *wspace, int cnvtxs)
+/*************************************************************************/
+/*! Finds a HEM matching involving only local vertices */
+/*************************************************************************/
+void Match_Local(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
+{
+  int h, i, ii, j, k;
+  int nvtxs, ncon, cnvtxs, firstvtx, maxi, maxidx, edge; 
+  idxtype *xadj, *ladjncy, *adjwgt, *vtxdist, *home, *myhome, *shome, *rhome;
+  idxtype *perm, *match;
+  float maxnvwgt, *nvwgt;
+
+  ASSERT(ctrl, wspace->nlarge > graph->xadj[graph->nvtxs]);
+
+  graph->match_type = PARMETIS_MTYPE_LOCAL;
+  maxnvwgt = 0.75/((float)ctrl->CoarsenTo);
+
+  IFSET(ctrl->dbglvl, DBG_TIME, MPI_Barrier(ctrl->comm));
+  IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->MatchTmr));
+
+  nvtxs   = graph->nvtxs;
+  ncon    = graph->ncon;
+  xadj    = graph->xadj;
+  nvwgt   = graph->nvwgt;
+  ladjncy = graph->adjncy;
+  adjwgt  = graph->adjwgt;
+  home    = graph->home;
+
+  vtxdist  = graph->vtxdist;
+  firstvtx = vtxdist[ctrl->mype];
+
+  match  = graph->match = idxmalloc(nvtxs+graph->nrecv, "HEM_Match: match");
+  myhome = idxsmalloc(nvtxs+graph->nrecv, UNMATCHED, "HEM_Match: myhome");
+
+  idxset(nvtxs, UNMATCHED, match);
+  idxset(graph->nrecv, 0, match+nvtxs);  /* Easy way to handle remote vertices */
+
+  /*------------------------------------------------------------
+  / Send/Receive the home information of interface vertices
+  /------------------------------------------------------------*/
+  if (ctrl->partType == ADAPTIVE_PARTITION || ctrl->partType == REFINE_PARTITION) {
+    idxcopy(nvtxs, home, myhome);
+    shome = wspace->indices;
+    rhome = myhome + nvtxs;
+    CommInterfaceData(ctrl, graph, myhome, shome, rhome);
+  }
+
+  /*************************************************************
+   * Go now and find a local matching 
+   *************************************************************/
+  perm = wspace->indices;
+  FastRandomPermute(nvtxs, perm, 1);
+  cnvtxs = 0;
+  for (ii=0; ii<nvtxs; ii++) {
+    i = perm[ii];
+    if (match[i] == UNMATCHED) {
+      maxidx = maxi = -1;
+
+      /* Find a heavy-edge matching, if the weight of the vertex is OK */
+      for (h=0; h<ncon; h++)
+        if (nvwgt[i*ncon+h] > maxnvwgt)
+          break;
+
+      if (h == ncon && ii<nvtxs) {
+        for (j=xadj[i]; j<xadj[i+1]; j++) {
+          edge = ladjncy[j];
+
+          /* match only with local vertices */
+          if (myhome[edge] != myhome[i] || edge >= nvtxs)
+            continue;
+
+          for (h=0; h<ncon; h++)
+            if (nvwgt[edge*ncon+h] > maxnvwgt) 
+              break;
+
+          if (h == ncon) {
+            if (match[edge] == UNMATCHED &&
+              (maxi == -1 ||
+               adjwgt[maxi] < adjwgt[j] ||
+              (adjwgt[maxi] == adjwgt[j] &&
+               BetterVBalance(ncon,nvwgt+i*ncon,nvwgt+maxidx*ncon,nvwgt+edge*ncon) >= 0))) {
+              maxi = j;
+              maxidx = edge;
+            }
+          }
+        }
+      }
+
+      if (maxi != -1) {
+        k = ladjncy[maxi];
+        if (i <= k) {
+          match[i] = firstvtx+k + KEEP_BIT;
+          match[k] = firstvtx+i;
+        }
+        else {
+          match[i] = firstvtx+k;
+          match[k] = firstvtx+i + KEEP_BIT;
+        }
+      }
+      else {
+        match[i] = (firstvtx+i) + KEEP_BIT;
+      }
+      cnvtxs++;
+    }
+  }
+
+  CommInterfaceData(ctrl, graph, match, wspace->indices, match+nvtxs);
+  GKfree((void **)(&myhome), LTERM);
+
+#ifdef DEBUG_MATCH
+  PrintVector2(ctrl, nvtxs, firstvtx, match, "Match1");
+#endif
+
+
+  if (ctrl->dbglvl&DBG_MATCHINFO) {
+    PrintVector2(ctrl, nvtxs, firstvtx, match, "Match");
+    myprintf(ctrl, "Cnvtxs: %d\n", cnvtxs);
+    rprintf(ctrl, "Done with matching...\n");
+  }
+
+  IFSET(ctrl->dbglvl, DBG_TIME, MPI_Barrier(ctrl->comm));
+  IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->MatchTmr));
+
+  IFSET(ctrl->dbglvl, DBG_TIME, starttimer(ctrl->ContractTmr));
+  CreateCoarseGraph_Local(ctrl, graph, wspace, cnvtxs);
+  IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->ContractTmr));
+
+}
+
+
+/*************************************************************************/
+/*! This function creates the coarser graph after a global matching */
+/*************************************************************************/
+void CreateCoarseGraph_Global(CtrlType *ctrl, GraphType *graph,
+         WorkSpaceType *wspace, int cnvtxs)
 {
   int h, i, j, k, l, ii, jj, ll, nnbrs, nvtxs, nedges, ncon;
   int firstvtx, lastvtx, cfirstvtx, clastvtx, otherlastvtx;
@@ -340,7 +511,7 @@ void Mc_Global_CreateCoarseGraph(CtrlType *ctrl, GraphType *graph,
   float *nvwgt, *cnvwgt;
   GraphType *cgraph;
   KeyValueType *scand, *rcand;
-  int mask=(1<<13)-1, htable[8192], htableidx[8192];
+  int htable[LHTSIZE], htableidx[LHTSIZE];
 
   nvtxs = graph->nvtxs;
   ncon  = graph->ncon;
@@ -358,9 +529,9 @@ void Mc_Global_CreateCoarseGraph(CtrlType *ctrl, GraphType *graph,
   match = graph->match;
 
   firstvtx = vtxdist[mype];
-  lastvtx = vtxdist[mype+1];
+  lastvtx  = vtxdist[mype+1];
 
-  cmap = graph->cmap = idxmalloc(nvtxs+graph->nrecv, "CreateCoarseGraph: cmap");
+  cmap = graph->cmap = idxmalloc(nvtxs+graph->nrecv, "Global_CreateCoarseGraph: cmap");
 
   nnbrs   = graph->nnbrs;
   peind   = graph->peind;
@@ -386,10 +557,11 @@ void Mc_Global_CreateCoarseGraph(CtrlType *ctrl, GraphType *graph,
   /*************************************************************
   * Obtain the vtxdist of the coarser graph 
   **************************************************************/
-  cvtxdist = cgraph->vtxdist = idxmalloc(npes+1, "CreateCoarseGraph: cvtxdist");
+  cvtxdist = cgraph->vtxdist = idxmalloc(npes+1, "Global_CreateCoarseGraph: cvtxdist");
   cvtxdist[npes] = cnvtxs;  /* Use last position in the cvtxdist as a temp buffer */
 
-  MPI_Allgather((void *)(cvtxdist+npes), 1, IDX_DATATYPE, (void *)cvtxdist, 1, IDX_DATATYPE, ctrl->comm);
+  MPI_Allgather((void *)(cvtxdist+npes), 1, IDX_DATATYPE, (void *)cvtxdist, 1, 
+      IDX_DATATYPE, ctrl->comm);
 
   MAKECSR(i, npes, cvtxdist);
 
@@ -404,7 +576,7 @@ void Mc_Global_CreateCoarseGraph(CtrlType *ctrl, GraphType *graph,
   * Construct the cmap vector 
   **************************************************************/
   cfirstvtx = cvtxdist[mype];
-  clastvtx = cvtxdist[mype+1];
+  clastvtx  = cvtxdist[mype+1];
 
   /* Create the cmap of what you know so far locally */
   cnvtxs = 0;
@@ -576,8 +748,10 @@ void Mc_Global_CreateCoarseGraph(CtrlType *ctrl, GraphType *graph,
         sgraph[ll++] = xadj[ii+1]-xadj[ii];
         for (h=0; h<ncon; h++)
           sgraph[ll++] = vwgt[ii*ncon+h];
-        sgraph[ll++] = (ctrl->partType == STATIC_PARTITION) ? -1 : vsize[ii];
-        sgraph[ll++] = (ctrl->partType == STATIC_PARTITION) ? -1 : home[ii];
+        sgraph[ll++] = (ctrl->partType == STATIC_PARTITION || ctrl->partType == ORDER_PARTITION 
+                        ? -1 : vsize[ii]);
+        sgraph[ll++] = (ctrl->partType == STATIC_PARTITION || ctrl->partType == ORDER_PARTITION 
+                        ? -1 : home[ii]);
         for (jj=xadj[ii]; jj<xadj[ii+1]; jj++) {
           sgraph[ll++] = cmap[ladjncy[jj]];
           sgraph[ll++] = adjwgt[jj];
@@ -586,7 +760,7 @@ void Mc_Global_CreateCoarseGraph(CtrlType *ctrl, GraphType *graph,
 
       ASSERT(ctrl, ll-l == (4+ncon)*(slens[i+1]-slens[i])+2*ssizes[i]);
 
-      /* myprintf(ctrl, "Sending to pe:%d, %d lists of size %d\n", peind[i], slens[i+1]-slens[i], ssizes[i]); */
+      /*myprintf(ctrl, "Sending to pe:%d, %d lists of size %d\n", peind[i], slens[i+1]-slens[i], ssizes[i]); */
       MPI_Isend((void *)(sgraph+l), ll-l, IDX_DATATYPE, peind[i], 1, ctrl->comm, ctrl->sreq+i);
       l = ll;
     }
@@ -614,7 +788,6 @@ void Mc_Global_CreateCoarseGraph(CtrlType *ctrl, GraphType *graph,
   **************************************************************/
   perm = idxsmalloc(recvptr[nnbrs], -1, "CreateCoarseGraph: perm");
   for (j=i=0; i<nrecv; i++) {
-  /*   myprintf(ctrl, "For received vertex %d, set perm[%d]=%d\n", rgraph[j], BSearch(graph->nrecv, recvind, rgraph[j]), j+ncon); */
     perm[BSearch(graph->nrecv, recvind, rgraph[j])] = j+1;
     j += (4+ncon)+2*rgraph[j+1];
   }
@@ -626,16 +799,16 @@ void Mc_Global_CreateCoarseGraph(CtrlType *ctrl, GraphType *graph,
   cxadj   = cgraph->xadj  = idxmalloc(cnvtxs+1, "CreateCoarserGraph: cxadj");
   cvwgt   = cgraph->vwgt  = idxmalloc(cnvtxs*ncon, "CreateCoarserGraph: cvwgt");
   cnvwgt  = cgraph->nvwgt = fmalloc(cnvtxs*ncon, "CreateCoarserGraph: cnvwgt");
-  cadjncy = idxmalloc(2*(nkeepsize+nrecvsize), "CreateCoarserGraph: cadjncy");
-  cadjwgt = cadjncy + nkeepsize+nrecvsize;
+  cadjncy = idxmalloc(nkeepsize+nrecvsize, "CreateCoarserGraph: cadjncy");
+  cadjwgt = idxmalloc(nkeepsize+nrecvsize, "CreateCoarserGraph: cadjwgt");
   if (ctrl->partType == ADAPTIVE_PARTITION || ctrl->partType == REFINE_PARTITION) {
     cvsize = cgraph->vsize = idxmalloc(cnvtxs, "CreateCoarserGraph: cvsize");
     chome  = cgraph->home  = idxmalloc(cnvtxs, "CreateCoarserGraph: chome");
   }
-  if (where != NULL) /* This is used only by the ordering code for now */
+  if (where != NULL)
     cwhere = cgraph->where = idxmalloc(cnvtxs, "CreateCoarserGraph: cwhere");
 
-  iset(8192, -1, htable);
+  iset(LHTSIZE, -1, htable);
 
   cxadj[0] = cnvtxs = cnedges = 0;
   for (i=0; i<nvtxs; i++) {
@@ -657,10 +830,11 @@ void Mc_Global_CreateCoarseGraph(CtrlType *ctrl, GraphType *graph,
         cwhere[cnvtxs] = where[i];
       nedges = 0;
 
+      /* Collapse the v (i) vertex first */
       for (j=xadj[i]; j<xadj[i+1]; j++) {
         k = cmap[ladjncy[j]];
         if (k != cfirstvtx+cnvtxs) {  /* If this is not an internal edge */
-          l = k&mask;
+          l = k&MASK;
           if (htable[l] == -1) { /* Seeing this for first time */
             htable[l] = k;
             htableidx[l] = cnedges+nedges;
@@ -700,12 +874,13 @@ void Mc_Global_CreateCoarseGraph(CtrlType *ctrl, GraphType *graph,
           for (j=xadj[u]; j<xadj[u+1]; j++) {
             k = cmap[ladjncy[j]];
             if (k != cfirstvtx+cnvtxs) {  /* If this is not an internal edge */
-              l = k&mask;
+              l = k&MASK;
               if (htable[l] == -1) { /* Seeing this for first time */
                 htable[l] = k;
                 htableidx[l] = cnedges+nedges;
                 cadjncy[cnedges+nedges] = k; 
-                cadjwgt[cnedges+nedges++] = adjwgt[j];
+                cadjwgt[cnedges+nedges] = adjwgt[j];
+                nedges++;
               }
               else if (htable[l] == k) {
                 cadjwgt[htableidx[l]] += adjwgt[j];
@@ -720,7 +895,8 @@ void Mc_Global_CreateCoarseGraph(CtrlType *ctrl, GraphType *graph,
                 }
                 else {
                   cadjncy[cnedges+nedges] = k; 
-                  cadjwgt[cnedges+nedges++] = adjwgt[j];
+                  cadjwgt[cnedges+nedges] = adjwgt[j];
+                  nedges++;
                 }
               }
             }
@@ -738,12 +914,13 @@ void Mc_Global_CreateCoarseGraph(CtrlType *ctrl, GraphType *graph,
           for (j=0; j<rgraph[u]; j++) {
             k = rgraph[u+3+ncon+2*j];
             if (k != cfirstvtx+cnvtxs) {  /* If this is not an internal edge */
-              l = k&mask;
+              l = k&MASK;
               if (htable[l] == -1) { /* Seeing this for first time */
                 htable[l] = k;
                 htableidx[l] = cnedges+nedges;
                 cadjncy[cnedges+nedges] = k; 
-                cadjwgt[cnedges+nedges++] = rgraph[u+3+ncon+2*j+1];
+                cadjwgt[cnedges+nedges] = rgraph[u+3+ncon+2*j+1];
+                nedges++;
               }
               else if (htable[l] == k) {
                 cadjwgt[htableidx[l]] += rgraph[u+3+ncon+2*j+1];
@@ -758,7 +935,8 @@ void Mc_Global_CreateCoarseGraph(CtrlType *ctrl, GraphType *graph,
                 }
                 else {
                   cadjncy[cnedges+nedges] = k; 
-                  cadjwgt[cnedges+nedges++] = rgraph[u+3+ncon+2*j+1];
+                  cadjwgt[cnedges+nedges] = rgraph[u+3+ncon+2*j+1];
+                  nedges++;
                 }
               }
             }
@@ -768,7 +946,7 @@ void Mc_Global_CreateCoarseGraph(CtrlType *ctrl, GraphType *graph,
 
       cnedges += nedges;
       for (j=cxadj[cnvtxs]; j<cnedges; j++)
-        htable[cadjncy[j]&mask] = -1;  /* reset the htable */
+        htable[cadjncy[j]&MASK] = -1;  /* reset the htable */
       cxadj[++cnvtxs] = cnedges;
     }
   }
@@ -787,10 +965,230 @@ void Mc_Global_CreateCoarseGraph(CtrlType *ctrl, GraphType *graph,
   idxcopy(cnedges, cadjwgt, cgraph->adjwgt);
 
   /* Note that graph->where works fine even if it is NULL */
-  GKfree((void **)&cadjncy, &graph->where, &perm, LTERM);
+  GKfree((void **)&cadjncy, &cadjwgt, &graph->where, &perm, LTERM);
 
   if (rgraph != (idxtype *)wspace->degrees) 
     GKfree((void **)&rgraph, &sgraph, LTERM);
+
+}
+
+
+/*************************************************************************/
+/*! This function creates the coarser graph after a local matching */
+/*************************************************************************/
+void CreateCoarseGraph_Local(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace, int cnvtxs)
+{
+  int h, i, j, k, l;
+  int nvtxs, ncon, nedges, firstvtx, cfirstvtx;
+  int npes=ctrl->npes, mype=ctrl->mype;
+  int cnedges, v, u;
+  idxtype *xadj, *vwgt, *vsize, *ladjncy, *adjwgt, *vtxdist, *where, *home;
+  idxtype *match, *cmap;
+  idxtype *cxadj, *cvwgt, *cvsize = NULL, *cadjncy, *cadjwgt, *cvtxdist, 
+          *chome = NULL, *cwhere = NULL;
+  float *cnvwgt;
+  GraphType *cgraph;
+  int htable[LHTSIZE], htableidx[LHTSIZE];
+
+  nvtxs = graph->nvtxs;
+  ncon  = graph->ncon;
+
+  vtxdist = graph->vtxdist;
+  xadj    = graph->xadj;
+  vwgt    = graph->vwgt;
+  home    = graph->home;
+  vsize   = graph->vsize;
+  ladjncy = graph->adjncy;
+  adjwgt  = graph->adjwgt;
+  where   = graph->where;
+  match   = graph->match;
+
+  firstvtx = vtxdist[mype];
+
+  cmap = graph->cmap = idxmalloc(nvtxs+graph->nrecv, "CreateCoarseGraph: cmap");
+
+  /* Initialize the coarser graph */
+  cgraph = CreateGraph();
+  cgraph->nvtxs = cnvtxs;
+  cgraph->level = graph->level+1;
+  cgraph->ncon = ncon;
+
+  cgraph->finer = graph;
+  graph->coarser = cgraph;
+
+
+  /*************************************************************
+  * Obtain the vtxdist of the coarser graph 
+  **************************************************************/
+  cvtxdist = cgraph->vtxdist = idxmalloc(npes+1, "CreateCoarseGraph: cvtxdist");
+  cvtxdist[npes] = cnvtxs;  /* Use last position in the cvtxdist as a temp buffer */
+
+  MPI_Allgather((void *)(cvtxdist+npes), 1, IDX_DATATYPE, (void *)cvtxdist, 1, IDX_DATATYPE, ctrl->comm);
+
+  MAKECSR(i, npes, cvtxdist);
+
+  cgraph->gnvtxs = cvtxdist[npes];
+
+#ifdef DEBUG_CONTRACT
+  PrintVector(ctrl, npes+1, 0, cvtxdist, "cvtxdist");
+#endif
+
+
+  /*************************************************************
+  * Construct the cmap vector 
+  **************************************************************/
+  cfirstvtx = cvtxdist[mype];
+
+  /* Create the cmap of what you know so far locally */
+  cnvtxs = 0;
+  for (i=0; i<nvtxs; i++) {
+    if (match[i] >= KEEP_BIT) {
+      k = match[i] - KEEP_BIT;
+      if (k<firstvtx+i)
+        continue;  /* i has been matched via the (k,i) side */
+
+      cmap[i] = cfirstvtx + cnvtxs++;
+      if (k != firstvtx+i) {
+        cmap[k-firstvtx] = cmap[i];
+        match[k-firstvtx] += KEEP_BIT;  /* Add the KEEP_BIT to simplify coding */
+      }
+    }
+  }
+
+  CommInterfaceData(ctrl, graph, cmap, wspace->indices, cmap+nvtxs);
+
+
+#ifdef DEBUG_CONTRACT
+  PrintVector(ctrl, nvtxs, firstvtx, cmap, "Cmap");
+#endif
+
+
+
+  /*************************************************************
+  * Finally, create the coarser graph
+  **************************************************************/
+  /* Allocate memory for the coarser graph, and fire up coarsening */
+  cxadj   = cgraph->xadj = idxmalloc(cnvtxs+1, "CreateCoarserGraph: cxadj");
+  cvwgt   = cgraph->vwgt = idxmalloc(cnvtxs*ncon, "CreateCoarserGraph: cvwgt");
+  cnvwgt  = cgraph->nvwgt = fmalloc(cnvtxs*ncon, "CreateCoarserGraph: cnvwgt");
+  cadjncy = idxmalloc(graph->nedges, "CreateCoarserGraph: cadjncy");
+  cadjwgt = idxmalloc(graph->nedges, "CreateCoarserGraph: cadjwgt");
+  if (ctrl->partType == ADAPTIVE_PARTITION || ctrl->partType == REFINE_PARTITION)
+    chome = cgraph->home = idxmalloc(cnvtxs, "CreateCoarserGraph: chome");
+  if (vsize != NULL)
+    cvsize = cgraph->vsize = idxmalloc(cnvtxs, "CreateCoarserGraph: cvsize");
+  if (where != NULL)
+    cwhere = cgraph->where = idxmalloc(cnvtxs, "CreateCoarserGraph: cwhere");
+
+  iset(LHTSIZE, -1, htable);
+
+  cxadj[0] = cnvtxs = cnedges = 0;
+  for (i=0; i<nvtxs; i++) {
+    v = firstvtx+i; 
+    u = match[i]-KEEP_BIT;
+
+    if (v > u) 
+      continue;  /* I have already collapsed it as (u,v) */
+
+    /* Collapse the v vertex first, which you know that is local */
+    for (h=0; h<ncon; h++)
+      cvwgt[cnvtxs*ncon+h] = vwgt[i*ncon+h];
+    if (ctrl->partType == ADAPTIVE_PARTITION || ctrl->partType == REFINE_PARTITION)
+      chome[cnvtxs] = home[i];
+    if (vsize != NULL)
+      cvsize[cnvtxs] = vsize[i];
+    if (where != NULL)
+      cwhere[cnvtxs] = where[i];
+    nedges = 0;
+
+    for (j=xadj[i]; j<xadj[i+1]; j++) {
+      k = cmap[ladjncy[j]];
+      if (k != cfirstvtx+cnvtxs) {  /* If this is not an internal edge */
+        l = k&MASK;
+        if (htable[l] == -1) { /* Seeing this for first time */
+          htable[l] = k;
+          htableidx[l] = cnedges+nedges;
+          cadjncy[cnedges+nedges] = k; 
+          cadjwgt[cnedges+nedges++] = adjwgt[j];
+        }
+        else if (htable[l] == k) {
+          cadjwgt[htableidx[l]] += adjwgt[j];
+        }
+        else { /* Now you have to go and do a search. Expensive case */
+          for (l=0; l<nedges; l++) {
+            if (cadjncy[cnedges+l] == k)
+              break;
+          }
+          if (l < nedges) {
+            cadjwgt[cnedges+l] += adjwgt[j];
+          }
+          else {
+            cadjncy[cnedges+nedges] = k; 
+            cadjwgt[cnedges+nedges++] = adjwgt[j];
+          }
+        }
+      }
+    }
+
+    /* Collapse the u vertex next */
+    if (v != u) { 
+      u -= firstvtx;
+      for (h=0; h<ncon; h++)
+        cvwgt[cnvtxs*ncon+h] += vwgt[u*ncon+h];
+      if (vsize != NULL)
+        cvsize[cnvtxs] += vsize[u];
+      if (where != NULL && cwhere[cnvtxs] != where[u])
+        myprintf(ctrl, "Something went wrong with the where local matching! %d %d\n", cwhere[cnvtxs], where[u]);
+
+      for (j=xadj[u]; j<xadj[u+1]; j++) {
+        k = cmap[ladjncy[j]];
+        if (k != cfirstvtx+cnvtxs) {  /* If this is not an internal edge */
+          l = k&MASK;
+          if (htable[l] == -1) { /* Seeing this for first time */
+            htable[l] = k;
+            htableidx[l] = cnedges+nedges;
+            cadjncy[cnedges+nedges] = k; 
+            cadjwgt[cnedges+nedges++] = adjwgt[j];
+          }
+          else if (htable[l] == k) {
+            cadjwgt[htableidx[l]] += adjwgt[j];
+          }
+          else { /* Now you have to go and do a search. Expensive case */
+            for (l=0; l<nedges; l++) {
+              if (cadjncy[cnedges+l] == k)
+                break;
+            }
+            if (l < nedges) {
+              cadjwgt[cnedges+l] += adjwgt[j];
+            }
+            else {
+              cadjncy[cnedges+nedges] = k; 
+              cadjwgt[cnedges+nedges++] = adjwgt[j];
+            }
+          }
+        }
+      }
+    }
+
+    cnedges += nedges;
+    for (j=cxadj[cnvtxs]; j<cnedges; j++)
+      htable[cadjncy[j]&MASK] = -1;  /* reset the htable */
+    cxadj[++cnvtxs] = cnedges;
+  }
+
+  cgraph->nedges = cnedges;
+
+  for (j=0; j<cnvtxs; j++)
+    for (h=0; h<ncon; h++)
+      cgraph->nvwgt[j*ncon+h] = (float)(cvwgt[j*ncon+h])/(float)(ctrl->tvwgts[h]);
+
+  cgraph->adjncy = idxmalloc(cnedges, "CreateCoarserGraph: cadjncy");
+  cgraph->adjwgt = idxmalloc(cnedges, "CreateCoarserGraph: cadjwgt");
+  idxcopy(cnedges, cadjncy, cgraph->adjncy);
+  idxcopy(cnedges, cadjwgt, cgraph->adjwgt);
+
+  /* Note that graph->where works fine even if it is NULL */
+  GKfree((void **)&cadjncy, (void **)&cadjwgt, (void **)&graph->where, LTERM); 
 
 }
 

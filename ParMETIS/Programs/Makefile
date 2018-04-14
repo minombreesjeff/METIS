@@ -1,6 +1,7 @@
 include ../Makefile.in
 
 BINDIR = ../Graphs
+#BINDIR = $(HOME)/work/bin
 
 INCLUDES = -I./ -I../ParMETISLib $(INCDIR) 
 CFLAGS = $(COPTIONS) $(OPTFLAGS) $(INCLUDES)

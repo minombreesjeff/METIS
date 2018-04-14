@@ -20,16 +20,16 @@
 void errexit(char *f_str,...)
 {
   va_list argp;
-  char out1[256], out2[256];
+
+  fprintf(stderr, "[METIS Fatal Error] ");
 
   va_start(argp, f_str);
-  vsprintf(out1, f_str, argp);
+  vfprintf(stderr, f_str, argp);
   va_end(argp);
 
-  sprintf(out2, "Error! %s", out1);
-
-  fprintf(stdout, out2);
-  fflush(stdout);
+  if (strlen(f_str) == 0 || f_str[strlen(f_str)-1] != '\n')
+    fprintf(stderr,"\n");
+  fflush(stderr);
 
   abort();
 }

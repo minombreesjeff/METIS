@@ -4,19 +4,21 @@ CC = mpicc
 
 
 # What optimization level to use
+#OPTFLAGS = -g
 OPTFLAGS = -O3 
 
 # Include directories for the compiler
 INCDIR = 
 
 # What options to be used by the compiler
+#COPTIONS = -g 
 COPTIONS = -DNDEBUG
 
 # Which loader to use
-LD = $(CC)
+LD = mpicc
 
 # In which directories to look for any additional libraries
-LIBDIR = -L/opt/local/lib -L/usr/lib
+LIBDIR = 
 
 # What additional libraries to link the programs with (eg., -lmpi)
 #XTRALIBS = -lefence
@@ -29,4 +31,4 @@ AR = ar rv
 #RANLIB = ranlib
 RANLIB = ar -ts
 
-VERNUM = 
+VERNUM = 3.2.0

@@ -32,8 +32,7 @@ void METIS_PartGraphVKway(int *nvtxs, idxtype *xadj, idxtype *adjncy, idxtype *v
 
   METIS_WPartGraphVKway(nvtxs, xadj, adjncy, vwgt, vsize, wgtflag, numflag, nparts, 
                        tpwgts, options, volume, part);
-
-  free(tpwgts);
+  GKfree((void **)&tpwgts, LTERM);
 }
 
 
@@ -122,7 +121,7 @@ int MlevelVolKWayPartitioning(CtrlType *ctrl, GraphType *graph, int nparts, idxt
 
   idxcopy(graph->nvtxs, graph->where, part);
 
-  GKfree(&graph->gdata, &graph->rdata, LTERM);
+  GKfree((void **)&graph->gdata, &graph->rdata, LTERM);
 
   return graph->minvol;
 

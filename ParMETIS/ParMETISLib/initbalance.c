@@ -73,7 +73,7 @@ void Balance_Partition(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
 
   /****************************************/
   /****************************************/
-  if (ctrl->ps_relation == DISCOUPLED) {
+  if (ctrl->ps_relation == PARMETIS_PSR_UNCOUPLED) {
     rcounts = imalloc(ctrl->npes, "rcounts");
     rdispls = imalloc(ctrl->npes+1, "rdispls");
 
@@ -140,7 +140,7 @@ void Balance_Partition(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
   myctrl.ipc_factor = ctrl->ipc_factor;
   myctrl.redist_factor = ctrl->redist_base;
   myctrl.partType = ADAPTIVE_PARTITION;
-  myctrl.ps_relation = DISCOUPLED;
+  myctrl.ps_relation = PARMETIS_PSR_UNCOUPLED;
   myctrl.tpwgts = ctrl->tpwgts;
   icopy(ncon, ctrl->tvwgts, myctrl.tvwgts);
   icopy(ncon, ctrl->ubvec, myctrl.ubvec);
@@ -347,10 +347,8 @@ void Balance_Partition(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
   MPI_Comm_free(&ipcomm);
   GKfree((void **)&xadj, (void **)&mytpwgts, LTERM);
 
-/* For whatever reason, FreeGraph crashes here...so explicitly free the memory.
-  FreeGraph(agraph);
-*/
-  GKfree((void **)&agraph->xadj, (void **)&agraph->adjncy, (void **)&agraph->vwgt, (void **)&agraph->nvwgt, LTERM);
+  GKfree((void **)&agraph->xadj, (void **)&agraph->adjncy, (void **)&agraph->vwgt, 
+         (void **)&agraph->nvwgt, LTERM);
   GKfree((void **)&agraph->vsize, (void **)&agraph->adjwgt, (void **)&agraph->label, LTERM);
   GKfree((void **)&agraph, LTERM);
 
@@ -432,7 +430,7 @@ GraphType *Mc_AssembleAdaptiveGraph(CtrlType *ctrl, GraphType *graph, WorkSpaceT
 
   GKfree((void **)&rcounts, (void **)&rdispls, LTERM);
   if (mysize > wspace->maxcore)
-    free(mygraph);
+    GKfree((void **)&mygraph, LTERM);
 
   agraph = CreateGraph();
   agraph->nvtxs = gnvtxs;
@@ -490,7 +488,7 @@ GraphType *Mc_AssembleAdaptiveGraph(CtrlType *ctrl, GraphType *graph, WorkSpaceT
     alabel[i] = i;
 
   if (gsize > wspace->maxcore-mysize)
-    free(ggraph);
+    GKfree((void **)&ggraph, LTERM);
 
   return agraph;
 }

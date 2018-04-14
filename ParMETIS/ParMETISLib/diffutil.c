@@ -103,7 +103,7 @@ void Mc_ComputeMoveStatistics(CtrlType *ctrl, GraphType *graph, int *nmoved, int
   gend = idxsmalloc(nparts, 0, "ComputeMoveStatistics: gend");
 
   for (i=0; i<nvtxs; i++) {
-    myhome = (ctrl->ps_relation == COUPLED) ? ctrl->mype : graph->home[i];
+    myhome = (ctrl->ps_relation == PARMETIS_PSR_COUPLED) ? ctrl->mype : graph->home[i];
     lstart[myhome] += (graph->vsize == NULL) ? 1 : graph->vsize[i];
     lend[where[i]] += (graph->vsize == NULL) ? 1 : graph->vsize[i];
     if (where[i] != myhome)

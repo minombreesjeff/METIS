@@ -75,7 +75,7 @@ void InitMultisection(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
       moptions[2] = 1;
       moptions[3] = 1;
       moptions[4] = 0;
-      moptions[7] = ctrl->mype;
+      moptions[7] = (ctrl->mype+8)*101;
 
       agraph->where = idxmalloc(agraph->nvtxs, "InitMultisection: agraph->where");
 
@@ -88,12 +88,12 @@ void InitMultisection(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
       moptions[2] = 1;
       moptions[3] = 2;
       moptions[4] = 0;
-      moptions[7] = ctrl->mype;
+      moptions[7] = (ctrl->mype+8)*101;
 
       agraph->where = idxmalloc(agraph->nvtxs, "InitMultisection: agraph->where");
 
       METIS_NodeComputeSeparator(&agraph->nvtxs, agraph->xadj, agraph->adjncy, agraph->vwgt, 
-            agraph->adjwgt, moptions, &agraph->mincut, agraph->where);
+            agraph->adjwgt, &ctrl->ubfrac, moptions, &agraph->mincut, agraph->where);
       break;
     default:
       errexit("Unknown ISEP type!\n");
@@ -112,7 +112,8 @@ void InitMultisection(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
   MPI_Comm_rank(newcomm, lpecut+1);
   MPI_Allreduce(lpecut, gpecut, 1, MPI_2INT, MPI_MINLOC, newcomm);
 
-  /* myprintf(ctrl, "Nvtxs: %d, Mincut: %d, GMincut: %d, %d\n", agraph->nvtxs, agraph->mincut, gpecut[0], gpecut[1]); */
+  /* myprintf(ctrl, "Nvtxs: %d, Mincut: %d, GMincut: %d, %d\n", agraph->nvtxs, 
+         agraph->mincut, gpecut[0], gpecut[1]); */
 
   /* Send the best where to the root processor of this partition */
   if (lpecut[1] == gpecut[1] && gpecut[1] != 0) 
@@ -130,13 +131,13 @@ void InitMultisection(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
       gwhere[label[i]] = agraph->where[i];
   }
 
-  free(agraph->where);
+  GKfree((void **)&agraph->where, LTERM);
   agraph->where = part;
 
   if (lpecut[1] == 0) {
     MPI_Reduce((void *)gwhere, (void *)agraph->where, graph->gnvtxs, IDX_DATATYPE, 
         MPI_SUM, 0, labelcomm);
-    free(gwhere);
+    GKfree((void **)&gwhere, LTERM);
   }
 
   /* The minimum PE performs the Scatter */
@@ -166,7 +167,6 @@ void InitMultisection(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
   IFSET(ctrl->dbglvl, DBG_TIME, stoptimer(ctrl->InitPartTmr));
 
 }
-
 
 
 
@@ -223,19 +223,19 @@ GraphType *AssembleMultisectedGraph(CtrlType *ctrl, GraphType *graph, WorkSpaceT
 
   GKfree((void **)&recvcounts, (void **)&displs, LTERM);
   if (mysize > wspace->maxcore)
-    free(mygraph);
+    GKfree((void **)&mygraph, LTERM);
 
   agraph = CreateGraph();
   agraph->nvtxs = gnvtxs;
   agraph->nedges = gnedges = (gsize-3*gnvtxs)/2;
 
   /* Allocate memory for the assembled graph */
-  axadj = agraph->xadj = idxmalloc(gnvtxs+1, "AssembleGraph: axadj");
-  avwgt = agraph->vwgt = idxmalloc(gnvtxs, "AssembleGraph: avwgt");
-  awhere = agraph->where = idxmalloc(gnvtxs, "AssembleGraph: awhere");
+  axadj   = agraph->xadj   = idxmalloc(gnvtxs+1, "AssembleGraph: axadj");
+  avwgt   = agraph->vwgt   = idxmalloc(gnvtxs, "AssembleGraph: avwgt");
+  awhere  = agraph->where  = idxmalloc(gnvtxs, "AssembleGraph: awhere");
   aadjncy = agraph->adjncy = idxmalloc(gnedges, "AssembleGraph: adjncy");
   aadjwgt = agraph->adjwgt = idxmalloc(gnedges, "AssembleGraph: adjwgt");
-  alabel = agraph->label = idxmalloc(gnvtxs, "AssembleGraph: alabel");
+  alabel  = agraph->label  = idxmalloc(gnvtxs, "AssembleGraph: alabel");
 
   for (k=j=i=0; i<gnvtxs; i++) {
     axadj[i] = ggraph[k++];
@@ -255,7 +255,7 @@ GraphType *AssembleMultisectedGraph(CtrlType *ctrl, GraphType *graph, WorkSpaceT
     alabel[i] = i;
 
   if (gsize > wspace->maxcore-mysize)
-    free(ggraph);
+    GKfree((void **)&ggraph, LTERM);
 
   return agraph;
 }

@@ -44,6 +44,21 @@ void ParMETIS_V3_PartGeomKway(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy,
   MPI_Comm_size(*comm, &npes);
   MPI_Comm_rank(*comm, &mype);
 
+  /* If too many processors switch to non-geometric partitioning.
+     This is to take care the current poor implementation of sorting
+     that has an npes*npes memory complexity. The following fix assumes
+     that the machine can allocate about 128MB of memory per node just 
+     for sorting alone. 
+     Also, if each processor does not have npes vertices, switch to the 
+     non-geometric version of the code.
+  */
+  ctrl.comm = *comm;
+  if (npes > 4096 || GlobalSEMin(&ctrl, vtxdist[mype+1]-vtxdist[mype]) < npes) {
+    return ParMETIS_V3_PartKway(vtxdist, xadj, adjncy, vwgt, adjwgt, wgtflag, 
+               numflag, ncon, nparts, tpwgts, ubvec, options, edgecut, part, comm);
+  }
+
+
   /********************************/
   /* Try and take care bad inputs */
   /********************************/
@@ -85,7 +100,7 @@ void ParMETIS_V3_PartGeomKway(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy,
       METIS_mCPartGraphRecursive2(&nvtxs, &incon, xadj, adjncy, vwgt, adjwgt, &iwgtflag, 
             &inumflag, &inparts, mytpwgts, moptions, edgecut, part);
 
-      free(mytpwgts);
+      GKfree((void **)&mytpwgts, LTERM);
     }
 
     return;
@@ -107,18 +122,18 @@ void ParMETIS_V3_PartGeomKway(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy,
     seed = GLOBAL_SEED;
   }
   SetUpCtrl(&ctrl, npes, dbglvl, *comm);
-  ctrl.CoarsenTo = amin(vtxdist[npes]+1, 25*incon*amax(npes, inparts));
-  ctrl.seed = (seed == 0) ? mype : seed*mype;
-  ctrl.sync = GlobalSEMax(&ctrl, seed);
-  ctrl.partType = STATIC_PARTITION;
+  ctrl.CoarsenTo   = amin(vtxdist[npes]+1, 25*incon*amax(npes, inparts));
+  ctrl.seed        = (seed == 0) ? mype : seed*mype;
+  ctrl.sync        = GlobalSEMax(&ctrl, seed);
+  ctrl.partType    = STATIC_PARTITION;
   ctrl.ps_relation = -1;
-  ctrl.tpwgts = itpwgts;
+  ctrl.tpwgts      = itpwgts;
   scopy(incon, iubvec, ctrl.ubvec);
 
   uwgtflag = iwgtflag|2;
   uvwgt = idxsmalloc(vtxdist[mype+1]-vtxdist[mype], 1, "uvwgt");
   graph = Mc_SetUpGraph(&ctrl, 1, vtxdist, xadj, uvwgt, adjncy, adjwgt, &uwgtflag);
-  free(graph->nvwgt); graph->nvwgt = NULL;
+  GKfree((void **)&graph->nvwgt, &uvwgt, LTERM); 
 
   AllocateWSpace(&ctrl, graph, &wspace);
 
@@ -141,7 +156,6 @@ void ParMETIS_V3_PartGeomKway(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy,
   IFSET(ctrl.dbglvl, DBG_TIME, MPI_Barrier(ctrl.gcomm));
   IFSET(ctrl.dbglvl, DBG_TIME, starttimer(ctrl.MoveTmr));
 
-  free(uvwgt);
   graph->vwgt = ((iwgtflag&2) != 0) ? vwgt : idxsmalloc(graph->nvtxs*incon, 1, "vwgt");
   graph->ncon = incon;
   j = ctrl.nparts;
@@ -194,7 +208,6 @@ void ParMETIS_V3_PartGeomKway(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy,
     balance = (float)(maxnvtxs)/((float)(graph->gnvtxs)/(float)(npes));
     rprintf(&ctrl, "XYZ Cut: %6d \tBalance: %6.3f [%d %d %d]\n",
       gcut, balance, maxnvtxs, graph->gnvtxs, npes);
-
   }
 
   /*=================================================================
@@ -209,7 +222,9 @@ void ParMETIS_V3_PartGeomKway(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy,
   /*=======================================================
    * Now compute the partition of the moved graph
    =======================================================*/
-  if (vtxdist[npes] < SMALLGRAPH || vtxdist[npes] < npes*20 || GlobalSESum(&ctrl, mgraph->nedges) == 0) {
+  if (vtxdist[npes] < SMALLGRAPH || 
+      vtxdist[npes] < npes*20 || 
+      GlobalSESum(&ctrl, mgraph->nedges) == 0) {
     IFSET(ctrl.dbglvl, DBG_INFO, rprintf(&ctrl, "Partitioning a graph of size %d serially\n", vtxdist[npes]));
     PartitionSmallGraph(&ctrl, mgraph, &wspace);
   }
@@ -280,6 +295,21 @@ void ParMETIS_V3_PartGeom(idxtype *vtxdist, int *ndims, float *xyz, idxtype *par
     idxset(vtxdist[mype+1]-vtxdist[mype], 0, part);
     return;
   }
+
+  /* Return without computing a partitioning under the following cases: 
+     - The number of processors is greater than 4096 (due to npes^2
+       memory complexity of the sorting algorithm implemented).
+     - When each processor does not have at least npes elements.
+     These retrictions will be fixed in 4.0.
+  */
+  ctrl.comm = *comm;
+  if (npes > 4096 || GlobalSEMin(&ctrl, vtxdist[mype+1]-vtxdist[mype]) < npes) {
+    if (mype == 1)
+      printf("ParMETIS_V3_PartGeom can only be used for less than 4096 processors "
+             "and when each processor has at least npes elements.\n");
+    return;
+  }
+
 
   /* Setup a fake graph to allow the rest of the code to work unchanged */
   dbglvl = 0;

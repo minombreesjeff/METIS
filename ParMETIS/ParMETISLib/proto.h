@@ -20,10 +20,11 @@ void Mc_Global_Partition(CtrlType *, GraphType *, WorkSpaceType *);
 /* gkmetis.c */
 
 /* match.c */
-void Mc_GlobalMatch_Balance(CtrlType *, GraphType *, WorkSpaceType *);
+void Match_Global(CtrlType *, GraphType *, WorkSpaceType *);
+void Match_Local(CtrlType *, GraphType *, WorkSpaceType *);
+void CreateCoarseGraph_Global(CtrlType *, GraphType *, WorkSpaceType *, int);
+void CreateCoarseGraph_Local(CtrlType *, GraphType *, WorkSpaceType *, int);
 
-/* coarsen.c */
-void Mc_Global_CreateCoarseGraph(CtrlType *, GraphType *, WorkSpaceType *, int);
 
 /* initpart.c */
 void Mc_InitPartition_RB(CtrlType *, GraphType *, WorkSpaceType *);
@@ -58,7 +59,9 @@ void FreeWSpace(WorkSpaceType *);
 void FreeCtrl(CtrlType *);
 GraphType *CreateGraph(void);
 void InitGraph(GraphType *);
-void FreeGraph(GraphType *);
+void FreeGraph(GraphType *graph);
+void FreeNonGraphFields(GraphType *graph);
+void FreeNonGraphNonSetupFields(GraphType *graph);
 void FreeInitialGraphAndRemap(GraphType *, int, int);
 
 
@@ -67,10 +70,6 @@ void Adaptive_Partition(CtrlType *, GraphType *, WorkSpaceType *);
 
 /* rmetis.c */
 
-
-/* lmatch.c */
-void Mc_LocalMatch_HEM(CtrlType *, GraphType *, WorkSpaceType *);
-void Mc_Local_CreateCoarseGraph(CtrlType *, GraphType *, WorkSpaceType *, int);
 
 /* wave.c */
 float WavefrontDiffusion(CtrlType *, GraphType *, idxtype *);
@@ -139,29 +138,37 @@ void CheckInputs(int partType, int npes, int dbglvl, int *wgtflag, int *iwgtflag
 
 /* mesh.c */
 
-/* ometis.c */
-
 /* pspases.c */
 GraphType *AssembleEntireGraph(CtrlType *, idxtype *, idxtype *, idxtype *);
 
 /* node_refine.c */
 void AllocateNodePartitionParams(CtrlType *, GraphType *, WorkSpaceType *);
 void ComputeNodePartitionParams(CtrlType *, GraphType *, WorkSpaceType *);
-void KWayNodeRefine(CtrlType *, GraphType *, WorkSpaceType *, int, float);
-void PrintNodeBalanceInfo(CtrlType *, int, idxtype *, idxtype *, idxtype *, int);
+void UpdateNodePartitionParams(CtrlType *, GraphType *, WorkSpaceType *);
+void KWayNodeRefine_Greedy(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace,
+         int npasses, float ubfrac);
+void KWayNodeRefine2Phase(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace,
+         int npasses, float ubfrac);
+void KWayNodeRefineInterior(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace,
+         int npasses, float ubfrac);
+void PrintNodeBalanceInfo(CtrlType *, int, idxtype *, idxtype *, char *);
 
 
 /* initmsection.c */
 void InitMultisection(CtrlType *, GraphType *, WorkSpaceType *);
 GraphType *AssembleMultisectedGraph(CtrlType *, GraphType *, WorkSpaceType *);
 
-/* order.c */
-void MultilevelOrder(CtrlType *, GraphType *, idxtype *, idxtype *, WorkSpaceType *);
+
+/* ometis.c */
+void MultilevelOrder(CtrlType *ctrl, GraphType *graph, idxtype *order, idxtype *sizes, 
+         WorkSpaceType *wspace);
+void Order_Partition_Multiple(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace);
+void Order_Partition(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace,
+         int *nlevels, int clevel);
 void LabelSeparators(CtrlType *, GraphType *, idxtype *, idxtype *, idxtype *, idxtype *, WorkSpaceType *);
 void CompactGraph(CtrlType *, GraphType *, idxtype *, WorkSpaceType *);
-void LocalOrder(CtrlType *, GraphType *, idxtype *, int, WorkSpaceType *);
 void LocalNDOrder(CtrlType *, GraphType *, idxtype *, int, WorkSpaceType *);
-void Order_Partition(CtrlType *, GraphType *, WorkSpaceType *);
+
 
 /* xyzpart.c */
 void Coordinate_Partition(CtrlType *, GraphType *, int, float *, int, WorkSpaceType *);
@@ -175,8 +182,7 @@ void FPQueueFree(FPQueueType *);
 int FPQueueGetSize(FPQueueType *);
 int FPQueueInsert(FPQueueType *, int, float);
 int FPQueueDelete(FPQueueType *, int);
-int FPQueueUpdate(FPQueueType *, int, float, float);
-void FPQueueUpdateUp(FPQueueType *, int, float, float);
+int FPQueueUpdate(FPQueueType *, int, float);
 int FPQueueGetMax(FPQueueType *);
 int FPQueueSeeMaxVtx(FPQueueType *);
 float FPQueueSeeMaxGain(FPQueueType *);
@@ -223,7 +229,7 @@ int *ismalloc(int, int, char *);
 idxtype *idxsmalloc(int, idxtype, char *);
 void *GKmalloc(int, char *);
 #endif
-/*void GKfree(void **,...); */
+void GKfree(void **,...); 
 int *iset(int n, int val, int *x);
 idxtype * idxset(int n, idxtype val, idxtype *x);
 int idxamax(int n, idxtype *x);
@@ -280,6 +286,7 @@ void ikeyvalsort(int, KeyValueType *);
 /* grsetup.c */
 GraphType *Mc_SetUpGraph(CtrlType *, int, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, int *);
 void SetUpCtrl(CtrlType *ctrl, int, int, MPI_Comm);
+void SetUpComm(CtrlType *ctrl, MPI_Comm comm);
 void ChangeNumbering(idxtype *, idxtype *, idxtype *, idxtype *, int, int, int);
 void ChangeNumberingMesh(idxtype *elmdist, idxtype *eptr, idxtype *eind,
                          idxtype *xadj, idxtype *adjncy, idxtype *part,
@@ -306,8 +313,9 @@ int MCMlevelRecursiveBisection2(CtrlType *, GraphType *, int, float *, idxtype *
 void METIS_PartGraphKway(int *, idxtype *, idxtype *, idxtype *, idxtype *, int *, int *, int *, int *, int *, idxtype *);
 void METIS_mCPartGraphKway(int *, int *, idxtype *, idxtype *, idxtype *, idxtype *, int *, int *, int *, float *, int *, int *, idxtype *);
 void METIS_EdgeComputeSeparator(int *, idxtype *, idxtype *, idxtype *, idxtype *, int *, int *, idxtype *); 
-void METIS_NodeComputeSeparator(int *, idxtype *, idxtype *, idxtype *, idxtype *, int *, int *, idxtype *); 
+void METIS_NodeComputeSeparator(int *, idxtype *, idxtype *, idxtype *, idxtype *, float *, int *, int *, idxtype *); 
 void METIS_NodeND(int *, idxtype *, idxtype *, int *, int *, idxtype *, idxtype *);
+void METIS_NodeWND(int *, idxtype *, idxtype *, idxtype *, int *, int *, idxtype *, idxtype *);
 void METIS_NodeNDP(int, idxtype *, idxtype *, int, int *, idxtype *, idxtype *, idxtype *);
 
 
@@ -320,7 +328,7 @@ void METIS_NodeNDP(int, idxtype *, idxtype *, int, int *, idxtype *, idxtype *, 
 void ParallelReadGraph(GraphType *, char *, MPI_Comm);
 void Mc_ParallelWriteGraph(CtrlType *, GraphType *, char *, int, int);
 void ReadTestGraph(GraphType *, char *, MPI_Comm);
-float *ReadTestCoordinates(GraphType *, char *, int, MPI_Comm);
+float *ReadTestCoordinates(GraphType *, char *, int *, MPI_Comm);
 void ReadMetisGraph(char *, int *, idxtype **, idxtype **);
 void Mc_SerialReadGraph(GraphType *, char *, int *, MPI_Comm);
 void Mc_SerialReadMetisGraph(char *, int *, int *, int *, int *, idxtype **, idxtype **, idxtype **, idxtype **, int *);
@@ -330,13 +338,11 @@ void AdaptGraph(GraphType *, int, MPI_Comm);
 void AdaptGraph2(GraphType *, int, MPI_Comm);
 void Mc_AdaptGraph(GraphType *, idxtype *, int, int, MPI_Comm);
 
-/* ptest.c */
-void TestParMetis(char *, MPI_Comm);
 
-/* NEW_ptest.c */
-void TestParMetis_V3(char *, MPI_Comm);
+/* ptest.c */
+void TestParMetis_GPart(char *filename, char *xyzfile, MPI_Comm comm);
 int ComputeRealCut(idxtype *, idxtype *, char *, MPI_Comm);
-int ComputeRealCut2(idxtype *, idxtype *, idxtype *, idxtype *, char *, MPI_Comm);
+int ComputeRealCutFromMoved(idxtype *, idxtype *, idxtype *, idxtype *, char *, MPI_Comm);
 void TestMoveGraph(GraphType *, GraphType *, idxtype *, MPI_Comm);
 GraphType *SetUpGraph(CtrlType *, idxtype *, idxtype *, idxtype *, idxtype *, idxtype *, int);
 

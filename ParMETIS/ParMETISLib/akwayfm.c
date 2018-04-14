@@ -202,14 +202,14 @@ void Mc_KWayAdaptiveRefine(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspa
           /**************************/
           /**************************/
           switch (ctrl->ps_relation) {
-            case COUPLED:
+            case PARMETIS_PSR_COUPLED:
               better = (oldto == mype) ? 1 : 0;
-              worse = (from == mype) ? 1 : 0;
+              worse  = (from == mype) ? 1 : 0;
               break;
-            case DISCOUPLED:
+            case PARMETIS_PSR_UNCOUPLED:
             default:
               better = (oldto == graph->home[i]) ? 1 : 0;
-              worse = (from == graph->home[i]) ? 1 : 0;
+              worse  = (from == graph->home[i]) ? 1 : 0;
               break;
           }
           /**************************/
@@ -225,10 +225,10 @@ void Mc_KWayAdaptiveRefine(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspa
               /**************************/
               /**************************/
               switch (ctrl->ps_relation) {
-                case COUPLED:
+                case PARMETIS_PSR_COUPLED:
                   better = (to == mype) ? 1 : 0;
                   break;
-                case DISCOUPLED:
+                case PARMETIS_PSR_UNCOUPLED:
                 default:
                   better = (to == graph->home[i]) ? 1 : 0;
                   break;

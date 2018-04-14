@@ -84,10 +84,10 @@ int main(int argc, char *argv[])
   numflag = wgtflag = 0;
   ParMETIS_V3_PartKway(graph->vtxdist, graph->xadj, graph->adjncy, NULL, NULL, &wgtflag,
   &numflag, &(graph->ncon), &nparts, tpwgts, ubvec, options, &edgecut, part, &comm);
-  GKfree((void *)&(graph.vtxdist), (void *)&(graph.xadj), (void *)&(graph.vwgt), (void *)&(graph.adjncy), (void *)&(graph.adjwgt), LTERM);
+  GKfree((void **)&(graph.vtxdist), &(graph.xadj), &(graph.vwgt), &(graph.adjncy), &(graph.adjwgt), LTERM);
 */ 
 
-  GKfree((void *)&part, (void *)&tpwgts, (void *)&eptr, LTERM);
+  GKfree((void **)&part, &tpwgts, &eptr, LTERM);
   MPI_Comm_free(&comm);
   MPI_Finalize();
   return 0;

@@ -37,7 +37,6 @@ void BucketSortKeysInc(int n, int max, idxtype *keys, idxtype *tperm, idxtype *p
     i = tperm[ii];
     perm[counts[keys[i]]++] = i;
   }
-
-  free(counts);
+  GKfree((void **)&counts, LTERM);
 }
 

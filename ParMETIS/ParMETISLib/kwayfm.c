@@ -23,8 +23,7 @@ void Mc_KWayFM(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace, int npas
 {
   int h, i, ii, iii, j, k, c;
   int pass, nvtxs, nedges, ncon;
-  int nmoves, nmoved, nswaps, nzgswaps;
-/*  int gnswaps, gnzgswaps; */
+  int nmoves, nmoved, nswaps;
   int me, firstvtx, lastvtx, yourlastvtx;
   int from, to = -1, oldto, oldcut, mydomain, yourdomain, imbalanced, overweight;
   int npes = ctrl->npes, mype = ctrl->mype, nparts = ctrl->nparts;
@@ -65,49 +64,48 @@ void Mc_KWayFM(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace, int npas
   ubvec   = ctrl->ubvec;
   tpwgts  = ctrl->tpwgts;
 
-  nnbrs = graph->nnbrs;
-  peind = graph->peind;
+  nnbrs   = graph->nnbrs;
+  peind   = graph->peind;
   recvptr = graph->recvptr;
   sendptr = graph->sendptr;
 
-  changed = idxmalloc(nvtxs, "KWR: changed");
+  changed   = idxmalloc(nvtxs, "KWR: changed");
   rwchanges = wspace->pairs;
   swchanges = rwchanges + recvptr[nnbrs];
 
   /************************************/
   /* set up important data structures */
   /************************************/
-  perm = idxmalloc(nvtxs, "KWR: perm");
-  pperm = idxmalloc(nparts, "KWR: pperm");
-
-  update = idxmalloc(nvtxs, "KWR: update");
-  supdate = wspace->indices;
-  rupdate = supdate + recvptr[nnbrs];
-  nupds_pe = imalloc(npes, "KWR: nupds_pe");
-  htable = idxsmalloc(nvtxs+graph->nrecv, 0, "KWR: lhtable");
+  perm       = idxmalloc(nvtxs, "KWR: perm");
+  pperm      = idxmalloc(nparts, "KWR: pperm");
+  update     = idxmalloc(nvtxs, "KWR: update");
+  supdate    = wspace->indices;
+  rupdate    = supdate + recvptr[nnbrs];
+  nupds_pe   = imalloc(npes, "KWR: nupds_pe");
+  htable     = idxsmalloc(nvtxs+graph->nrecv, 0, "KWR: lhtable");
   badmaxpwgt = fmalloc(nparts*ncon, "badmaxpwgt");
 
   for (i=0; i<nparts; i++) {
-    for (h=0; h<ncon; h++) {
+    for (h=0; h<ncon; h++) 
       badmaxpwgt[i*ncon+h] = ubvec[h]*tpwgts[i*ncon+h];
-    }
   }
 
-  movewgts = fmalloc(nparts*ncon, "KWR: movewgts");
-  ognpwgts = fmalloc(nparts*ncon, "KWR: ognpwgts");
-  pgnpwgts = fmalloc(nparts*ncon, "KWR: pgnpwgts");
-  overfill = fmalloc(nparts*ncon, "KWR: overfill");
-  moved = idxmalloc(nvtxs, "KWR: moved");
-  tmp_where = idxmalloc(nvtxs+graph->nrecv, "KWR: tmp_where");
-  tmp_rinfo = (RInfoType *)GKmalloc(sizeof(RInfoType)*nvtxs, "KWR: tmp_rinfo");
+  movewgts     = fmalloc(nparts*ncon, "KWR: movewgts");
+  ognpwgts     = fmalloc(nparts*ncon, "KWR: ognpwgts");
+  pgnpwgts     = fmalloc(nparts*ncon, "KWR: pgnpwgts");
+  overfill     = fmalloc(nparts*ncon, "KWR: overfill");
+  moved        = idxmalloc(nvtxs, "KWR: moved");
+  tmp_where    = idxmalloc(nvtxs+graph->nrecv, "KWR: tmp_where");
+  tmp_rinfo    = (RInfoType *)GKmalloc(sizeof(RInfoType)*nvtxs, "KWR: tmp_rinfo");
   tmp_edegrees = (EdgeType *)GKmalloc(sizeof(EdgeType)*nedges, "KWR: tmp_edegrees");
 
   idxcopy(nvtxs+graph->nrecv, where, tmp_where);
+
   for (i=0; i<nvtxs; i++) {
     tmp_rinfo[i].id = rinfo[i].id;
     tmp_rinfo[i].ed = rinfo[i].ed;
     tmp_rinfo[i].ndegrees = rinfo[i].ndegrees;
-    tmp_rinfo[i].degrees = tmp_edegrees+xadj[i];
+    tmp_rinfo[i].degrees  = tmp_edegrees+xadj[i];
 
     for (j=0; j<rinfo[i].ndegrees; j++) {
       tmp_rinfo[i].degrees[j].edge = rinfo[i].degrees[j].edge;
@@ -115,10 +113,10 @@ void Mc_KWayFM(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace, int npas
     }
   }
 
-  nswaps = nzgswaps = 0;
   /*********************************************************/
   /* perform a small number of passes through the vertices */
   /*********************************************************/
+  nswaps = 0;
   for (pass=0; pass<npasses; pass++) {
     if (mype == 0)
       RandomPermute(nparts, pperm, 1);
@@ -141,17 +139,17 @@ void Mc_KWayFM(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace, int npas
       /* PASS ONE -- record stats for desired moves */
       /**********************************************/
       for (iii=0; iii<nvtxs; iii++) {
-        i = perm[iii];
-        from = tmp_where[i];
+        i     = perm[iii];
+        from  = tmp_where[i];
         nvwgt = graph->nvwgt+i*ncon;
 
-        for (h=0; h<ncon; h++)
+        for (h=0; h<ncon; h++) {
           if (fabs(nvwgt[h]-gnpwgts[from*ncon+h]) < SMALLFLOAT)
             break;
-
-        if (h < ncon) {
-          continue;
         }
+
+        if (h < ncon) 
+          continue;
 
         /* check for a potential improvement */
         if (tmp_rinfo[i].ed >= tmp_rinfo[i].id) {
@@ -160,9 +158,10 @@ void Mc_KWayFM(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace, int npas
           for (k=0; k<tmp_rinfo[i].ndegrees; k++) {
             to = my_edegrees[k].edge;
             if (ProperSide(c, pperm[from], pperm[to])) {
-              for (h=0; h<ncon; h++)
+              for (h=0; h<ncon; h++) {
                 if (gnpwgts[to*ncon+h]+nvwgt[h] > badmaxpwgt[to*ncon+h] && nvwgt[h] > 0.0)
                   break;
+              }
 
               if (h == ncon)
                 break;
@@ -192,9 +191,9 @@ void Mc_KWayFM(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace, int npas
             to = oldto;
 
             if (my_edegrees[k].ewgt > tmp_rinfo[i].id ||
-            (my_edegrees[k].ewgt == tmp_rinfo[i].id &&
-            (imbalanced ||  graph->level > 3  || iii % 8 == 0) &&
-            IsHBalanceBetterFT(ncon,gnpwgts+from*ncon,gnpwgts+to*ncon,nvwgt,ubvec))){
+                (my_edegrees[k].ewgt == tmp_rinfo[i].id &&
+                (imbalanced ||  graph->level > 3  || iii % 8 == 0) &&
+                IsHBalanceBetterFT(ncon,gnpwgts+from*ncon,gnpwgts+to*ncon,nvwgt,ubvec))) {
 
               /****************************************/
               /* Update tmp arrays of the moved vertex */
@@ -202,11 +201,11 @@ void Mc_KWayFM(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace, int npas
               tmp_where[i] = to;
               moved[nmoved++] = i;
               for (h=0; h<ncon; h++) {
-                lnpwgts[to*ncon+h] += nvwgt[h];
-                lnpwgts[from*ncon+h] -= nvwgt[h];
-                gnpwgts[to*ncon+h] += nvwgt[h];
-                gnpwgts[from*ncon+h] -= nvwgt[h];
-                movewgts[to*ncon+h] += nvwgt[h];
+                lnpwgts[to*ncon+h]    += nvwgt[h];
+                lnpwgts[from*ncon+h]  -= nvwgt[h];
+                gnpwgts[to*ncon+h]    += nvwgt[h];
+                gnpwgts[from*ncon+h]  -= nvwgt[h];
+                movewgts[to*ncon+h]   += nvwgt[h];
                 movewgts[from*ncon+h] -= nvwgt[h];
               }
 
@@ -292,9 +291,8 @@ void Mc_KWayFM(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace, int npas
       for (j=0; j<nparts; j++) {
         for (h=0; h<ncon; h++) {
           if (pgnpwgts[j*ncon+h] > ognpwgts[j*ncon+h]) {
-            overfill[j*ncon+h] =
-            (pgnpwgts[j*ncon+h]-badmaxpwgt[j*ncon+h]) /
-            (pgnpwgts[j*ncon+h]-ognpwgts[j*ncon+h]);
+            overfill[j*ncon+h] = (pgnpwgts[j*ncon+h]-badmaxpwgt[j*ncon+h]) /
+                                 (pgnpwgts[j*ncon+h]-ognpwgts[j*ncon+h]);
           }
           else {
             overfill[j*ncon+h] = 0.0;
@@ -307,9 +305,9 @@ void Mc_KWayFM(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace, int npas
             overweight = 1;
 
           ASSERTP(ctrl, ognpwgts[j*ncon+h] <= badmaxpwgt[j*ncon+h] ||
-          pgnpwgts[j*ncon+h] <= ognpwgts[j*ncon+h],
-          (ctrl, "%.4f %.4f %.4f\n", ognpwgts[j*ncon+h],
-          badmaxpwgt[j*ncon+h], pgnpwgts[j*ncon+h]));
+                  pgnpwgts[j*ncon+h] <= ognpwgts[j*ncon+h],
+                  (ctrl, "%.4f %.4f %.4f\n", ognpwgts[j*ncon+h],
+                   badmaxpwgt[j*ncon+h], pgnpwgts[j*ncon+h]));
         }
       }
 
@@ -323,13 +321,15 @@ void Mc_KWayFM(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace, int npas
           nvwgt = graph->nvwgt+i*ncon;
           my_edegrees = tmp_rinfo[i].degrees;
 
-          for (k=0; k<tmp_rinfo[i].ndegrees; k++)
+          for (k=0; k<tmp_rinfo[i].ndegrees; k++) {
             if (my_edegrees[k].edge == where[i])
               break;
+          }
 
-          for (h=0; h<ncon; h++)
+          for (h=0; h<ncon; h++) {
             if (nvwgt[h] > 0.0 && overfill[oldto*ncon+h] > nvwgt[h]/4.0)
               break;
+          }
 
           /**********************************/
           /* nullify this move if necessary */
@@ -337,11 +337,10 @@ void Mc_KWayFM(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace, int npas
           if (k != tmp_rinfo[i].ndegrees && h != ncon) {
             moved[iii] = -1;
             from = oldto;
-            to = where[i];
+            to   = where[i];
 
-            for (h=0; h<ncon; h++) {
+            for (h=0; h<ncon; h++) 
               overfill[oldto*ncon+h] = amax(overfill[oldto*ncon+h]-nvwgt[h], 0.0);
-            }
 
             tmp_where[i] = to;
             tmp_rinfo[i].ed += tmp_rinfo[i].id-my_edegrees[k].ewgt;
@@ -416,13 +415,13 @@ void Mc_KWayFM(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace, int npas
         }
       }
 
+
       /*************************************************/
       /* PASS TWO -- commit the remainder of the moves */
       /*************************************************/
       nlupd = nsupd = nmoves = nchanged = 0;
       for (iii=0; iii<nmoved; iii++) {
-        i = moved[iii];
-        if (i == -1)
+        if ((i = moved[iii]) == -1)
           continue;
 
         where[i] = tmp_where[i];
@@ -448,28 +447,21 @@ void Mc_KWayFM(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace, int npas
         nmoves++;
         nswaps++;
 
-        /* check number of zero-gain moves */
-        for (k=0; k<rinfo[i].ndegrees; k++)
-          if (rinfo[i].degrees[k].edge == to)
-            break;
-        if (rinfo[i].id == rinfo[i].degrees[k].ewgt)
-          nzgswaps++;
-
         if (graph->pexadj[i+1]-graph->pexadj[i] > 0)
           changed[nchanged++] = i;
       }
 
       /* Tell interested pe's the new where[] info for the interface vertices */
       CommChangedInterfaceData(ctrl, graph, nchanged, changed, where,
-      swchanges, rwchanges, wspace->pv4); 
+          swchanges, rwchanges, wspace->pv4); 
 
 
       IFSET(ctrl->dbglvl, DBG_RMOVEINFO,
-      rprintf(ctrl, "\t[%d %d], [%.4f],  [%d %d %d]\n",
-      pass, c, badmaxpwgt[0],
+            rprintf(ctrl, "\t[%d %d], [%.4f],  [%d %d %d]\n", pass, c, badmaxpwgt[0],
       GlobalSESum(ctrl, nmoves),
       GlobalSESum(ctrl, nsupd),
       GlobalSESum(ctrl, nlupd)));
+
 
       /*-------------------------------------------------------------
       / Time to communicate with processors to send the vertices
@@ -526,10 +518,10 @@ void Mc_KWayFM(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace, int npas
 
         htable[i] = 0;
 
-        mydomain = where[i];
-        myrinfo = rinfo+i;
-        tmp_myrinfo = tmp_rinfo+i;
-        my_edegrees = myrinfo->degrees;
+        mydomain      = where[i];
+        myrinfo       = rinfo+i;
+        tmp_myrinfo   = tmp_rinfo+i;
+        my_edegrees   = myrinfo->degrees;
         your_edegrees = tmp_myrinfo->degrees;
 
         graph->lmincut -= myrinfo->ed;
@@ -580,13 +572,6 @@ void Mc_KWayFM(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace, int npas
     if (graph->mincut == oldcut)
       break;
   }
-
-/*
-  gnswaps = GlobalSESum(ctrl, nswaps);
-  gnzgswaps = GlobalSESum(ctrl, nzgswaps);
-  if (mype == 0)
-    printf("niters: %d, nswaps: %d, nzgswaps: %d\n", pass+1, gnswaps, gnzgswaps);
-*/
 
   GKfree((void **)&badmaxpwgt, (void **)&update, (void **)&nupds_pe, (void **)&htable, LTERM);
   GKfree((void **)&changed, (void **)&pperm, (void **)&perm, (void **)&moved, LTERM);

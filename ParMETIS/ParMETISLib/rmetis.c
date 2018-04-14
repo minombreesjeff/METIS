@@ -40,6 +40,15 @@ void ParMETIS_V3_RefineKway(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy,
   MPI_Comm_size(*comm, &npes);
   MPI_Comm_rank(*comm, &mype);
 
+  /* Deal with poor vertex distributions */
+  ctrl.comm = *comm;
+  if (GlobalSEMin(&ctrl, vtxdist[mype+1]-vtxdist[mype]) < 1) {
+    if (mype == 0)
+      printf("Error: Poor vertex distribution (processor with no vertices).\n");
+    return;
+  }
+
+
   /********************************/
   /* Try and take care bad inputs */
   /********************************/
@@ -70,14 +79,14 @@ void ParMETIS_V3_RefineKway(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy,
   /* Set up control structures */
   /*****************************/
   if (ioptions[0] == 1) {
-    dbglvl = ioptions[PMV3_OPTION_DBGLVL];
-    seed = ioptions[PMV3_OPTION_SEED];
-    ps_relation = (npes == inparts) ? ioptions[PMV3_OPTION_PSR] : DISCOUPLED;
+    dbglvl      = ioptions[PMV3_OPTION_DBGLVL];
+    seed        = ioptions[PMV3_OPTION_SEED];
+    ps_relation = (npes == inparts) ? ioptions[PMV3_OPTION_PSR] : PARMETIS_PSR_UNCOUPLED;
   }
   else {
-    dbglvl = GLOBAL_DBGLVL;
-    seed = GLOBAL_SEED;
-    ps_relation = (npes == inparts) ? COUPLED : DISCOUPLED;
+    dbglvl      = GLOBAL_DBGLVL;
+    seed        = GLOBAL_SEED;
+    ps_relation = (npes == inparts) ? PARMETIS_PSR_COUPLED : PARMETIS_PSR_UNCOUPLED;
   }
 
   SetUpCtrl(&ctrl, inparts, dbglvl, *comm);
@@ -95,7 +104,7 @@ void ParMETIS_V3_RefineKway(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy,
   graph->vsize = idxsmalloc(graph->nvtxs, 1, "vsize");
 
   graph->home = idxmalloc(graph->nvtxs, "home");
-  if (ctrl.ps_relation == COUPLED)
+  if (ctrl.ps_relation == PARMETIS_PSR_COUPLED)
     idxset(graph->nvtxs, mype, graph->home);
   else
     idxcopy(graph->nvtxs, part, graph->home);

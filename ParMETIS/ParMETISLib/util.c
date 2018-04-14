@@ -20,16 +20,16 @@
 void errexit(char *f_str,...)
 {
   va_list argp;
-  char out1[256], out2[256];
+
+  fprintf(stderr, "[ParMETIS Fatal Error] ");
 
   va_start(argp, f_str);
-  vsprintf(out1, f_str, argp);
+  vfprintf(stderr, f_str, argp);
   va_end(argp);
 
-  sprintf(out2, "Error! %s", out1);
-
-  fprintf(stdout, out2);
-  fflush(stdout);
+  if (strlen(f_str) == 0 || f_str[strlen(f_str)-1] != '\n')
+    fprintf(stderr,"\n");
+  fflush(stderr);
 
   abort();
 }
@@ -41,15 +41,15 @@ void errexit(char *f_str,...)
 void myprintf(CtrlType *ctrl, char *f_str,...)
 {
   va_list argp;
-  char out1[256], out2[256];
+
+  fprintf(stdout, "[%2d] ", ctrl->mype);
 
   va_start(argp, f_str);
-  vsprintf(out1, f_str, argp);
+  vfprintf(stdout, f_str, argp);
   va_end(argp);
 
-  sprintf(out2, "[%2d] %s", ctrl->mype, out1);
-
-  fprintf(stdout, out2);
+  if (strlen(f_str) == 0 || f_str[strlen(f_str)-1] != '\n')
+    fprintf(stdout,"\n");
   fflush(stdout);
 
 }

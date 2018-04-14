@@ -114,18 +114,14 @@
 /*************************************************************************
 * These are debugging macros
 **************************************************************************/
-#ifdef DEBUG
+#ifndef NDEBUG
 #   define ASSERT(expr)                                          \
     if (!(expr)) {                                               \
         printf("***ASSERTION failed on line %d of file %s: " #expr "\n", \
               __LINE__, __FILE__);                               \
         abort();                                                \
     }
-#else
-#   define ASSERT(expr) ;
-#endif 
 
-#ifdef DEBUG
 #   define ASSERTP(expr, msg)                                          \
     if (!(expr)) {                                               \
         printf("***ASSERTION failed on line %d of file %s: " #expr "\n", \
@@ -134,5 +130,7 @@
         abort();                                                \
     }
 #else
+#   define ASSERT(expr) ;
 #   define ASSERTP(expr, msg) ;
 #endif 
+

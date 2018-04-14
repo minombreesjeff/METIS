@@ -5,14 +5,14 @@ CFLAGS = $(COPTIONS) $(OPTFLAGS) -I. $(INCDIR)
 
 
 OBJS = comm.o util.o debug.o setup.o grsetup.o timer.o \
-       node_refine.o initmsection.o order.o \
+       node_refine.o initmsection.o \
        xyzpart.o pspases.o frename.o \
        iintsort.o iidxsort.o ikeysort.o ikeyvalsort.o \
        kmetis.o gkmetis.o ometis.o \
        initpart.o match.o \
        kwayfm.o kwayrefine.o kwaybalance.o \
        remap.o stat.o fpqueue.o \
-       ametis.o rmetis.o lmatch.o initbalance.o \
+       ametis.o rmetis.o initbalance.o \
        mdiffusion.o diffutil.o wave.o \
        csrmatch.o redomylink.o balancemylink.o \
        selectq.o akwayfm.o serial.o move.o \

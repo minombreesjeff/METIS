@@ -16,17 +16,17 @@
 
 
 
-/*************************************************************************
-* This function setsup the CtrlType structure
-**************************************************************************/
+/*************************************************************************/
+/*! This function creates the graph from the user's inputs */
+/*************************************************************************/
 GraphType *Mc_SetUpGraph(CtrlType *ctrl, int ncon, idxtype *vtxdist, idxtype *xadj, 
-                          idxtype *vwgt, idxtype *adjncy, idxtype *adjwgt, int *wgtflag)
+               idxtype *vwgt, idxtype *adjncy, idxtype *adjwgt, int *wgtflag)
 {
   int i, j;
   GraphType *graph;
   int ltvwgts[MAXNCON];
 
-  graph = CreateGraph();
+  graph          = CreateGraph();
   graph->level   = 0;
   graph->gnvtxs  = vtxdist[ctrl->npes];
   graph->nvtxs   = vtxdist[ctrl->mype+1]-vtxdist[ctrl->mype];
@@ -79,9 +79,9 @@ GraphType *Mc_SetUpGraph(CtrlType *ctrl, int ncon, idxtype *vtxdist, idxtype *xa
 }
 
 
-/*************************************************************************
-* This function setsup the CtrlType structure
-**************************************************************************/
+/*************************************************************************/
+/*! This function sets the CtrlType structure */
+/*************************************************************************/
 void SetUpCtrl(CtrlType *ctrl, int nparts, int dbglvl, MPI_Comm comm)
 {
 
@@ -95,6 +95,20 @@ void SetUpCtrl(CtrlType *ctrl, int nparts, int dbglvl, MPI_Comm comm)
   ctrl->xyztype = XYZ_SPFILL;
 
   srand(ctrl->mype);
+}
+
+
+/*************************************************************************/
+/*! Setups the global communicator and related info */
+/*************************************************************************/
+void SetUpComm(CtrlType *ctrl, MPI_Comm comm)
+{
+
+  MPI_Comm_dup(comm, &(ctrl->gcomm));
+  MPI_Comm_rank(ctrl->gcomm, &ctrl->mype);
+  MPI_Comm_size(ctrl->gcomm, &ctrl->npes);
+
+  ctrl->comm    = ctrl->gcomm;
 }
 
 

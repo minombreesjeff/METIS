@@ -154,11 +154,7 @@ void GENDUALMETIS(int nelmnts, int nvtxs, int etype, idxtype *elmnts, idxtype *d
    for (i=nelmnts; i>0; i--)
      dxadj[i] = dxadj[i-1];
    dxadj[0] = 0;
-
-   free(mark);
-   free(nptr);
-   free(nind);
-
+   GKfree((void **)&mark,(void **)&nptr,(void **)&nind, LTERM);
 }
 
 
@@ -205,11 +201,7 @@ void TRINODALMETIS(int nelmnts, int nvtxs, idxtype *elmnts, idxtype *dxadj, idxt
      }
      dxadj[i+1] = nedges;
    }
-
-   free(mark);
-   free(nptr);
-   free(nind);
-
+   GKfree((void **)&mark,(void **)&nptr,(void **)&nind, LTERM);
 }
 
 
@@ -254,11 +246,7 @@ void TETNODALMETIS(int nelmnts, int nvtxs, idxtype *elmnts, idxtype *dxadj, idxt
      }
      dxadj[i+1] = nedges;
    }
-
-   free(mark);
-   free(nptr);
-   free(nind);
-
+   GKfree((void **)&mark,(void **)&nptr,(void **)&nind, LTERM);
 }
 
 
@@ -327,11 +315,7 @@ void HEXNODALMETIS(int nelmnts, int nvtxs, idxtype *elmnts, idxtype *dxadj, idxt
      }
      dxadj[i+1] = nedges;
    }
-
-   free(mark);
-   free(nptr);
-   free(nind);
-
+   GKfree((void **)&mark,(void **)&nptr,(void **)&nind, LTERM);
 }
 
 
@@ -391,9 +375,5 @@ void QUADNODALMETIS(int nelmnts, int nvtxs, idxtype *elmnts, idxtype *dxadj, idx
      }
      dxadj[i+1] = nedges;
    }
-
-   free(mark);
-   free(nptr);
-   free(nind);
-
+   GKfree((void **)&mark,(void **)&nptr,(void **)&nind, LTERM);
 }

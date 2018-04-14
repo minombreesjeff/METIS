@@ -53,8 +53,7 @@ void FPQueueReset(FPQueueType *queue)
 void FPQueueFree(FPQueueType *queue)
 {
 
-  free(queue->heap);
-  free(queue->locator);
+  GKfree((void **)&queue->heap, &queue->locator, LTERM);
 
   queue->maxnodes = 0;
 }
@@ -179,27 +178,28 @@ int FPQueueDelete(FPQueueType *queue, int node)
 }
 
 
-
 /*************************************************************************
 * This function deletes a node from a partition and reinserts it with
 * an updated gain
 **************************************************************************/
-int FPQueueUpdate(FPQueueType *queue, int node, float oldgain, float newgain)
+int FPQueueUpdate(FPQueueType *queue, int node, float newgain)
 {
   int i, j;
   idxtype *locator;
   FKeyValueType *heap;
+  float oldgain;
 
-  if (oldgain == newgain) 
-    return 0;
-
-  heap = queue->heap;
+  heap    = queue->heap;
   locator = queue->locator;
 
   ASSERTS(locator[node] != -1);
   ASSERTS(heap[locator[node]].val == node);
-  ASSERTS(fabs(heap[locator[node]].key - oldgain) < SMALLFLOAT);
   ASSERTS(CheckHeapFloat(queue));
+
+  oldgain = heap[locator[node]].key;
+
+  if (fabs(oldgain - newgain) < SMALLFLOAT)
+    return 0;
 
   i = locator[node];
 
@@ -246,50 +246,6 @@ int FPQueueUpdate(FPQueueType *queue, int node, float oldgain, float newgain)
   return 0;
 }
 
-
-
-/*************************************************************************
-* This function deletes a node from a partition and reinserts it with
-* an updated gain
-**************************************************************************/
-void FPQueueUpdateUp(FPQueueType *queue, int node, float oldgain, float newgain)
-{
-  int i, j;
-  idxtype *locator;
-  FKeyValueType *heap;
-
-  if (oldgain == newgain) 
-    return;
-
-  heap = queue->heap;
-  locator = queue->locator;
-
-  ASSERTS(locator[node] != -1);
-  ASSERTS(heap[locator[node]].val == node);
-  ASSERTS(heap[locator[node]].key == oldgain);
-  ASSERTS(CheckHeapFloat(queue));
-
-
-  /* Here we are just filtering up since the newgain is greater than the oldgain */
-  i = locator[node];
-  while (i > 0) {
-    j = (i-1)>>1;
-    if (heap[j].key < newgain) {
-      heap[i] = heap[j];
-      locator[heap[i].val] = i;
-      i = j;
-    }
-    else 
-      break;
-  }
-
-  heap[i].key = newgain;
-  heap[i].val = node;
-  locator[node] = i;
-
-  ASSERTS(CheckHeapFloat(queue));
-
-}
 
 
 /*************************************************************************
@@ -414,6 +370,8 @@ int CheckHeapFloat(FPQueueType *queue)
   int i, j, nnodes;
   idxtype *locator;
   FKeyValueType *heap;
+
+  return 1;
 
   heap = queue->heap;
   locator = queue->locator;

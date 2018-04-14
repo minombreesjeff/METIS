@@ -21,17 +21,17 @@
 **************************************************************************/
 GraphType *Mc_MoveGraph(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
 {
-  int h, i, ii, j, jj, nvtxs, ncon, nparts;
+  int h, i, ii, j, jj, nvtxs, ncon, npes;
   idxtype *xadj, *vwgt, *adjncy, *adjwgt, *mvtxdist;
   idxtype *where, *newlabel, *lpwgts, *gpwgts;
   idxtype *sgraph, *rgraph;
   KeyValueType *sinfo, *rinfo;
   GraphType *mgraph;
 
-  /* this routine only works when nparts == npes */
-  ASSERT(ctrl, ctrl->nparts == ctrl->npes);
+  /* this routine only works when nparts <= npes */
+  ASSERT(ctrl, ctrl->nparts <= ctrl->npes);
 
-  nparts = ctrl->nparts;
+  npes = ctrl->npes;
 
   nvtxs  = graph->nvtxs;
   ncon   = graph->ncon;
@@ -41,30 +41,30 @@ GraphType *Mc_MoveGraph(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
   adjwgt = graph->adjwgt;
   where  = graph->where;
 
-  mvtxdist = idxmalloc(nparts+1, "MoveGraph: mvtxdist");
+  mvtxdist = idxmalloc(npes+1, "MoveGraph: mvtxdist");
 
   /* Let's do a prefix scan to determine the labeling of the nodes given */
   lpwgts = wspace->pv1;
   gpwgts = wspace->pv2;
   sinfo  = wspace->pepairs1;
   rinfo  = wspace->pepairs2;
-  for (i=0; i<nparts; i++)
+  for (i=0; i<npes; i++)
     sinfo[i].key = sinfo[i].val = 0;
 
   for (i=0; i<nvtxs; i++) {
     sinfo[where[i]].key++;
     sinfo[where[i]].val += xadj[i+1]-xadj[i];
   }
-  for (i=0; i<nparts; i++)
+  for (i=0; i<npes; i++)
     lpwgts[i] = sinfo[i].key;
 
-  MPI_Scan((void *)lpwgts, (void *)gpwgts, nparts, IDX_DATATYPE, MPI_SUM, ctrl->comm);
-  MPI_Allreduce((void *)lpwgts, (void *)mvtxdist, nparts, IDX_DATATYPE, MPI_SUM, ctrl->comm);
+  MPI_Scan((void *)lpwgts, (void *)gpwgts, npes, IDX_DATATYPE, MPI_SUM, ctrl->comm);
+  MPI_Allreduce((void *)lpwgts, (void *)mvtxdist, npes, IDX_DATATYPE, MPI_SUM, ctrl->comm);
 
-  MAKECSR(i, nparts, mvtxdist);
+  MAKECSR(i, npes, mvtxdist);
 
   /* gpwgts[i] will store the label of the first vertex for each domain in each processor */
-  for (i=0; i<nparts; i++)
+  for (i=0; i<npes; i++)
     /* We were interested in an exclusive Scan */
     gpwgts[i] = mvtxdist[i] + gpwgts[i] - lpwgts[i];
 
@@ -76,31 +76,32 @@ GraphType *Mc_MoveGraph(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
   /* OK, now send the newlabel info to processors storing adjacent interface nodes */
   CommInterfaceData(ctrl, graph, newlabel, wspace->indices, newlabel+nvtxs);
 
-  /* Now lets tell everybody what and from where he will get it. Assume nparts == npes */
+  /* Now lets tell everybody what and from where he will get it. */
   MPI_Alltoall((void *)sinfo, 2, IDX_DATATYPE, (void *)rinfo, 2, IDX_DATATYPE, ctrl->comm);
 
   /* Use lpwgts and gpwgts as pointers to where data will be received and send */
   lpwgts[0] = 0;  /* Send part */
   gpwgts[0] = 0;  /* Received part */
-  for (i=0; i<nparts; i++) {
+  for (i=0; i<npes; i++) {
     lpwgts[i+1] = lpwgts[i] + (1+ncon)*sinfo[i].key + 2*sinfo[i].val;
     gpwgts[i+1] = gpwgts[i] + (1+ncon)*rinfo[i].key + 2*rinfo[i].val;
   }
 
-  if (lpwgts[nparts]+gpwgts[nparts] > wspace->maxcore) {
+  if (lpwgts[npes]+gpwgts[npes] > wspace->maxcore) {
     /* Adjust core memory, incase the graph was originally very memory unbalanced */
     GKfree((void **)&wspace->core, LTERM);
-    wspace->maxcore = lpwgts[nparts]+4*gpwgts[nparts]; /* In spirit of the 8*nedges */
+    wspace->maxcore = lpwgts[npes]+4*gpwgts[npes]; /* In spirit of the 8*nedges */
     wspace->core    = idxmalloc(wspace->maxcore, "Mc_MoveGraph: wspace->core");
   }
 
   sgraph = wspace->core;
-  rgraph = wspace->core + lpwgts[nparts];
+  rgraph = wspace->core + lpwgts[npes];
 
   /* Issue the receives first */
-  for (i=0; i<nparts; i++) {
+  for (i=0; i<npes; i++) {
     if (rinfo[i].key > 0) 
-      MPI_Irecv((void *)(rgraph+gpwgts[i]), gpwgts[i+1]-gpwgts[i], IDX_DATATYPE, i, 1, ctrl->comm, ctrl->rreq+i);
+      MPI_Irecv((void *)(rgraph+gpwgts[i]), gpwgts[i+1]-gpwgts[i], IDX_DATATYPE, 
+          i, 1, ctrl->comm, ctrl->rreq+i);
     else {
       ASSERT(ctrl, gpwgts[i+1]-gpwgts[i] == 0);
     }
@@ -108,7 +109,7 @@ GraphType *Mc_MoveGraph(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
 
   /* Assemble the graph to be sent and send it */
   for (i=0; i<nvtxs; i++) {
-    ASSERT(ctrl, where[i] >= 0 && where[i] < nparts);
+    ASSERT(ctrl, where[i] >= 0 && where[i] < npes);
     ii = lpwgts[where[i]];
     sgraph[ii++] = xadj[i+1]-xadj[i];
     for (h=0; h<ncon; h++)
@@ -120,28 +121,23 @@ GraphType *Mc_MoveGraph(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
     lpwgts[where[i]] = ii;
   }
 
-  SHIFTCSR(i, nparts, lpwgts);
+  SHIFTCSR(i, npes, lpwgts);
 
-  for (i=0; i<nparts; i++) {
+  for (i=0; i<npes; i++) {
     if (sinfo[i].key > 0)
-      MPI_Isend((void *)(sgraph+lpwgts[i]), lpwgts[i+1]-lpwgts[i], IDX_DATATYPE, i, 1, ctrl->comm, ctrl->sreq+i);
+      MPI_Isend((void *)(sgraph+lpwgts[i]), lpwgts[i+1]-lpwgts[i], IDX_DATATYPE, 
+          i, 1, ctrl->comm, ctrl->sreq+i);
     else {
       ASSERT(ctrl, lpwgts[i+1]-lpwgts[i] == 0);
     }
   }
 
-/*
-#ifdef DMALLOC
-  ASSERT(ctrl, dmalloc_verify(NULL) == DMALLOC_VERIFY_NOERROR);
-#endif
-*/
-
   /* Wait for the send/recv to finish */
-  for (i=0; i<nparts; i++) {
+  for (i=0; i<npes; i++) {
     if (sinfo[i].key > 0) 
       MPI_Wait(ctrl->sreq+i, &ctrl->status);
   }
-  for (i=0; i<nparts; i++) {
+  for (i=0; i<npes; i++) {
     if (rinfo[i].key > 0) 
       MPI_Wait(ctrl->rreq+i, &ctrl->status); 
   }
@@ -154,7 +150,7 @@ GraphType *Mc_MoveGraph(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
   mgraph->ncon    = ncon;
   mgraph->level   = 0;
   mgraph->nvtxs   = mgraph->nedges = 0;
-  for (i=0; i<nparts; i++) {
+  for (i=0; i<npes; i++) {
     mgraph->nvtxs  += rinfo[i].key;
     mgraph->nedges += rinfo[i].val;
   }
@@ -176,9 +172,9 @@ GraphType *Mc_MoveGraph(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
   MAKECSR(i, nvtxs, xadj);
 
   ASSERT(ctrl, jj == mgraph->nedges);
-  ASSERT(ctrl, ii == gpwgts[nparts]);
+  ASSERT(ctrl, ii == gpwgts[npes]);
   ASSERTP(ctrl, jj == mgraph->nedges, (ctrl, "%d %d\n", jj, mgraph->nedges));
-  ASSERTP(ctrl, ii == gpwgts[nparts], (ctrl, "%d %d %d %d %d\n", ii, gpwgts[nparts], jj, mgraph->nedges, nvtxs));
+  ASSERTP(ctrl, ii == gpwgts[npes], (ctrl, "%d %d %d %d %d\n", ii, gpwgts[npes], jj, mgraph->nedges, nvtxs));
 
   GKfree((void **)&newlabel, LTERM);
 
@@ -190,6 +186,7 @@ GraphType *Mc_MoveGraph(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
 
   return mgraph;
 }
+
 
 
 /*************************************************************************
@@ -254,7 +251,7 @@ void ProjectInfoBack(CtrlType *ctrl, GraphType *graph, idxtype *info, idxtype *m
   for (i=0; i<nvtxs; i++)
     info[i] = auxinfo[rinfo[where[i]]++];
 
-  free(auxinfo);
+  GKfree((void **)&auxinfo, LTERM);
 }
 
 
@@ -299,11 +296,9 @@ void FindVtxPerm(CtrlType *ctrl, GraphType *graph, idxtype *perm, WorkSpaceType 
   for (i=0; i<nvtxs; i++)
     perm[i] = gpwgts[where[i]]++;
 
-  free(mvtxdist);
+  GKfree((void **)&mvtxdist, LTERM);
 
 }
-
-
 
 
 /*************************************************************************

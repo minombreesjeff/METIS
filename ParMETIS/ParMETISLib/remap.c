@@ -64,9 +64,10 @@ void ParallelTotalVReMap(CtrlType *ctrl, idxtype *lpwgts, idxtype *map,
   KeyValueType *recv, send;
   int nsaved, gnsaved;
 
-  mype = ctrl->mype;
+  mype   = ctrl->mype;
   nparts = ctrl->nparts;
-  recv = (KeyValueType *)GKmalloc(sizeof(KeyValueType)*nparts, "remap: recv");
+
+  recv     = (KeyValueType *)GKmalloc(sizeof(KeyValueType)*nparts, "remap: recv");
   mylpwgts = idxmalloc(nparts, "mylpwgts");
 
   done = nmapped = 0;
@@ -143,9 +144,9 @@ void ParallelTotalVReMap(CtrlType *ctrl, idxtype *lpwgts, idxtype *map,
   }
   else {
     /* check for a savings */
-    oldwgt = lpwgts[mype];
-    newwgt = lpwgts[rowmap[mype]];
-    nsaved = newwgt - oldwgt;
+    oldwgt  = lpwgts[mype];
+    newwgt  = lpwgts[rowmap[mype]];
+    nsaved  = newwgt - oldwgt;
     gnsaved = GlobalSESum(ctrl, nsaved);
 
     /* undo everything if we don't see a savings */

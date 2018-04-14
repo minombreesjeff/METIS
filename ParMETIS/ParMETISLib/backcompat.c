@@ -44,7 +44,7 @@ void ParMETIS_PartKway(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy, idxtype
   ParMETIS_V3_PartKway(vtxdist, xadj, adjncy, vwgt, adjwgt, wgtflag, numflag,
   &ncon, nparts, tpwgts, ubvec, myoptions, edgecut, part, comm);
 
-  free(tpwgts);
+  GKfree((void **)&tpwgts, LTERM);
 }
 
 
@@ -109,7 +109,7 @@ void ParMETIS_PartGeomKway(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy, idx
   ParMETIS_V3_PartGeomKway(vtxdist, xadj, adjncy, vwgt, adjwgt, wgtflag, numflag, ndims, xyz,
   &ncon, nparts, tpwgts, ubvec, myoptions, edgecut, part, comm);
 
-  free(tpwgts);
+  GKfree((void **)&tpwgts, LTERM);
   return;
 }
 
@@ -158,7 +158,7 @@ void ParMETIS_PartGeomRefine(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy,
   ParMETIS_V3_PartGeomKway(vtxdist, xadj, adjncy, vwgt, adjwgt, wgtflag, numflag, ndims, xyz,
   &ncon, &nparts, tpwgts, ubvec, myoptions, edgecut, part, comm);
 
-  free(tpwgts);
+  GKfree((void **)&tpwgts, LTERM);
   return;
 }
 
@@ -255,14 +255,14 @@ void ParMETIS_RefineKway(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy,
   else {
     myoptions[0] = 1;
     myoptions[PMV3_OPTION_DBGLVL] = options[OPTION_DBGLVL];
-    myoptions[PMV3_OPTION_SEED] = GLOBAL_SEED;
-    myoptions[PMV3_OPTION_PSR] = COUPLED;
+    myoptions[PMV3_OPTION_SEED]   = GLOBAL_SEED;
+    myoptions[PMV3_OPTION_PSR]    = PARMETIS_PSR_COUPLED;
   }
 
   ParMETIS_V3_RefineKway(vtxdist, xadj, adjncy, vwgt, adjwgt, wgtflag, numflag,
   &ncon, &nparts, tpwgts, ubvec, myoptions, edgecut, part, comm);
 
-  free(tpwgts);
+  GKfree((void **)&tpwgts, LTERM);
 }
 
 
@@ -319,14 +319,14 @@ void ParMETIS_RepartLDiffusion(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy,
   else {
     myoptions[0] = 1;
     myoptions[PMV3_OPTION_DBGLVL] = options[OPTION_DBGLVL];
-    myoptions[PMV3_OPTION_SEED] = GLOBAL_SEED;
-    myoptions[PMV3_OPTION_PSR] = COUPLED;
+    myoptions[PMV3_OPTION_SEED]   = GLOBAL_SEED;
+    myoptions[PMV3_OPTION_PSR]    = PARMETIS_PSR_COUPLED;
   }
 
   ParMETIS_V3_AdaptiveRepart(vtxdist, xadj, adjncy, vwgt, NULL, adjwgt, wgtflag, numflag,
   &ncon, &nparts, tpwgts, ubvec, &ipc_factor, myoptions, edgecut, part, comm);
 
-  free(tpwgts);
+  GKfree((void **)&tpwgts, LTERM);
 }
 
 
@@ -382,14 +382,14 @@ void ParMETIS_RepartGDiffusion(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy,
   else {
     myoptions[0] = 1;
     myoptions[PMV3_OPTION_DBGLVL] = options[OPTION_DBGLVL];
-    myoptions[PMV3_OPTION_SEED] = GLOBAL_SEED;
-    myoptions[PMV3_OPTION_PSR] = COUPLED;
+    myoptions[PMV3_OPTION_SEED]   = GLOBAL_SEED;
+    myoptions[PMV3_OPTION_PSR]    = PARMETIS_PSR_COUPLED;
   }
 
   ParMETIS_V3_AdaptiveRepart(vtxdist, xadj, adjncy, vwgt, NULL, adjwgt, wgtflag, numflag,
   &ncon, &nparts, tpwgts, ubvec, &ipc_factor, myoptions, edgecut, part, comm);
 
-  free(tpwgts);
+  GKfree((void **)&tpwgts, LTERM);
 }
 
 /***********************************************************************************
@@ -444,14 +444,14 @@ void ParMETIS_RepartRemap(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy,
   else {
     myoptions[0] = 1;
     myoptions[PMV3_OPTION_DBGLVL] = options[OPTION_DBGLVL];
-    myoptions[PMV3_OPTION_SEED] = GLOBAL_SEED;
-    myoptions[PMV3_OPTION_PSR] = COUPLED;
+    myoptions[PMV3_OPTION_SEED]   = GLOBAL_SEED;
+    myoptions[PMV3_OPTION_PSR]    = PARMETIS_PSR_COUPLED;
   }
 
   ParMETIS_V3_AdaptiveRepart(vtxdist, xadj, adjncy, vwgt, NULL, adjwgt, wgtflag, numflag,
   &ncon, &nparts, tpwgts, ubvec, &ipc_factor, myoptions, edgecut, part, comm);
 
-  free(tpwgts);
+  GKfree((void **)&tpwgts, LTERM);
 }
 
 
@@ -482,14 +482,14 @@ void ParMETIS_RepartMLRemap(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy,
   else {
     myoptions[0] = 1;
     myoptions[PMV3_OPTION_DBGLVL] = options[OPTION_DBGLVL];
-    myoptions[PMV3_OPTION_SEED] = GLOBAL_SEED;
-    myoptions[PMV3_OPTION_PSR] = COUPLED;
+    myoptions[PMV3_OPTION_SEED]   = GLOBAL_SEED;
+    myoptions[PMV3_OPTION_PSR]    = PARMETIS_PSR_COUPLED;
   }
 
   ParMETIS_V3_AdaptiveRepart(vtxdist, xadj, adjncy, vwgt, NULL, adjwgt, wgtflag, numflag,
   &ncon, &nparts, tpwgts, ubvec, &ipc_factor, myoptions, edgecut, part, comm);
 
-  free(tpwgts);
+  GKfree((void **)&tpwgts, LTERM);
 }
 
 /***********************************************************************************

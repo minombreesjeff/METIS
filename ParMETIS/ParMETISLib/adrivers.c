@@ -77,12 +77,12 @@ void Adaptive_Partition(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
     /* Coarsen it and partition it */
     /*******************************/
     switch (ctrl->ps_relation) {
-      case COUPLED:
-        Mc_LocalMatch_HEM(ctrl, graph, wspace);
+      case PARMETIS_PSR_COUPLED:
+        Match_Local(ctrl, graph, wspace);
         break;
-      case DISCOUPLED:
+      case PARMETIS_PSR_UNCOUPLED:
       default:
-        Mc_GlobalMatch_Balance(ctrl, graph, wspace);
+        Match_Global(ctrl, graph, wspace);
         break;
     }
 

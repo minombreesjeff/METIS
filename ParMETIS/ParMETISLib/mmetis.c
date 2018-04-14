@@ -45,8 +45,9 @@ void ParMETIS_V3_PartMeshKway(idxtype *elmdist, idxtype *eptr, idxtype *eind, id
     abort();
   }
 
-  
+
   SetUpCtrl(&ctrl, *nparts, (options[0] == 1 ? options[PMV3_OPTION_DBGLVL] : 0), *comm);
+
   npes = ctrl.npes;
   mype = ctrl.mype;
 
@@ -58,7 +59,8 @@ void ParMETIS_V3_PartMeshKway(idxtype *elmdist, idxtype *eptr, idxtype *eind, id
   starttimer(TotalTmr);
   starttimer(Mesh2DualTmr);
 
-  ParMETIS_V3_Mesh2Dual(elmdist, eptr, eind, numflag, ncommonnodes, &xadj, &adjncy, &(ctrl.comm));
+  ParMETIS_V3_Mesh2Dual(elmdist, eptr, eind, numflag, ncommonnodes, &xadj, &adjncy, 
+      &(ctrl.comm));
 
   if (ctrl.dbglvl&DBG_INFO) {
     nvtxs = elmdist[mype+1]-elmdist[mype];
@@ -77,7 +79,7 @@ void ParMETIS_V3_PartMeshKway(idxtype *elmdist, idxtype *eptr, idxtype *eind, id
   starttimer(ParMETISTmr);
 
   ParMETIS_V3_PartKway(elmdist, xadj, adjncy, elmwgt, NULL, wgtflag, numflag, ncon, 
-                       nparts, tpwgts, ubvec, options, edgecut, part, &(ctrl.comm));
+      nparts, tpwgts, ubvec, options, edgecut, part, &(ctrl.comm));
 
   MPI_Barrier(ctrl.comm);
   stoptimer(ParMETISTmr);

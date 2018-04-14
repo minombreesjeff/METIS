@@ -95,7 +95,7 @@ void MocGrowBisection(CtrlType *ctrl, GraphType *graph, float *tpwgts, float ubf
   graph->mincut = bestcut;
   idxcopy(nvtxs, bestwhere, where);
 
-  GKfree(&bestwhere, LTERM);
+  GKfree((void **)(&bestwhere), LTERM);
 }
 
 
@@ -164,7 +164,7 @@ void MocRandomBisection(CtrlType *ctrl, GraphType *graph, float *tpwgts, float u
   graph->mincut = bestcut;
   idxcopy(nvtxs, bestwhere, where);
 
-  GKfree(&bestwhere, &perm, LTERM);
+  GKfree((void **)(&bestwhere), &perm, LTERM);
 }
 
 

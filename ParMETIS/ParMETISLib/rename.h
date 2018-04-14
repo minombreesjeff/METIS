@@ -6,10 +6,11 @@
 /* gkmetis.c */
 
 /* match.c */
-#define	Mc_GlobalMatch_Balance Mc_GlobalMatch_Balance__
+#define	Match_Global Match_Global__
+#define	Match_Local  Match_Local__
+#define	CreateCoarseGraph_Global CreateCoarseGraph_Global__
+#define	CreateCoarseGraph_Local  CreateCoarseGraph_Local__
 
-/* coarsen.c */
-#define	Mc_Global_CreateCoarseGraph Mc_Global_CreateCoarseGraph__
 
 /* initpart.c */
 #define	Mc_InitPartition_RB Mc_InitPartition_RB__
@@ -43,6 +44,7 @@
 #define	CreateGraph CreateGraph__
 #define	InitGraph InitGraph__
 #define	FreeGraph FreeGraph__
+#define FreeNonGraphFields FreeNonGraphFields__
 #define	FreeInitialGraphAndRemap FreeInitialGraphAndRemap__
 
 
@@ -53,10 +55,6 @@
 #define	Adaptive_Partition Adaptive_Partition__
 
 /* rmetis.c */
-
-/* lmatch.c */
-#define	Mc_LocalMatch_HEM Mc_LocalMatch_HEM__
-#define	Mc_Local_CreateCoarseGraph Mc_Local_CreateCoarseGraph__
 
 /* wave.c */
 #define	WavefrontDiffusion WavefrontDiffusion__
@@ -133,28 +131,32 @@
 /* Ordering subroutines */
 /************************/
 /* ometis.c */
+#define	MultilevelOrder MultilevelOrder__
+#define Order_Partition_Multiple Order_Partition_Multiple__
+#define	Order_Partition Order_Partition__
+#define	LabelSeparators LabelSeparators__
+#define	CompactGraph CompactGraph__
+#define	LocalNDOrder LocalNDOrder__
+
 /* pspases.c */
 #define	AssembleEntireGraph AssembleEntireGraph__
 
+
 /* node_refine.c */
-#define	ComputeNodePartitionParams0 ComputeNodePartitionParams0__
-#define	ComputeNodePartitionParams ComputeNodePartitionParams__
-#define	KWayNodeRefine0 KWayNodeRefine0__
-#define	KWayNodeRefine KWayNodeRefine__
-#define	KWayNodeRefine2 KWayNodeRefine2__
-#define	PrintNodeBalanceInfo PrintNodeBalanceInfo__
+#define AllocateNodePartitionParams AllocateNodePartitionParams__
+#define ComputeNodePartitionParams ComputeNodePartitionParams__
+#define UpdateNodePartitionParams UpdateNodePartitionParams__
+#define KWayNodeRefine_Greedy KWayNodeRefine_Greedy__
+#define KWayNodeRefine_Greedy2 KWayNodeRefine_Greedy2__
+#define KWayNodeRefine2Phase KWayNodeRefine2Phase__
+#define KWayNodeRefine2Phase2 KWayNodeRefine2Phase2__
+#define KWayNodeRefineInterior KWayNodeRefineInterior__
+#define PrintNodeBalanceInfo PrintNodeBalanceInfo__
+
 
 /* initmsection.c */
 #define	InitMultisection InitMultisection__
 #define	AssembleMultisectedGraph AssembleMultisectedGraph__
-
-/* order.c */
-#define	MultilevelOrder MultilevelOrder__
-#define	LabelSeparators LabelSeparators__
-#define	CompactGraph CompactGraph__
-#define	LocalOrder LocalOrder__
-#define	LocalNDOrder LocalNDOrder__
-#define	Order_Partition Order_Partition__
 
 /* xyzpart.c */
 #define	Coordinate_Partition Coordinate_Partition__
@@ -273,6 +275,7 @@
 /* grsetup.c */
 #define	Mc_SetUpGraph Mc_SetUpGraph__
 #define	SetUpCtrl SetUpCtrl__
+#define	SetUpComm SetUpComm__
 #define	ChangeNumbering ChangeNumbering__
 #define	ChangeNumberingMesh ChangeNumberingMesh__
 #define	GraphRandomPermute GraphRandomPermute__

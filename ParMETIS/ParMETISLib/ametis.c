@@ -40,6 +40,15 @@ void ParMETIS_V3_AdaptiveRepart(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy
   MPI_Comm_size(*comm, &npes);
   MPI_Comm_rank(*comm, &mype);
 
+  /* Deal with poor vertex distributions */
+  ctrl.comm = *comm;
+  if (GlobalSEMin(&ctrl, vtxdist[mype+1]-vtxdist[mype]) < 1) {
+    if (mype == 0)
+      printf("Error: Poor vertex distribution (processor with no vertices).\n");
+    return;
+  }
+
+
   /********************************/
   /* Try and take care bad inputs */
   /********************************/
@@ -50,7 +59,6 @@ void ParMETIS_V3_AdaptiveRepart(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy
 	      ipc2redist, &iipc2redist, options, ioptions, part, comm);
 
   /* ADD: take care of disconnected graph */
-  /* ADD: take care of highly unbalanced vtxdist */
 
   /*********************************/
   /* Take care the nparts = 1 case */
@@ -73,12 +81,12 @@ void ParMETIS_V3_AdaptiveRepart(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy
   if (ioptions[0] == 1) {
     dbglvl      = ioptions[PMV3_OPTION_DBGLVL];
     seed        = ioptions[PMV3_OPTION_SEED];
-    ps_relation = (npes == inparts ? ioptions[PMV3_OPTION_PSR] : DISCOUPLED);
+    ps_relation = (npes == inparts ? ioptions[PMV3_OPTION_PSR] : PARMETIS_PSR_UNCOUPLED);
   }
   else {
     dbglvl      = GLOBAL_DBGLVL;
     seed        = GLOBAL_SEED;
-    ps_relation = (npes == inparts ? COUPLED : DISCOUPLED);
+    ps_relation = (npes == inparts ? PARMETIS_PSR_COUPLED : PARMETIS_PSR_UNCOUPLED);
   }
 
   SetUpCtrl(&ctrl, inparts, dbglvl, *comm);
@@ -97,7 +105,7 @@ void ParMETIS_V3_AdaptiveRepart(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy
   graph->vsize = (vsize == NULL ? idxsmalloc(graph->nvtxs, 1, "vsize") : vsize);
 
   graph->home = idxmalloc(graph->nvtxs, "home");
-  if (ctrl.ps_relation == COUPLED)
+  if (ctrl.ps_relation == PARMETIS_PSR_COUPLED)
     idxset(graph->nvtxs, mype, graph->home);
   else {
     /* Downgrade the partition numbers if part[] has more partitions that nparts */
@@ -182,8 +190,6 @@ void Adaptive_Partition(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
   float gtewgt, gtvsize;
   float ubavg, lbavg, lbvec[MAXNCON];
 
-  AdjustWSpace(ctrl, graph, wspace);
-
   /************************************/
   /* Set up important data structures */
   /************************************/
@@ -234,12 +240,12 @@ void Adaptive_Partition(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace)
     /* Coarsen it and partition it */
     /*******************************/
     switch (ctrl->ps_relation) {
-      case COUPLED:
-        Mc_LocalMatch_HEM(ctrl, graph, wspace);
+      case PARMETIS_PSR_COUPLED:
+        Match_Local(ctrl, graph, wspace);
         break;
-      case DISCOUPLED:
+      case PARMETIS_PSR_UNCOUPLED:
       default:
-        Mc_GlobalMatch_Balance(ctrl, graph, wspace);
+        Match_Global(ctrl, graph, wspace);
         break;
     }
 

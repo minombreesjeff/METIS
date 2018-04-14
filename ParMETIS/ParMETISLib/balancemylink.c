@@ -29,7 +29,7 @@ int BalanceMyLink(CtrlType *ctrl, GraphType *graph, idxtype *home, int me,
   idxtype *xadj, *vsize, *adjncy, *adjwgt, *where, *ed, *id;
   idxtype *hval, *nvpq, *inq, *map, *rmap, *ptr, *myqueue, *changes;
   float *nvwgt, lbvec[MAXNCON], pwgts[MAXNCON*2], tpwgts[MAXNCON*2], my_wgt[MAXNCON];
-  float newgain, oldgain = 0.0;
+  float newgain;
   float lbavg, bestflow, mycost;
   float ipc_factor, redist_factor, ftmp;
   FPQueueType *queues;
@@ -236,17 +236,6 @@ MPI_Comm_rank(MPI_COMM_WORLD, &mype);
       for (j=xadj[vtx]; j<xadj[vtx+1]; j++) {
         edge = adjncy[j];
 
-        /* must compute oldgain before changing id/ed */
-        if (myqueue[edge] != -1) {
-          oldgain = ipc_factor*(float)(ed[edge]-id[edge]);
-          if (home[edge] == me || home[edge] == you) {
-            if (where[edge] == home[edge])
-              oldgain -= redist_factor*(float)vsize[edge];
-            else
-              oldgain += redist_factor*(float)vsize[edge];
-          }
-        }
-
         tmp = (to == where[edge] ? adjwgt[j] : -adjwgt[j]);
         INC_DEC(id[edge], ed[edge], tmp);
 
@@ -259,8 +248,8 @@ MPI_Comm_rank(MPI_COMM_WORLD, &mype);
               newgain += redist_factor*(float)vsize[edge];
           }
 
-          FPQueueUpdate(queues+hval[edge]+(nqueues*myqueue[edge]),
-          map[edge]-ptr[hval[edge]], oldgain, newgain);
+          FPQueueUpdate(queues+hval[edge]+(nqueues*myqueue[edge]), 
+              map[edge]-ptr[hval[edge]], newgain);
         }
       }
     }

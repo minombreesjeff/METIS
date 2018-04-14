@@ -116,7 +116,7 @@ int MCMlevelKWayPartitioning(CtrlType *ctrl, GraphType *graph, int nparts, idxty
 
   idxcopy(graph->nvtxs, graph->where, part);
 
-  GKfree(&graph->nvwgt, &graph->gdata, &graph->rdata, LTERM);
+  GKfree((void **)(&graph->nvwgt), &graph->gdata, &graph->rdata, LTERM);
 
   return graph->mincut;
 

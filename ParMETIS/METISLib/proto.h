@@ -355,10 +355,17 @@ void METIS_PartGraphKway2(int *, idxtype *, idxtype *, idxtype *, idxtype *, int
 void METIS_WPartGraphKway2(int *, idxtype *, idxtype *, idxtype *, idxtype *, int *, int *, int *, float *, int *, int *, idxtype *); 
 void METIS_NodeNDP(int, idxtype *, idxtype *, int, int *, idxtype *, idxtype *, idxtype *);
 void MlevelNestedDissectionP(CtrlType *, GraphType *, idxtype *, int, int, int, idxtype *);
-void METIS_NodeComputeSeparator(int *, idxtype *, idxtype *, idxtype *, idxtype *, int *, int *, idxtype *); 
+void METIS_NodeComputeSeparator(int *, idxtype *, idxtype *, idxtype *, idxtype *, float *, int *, int *, idxtype *); 
 void METIS_EdgeComputeSeparator(int *, idxtype *, idxtype *, idxtype *, idxtype *, int *, int *, idxtype *); 
 void METIS_mCPartGraphRecursive2(int *nvtxs, int *ncon, idxtype *xadj, idxtype *adjncy, idxtype *vwgt, idxtype *adjwgt, int *wgtflag, int *numflag, int *nparts, float *tpwgts, int *options, int *edgecut, idxtype *part);
 int MCMlevelRecursiveBisection2(CtrlType *ctrl, GraphType *graph, int nparts, float *tpwgts, idxtype *part, float ubfactor, int fpart);
+void METIS_NodeRefine(int nvtxs, idxtype *xadj, idxtype *vwgt, idxtype *adjncy,
+           idxtype *adjwgt, idxtype *where, idxtype *hmarker, float ubfactor);
+void FM_2WayNodeRefine_OneSidedP(CtrlType *ctrl, GraphType *graph, idxtype *hmarker,
+          float ubfactor, int npasses);
+void FM_2WayNodeRefine_TwoSidedP(CtrlType *ctrl, GraphType *graph, idxtype *hmarker,
+          float ubfactor, int npasses);
+
 
 
 

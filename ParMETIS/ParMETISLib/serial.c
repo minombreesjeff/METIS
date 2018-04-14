@@ -515,7 +515,7 @@ void Mc_Serial_FM_2WayRefine(GraphType *graph, float *tpwgts, int npasses)
   idxtype *moved, *swaps, *qnum;
   float *nvwgt, *npwgts, mindiff[MAXNCON], origbal, minbal, newbal;
   FPQueueType parts[MAXNCON][2];
-  int higain, oldgain, mincut, initcut, newcut, mincutorder;
+  int higain, mincut, initcut, newcut, mincutorder;
   float rtpwgts[MAXNCON*2];
   KeyValueType *cand;
 int mype;
@@ -625,7 +625,6 @@ MPI_Comm_rank(MPI_COMM_WORLD, &mype);
 
       for (j=xadj[higain]; j<xadj[higain+1]; j++) {
         k = adjncy[j];
-        oldgain = ed[k]-id[k];
 
         kwgt = (to == where[k] ? adjwgt[j] : -adjwgt[j]);
         INC_DEC(id[k], ed[k], kwgt);
@@ -639,7 +638,7 @@ MPI_Comm_rank(MPI_COMM_WORLD, &mype);
           }
           else { /* If it has not been moved, update its position in the queue */
             if (moved[k] == -1)
-              FPQueueUpdate(&parts[qnum[k]][where[k]], k, (float)oldgain, (float)(ed[k]-id[k]));
+              FPQueueUpdate(&parts[qnum[k]][where[k]], k, (float)(ed[k]-id[k]));
           }
         }
         else {
@@ -810,7 +809,7 @@ void Mc_Serial_Balance2Way(GraphType *graph, float *tpwgts, float lbfactor)
   idxtype *moved, *swaps, *qnum;
   float *nvwgt, *npwgts, mindiff[MAXNCON], origbal, minbal, newbal;
   FPQueueType parts[MAXNCON][2];
-  int higain, oldgain, mincut, newcut, mincutorder;
+  int higain, mincut, newcut, mincutorder;
   int qsizes[MAXNCON][2];
   KeyValueType *cand;
 
@@ -935,14 +934,13 @@ void Mc_Serial_Balance2Way(GraphType *graph, float *tpwgts, float lbfactor)
 
     for (j=xadj[higain]; j<xadj[higain+1]; j++) {
       k = adjncy[j];
-      oldgain = ed[k]-id[k];
 
       kwgt = (to == where[k] ? adjwgt[j] : -adjwgt[j]);
       INC_DEC(id[k], ed[k], kwgt);
 
       /* Update the queue position */
       if (moved[k] == -1)
-        FPQueueUpdate(&parts[qnum[k]][where[k]], k, (float)(oldgain), (float)(ed[k]-id[k]));
+        FPQueueUpdate(&parts[qnum[k]][where[k]], k, (float)(ed[k]-id[k]));
 
       /* Update its boundary information */
       if (ed[k] == 0 && bndptr[k] != -1)
@@ -1010,7 +1008,7 @@ void Mc_Serial_Init2WayBalance(GraphType *graph, float *tpwgts)
   idxtype *qnum;
   float *nvwgt, *npwgts;
   FPQueueType parts[MAXNCON][2];
-  int higain, oldgain, mincut;
+  int higain, mincut;
   KeyValueType *cand;
 
   nvtxs = graph->nvtxs;
@@ -1089,7 +1087,6 @@ void Mc_Serial_Init2WayBalance(GraphType *graph, float *tpwgts)
 
     for (j=xadj[higain]; j<xadj[higain+1]; j++) {
       k = adjncy[j];
-      oldgain = ed[k]-id[k];
 
       kwgt = (to == where[k] ? adjwgt[j] : -adjwgt[j]);
       INC_DEC(id[k], ed[k], kwgt);
@@ -1101,7 +1098,7 @@ void Mc_Serial_Init2WayBalance(GraphType *graph, float *tpwgts)
           FPQueueInsert(&parts[qnum[k]][0], k, (float)(ed[k]-id[k]));
         }
         else { /* It must be in the boundary already */
-          FPQueueUpdate(&parts[qnum[k]][0], k, (float)(oldgain), (float)(ed[k]-id[k]));
+          FPQueueUpdate(&parts[qnum[k]][0], k, (float)(ed[k]-id[k]));
         }
       }
 

@@ -85,6 +85,7 @@ float WavefrontDiffusion(CtrlType *ctrl, GraphType *graph, idxtype *home)
       }
     }
   }
+
   idxset(nvtxs, 0, ed);
   sset(nparts, 0.0, npwgts);
   for (i=0; i<nvtxs; i++) {
@@ -95,6 +96,10 @@ float WavefrontDiffusion(CtrlType *ctrl, GraphType *graph, idxtype *home)
 
   ComputeLoad(graph, nparts, load, ctrl->tpwgts, 0);
   done = 0;
+
+
+  /* zero out the tmpvec array */
+  sset(nparts, 0.0, tmpvec);
 
   npasses = amin(nparts/2, NGD_PASSES);
   for (l=0; l<npasses; l++) {
@@ -127,16 +132,18 @@ float WavefrontDiffusion(CtrlType *ctrl, GraphType *graph, idxtype *home)
       /* move dirty vertices first */
       /*****************************/
       ndirty = 0;
-      for (i=0; i<nvtxs; i++)
+      for (i=0; i<nvtxs; i++) {
         if (where[i] != home[i])
           ndirty++;
+      }
 
       dptr = 0;
-      for (i=0; i<nvtxs; i++)
+      for (i=0; i<nvtxs; i++) {
         if (where[i] != home[i])
           perm[dptr++] = i;
         else
           perm[ndirty++] = i;
+      }
 
       ASSERT(ctrl, ndirty == nvtxs);
       ndirty = dptr;
@@ -159,6 +166,7 @@ float WavefrontDiffusion(CtrlType *ctrl, GraphType *graph, idxtype *home)
       }
       ikeysort(k, cand);
     }
+
 
     for (ii=0; ii<nvtxs/3; ii++) {
       i = (ctrl->mype == 0) ? cand[ii].val : perm[ii];

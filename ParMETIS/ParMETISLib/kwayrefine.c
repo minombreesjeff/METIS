@@ -41,7 +41,7 @@ void Mc_ProjectPartition(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace
   firstvtx = graph->vtxdist[ctrl->mype];
 
 
-  if (graph->match_type == MATCH_GLOBAL) {  /* Only if global matching is on */
+  if (graph->match_type == PARMETIS_MTYPE_GLOBAL) {  /* Only if global matching is on */
     /*------------------------------------------------------------
     / Start the transmission of the remote where information 
     /------------------------------------------------------------*/
@@ -90,7 +90,7 @@ void Mc_ProjectPartition(CtrlType *ctrl, GraphType *graph, WorkSpaceType *wspace
     }
   }
 
-  if (graph->match_type == MATCH_GLOBAL) {  /* Only if global matching is on */
+  if (graph->match_type == PARMETIS_MTYPE_GLOBAL) {  /* Only if global matching is on */
     /*------------------------------------------------------------
     / Wait for the nonblocking operations to finish
     /------------------------------------------------------------*/

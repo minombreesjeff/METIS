@@ -95,8 +95,8 @@ void ParMETIS_SerialNodeND(idxtype *vtxdist, idxtype *xadj, idxtype *adjncy, int
   IFSET(ctrl.dbglvl, DBG_TIME, PrintTimingInfo(&ctrl));
   IFSET(ctrl.dbglvl, DBG_TIME, MPI_Barrier(ctrl.gcomm));
 
-  GKfree((void **)&agraph->xadj, (void **)&agraph->adjncy, (void **)&perm, (void **)&iperm, (void **)&sendcount, (void **)&displs, LTERM);
-  free(agraph);
+  GKfree((void **)&agraph->xadj, &agraph->adjncy, &perm, &iperm, &sendcount, 
+      &displs, &agraph, LTERM);
   FreeCtrl(&ctrl);
 
   if (*numflag == 1) 
