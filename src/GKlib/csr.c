@@ -4,7 +4,7 @@
  * \brief Various routines with dealing with CSR matrices
  *
  * \author George Karypis
- * \version\verbatim $Id: csr.c 10537 2011-07-11 05:27:54Z karypis $ \endverbatim
+ * \version\verbatim $Id: csr.c 10711 2011-08-31 22:23:04Z karypis $ \endverbatim
  */
 
 #include <GKlib.h>

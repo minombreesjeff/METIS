@@ -12,7 +12,7 @@ which is used for code generation.
 
 \date   Started 9/28/95
 \author George
-\version\verbatim $Id: blas.c 7612 2009-11-29 15:46:31Z karypis $ \endverbatim
+\version\verbatim $Id: blas.c 10711 2011-08-31 22:23:04Z karypis $ \endverbatim
 */
 
 #include <GKlib.h>

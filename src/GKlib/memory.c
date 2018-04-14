@@ -9,7 +9,7 @@ can be used to define other memory allocation routines.
 
 \date   Started 4/3/2007
 \author George
-\version\verbatim $Id: memory.c 10561 2011-07-13 13:19:54Z karypis $ \endverbatim
+\version\verbatim $Id: memory.c 10711 2011-08-31 22:23:04Z karypis $ \endverbatim
 */
 
 

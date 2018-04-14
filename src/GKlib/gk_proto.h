@@ -4,7 +4,7 @@
 
 \date   Started 3/27/2007
 \author George
-\version\verbatim $Id: gk_proto.h 10522 2011-07-08 21:05:23Z benjamin $ \endverbatim
+\version\verbatim $Id: gk_proto.h 10711 2011-08-31 22:23:04Z karypis $ \endverbatim
 */
 
 #ifndef _GK_PROTO_H_
